@@ -183,7 +183,7 @@
     }
     .reader-title {
       flex: 1; font-size: 0.85rem; font-weight: 600;
-      white-space: nowraw; overflow: hidden; text-overflow: ellipsis;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
       color: var(--text);
     }
 
@@ -446,7 +446,7 @@
 // |  See SETUP instructions in SETUP.md                 |
 // +======================================================+
 const CONFIG = {
-  CLIENT_ID:   '871446308528-r12mb3i1r87jrk681ms3bp55msubojt7.apps.googleusercontent.com',
+  CLIENT_ID:   '871446308528-r12mb3i1r87jrk681ms3pb55msubojt7.apps.googleusercontent.com',
   FOLDER_NAME: 'Rakuten Kobo',
   SCOPE:       'https://www.googleapis.com/auth/drive.readonly',
 };
@@ -693,6 +693,13 @@ const Reader = {
 
     // Feed current page text to TTS
     TTS.loadPageText();
+
+    // If TTS was reading and asked to turn the page, resume on the new page.
+    if (TTS.active && TTS._awaitingPage) {
+      TTS._awaitingPage = false;
+      // Small delay so the new section's text is fully rendered in the iframe.
+      setTimeout(() => { if (TTS.active) TTS._speak(); }, 300);
+    }
   },
 
   _addSwipe() {
@@ -722,6 +729,7 @@ const TTS = {
   active: false,
   rate:   1.0,
   voice:  null,
+  _awaitingPage: false,
 
   loadPageText() {
     try {
@@ -735,7 +743,7 @@ const TTS = {
 
   _split(text) {
     if (!text) return [];
-    // Split into sentence-sized chunks &lt;= 220 chars
+    // Split into sentence-sized chunks <= 220 chars
     const sentences = text.match(/[^.!?...\n]+[.!?...\n]+/g) || [text];
     const out = []; let cur = '';
     for (const s of sentences) {
@@ -756,27 +764,25 @@ const TTS = {
       if (!this.chunks.length) { toast('No text found to read'); return; }
     }
     this.active = true;
-    document.getElementById('play-btn').textContent = '&#9208;';
+    document.getElementById('play-btn').textContent = '⏸'; // ⏸
     this._speak();
   },
 
   stop() {
     this.active = false;
+    this._awaitingPage = false;
     window.speechSynthesis?.cancel();
     const btn = document.getElementById('play-btn');
-    if (btn) btn.textContent = '&#9654;';
+    if (btn) btn.textContent = '▶'; // ▶
   },
 
   _speak() {
     if (!this.active) return;
     if (this.idx >= this.chunks.length) {
-      // Auto-advance to next page
-      setTimeout(() => {
-        if (this.active) {
-          Reader.next();
-          setTimeout(() => { if (this.active && this.chunks.length) this._speak(); }, 900);
-        }
-      }, 400);
+      // Finished this page — advance and keep reading.
+      // Reader._onRelocated reloads the text and resumes once the next page renders.
+      this._awaitingPage = true;
+      State.rendition?.next();
       return;
     }
     window.speechSynthesis.cancel();
@@ -793,7 +799,7 @@ const TTS = {
 
   setRate(v) {
     this.rate = v;
-    document.getElementById('speed-val').textContent = v.toFixed(1) + '&times;';
+    document.getElementById('speed-val').textContent = v.toFixed(1) + '×';
     if (this.active) { window.speechSynthesis.cancel(); this._speak(); }
   },
 
