@@ -303,6 +303,16 @@
     }
     .voice-item.active { border-color: var(--accent); }
     .voice-name { font-size: 0.9rem; font-weight: 600; }
+    .voice-badge {
+      font-size: 0.62rem; font-weight: 700;
+      color: var(--accent);
+      border: 1px solid var(--accent);
+      border-radius: 10px;
+      padding: 0.05rem 0.4rem;
+      margin-left: 0.4rem;
+      vertical-align: middle;
+      white-space: nowrap;
+    }
     .voice-lang { font-size: 0.72rem; color: var(--text-dim); margin-top: 0.1rem; }
     .voice-check { color: var(--accent); font-size: 1.1rem; }
 
@@ -848,25 +858,53 @@ const TTS = {
     if (this.active) { window.speechSynthesis.cancel(); this._speak(); }
   },
 
+  // Score a voice so the most natural-sounding ones float to the top.
+  _voiceRank(v) {
+    const n = (v.name || '').toLowerCase();
+    let s = 0;
+    if (/natural|neural|premium|enhanced/.test(n)) s += 100; // best native voices
+    if (/\bsiri\b/.test(n))   s += 90;  // iOS Siri voices
+    if (n.includes('google')) s += 70;  // Chrome's online voices
+    if (n.includes('online')) s += 40;  // MS "Online (Natural)"
+    if (v.localService === false) s += 20;
+    if (/compact|espeak|robosoft/.test(n)) s -= 50; // known robotic
+    if (v.lang === 'en-US' || v.lang === 'en-GB') s += 5;
+    return s;
+  },
+
+  _isNatural(v) { return this._voiceRank(v) >= 40; },
+
   allVoices() {
     const all = window.speechSynthesis.getVoices();
-    const en  = all.filter(v => v.lang.startsWith('en'));
-    return en.length ? en : all;
+    const en  = all.filter(v => v.lang && v.lang.toLowerCase().startsWith('en'));
+    const list = en.length ? en : all;
+    return [...list].sort((a, b) => this._voiceRank(b) - this._voiceRank(a));
+  },
+
+  // Choose the best available voice, restoring the user's saved choice if present.
+  pickDefaultVoice() {
+    const voices = this.allVoices();
+    if (!voices.length) return;
+    const savedName = localStorage.getItem('kba_voice');
+    const saved = savedName && voices.find(v => v.name === savedName);
+    this.voice = saved || voices[0];
   },
 };
 
-// iOS: voices load async
-window.speechSynthesis?.addEventListener('voiceschanged', () => {});
+// Voices load asynchronously (especially on iOS/Chrome) — pick the best one
+// as soon as the list is available, and again whenever it changes.
+window.speechSynthesis?.addEventListener('voiceschanged', () => TTS.pickDefaultVoice());
 
 // --- Voice Modal ------------------------------------------
 const VoiceModal = {
   open() {
     const voices = TTS.allVoices();
+    if (!voices.length) { toast('No voices available yet — try again in a moment'); return; }
     document.getElementById('voice-list').innerHTML = voices.map((v, i) => `
       <div class="voice-item ${TTS.voice?.name === v.name ? 'active' : ''}" onclick="VoiceModal.select(${i})">
         <div>
-          <div class="voice-name">${v.name}</div>
-          <div class="voice-lang">${v.lang}${v.localService ? ' &middot; Local' : ''}</div>
+          <div class="voice-name">${v.name}${TTS._isNatural(v) ? ' <span class="voice-badge">&#10024; Natural</span>' : ''}</div>
+          <div class="voice-lang">${v.lang}${v.localService ? ' &middot; Local' : ' &middot; Online'}</div>
         </div>
         ${TTS.voice?.name === v.name ? '<span class="voice-check">&#10003;</span>' : ''}
       </div>`).join('');
@@ -875,6 +913,7 @@ const VoiceModal = {
 
   select(i) {
     TTS.voice = TTS.allVoices()[i];
+    localStorage.setItem('kba_voice', TTS.voice.name);
     toast('Voice: ' + TTS.voice.name);
     this.close();
     if (TTS.active) { window.speechSynthesis.cancel(); TTS._speak(); }
@@ -913,6 +952,7 @@ const ChapterModal = {
 // --- Boot -------------------------------------------------
 window.addEventListener('load', () => {
   App.init();
+  TTS.pickDefaultVoice(); // voices may already be loaded; voiceschanged refines later
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js').catch(e => console.warn('SW registration failed:', e));
   }
