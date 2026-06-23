@@ -3,13 +3,13 @@
 // Drive at runtime and are intentionally NOT cached (they can be very large and
 // require a live auth token).
 
-const CACHE = 'koboaudio-v1';
+const CACHE = 'koboaudio-v2';
 const SHELL = [
   './',
   './index.html',
   './manifest.json',
   'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js',
-  'https://cdnjs.cloudflare.com/ajax/libs/epub.js/0.3.93/epub.min.js',
+  'https://cdn.jsdelivr.net/npm/epubjs@0.3.93/dist/epub.min.js',
 ];
 
 self.addEventListener('install', e => {
@@ -59,7 +59,7 @@ self.addEventListener('fetch', e => {
     const cached = await caches.match(req);
     if (cached) return cached;
     const res = await fetch(req);
-    if (res.ok && (url.origin === self.location.origin || url.hostname.includes('cdnjs.cloudflare.com'))) {
+    if (res.ok && (url.origin === self.location.origin || url.hostname.includes('cdnjs.cloudflare.com') || url.hostname.includes('jsdelivr.net'))) {
       const c = await caches.open(CACHE);
       c.put(req, res.clone());
     }
