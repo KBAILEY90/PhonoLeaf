@@ -244,13 +244,18 @@
       display: flex; align-items: center; gap: 0.75rem;
     }
     .speed-group { display: flex; align-items: center; gap: 0.5rem; flex: 1; }
-    .speed-label { font-size: 0.72rem; color: var(--text-dim); white-space: nowrap; min-width: 52px; }
+    .speed-label { font-size: 0.72rem; color: var(--text-dim); white-space: nowrap; }
 
-    input[type="range"] {
-      flex: 1; height: 4px;
-      accent-color: var(--accent);
+    .speed-select {
+      background: var(--card);
+      color: var(--text);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 20px;
+      padding: 0.3rem 0.7rem;
+      font-size: 0.72rem;
       cursor: pointer;
     }
+    .speed-select:focus { outline: none; border-color: var(--accent); }
 
     .pill-btn {
       background: none;
@@ -422,8 +427,15 @@
     </div>
     <div class="tts-row2">
       <div class="speed-group">
-        <span class="speed-label">Speed: <strong id="speed-val">1.0&times;</strong></span>
-        <input type="range" id="speed-range" min="0.5" max="3.5" step="0.1" value="1" oninput="TTS.setRate(+this.value)">
+        <label class="speed-label" for="speed-select">Speed</label>
+        <select class="speed-select" id="speed-select" onchange="TTS.setRate(+this.value)">
+          <option value="0.5">0.5&times;</option>
+          <option value="1" selected>1.0&times;</option>
+          <option value="1.5">1.5&times;</option>
+          <option value="2">2.0&times;</option>
+          <option value="2.5">2.5&times;</option>
+          <option value="3">3.0&times;</option>
+        </select>
       </div>
       <button class="pill-btn" id="voice-btn" onclick="VoiceModal.open()">&#128483; Voice</button>
     </div>
@@ -924,7 +936,6 @@ const TTS = {
 
   setRate(v) {
     this.rate = v;
-    document.getElementById('speed-val').textContent = v.toFixed(1) + '×';
     if (this.active) { window.speechSynthesis.cancel(); this._speak(); }
   },
 
