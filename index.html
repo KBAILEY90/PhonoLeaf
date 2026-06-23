@@ -680,6 +680,7 @@ const Library = {
         return;
       }
       this.render();
+      Covers.loadAll(); // fill in real epub covers in the background
     } catch (e) {
       console.error(e);
       grid.innerHTML = `<div class="empty"><p style="color:var(--accent)">Error: ${esc(e.message)}</p><button onclick="Library.load()" style="margin-top:1rem;padding:0.5rem 1rem;background:var(--accent);color:white;border:none;border-radius:8px;cursor:pointer">Retry</button></div>`;
@@ -692,12 +693,16 @@ const Library = {
       const title = b.name.replace(/\.epub$/i, '');
       const prog  = State.progress[b.id];
       const pct   = prog?.pct ?? 0;
+      // Prefer the epub's own cover (extracted + cached); fall back to Drive's
+      // thumbnail as a quick placeholder, then to the book glyph.
+      const cover = Covers.urls[b.id]
+        || (b.thumbnailLink ? b.thumbnailLink.replace('s220', 's400') : '');
       return `
         <div class="book-card" onclick="Reader.open(${i})">
-          <div class="book-cover">
+          <div class="book-cover" data-book-id="${esc(b.id)}">
             <span class="cover-fallback">&#128214;</span>
-            ${b.thumbnailLink
-              ? `<img src="${esc(b.thumbnailLink.replace('s220', 's400'))}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">`
+            ${cover
+              ? `<img src="${esc(cover)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">`
               : ''}
             ${pct > 0 ? `<div class="book-progress-bar" style="width:${pct}%"></div>` : ''}
           </div>
@@ -710,6 +715,121 @@ const Library = {
   },
 
   refresh() { this.load(); },
+};
+
+// --- Cover cache (IndexedDB) ------------------------------
+// Persists extracted cover images so we only download a book once for its cover.
+const CoverCache = {
+  _db: null,
+  _open() {
+    if (this._db) return this._db;
+    this._db = new Promise((resolve, reject) => {
+      const r = indexedDB.open('koboaudio', 1);
+      r.onupgradeneeded = () => r.result.createObjectStore('covers');
+      r.onsuccess = () => resolve(r.result);
+      r.onerror  = () => reject(r.error);
+    });
+    return this._db;
+  },
+  async get(key) {
+    try {
+      const db = await this._open();
+      return await new Promise(resolve => {
+        const req = db.transaction('covers', 'readonly').objectStore('covers').get(key);
+        req.onsuccess = () => resolve(req.result || null);
+        req.onerror  = () => resolve(null);
+      });
+    } catch (_) { return null; }
+  },
+  async set(key, blob) {
+    try {
+      const db = await this._open();
+      await new Promise(resolve => {
+        const req = db.transaction('covers', 'readwrite').objectStore('covers').put(blob, key);
+        req.onsuccess = () => resolve();
+        req.onerror  = () => resolve();
+      });
+    } catch (_) {}
+  },
+};
+
+// --- Covers: extract each book's real cover, throttled + cached -----
+const Covers = {
+  urls:    {},   // book id -> object URL for the rendered cover (session cache)
+  _queue:  [],
+  _active: 0,
+  MAX:     3,    // concurrent downloads — keep low to limit bandwidth
+
+  loadAll() {
+    for (const b of State.books) if (!this.urls[b.id]) this._queue.push(b);
+    this._pump();
+  },
+
+  _pump() {
+    while (this._active < this.MAX && this._queue.length) {
+      const b = this._queue.shift();
+      this._active++;
+      this._one(b).catch(() => {}).finally(() => { this._active--; this._pump(); });
+    }
+  },
+
+  async _one(b) {
+    if (this.urls[b.id]) return;
+    const key = b.id + ':' + (b.size || '');
+    let blob = await CoverCache.get(key);
+    if (!blob) {
+      const buf = await Drive.download(b.id);
+      blob = await this._extract(buf);
+      if (blob) await CoverCache.set(key, blob);
+    }
+    if (!blob) return;
+    const url = URL.createObjectURL(blob);
+    this.urls[b.id] = url;
+    this._apply(b.id, url);
+  },
+
+  // Cache the cover from an already-open epub.js Book (no extra download).
+  async fromBook(book, meta) {
+    try {
+      if (this.urls[meta.id]) return;
+      const coverUrl = await book.coverUrl();
+      if (!coverUrl) return;
+      const blob = await (await fetch(coverUrl)).blob();
+      await CoverCache.set(meta.id + ':' + (meta.size || ''), blob);
+      this.urls[meta.id] = URL.createObjectURL(blob);
+      this._apply(meta.id, this.urls[meta.id]);
+    } catch (_) {}
+  },
+
+  // Open the epub just enough to read its cover image, return it as a Blob.
+  async _extract(buf) {
+    let book = null;
+    try {
+      book = ePub(buf);
+      await book.ready;
+      const coverUrl = await book.coverUrl();
+      if (!coverUrl) return null;
+      const res = await fetch(coverUrl);
+      return await res.blob();
+    } catch (_) {
+      return null;
+    } finally {
+      try { book && book.destroy(); } catch (_) {}
+    }
+  },
+
+  _apply(id, url) {
+    const cover = document.querySelector(`#books-grid .book-cover[data-book-id="${CSS.escape(id)}"]`);
+    if (!cover) return;
+    let img = cover.querySelector('img');
+    if (!img) {
+      img = document.createElement('img');
+      img.alt = '';
+      img.loading = 'lazy';
+      cover.appendChild(img);
+    }
+    img.src = url;
+  },
 };
 
 // --- Reader ----------------------------------------------
@@ -738,6 +858,9 @@ const Reader = {
 
       // Capture TOC
       State.toc = State.epubBook.navigation?.toc ?? [];
+
+      // We already have the book loaded — cache its cover for the library.
+      Covers.fromBook(State.epubBook, book);
 
       State.rendition = State.epubBook.renderTo('viewer', {
         width: '100%',

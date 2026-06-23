@@ -71,6 +71,13 @@ Google login); verify by inspection + the owner testing on device.
   on-screen box is inside the viewer (epub.js paginated mode keeps the whole
   chapter in off-screen columns; reading `body.innerText` would grab the whole
   chapter and loop forever — this was a real bug, don't reintroduce it).
+- **Book covers**: `Covers` extracts each epub's real cover via
+  `book.coverUrl()` and caches the image in IndexedDB (`CoverCache`, store
+  `covers`, keyed by `id:size`) so it's a one-time download per book. Loading is
+  throttled (`MAX` concurrent) and runs in the background after the grid renders;
+  opening a book also caches its cover for free via `Covers.fromBook`. Drive's
+  `thumbnailLink` is only a placeholder. Tradeoff: first view downloads each book
+  once to grab its cover — heavy on a large library (revisit for the product).
 - **Voices**: `TTS` ranks system voices (Natural/Neural/Siri/Google/Online float
   to top), auto-selects the best, persists the choice (`kba_voice`), and shows
   the active voice on the reader's `#voice-btn`.
