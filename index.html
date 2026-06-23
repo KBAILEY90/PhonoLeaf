@@ -35,7 +35,7 @@
     }
 
     /* --- Views --- */
-    .view { display: none; height: 100vh; flex-direction: column; overflow: hidden; }
+    .view { display: none; height: 100vh; height: 100dvh; flex-direction: column; overflow: hidden; }
     .view.active { display: flex; }
 
     /* --- Sign-in --- */
@@ -475,6 +475,7 @@ const State = {
   rendition:   null,
   epubBook:    null,
   toc:         [],
+  spineIndex:  0,
   progress:    JSON.parse(localStorage.getItem('kba_prog') || '{}'),
   saveProgress() { localStorage.setItem('kba_prog', JSON.stringify(this.progress)); },
 };
@@ -681,6 +682,7 @@ const Reader = {
     document.getElementById('tts-chapter').textContent = '-';
     document.getElementById('tts-prog').style.width = '0%';
     TTS.stop();
+    TTS._lastText = ''; // new book — allow the first section's text to load fresh
 
     try {
       toast('Downloading...', 0);
@@ -752,10 +754,13 @@ const Reader = {
     State.progress[bookId] = { cfi: loc.start.cfi, pct };
     State.saveProgress();
 
-    // Feed current page text to TTS
+    // Track which spine section we're in so TTS can advance section-by-section.
+    State.spineIndex = loc.start.index;
+
+    // Feed current section text to TTS (no-op if it's the same section re-rendered).
     TTS.loadPageText();
 
-    // If TTS was reading and asked to turn the page, resume on the new page.
+    // If TTS was reading and asked for the next section, resume once it renders.
     if (TTS.active && TTS._awaitingPage) {
       TTS._awaitingPage = false;
       // Small delay so the new section's text is fully rendered in the iframe.
@@ -791,13 +796,20 @@ const TTS = {
   rate:   1.0,
   voice:  null,
   _awaitingPage: false,
+  _lastText: '',
 
   loadPageText() {
     try {
       const iframes = document.getElementById('viewer').querySelectorAll('iframe');
       let text = '';
       iframes.forEach(f => { text += (f.contentDocument?.body?.innerText || '') + ' '; });
-      this.chunks = this._split(text.trim());
+      text = text.trim();
+      // In paginated mode innerText is the WHOLE section, so it's identical across
+      // visual page turns and spurious relocations — only reset when it truly changes,
+      // otherwise reading would restart from the top and loop forever.
+      if (text === this._lastText) return;
+      this._lastText = text;
+      this.chunks = this._split(text);
       this.idx = 0;
     } catch(e) { this.chunks = []; }
   },
@@ -824,6 +836,7 @@ const TTS = {
       this.loadPageText();
       if (!this.chunks.length) { toast('No text found to read'); return; }
     }
+    if (this.idx >= this.chunks.length) this.idx = 0; // restart section if it had finished
     this.active = true;
     document.getElementById('play-btn').textContent = '⏸'; // ⏸
     this._speak();
@@ -837,13 +850,26 @@ const TTS = {
     if (btn) btn.textContent = '▶'; // ▶
   },
 
+  // Jump to the next spine section (not the next visual page). loadPageText reads
+  // the entire section, so advancing by page would just re-read the same chapter.
+  _nextSection() {
+    const items = State.epubBook?.spine?.spineItems || [];
+    const next  = (State.spineIndex ?? 0) + 1;
+    if (next < items.length) {
+      State.rendition.display(items[next].href).catch(() => this.stop());
+    } else {
+      this.stop();
+      toast('Finished the book');
+    }
+  },
+
   _speak() {
     if (!this.active) return;
     if (this.idx >= this.chunks.length) {
-      // Finished this page — advance and keep reading.
-      // Reader._onRelocated reloads the text and resumes once the next page renders.
+      // Finished this section — advance to the next one and keep reading.
+      // Reader._onRelocated reloads the text and resumes once it renders.
       this._awaitingPage = true;
-      State.rendition?.next();
+      this._nextSection();
       return;
     }
     window.speechSynthesis.cancel();
