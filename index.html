@@ -475,7 +475,6 @@ const State = {
   rendition:   null,
   epubBook:    null,
   toc:         [],
-  spineIndex:  0,
   progress:    JSON.parse(localStorage.getItem('kba_prog') || '{}'),
   saveProgress() { localStorage.setItem('kba_prog', JSON.stringify(this.progress)); },
 };
@@ -517,8 +516,28 @@ const App = {
           scope: CONFIG.SCOPE,
           callback: r => this._onToken(r),
         });
+        this.tryResume();
       }
     }, 150);
+  },
+
+  // "Keep me logged in": reuse a saved, unexpired token so reopening the app
+  // doesn't require signing in again.
+  tryResume() {
+    const saved = this._loadAuth();
+    if (saved && saved.exp > Date.now() + 30000) {
+      State.token = saved.token;
+      showView('library');
+      Library.load(); // a stale/revoked token surfaces as a 401 -> silent refresh
+    }
+  },
+
+  _saveAuth(token, expiresIn) {
+    const exp = Date.now() + ((+expiresIn || 3600) * 1000);
+    try { localStorage.setItem('kba_auth', JSON.stringify({ token, exp })); } catch (_) {}
+  },
+  _loadAuth() {
+    try { return JSON.parse(localStorage.getItem('kba_auth') || 'null'); } catch (_) { return null; }
   },
 
   // Request an access token; resolves with the token string.
@@ -555,12 +574,14 @@ const App = {
       return;
     }
     State.token = r.access_token;
+    this._saveAuth(r.access_token, r.expires_in);
     if (p) p.resolve(r.access_token);
   },
 
   signOut() {
     if (State.token) google.accounts.oauth2.revoke(State.token, () => {});
     State.token = null;
+    try { localStorage.removeItem('kba_auth'); } catch (_) {}
     TTS.stop();
     showView('signin');
   },
@@ -754,17 +775,14 @@ const Reader = {
     State.progress[bookId] = { cfi: loc.start.cfi, pct };
     State.saveProgress();
 
-    // Track which spine section we're in so TTS can advance section-by-section.
-    State.spineIndex = loc.start.index;
-
-    // Feed current section text to TTS (no-op if it's the same section re-rendered).
+    // Feed the new page's visible text to TTS (no-op if it's the same page).
     TTS.loadPageText();
 
-    // If TTS was reading and asked for the next section, resume once it renders.
+    // If TTS was reading and asked to turn the page, resume on the new page.
     if (TTS.active && TTS._awaitingPage) {
       TTS._awaitingPage = false;
-      // Small delay so the new section's text is fully rendered in the iframe.
-      setTimeout(() => { if (TTS.active) TTS._speak(); }, 300);
+      // Small delay so the new page is fully laid out in the iframe before we read it.
+      setTimeout(() => { if (TTS.active) TTS._speak(); }, 350);
     }
   },
 
@@ -798,20 +816,45 @@ const TTS = {
   _awaitingPage: false,
   _lastText: '',
 
+  // Read only the text on the CURRENTLY VISIBLE page. In paginated mode the
+  // iframe holds the whole chapter laid out in off-screen columns, so we keep
+  // only text nodes whose on-screen box falls inside the viewer's visible area.
+  // (Reading body.innerText would grab the whole chapter and loop forever.)
   loadPageText() {
     try {
-      const iframes = document.getElementById('viewer').querySelectorAll('iframe');
-      let text = '';
-      iframes.forEach(f => { text += (f.contentDocument?.body?.innerText || '') + ' '; });
+      const viewer = document.getElementById('viewer');
+      const iframe = viewer.querySelector('iframe');
+      const doc = iframe?.contentDocument;
+      if (!doc || !doc.body) return;
+
+      const vbox = viewer.getBoundingClientRect();
+      const ibox = iframe.getBoundingClientRect();
+      const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT, null);
+      const range = doc.createRange();
+      let text = '', node;
+      while ((node = walker.nextNode())) {
+        const s = node.nodeValue;
+        if (!s || !s.trim()) continue;
+        range.selectNodeContents(node);
+        // Node rects are in the iframe's viewport; add the iframe's offset to
+        // get absolute (top-window) coords, then test against the viewer box.
+        for (const r of range.getClientRects()) {
+          if (!r.width || !r.height) continue;
+          const left = ibox.left + r.left, right = ibox.left + r.right;
+          const top  = ibox.top + r.top,  bottom = ibox.top + r.bottom;
+          if (right > vbox.left + 2 && left < vbox.right - 2 && bottom > vbox.top && top < vbox.bottom) {
+            text += s + ' ';
+            break;
+          }
+        }
+      }
       text = text.trim();
-      // In paginated mode innerText is the WHOLE section, so it's identical across
-      // visual page turns and spurious relocations — only reset when it truly changes,
-      // otherwise reading would restart from the top and loop forever.
-      if (text === this._lastText) return;
+      if (!text) return;                 // extraction failed — keep current chunks
+      if (text === this._lastText) return; // same page re-rendered — don't restart
       this._lastText = text;
       this.chunks = this._split(text);
       this.idx = 0;
-    } catch(e) { this.chunks = []; }
+    } catch (e) { /* keep previous chunks on error */ }
   },
 
   _split(text) {
@@ -836,7 +879,7 @@ const TTS = {
       this.loadPageText();
       if (!this.chunks.length) { toast('No text found to read'); return; }
     }
-    if (this.idx >= this.chunks.length) this.idx = 0; // restart section if it had finished
+    if (this.idx >= this.chunks.length) this.idx = 0; // restart the page if it had finished
     this.active = true;
     document.getElementById('play-btn').textContent = '⏸'; // ⏸
     this._speak();
@@ -850,26 +893,13 @@ const TTS = {
     if (btn) btn.textContent = '▶'; // ▶
   },
 
-  // Jump to the next spine section (not the next visual page). loadPageText reads
-  // the entire section, so advancing by page would just re-read the same chapter.
-  _nextSection() {
-    const items = State.epubBook?.spine?.spineItems || [];
-    const next  = (State.spineIndex ?? 0) + 1;
-    if (next < items.length) {
-      State.rendition.display(items[next].href).catch(() => this.stop());
-    } else {
-      this.stop();
-      toast('Finished the book');
-    }
-  },
-
   _speak() {
     if (!this.active) return;
     if (this.idx >= this.chunks.length) {
-      // Finished this section — advance to the next one and keep reading.
-      // Reader._onRelocated reloads the text and resumes once it renders.
+      // Finished the visible page — turn to the next page and keep reading.
+      // Reader._onRelocated reloads the new page's text and resumes once it renders.
       this._awaitingPage = true;
-      this._nextSection();
+      State.rendition?.next();
       return;
     }
     window.speechSynthesis.cancel();
