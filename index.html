@@ -264,6 +264,12 @@
       transition: background 0.15s;
     }
     .pill-btn:hover { background: rgba(255,255,255,0.08); }
+    #voice-btn {
+      max-width: 45%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      flex-shrink: 0;
+    }
 
     /* --- Modals --- */
     .modal-backdrop {
@@ -419,7 +425,7 @@
         <span class="speed-label">Speed: <strong id="speed-val">1.0&times;</strong></span>
         <input type="range" id="speed-range" min="0.5" max="3.5" step="0.1" value="1" oninput="TTS.setRate(+this.value)">
       </div>
-      <button class="pill-btn" onclick="VoiceModal.open()">&#128483; Voice</button>
+      <button class="pill-btn" id="voice-btn" onclick="VoiceModal.open()">&#128483; Voice</button>
     </div>
   </div>
 </div>
@@ -874,6 +880,23 @@ const TTS = {
 
   _isNatural(v) { return this._voiceRank(v) >= 40; },
 
+  // Compact display name, e.g. "Microsoft Aria Online (Natural) - English (US)" -> "Aria"
+  _shortVoiceName(v) {
+    if (!v) return 'Voice';
+    let n = v.name.split(' - ')[0]
+      .replace(/^(Microsoft|Google|Apple)\s+/i, '')
+      .replace(/\s*\((Natural|Enhanced|Premium|Compact)\)/i, '')
+      .replace(/\s*Online$/i, '')
+      .trim();
+    return n || v.name;
+  },
+
+  // Show the active voice's name on the reader's voice button.
+  updateVoiceLabel() {
+    const btn = document.getElementById('voice-btn');
+    if (btn) btn.textContent = '🗣 ' + this._shortVoiceName(this.voice);
+  },
+
   allVoices() {
     const all = window.speechSynthesis.getVoices();
     const en  = all.filter(v => v.lang && v.lang.toLowerCase().startsWith('en'));
@@ -888,6 +911,7 @@ const TTS = {
     const savedName = localStorage.getItem('kba_voice');
     const saved = savedName && voices.find(v => v.name === savedName);
     this.voice = saved || voices[0];
+    this.updateVoiceLabel();
   },
 };
 
@@ -914,6 +938,7 @@ const VoiceModal = {
   select(i) {
     TTS.voice = TTS.allVoices()[i];
     localStorage.setItem('kba_voice', TTS.voice.name);
+    TTS.updateVoiceLabel();
     toast('Voice: ' + TTS.voice.name);
     this.close();
     if (TTS.active) { window.speechSynthesis.cancel(); TTS._speak(); }
