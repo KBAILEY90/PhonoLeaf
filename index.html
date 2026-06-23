@@ -500,6 +500,14 @@ function fmtSize(b) {
   return b > 1048576 ? (b / 1048576).toFixed(1) + ' MB' : Math.round(b / 1024) + ' KB';
 }
 
+// Escape text before inserting it into HTML. File names, error messages, voice
+// names and chapter titles all come from outside the app and must be escaped to
+// prevent HTML/script injection.
+const _escMap = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+function esc(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => _escMap[c]);
+}
+
 // --- Auth -------------------------------------------------
 const App = {
   _client:  null,
@@ -662,7 +670,7 @@ const Library = {
       this.render();
     } catch (e) {
       console.error(e);
-      grid.innerHTML = `<div class="empty"><p style="color:var(--accent)">Error: ${e.message}</p><button onclick="Library.load()" style="margin-top:1rem;padding:0.5rem 1rem;background:var(--accent);color:white;border:none;border-radius:8px;cursor:pointer">Retry</button></div>`;
+      grid.innerHTML = `<div class="empty"><p style="color:var(--accent)">Error: ${esc(e.message)}</p><button onclick="Library.load()" style="margin-top:1rem;padding:0.5rem 1rem;background:var(--accent);color:white;border:none;border-radius:8px;cursor:pointer">Retry</button></div>`;
     }
   },
 
@@ -677,12 +685,12 @@ const Library = {
           <div class="book-cover">
             <span class="cover-fallback">&#128214;</span>
             ${b.thumbnailLink
-              ? `<img src="${b.thumbnailLink.replace('s220', 's400')}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">`
+              ? `<img src="${esc(b.thumbnailLink.replace('s220', 's400'))}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">`
               : ''}
             ${pct > 0 ? `<div class="book-progress-bar" style="width:${pct}%"></div>` : ''}
           </div>
           <div class="book-info">
-            <div class="book-title" title="${title}">${title}</div>
+            <div class="book-title" title="${esc(title)}">${esc(title)}</div>
             ${b.size ? `<div class="book-meta">${fmtSize(b.size)}</div>` : ''}
           </div>
         </div>`;
@@ -754,7 +762,7 @@ const Reader = {
       console.error(e);
       document.getElementById('reader-loading').classList.add('hidden');
       document.getElementById('viewer').innerHTML =
-        `<div style="display:flex;align-items:center;justify-content:center;height:100%;padding:2rem;text-align:center;color:var(--accent);background:#fff"><p>Failed to load book:<br>${e.message}</p></div>`;
+        `<div style="display:flex;align-items:center;justify-content:center;height:100%;padding:2rem;text-align:center;color:var(--accent);background:#fff"><p>Failed to load book:<br>${esc(e.message)}</p></div>`;
     }
   },
 
@@ -983,8 +991,8 @@ const VoiceModal = {
     document.getElementById('voice-list').innerHTML = voices.map((v, i) => `
       <div class="voice-item ${TTS.voice?.name === v.name ? 'active' : ''}" onclick="VoiceModal.select(${i})">
         <div>
-          <div class="voice-name">${v.name}${TTS._isNatural(v) ? ' <span class="voice-badge">&#10024; Natural</span>' : ''}</div>
-          <div class="voice-lang">${v.lang}${v.localService ? ' &middot; Local' : ' &middot; Online'}</div>
+          <div class="voice-name">${esc(v.name)}${TTS._isNatural(v) ? ' <span class="voice-badge">&#10024; Natural</span>' : ''}</div>
+          <div class="voice-lang">${esc(v.lang)}${v.localService ? ' &middot; Local' : ' &middot; Online'}</div>
         </div>
         ${TTS.voice?.name === v.name ? '<span class="voice-check">&#10003;</span>' : ''}
       </div>`).join('');
@@ -1011,14 +1019,16 @@ const ChapterModal = {
   open() {
     if (!State.toc.length) { toast('No chapter list available'); return; }
     document.getElementById('chapter-list').innerHTML = State.toc.map((c, i) => `
-      <div class="chapter-item" onclick="ChapterModal.jump('${c.href}')">
+      <div class="chapter-item" onclick="ChapterModal.jump(${i})">
         <span class="chapter-num">${i + 1}</span>
-        <span class="chapter-label">${c.label?.trim() || 'Chapter ' + (i + 1)}</span>
+        <span class="chapter-label">${esc(c.label?.trim() || 'Chapter ' + (i + 1))}</span>
       </div>`).join('');
     document.getElementById('chapter-modal').classList.add('open');
   },
 
-  jump(href) {
+  jump(i) {
+    const href = State.toc[i]?.href;
+    if (!href) return;
     TTS.stop();
     this.close();
     State.rendition?.display(href).catch(console.error);
