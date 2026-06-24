@@ -844,6 +844,7 @@ const Reader = {
     document.getElementById('tts-prog').style.width = '0%';
     TTS.stop();
     TTS._lastText = ''; // new book — allow the first section's text to load fresh
+    TTS.chunks = []; TTS.idx = 0; // drop the previous book's text so auto-start reloads
 
     try {
       toast('Downloading...', 0);
@@ -893,6 +894,10 @@ const Reader = {
         if (e.key === 'ArrowLeft')  this.prev();
       });
 
+      // Auto-start reading once the first page has laid out in the iframe.
+      // (Blank first pages like the cover are skipped by _speak's page-turn loop.)
+      setTimeout(() => { if (State.currentBook === book && !TTS.active) TTS.start(); }, 400);
+
     } catch (e) {
       console.error(e);
       document.getElementById('reader-loading').classList.add('hidden');
@@ -939,8 +944,8 @@ const Reader = {
     }, { passive: true });
   },
 
-  next() { TTS.stop(); State.rendition?.next(); },
-  prev() { TTS.stop(); State.rendition?.prev(); },
+  next() { TTS.skipPage(() => State.rendition?.next()); },
+  prev() { TTS.skipPage(() => State.rendition?.prev()); },
 
   close() {
     TTS.stop();
@@ -1035,6 +1040,18 @@ const TTS = {
     window.speechSynthesis?.cancel();
     const btn = document.getElementById('play-btn');
     if (btn) btn.textContent = '▶'; // ▶
+  },
+
+  // Turn the page via `turn` and auto-read the new page once it relocates.
+  // Used by manual skips (next/prev/swipe) so turning a page starts reading.
+  skipPage(turn) {
+    if (!State.rendition) return;
+    window.speechSynthesis?.cancel();
+    this.active = true;
+    this._awaitingPage = true; // Reader._onRelocated resumes once the page lays out
+    this._skips = 0;
+    document.getElementById('play-btn').textContent = '⏸'; // ⏸
+    turn();
   },
 
   _speak() {
