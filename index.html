@@ -907,11 +907,23 @@ const Reader = {
         this._onRelocated(loc, book.id);
       });
 
-      // Restore or start from beginning
+      // Restore the last reading position (saved per page turn), or start fresh.
       const saved = State.progress[book.id];
       await State.rendition.display(saved?.cfi || undefined);
 
       document.getElementById('reader-loading').classList.add('hidden');
+      if (saved?.cfi) toast('Resuming where you left off');
+
+      // Persist the current page on abrupt exits too (backgrounding / closing
+      // the PWA), not only on page turns — so we never lose the spot. Added once.
+      if (!this._exitHandlersAdded) {
+        this._exitHandlersAdded = true;
+        const save = () => this._persistPosition();
+        document.addEventListener('visibilitychange', () => {
+          if (document.visibilityState === 'hidden') save();
+        });
+        window.addEventListener('pagehide', save);
+      }
 
       // Generate locations for % tracking (async, non-blocking)
       State.epubBook.locations.generate(1024).catch(() => {});
@@ -968,8 +980,14 @@ const Reader = {
     // If TTS was reading and asked to turn the page, resume on the new page.
     if (TTS.active && TTS._awaitingPage) {
       TTS._awaitingPage = false;
-      // Small delay so the new page is fully laid out in the iframe before we read it.
-      setTimeout(() => { if (TTS.active) TTS._speak(); }, 350);
+      // Small delay so the new page is fully laid out in the iframe, then
+      // re-extract its text (now that geometry has settled) before reading —
+      // this is what tells a blank page apart from stale previous-page text.
+      setTimeout(() => {
+        if (!TTS.active) return;
+        TTS.loadPageText();
+        TTS._speak();
+      }, 350);
     }
   },
 
@@ -983,10 +1001,25 @@ const Reader = {
     }, { passive: true });
   },
 
-  next() { TTS.skipPage(() => State.rendition?.next()); },
-  prev() { TTS.skipPage(() => State.rendition?.prev()); },
+  // Snapshot the current page so it's saved even on an abrupt exit (the
+  // 'relocated' handler only fires on page turns).
+  _persistPosition() {
+    try {
+      const book = State.currentBook;
+      if (!book || !State.rendition) return;
+      const loc = State.rendition.currentLocation();
+      const cfi = loc?.start?.cfi;
+      if (!cfi) return;
+      State.progress[book.id] = { cfi, pct: State.progress[book.id]?.pct || 0 };
+      State.saveProgress();
+    } catch (_) { /* best effort */ }
+  },
+
+  next() { TTS._dir = 1;  TTS.skipPage(() => State.rendition?.next()); },
+  prev() { TTS._dir = -1; TTS.skipPage(() => State.rendition?.prev()); },
 
   close() {
+    this._persistPosition();
     TTS.stop();
     showView('library');
     Library.render(); // refresh progress indicators
@@ -1003,6 +1036,7 @@ const TTS = {
   _awaitingPage: false,
   _lastText: '',
   _skips: 0,
+  _dir: 1, // last navigation direction: 1 = forward, -1 = backward
 
   // Read only the text on the CURRENTLY VISIBLE page. In paginated mode the
   // iframe holds the whole chapter laid out in off-screen columns, so we keep
@@ -1037,11 +1071,26 @@ const TTS = {
         }
       }
       text = text.trim();
-      if (!text) return;                 // extraction failed — keep current chunks
-      if (text === this._lastText) return; // same page re-rendered — don't restart
-      this._lastText = text;
-      this.chunks = this._split(text);
-      this.idx = 0;
+      if (text) {
+        if (text === this._lastText) return; // same page re-rendered — don't restart
+        this._lastText = text;
+        this.chunks = this._split(text);
+        this.idx = 0;
+        return;
+      }
+      // No visible text on this page. Tell a genuinely blank page (a cover or
+      // image-only section, whose DOM has no text at all) apart from a normal
+      // page whose layout simply hasn't settled yet. textContent is available
+      // as soon as the section is parsed, before geometry is measurable.
+      if (!doc.body.textContent.trim()) {
+        // Blank page — drop the previous page's text so it can't be re-read;
+        // _speak() will then skip forward (or stop, if we arrived going back).
+        this._lastText = '';
+        this.chunks = [];
+        this.idx = 0;
+      }
+      // else: real page, not laid out yet — keep current chunks; the resume
+      // path re-runs loadPageText() after a short delay to pick up the text.
     } catch (e) { /* keep previous chunks on error */ }
   },
 
@@ -1063,10 +1112,11 @@ const TTS = {
   },
 
   start() {
-    if (!this.chunks.length) this.loadPageText();
+    this.loadPageText(); // always read the page we're actually on (no stale text)
     if (this.idx >= this.chunks.length) this.idx = 0; // restart the page if it had finished
     this.active = true;
     this._skips = 0;
+    this._dir = 1; // pressing play always reads forward
     document.getElementById('play-btn').textContent = '⏸'; // ⏸
     // If the current page has no readable text (e.g. the cover), _speak() will
     // turn the page and keep going until it finds something to read.
@@ -1097,7 +1147,14 @@ const TTS = {
     if (!this.active) return;
     if (this.idx >= this.chunks.length) {
       // Either we finished the visible page, or the page had no readable text
-      // (e.g. a cover or full-page image). Turn to the next page and keep going.
+      // (e.g. a cover or full-page image).
+      if (this._dir < 0) {
+        // We arrived here moving BACKWARD — stop on this page and wait for the
+        // user instead of reading stale text or skipping further back.
+        this.stop();
+        return;
+      }
+      // Moving forward — turn to the next page and keep going until we find text.
       // Reader._onRelocated reloads the new page's text and resumes once it renders.
       // Guard against an endless run of blank pages (e.g. an all-image book).
       if (++this._skips > 20) {
@@ -1115,6 +1172,7 @@ const TTS = {
     u.rate  = this.rate;
     u.voice = this.voice;
     this._skips = 0; // we found real text — reset the blank-page counter
+    this._dir = 1;   // reading real content — from here the flow is forward
     u.onend   = () => { this.idx++; if (this.active) this._speak(); };
     u.onerror = e => { if (e.error !== 'interrupted') console.warn('TTS:', e.error); };
     window.speechSynthesis.speak(u);
