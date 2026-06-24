@@ -1053,28 +1053,45 @@ const TTS = {
       const ibox = iframe.getBoundingClientRect();
       const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT, null);
       const range = doc.createRange();
-      let text = '', node;
+      // Group visible text by its nearest block-level ancestor so we can pause
+      // between blocks (e.g. a chapter heading vs. the first paragraph) instead
+      // of running them together as one breathless sentence.
+      const BLOCK = /^(P|DIV|LI|BLOCKQUOTE|SECTION|ARTICLE|H[1-6]|HGROUP|HEADER|FOOTER|FIGCAPTION|CAPTION|TD|DD|DT|PRE|MAIN|ASIDE)$/;
+      const blockOf = n => {
+        let el = n.parentElement;
+        while (el && el !== doc.body && !BLOCK.test(el.tagName)) el = el.parentElement;
+        return el || doc.body;
+      };
+      const segs = []; let curSeg = null, node;
       while ((node = walker.nextNode())) {
         const s = node.nodeValue;
         if (!s || !s.trim()) continue;
         range.selectNodeContents(node);
         // Node rects are in the iframe's viewport; add the iframe's offset to
         // get absolute (top-window) coords, then test against the viewer box.
+        let visible = false;
         for (const r of range.getClientRects()) {
           if (!r.width || !r.height) continue;
           const left = ibox.left + r.left, right = ibox.left + r.right;
           const top  = ibox.top + r.top,  bottom = ibox.top + r.bottom;
           if (right > vbox.left + 2 && left < vbox.right - 2 && bottom > vbox.top && top < vbox.bottom) {
-            text += s + ' ';
-            break;
+            visible = true; break;
           }
         }
+        if (!visible) continue;
+        const block = blockOf(node);
+        if (!curSeg || curSeg.block !== block) {
+          curSeg = { block, text: '', heading: /^H[1-6]$/.test(block.tagName) || block.tagName === 'HGROUP' };
+          segs.push(curSeg);
+        }
+        curSeg.text += s + ' ';
       }
-      text = text.trim();
+      // Flat string for dedupe / blank detection.
+      const text = segs.map(g => g.text.trim()).filter(Boolean).join(' ').trim();
       if (text) {
         if (text === this._lastText) return; // same page re-rendered — don't restart
         this._lastText = text;
-        this.chunks = this._split(text);
+        this.chunks = this._chunksFromSegments(segs);
         this.idx = 0;
         return;
       }
@@ -1092,6 +1109,24 @@ const TTS = {
       // else: real page, not laid out yet — keep current chunks; the resume
       // path re-runs loadPageText() after a short delay to pick up the text.
     } catch (e) { /* keep previous chunks on error */ }
+  },
+
+  // Turn block segments into spoken chunks. Each block becomes its own chunk(s)
+  // — and therefore its own utterance with a gap after it — so a heading never
+  // glues onto the first sentence of the chapter. Headings also get a terminal
+  // stop so the voice falls/pauses rather than running straight on.
+  _chunksFromSegments(segs) {
+    const out = [];
+    for (const seg of segs) {
+      const t = seg.text.replace(/\s+/g, ' ').trim();
+      if (!t) continue;
+      if (seg.heading) {
+        out.push(/[.!?…:;]$/.test(t) ? t : t + '.');
+      } else {
+        for (const c of this._split(t)) out.push(c);
+      }
+    }
+    return out;
   },
 
   _split(text) {

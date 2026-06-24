@@ -75,6 +75,16 @@ Google login); verify by inspection + the owner testing on device.
   on-screen box is inside the viewer (epub.js paginated mode keeps the whole
   chapter in off-screen columns; reading `body.innerText` would grab the whole
   chapter and loop forever — this was a real bug, don't reintroduce it).
+- **Chunking is block-aware — don't flatten text into one string.**
+  `loadPageText()` groups visible text by its nearest block-level ancestor
+  (`P`/`DIV`/`LI`/`H1-6`/…) and `_chunksFromSegments()` makes each block its own
+  spoken chunk (= its own utterance with a gap after). This keeps a chapter
+  **heading** from gluing onto the first sentence of the chapter (the original
+  bug: headings have no terminal punctuation, so the old space-join produced
+  `"The Crossing It was dawn…"` read as one run-on). Headings (`h1–h6`/`hgroup`)
+  are flagged and get a forced terminal stop so the voice falls/pauses. If you
+  ever move to cloud neural TTS, emit SSML (`<break>`/`<s>`) from these same
+  block segments rather than re-flattening.
 - **Empty pages are skipped — direction-aware.** A page with no extractable
   text (the cover, or any image-only page) used to make `start()` bail with "No
   text found to read". Now blank-page handling depends on travel direction
