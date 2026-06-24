@@ -71,6 +71,14 @@ Google login); verify by inspection + the owner testing on device.
   on-screen box is inside the viewer (epub.js paginated mode keeps the whole
   chapter in off-screen columns; reading `body.innerText` would grab the whole
   chapter and loop forever — this was a real bug, don't reintroduce it).
+- **Empty pages are skipped.** A page with no extractable text (the cover, or
+  any image-only page) used to make `start()` bail with "No text found to read"
+  and do nothing. Now `start()`/`_speak()` turn the page and keep advancing until
+  readable text is found. `TTS._skips` counts consecutive blank pages and caps at
+  20 (then stops with the toast) so an all-image book can't loop forever; it
+  resets to 0 as soon as a real chunk is spoken.
+- **Playback speed** is a fixed `0.5x–3x` dropdown (was a range slider), applied
+  via `TTS.setRate()` which restarts the current utterance at the new rate.
 - **Book covers**: `Covers` extracts each epub's real cover via
   `book.coverUrl()` and caches the image in IndexedDB (`CoverCache`, store
   `covers`, keyed by `id:size`) so it's a one-time download per book. Loading is
