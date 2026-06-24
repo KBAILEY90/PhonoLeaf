@@ -43,7 +43,7 @@
         --accent:#ff5a6e; --accent-rgb:255,90,110; --accent2:#3a3c66;
         --text:#e8e8f0; --text-dim:#8a8ca0;
         --line:rgba(255,255,255,0.07); --overlay:var(--line); --track:rgba(255,255,255,0.12);
-        --cover-fallback:#2a2c3a;
+        --cover-fallback:#2a2c3a; --read-bg:#15161e; --read-text:#cdd0e0;
       }
     }
 
@@ -60,7 +60,7 @@
       --accent:#ff5a6e; --accent-rgb:255,90,110; --accent2:#3a3c66;
       --text:#e8e8f0; --text-dim:#8a8ca0;
       --line:rgba(255,255,255,0.07); --overlay:var(--line); --track:rgba(255,255,255,0.12);
-      --cover-fallback:#2a2c3a;
+      --cover-fallback:#2a2c3a; --read-bg:#15161e; --read-text:#cdd0e0;
     }
 
     @font-face {
@@ -220,7 +220,7 @@
     @keyframes spin { to { transform: rotate(360deg); } }
 
     /* --- Reader --- */
-    #reader-view { background: var(--read-bg); }
+    #reader-view { background: var(--read-bg); position: relative; }
 
     .reader-header {
       display: flex; align-items: center; gap: 0.5rem;
@@ -446,6 +446,103 @@
       backdrop-filter: blur(8px);
     }
     #toast.show { opacity: 1; }
+
+    /* ===================== App shell: bottom tab bar ===================== */
+    .tab-bar {
+      position: fixed; left: 0; right: 0; bottom: 0; z-index: 150;
+      display: none; justify-content: space-around; align-items: stretch;
+      background: var(--surface); border-top: 0.5px solid var(--line);
+      padding-bottom: var(--safe-b);
+    }
+    .tab-bar.show { display: flex; }
+    .tab {
+      flex: 1; background: none; border: none; cursor: pointer;
+      display: flex; flex-direction: column; align-items: center; gap: 2px;
+      padding: 0.5rem 0; color: var(--text-dim);
+      font: 500 0.62rem var(--font-ui);
+    }
+    .tab svg { width: 23px; height: 23px; stroke: currentColor; fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+    .tab.active { color: var(--accent); }
+
+    .scrolly {
+      flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
+      padding: 1.1rem 1.1rem calc(82px + var(--safe-b));
+    }
+
+    /* ===================== Home ===================== */
+    .home-greet { font-size: 0.8rem; color: var(--text-dim); }
+    .home-title { font-size: 1.5rem; font-weight: 500; letter-spacing: -0.01em; margin: 0.1rem 0 1.1rem; }
+    .home-hero {
+      display: flex; gap: 0.9rem; align-items: center;
+      background: var(--card); border: 0.5px solid var(--line);
+      border-radius: 16px; padding: 0.85rem; margin-bottom: 1.1rem;
+    }
+    .hh-cover { width: 54px; height: 74px; border-radius: 7px; background: var(--cover-fallback) center/cover; flex-shrink: 0; }
+    .hh-info { flex: 1; min-width: 0; }
+    .hh-k { font-size: 0.66rem; color: var(--text-dim); }
+    .hh-title { font-size: 0.92rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .hh-sub { font-size: 0.7rem; color: var(--text-dim); margin-bottom: 0.45rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .hh-bar { height: 4px; background: var(--track); border-radius: 2px; overflow: hidden; }
+    .hh-bar > div { height: 100%; background: var(--accent); }
+    .hh-play { width: 42px; height: 42px; border-radius: 50%; background: var(--accent); border: none; flex-shrink: 0; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+    .hh-play::before { content: ''; width: 0; height: 0; margin-left: 3px; border-style: solid; border-width: 8px 0 8px 13px; border-color: transparent transparent transparent #fff; }
+    .stat-row { display: flex; gap: 0.6rem; margin-bottom: 1.4rem; }
+    .stat { flex: 1; background: var(--card); border: 0.5px solid var(--line); border-radius: 12px; padding: 0.7rem 0.8rem; }
+    .stat b { font-size: 1.15rem; font-weight: 500; display: block; }
+    .stat span { font-size: 0.64rem; color: var(--text-dim); }
+    .sec-label { font-size: 0.82rem; font-weight: 500; margin-bottom: 0.65rem; display: flex; justify-content: space-between; align-items: center; }
+    .sec-label a { font-size: 0.72rem; color: var(--accent); cursor: pointer; font-weight: 400; }
+    .cover-row { display: flex; gap: 0.7rem; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 0.3rem; }
+    .cr-item { flex: 0 0 88px; cursor: pointer; }
+    .cr-cover { width: 88px; height: 120px; border-radius: 8px; background: var(--cover-fallback) center/cover; border: 0.5px solid var(--line); }
+    .cr-title { font-size: 0.66rem; margin-top: 0.3rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-dim); }
+    .home-empty { color: var(--text-dim); font-size: 0.85rem; padding: 0.3rem 0 1rem; }
+
+    /* ===================== Library search ===================== */
+    .lib-search { padding: 0 1rem 0.6rem; background: var(--surface); }
+    .lib-search input {
+      width: 100%; background: var(--bg); color: var(--text);
+      border: 0.5px solid var(--line); border-radius: 10px;
+      padding: 0.55rem 0.8rem; font: 0.85rem var(--font-ui); outline: none;
+    }
+    .lib-search input:focus { border-color: var(--accent); }
+    #library-view .books-grid { padding-bottom: calc(82px + var(--safe-b)); }
+
+    /* ===================== Settings ===================== */
+    .set-group { background: var(--card); border: 0.5px solid var(--line); border-radius: 12px; margin-bottom: 1rem; overflow: hidden; }
+    .set-row { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; padding: 0.85rem 0.9rem; border-top: 0.5px solid var(--line); }
+    .set-row:first-child { border-top: none; }
+    .sr-k { font-size: 0.86rem; }
+    .sr-sub { font-size: 0.68rem; color: var(--text-dim); margin-top: 0.1rem; max-width: 52vw; }
+    .seg { display: inline-flex; background: var(--track); border-radius: 9px; padding: 2px; }
+    .seg button { border: none; background: none; cursor: pointer; font: 500 0.72rem var(--font-ui); color: var(--text-dim); padding: 0.3rem 0.7rem; border-radius: 7px; }
+    .seg button.on { background: var(--surface); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,0.14); }
+    .set-select { background: var(--bg); color: var(--text); border: 0.5px solid var(--line); border-radius: 9px; padding: 0.35rem 0.6rem; font: 0.78rem var(--font-ui); cursor: pointer; }
+    .set-link { background: none; border: none; font: 500 0.82rem var(--font-ui); color: var(--accent); cursor: pointer; }
+
+    /* ===================== Immersive reader ===================== */
+    #tts-prog-line { position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--track); z-index: 6; }
+    #tts-prog-line > #tts-prog { height: 100%; width: 0; background: var(--accent); transition: width 0.4s linear; }
+    .reader-top {
+      position: absolute; top: 3px; left: 0; right: 0; z-index: 7;
+      display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.55rem;
+      background: linear-gradient(var(--surface), transparent);
+      transition: opacity 0.25s, transform 0.25s;
+    }
+    .reader-top-page { flex: 1; text-align: center; font-size: 0.7rem; color: var(--text-dim); }
+    .reader-edge { position: absolute; top: 52px; bottom: 96px; width: 14%; z-index: 5; cursor: pointer; }
+    .reader-edge.re-left { left: 0; } .reader-edge.re-right { right: 0; }
+    .reader-bottom {
+      position: absolute; left: 0; right: 0; bottom: 0; z-index: 7;
+      display: flex; flex-direction: column; align-items: center; gap: 0.5rem;
+      padding: 0.6rem 0.6rem calc(0.7rem + var(--safe-b));
+      background: linear-gradient(transparent, var(--surface) 42%);
+      transition: opacity 0.25s, transform 0.25s;
+    }
+    .reader-meta { font-size: 0.66rem; color: var(--text-dim); max-width: 90%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .tts-pill { display: flex; align-items: center; gap: 0.6rem; background: var(--surface); border: 0.5px solid var(--line); border-radius: 999px; padding: 0.4rem 0.6rem; box-shadow: 0 4px 18px rgba(0,0,0,0.18); }
+    #reader-view.hide-chrome .reader-top { opacity: 0; transform: translateY(-8px); pointer-events: none; }
+    #reader-view.hide-chrome .reader-bottom { opacity: 0; transform: translateY(12px); pointer-events: none; }
   </style>
   <script>
     /* Apply the saved theme before paint to avoid a flash. 'auto' (default)
@@ -485,66 +582,128 @@
   </div>
 </div>
 
+<!-- ============== HOME VIEW ============== -->
+<div id="home-view" class="view">
+  <div class="scrolly">
+    <div class="home-greet" id="home-greet">Welcome back</div>
+    <div class="home-title">Your library</div>
+    <div id="home-continue"></div>
+    <div class="stat-row" id="home-stats"></div>
+    <div class="sec-label">Jump back in <a onclick="Nav.go('library')">See all</a></div>
+    <div class="cover-row" id="home-recent"></div>
+  </div>
+</div>
+
 <!-- ============== LIBRARY VIEW ============== -->
 <div id="library-view" class="view">
   <div class="lib-header">
-    <h2>&#128218; My Library</h2>
+    <h2>Library</h2>
     <div class="header-actions">
       <button class="icon-btn" onclick="Library.refresh()" title="Refresh">&#8634;</button>
-      <button class="icon-btn" onclick="App.signOut()" title="Sign out">&#9099;</button>
     </div>
   </div>
-  <div class="books-grid" id="books-grid">
+  <div class="lib-search">
+    <input id="lib-search" type="search" placeholder="Search your books" oninput="Library.filter(this.value)" aria-label="Search your books">
+  </div>
+  <div class="books-grid scrolly" id="books-grid">
     <div class="loading"><div class="spinner"></div><span>Loading your library...</span></div>
   </div>
 </div>
 
-<!-- ============== READER VIEW ============== -->
-<div id="reader-view" class="view">
-  <div class="reader-header">
-    <button class="icon-btn" onclick="Reader.close()" style="color:var(--text)">&larr;</button>
-    <span class="reader-title" id="reader-title">Loading...</span>
-    <button class="icon-btn" onclick="ChapterModal.open()" title="Chapters">&#9776;</button>
-  </div>
-
-  <div class="reader-status">
-    <span class="rs-chapter" id="rs-chapter">&ndash;</span>
-    <span class="rs-page" id="rs-page">Page &ndash;</span>
-  </div>
-
-  <div id="viewer">
-    <div id="reader-loading">
-      <div class="spinner"></div>
-      <span style="color:#999;font-size:0.9rem">Loading book...</span>
-    </div>
-  </div>
-
-  <div class="tts-panel">
-    <div class="tts-row1">
-      <button class="ctrl-btn nav" onclick="Reader.prev()" title="Previous page">&#9664;&#9664;</button>
-      <button class="ctrl-btn play" id="play-btn" onclick="TTS.toggle()" aria-label="Play or pause"></button>
-      <button class="ctrl-btn nav" onclick="Reader.next()" title="Next page">&#9654;&#9654;</button>
-      <div class="tts-info">
-        <div class="tts-chapter" id="tts-chapter">-</div>
-        <div class="tts-prog-track"><div class="tts-prog-fill" id="tts-prog" style="width:0%"></div></div>
+<!-- ============== SETTINGS VIEW ============== -->
+<div id="settings-view" class="view">
+  <div class="scrolly">
+    <div class="home-title">Settings</div>
+    <div class="set-group">
+      <div class="set-row">
+        <div><div class="sr-k">Theme</div><div class="sr-sub">Light, dark, or match device</div></div>
+        <div class="seg" id="theme-seg">
+          <button data-mode="light" onclick="Settings.setTheme('light')">Light</button>
+          <button data-mode="dark" onclick="Settings.setTheme('dark')">Dark</button>
+          <button data-mode="auto" onclick="Settings.setTheme('auto')">Auto</button>
+        </div>
       </div>
-    </div>
-    <div class="tts-row2">
-      <div class="speed-group">
-        <label class="speed-label" for="speed-select">Speed</label>
-        <select class="speed-select" id="speed-select" onchange="TTS.setRate(+this.value)">
+      <div class="set-row">
+        <div><div class="sr-k">Default speed</div></div>
+        <select class="set-select" id="set-speed" onchange="Settings.setSpeed(+this.value)">
           <option value="0.5">0.5&times;</option>
           <option value="0.75">0.75&times;</option>
-          <option value="1" selected>1.0&times;</option>
+          <option value="1">1.0&times;</option>
           <option value="1.25">1.25&times;</option>
           <option value="1.5">1.5&times;</option>
           <option value="1.75">1.75&times;</option>
           <option value="2">2.0&times;</option>
         </select>
       </div>
-      <button class="pill-btn" id="voice-btn" onclick="VoiceModal.open()">&#128483; Voice</button>
+      <div class="set-row">
+        <div><div class="sr-k">Voice</div><div class="sr-sub" id="set-voice-sub">System default</div></div>
+        <button class="set-link" onclick="VoiceModal.open()">Change</button>
+      </div>
+    </div>
+    <div class="set-group">
+      <div class="set-row">
+        <div><div class="sr-k">Google account</div><div class="sr-sub" id="set-account">Signed in</div></div>
+        <button class="set-link" onclick="App.signOut()">Sign out</button>
+      </div>
+      <div class="set-row">
+        <div><div class="sr-k">Drive folder</div><div class="sr-sub" id="set-folder">Rakuten Kobo</div></div>
+      </div>
+    </div>
+    <div style="text-align:center;color:var(--text-dim);font-size:0.7rem;margin-top:1.4rem">KoboAudio &middot; reads your epubs aloud</div>
+  </div>
+</div>
+
+<!-- ============== READER VIEW (immersive) ============== -->
+<div id="reader-view" class="view">
+  <div id="tts-prog-line"><div id="tts-prog"></div></div>
+
+  <div class="reader-top">
+    <button class="icon-btn" onclick="Reader.close()" aria-label="Back" style="color:var(--text)">&larr;</button>
+    <span class="reader-top-page" id="rs-page">Page &ndash;</span>
+    <button class="icon-btn" onclick="ChapterModal.open()" aria-label="Chapters">&#9776;</button>
+  </div>
+
+  <div id="viewer">
+    <div id="reader-loading">
+      <div class="spinner"></div>
+      <span style="color:var(--text-dim);font-size:0.9rem">Loading book...</span>
     </div>
   </div>
+
+  <div class="reader-edge re-left" onclick="Reader.prev()" aria-label="Previous page"></div>
+  <div class="reader-edge re-right" onclick="Reader.next()" aria-label="Next page"></div>
+
+  <div class="reader-bottom">
+    <div class="reader-meta"><span id="rs-chapter">&ndash;</span><span id="tts-chapter"></span></div>
+    <div class="tts-pill">
+      <button class="ctrl-btn nav" onclick="Reader.prev()" aria-label="Previous">&#9664;&#9664;</button>
+      <button class="ctrl-btn play" id="play-btn" onclick="TTS.toggle()" aria-label="Play or pause"></button>
+      <button class="ctrl-btn nav" onclick="Reader.next()" aria-label="Next">&#9654;&#9654;</button>
+      <select class="speed-select" id="speed-select" onchange="TTS.setRate(+this.value)" aria-label="Speed">
+        <option value="0.5">0.5&times;</option>
+        <option value="0.75">0.75&times;</option>
+        <option value="1" selected>1.0&times;</option>
+        <option value="1.25">1.25&times;</option>
+        <option value="1.5">1.5&times;</option>
+        <option value="1.75">1.75&times;</option>
+        <option value="2">2.0&times;</option>
+      </select>
+      <button class="pill-btn" id="voice-btn" onclick="VoiceModal.open()">Voice</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============== BOTTOM TAB BAR ============== -->
+<div class="tab-bar" id="tab-bar">
+  <button class="tab" data-tab="home" onclick="Nav.go('home')">
+    <svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h5v-6h4v6h5V10"/></svg>Home
+  </button>
+  <button class="tab" data-tab="library" onclick="Nav.go('library')">
+    <svg viewBox="0 0 24 24"><path d="M5 4h5v16H5z"/><path d="M10 4h5v16h-5z"/><path d="M15 5l4 .8-2.6 14.5-4-.8"/></svg>Library
+  </button>
+  <button class="tab" data-tab="settings" onclick="Nav.go('settings')">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 13a7.6 7.6 0 0 0 0-2l2-1.5-2-3.4-2.3 1a7.6 7.6 0 0 0-1.7-1L15 3.4h-4l-.4 2.6a7.6 7.6 0 0 0-1.7 1l-2.3-1-2 3.4L6.6 11a7.6 7.6 0 0 0 0 2l-2 1.5 2 3.4 2.3-1a7.6 7.6 0 0 0 1.7 1l.4 2.6h4l.4-2.6a7.6 7.6 0 0 0 1.7-1l2.3 1 2-3.4z"/></svg>Settings
+  </button>
 </div>
 
 <!-- ============== VOICE MODAL ============== -->
@@ -625,6 +784,118 @@ function esc(s) {
   return String(s ?? '').replace(/[&<>"']/g, c => _escMap[c]);
 }
 
+// --- Theme ------------------------------------------------
+const Theme = {
+  mode() { try { return localStorage.getItem('kba_theme') || 'auto'; } catch (_) { return 'auto'; } },
+  apply(mode) {
+    try {
+      if (mode === 'auto') { localStorage.removeItem('kba_theme'); delete document.documentElement.dataset.theme; }
+      else { localStorage.setItem('kba_theme', mode); document.documentElement.dataset.theme = mode; }
+    } catch (_) {}
+    if (State.rendition) Reader.applyReadTheme();
+  },
+  isDark() {
+    const m = this.mode();
+    if (m === 'dark') return true;
+    if (m === 'light') return false;
+    return !!(window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
+  },
+};
+
+// --- Listening stats (time this week + day streak) --------
+const Stats = {
+  data: JSON.parse(localStorage.getItem('kba_stats') || '{}'),
+  _iv: null,
+  _key(o) { return o.toISOString().slice(0, 10); },
+  _save() { try { localStorage.setItem('kba_stats', JSON.stringify(this.data)); } catch (_) {} },
+  add(sec) { this.data.days = this.data.days || {}; const d = this._key(new Date()); this.data.days[d] = (this.data.days[d] || 0) + sec; this._save(); },
+  startTick() { if (this._iv) return; this._iv = setInterval(() => this.add(5), 5000); },
+  stopTick() { if (this._iv) { clearInterval(this._iv); this._iv = null; } },
+  summary() {
+    const days = this.data.days || {}, now = new Date();
+    let secs = 0;
+    for (let i = 0; i < 7; i++) { const d = new Date(now); d.setDate(now.getDate() - i); secs += days[this._key(d)] || 0; }
+    const hrs = secs / 3600;
+    const hStr = hrs >= 1 ? hrs.toFixed(1) + 'h' : Math.round(secs / 60) + 'm';
+    let streak = 0;
+    for (let i = 0; i < 400; i++) { const d = new Date(now); d.setDate(now.getDate() - i); if ((days[this._key(d)] || 0) > 0) streak++; else break; }
+    return { hours: hStr, streak, books: Object.keys(State.progress || {}).length };
+  },
+};
+
+// --- Tab navigation shell ---------------------------------
+const Nav = {
+  current: 'home',
+  go(tab) {
+    this.current = tab;
+    showView(tab);
+    document.querySelectorAll('#tab-bar .tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+    document.getElementById('tab-bar').classList.add('show');
+    if (tab === 'home') Home.render();
+    if (tab === 'settings') Settings.render();
+  },
+  hideBar() { document.getElementById('tab-bar').classList.remove('show'); },
+};
+
+// --- Home dashboard ---------------------------------------
+const Home = {
+  render() {
+    const books = State.books || [], prog = State.progress || {};
+    const h = new Date().getHours();
+    document.getElementById('home-greet').textContent = h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
+
+    // Continue = the book with the most recent saved position.
+    let cont = null, best = -1;
+    books.forEach((b, i) => { const p = prog[b.id]; if (p && (p.ts || 1) > best) { best = p.ts || 1; cont = { b, i, p }; } });
+    const contEl = document.getElementById('home-continue');
+    if (cont) {
+      const t = cont.b.name.replace(/\.epub$/i, ''), cov = Covers.urls[cont.b.id];
+      const sub = [cont.p.chapter, cont.p.pct ? cont.p.pct + '%' : ''].filter(Boolean).join(' · ');
+      contEl.innerHTML =
+        `<div class="home-hero">
+          <div class="hh-cover" style="${cov ? `background-image:url('${esc(cov)}')` : ''}"></div>
+          <div class="hh-info">
+            <div class="hh-k">Continue</div>
+            <div class="hh-title">${esc(t)}</div>
+            <div class="hh-sub">${esc(sub)}</div>
+            <div class="hh-bar"><div style="width:${cont.p.pct || 0}%"></div></div>
+          </div>
+          <button class="hh-play" aria-label="Resume" onclick="Reader.open(${cont.i})"></button>
+        </div>`;
+    } else {
+      contEl.innerHTML = books.length ? '' : '<div class="home-empty">Open a book to start listening.</div>';
+    }
+
+    const s = Stats.summary();
+    document.getElementById('home-stats').innerHTML =
+      `<div class="stat"><b>${s.hours}</b><span>this week</span></div>
+       <div class="stat"><b>${s.streak}</b><span>day streak</span></div>
+       <div class="stat"><b>${s.books}</b><span>in progress</span></div>`;
+
+    const recent = books.map((b, i) => ({ b, i }))
+      .sort((a, z) => (prog[z.b.id]?.ts || 0) - (prog[a.b.id]?.ts || 0)).slice(0, 12);
+    document.getElementById('home-recent').innerHTML = recent.map(({ b, i }) => {
+      const t = b.name.replace(/\.epub$/i, ''), cov = Covers.urls[b.id];
+      return `<div class="cr-item" onclick="Reader.open(${i})">
+        <div class="cr-cover" style="${cov ? `background-image:url('${esc(cov)}')` : ''}"></div>
+        <div class="cr-title">${esc(t)}</div></div>`;
+    }).join('') || '<div class="home-empty">No books yet.</div>';
+  },
+};
+
+// --- Settings ---------------------------------------------
+const Settings = {
+  render() {
+    const m = Theme.mode();
+    document.querySelectorAll('#theme-seg button').forEach(b => b.classList.toggle('on', b.dataset.mode === m));
+    const sel = document.getElementById('set-speed'); if (sel) sel.value = localStorage.getItem('kba_speed') || '1';
+    const vs = document.getElementById('set-voice-sub'); if (vs) vs.textContent = TTS.voice?.name || 'System default';
+    const f = document.getElementById('set-folder'); if (f) f.textContent = CONFIG.FOLDER_NAME;
+  },
+  setTheme(mode) { Theme.apply(mode); this.render(); },
+  setSpeed(v) { try { localStorage.setItem('kba_speed', v); } catch (_) {} TTS.setRate(v); const r = document.getElementById('speed-select'); if (r) r.value = v; },
+};
+
 // --- Auth -------------------------------------------------
 const App = {
   _client:  null,
@@ -652,7 +923,7 @@ const App = {
     const saved = this._loadAuth();
     if (saved && saved.exp > Date.now() + 30000) {
       State.token = saved.token;
-      showView('library');
+      Nav.go('home');
       Library.load(); // a stale/revoked token surfaces as a 401 -> silent refresh
     }
   },
@@ -683,7 +954,7 @@ const App = {
     if (!this._client) { toast('Auth loading, please wait...'); return; }
     try {
       await this.getToken('');
-      showView('library');
+      Nav.go('home');
       Library.load();
     } catch (e) {
       toast('Sign-in failed: ' + e.message);
@@ -708,6 +979,7 @@ const App = {
     State.token = null;
     try { localStorage.removeItem('kba_auth'); } catch (_) {}
     TTS.stop();
+    Nav.hideBar();
     showView('signin');
   },
 };
@@ -785,6 +1057,7 @@ const Library = {
         return;
       }
       this.render();
+      Home.render(); // home pulls continue/recent from the loaded books
       Covers.loadAll(); // fill in real epub covers in the background
     } catch (e) {
       console.error(e);
@@ -792,9 +1065,19 @@ const Library = {
     }
   },
 
+  _q: '',
+  filter(q) { this._q = (q || '').toLowerCase().trim(); this.render(); },
+
   render() {
     const grid = document.getElementById('books-grid');
-    grid.innerHTML = State.books.map((b, i) => {
+    const items = State.books
+      .map((b, i) => ({ b, i }))
+      .filter(({ b }) => !this._q || b.name.toLowerCase().includes(this._q));
+    if (!items.length) {
+      grid.innerHTML = `<div class="empty"><p>No books match "${esc(this._q)}".</p></div>`;
+      return;
+    }
+    grid.innerHTML = items.map(({ b, i }) => {
       const title = b.name.replace(/\.epub$/i, '');
       const prog  = State.progress[b.id];
       const pct   = prog?.pct ?? 0;
@@ -943,12 +1226,14 @@ const Reader = {
     const book = State.books[index];
     State.currentBook = book;
     showView('reader');
-    document.getElementById('reader-title').textContent = book.name.replace(/\.epub$/i, '');
+    Nav.hideBar();
+    document.getElementById('reader-view').classList.remove('hide-chrome');
     document.getElementById('reader-loading').classList.remove('hidden');
-    document.getElementById('tts-chapter').textContent = '-';
+    document.getElementById('tts-chapter').textContent = '';
     document.getElementById('rs-chapter').textContent = '–';
     document.getElementById('rs-page').textContent = 'Page –';
     document.getElementById('tts-prog').style.width = '0%';
+    document.getElementById('speed-select').value = TTS.rate;
     TTS.stop();
     TTS._lastText = ''; // new book — allow the first section's text to load fresh
     TTS.chunks = []; TTS.idx = 0; // drop the previous book's text so auto-start reloads
@@ -977,6 +1262,7 @@ const Reader = {
         spread: 'none',
         allowScriptedContent: false,
       });
+      this.applyReadTheme(); // light/dark reading surface to match the app theme
 
       // On each page turn — registered before display() so the very first
       // relocation populates the status bar (chapter + page) on open.
@@ -1044,11 +1330,10 @@ const Reader = {
       pct = Math.round(State.epubBook.locations.percentageFromCfi(loc.start.cfi) * 100);
     } catch(_) {}
     document.getElementById('tts-prog').style.width = pct + '%';
-    document.getElementById('tts-chapter').textContent =
-      State.epubBook.locations.length() ? `${pct}% through the book` : chapter;
+    document.getElementById('tts-chapter').textContent = pct ? ` · ${pct}%` : '';
 
-    // Persist
-    State.progress[bookId] = { cfi: loc.start.cfi, pct };
+    // Persist (incl. chapter + timestamp so Home's "Continue" can use it).
+    State.progress[bookId] = { cfi: loc.start.cfi, pct, chapter, ts: Date.now() };
     State.saveProgress();
 
     // Feed the new page's visible text to TTS (no-op if it's the same page).
@@ -1070,12 +1355,36 @@ const Reader = {
 
   _addSwipe() {
     const el = document.getElementById('viewer');
-    let sx = 0;
-    el.addEventListener('touchstart', e => { sx = e.touches[0].clientX; }, { passive: true });
+    let sx = 0, sy = 0;
+    el.addEventListener('touchstart', e => { sx = e.touches[0].clientX; sy = e.touches[0].clientY; }, { passive: true });
     el.addEventListener('touchend', e => {
-      const dx = e.changedTouches[0].clientX - sx;
-      if (Math.abs(dx) > 45) { dx < 0 ? this.next() : this.prev(); }
+      const dx = e.changedTouches[0].clientX - sx, dy = e.changedTouches[0].clientY - sy;
+      if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy)) { dx < 0 ? this.next() : this.prev(); }
+      else if (Math.abs(dx) < 12 && Math.abs(dy) < 12) { this.toggleChrome(); } // a tap toggles the controls
     }, { passive: true });
+  },
+
+  // --- Immersive chrome (auto-hides while reading, tap to toggle) ---
+  _chromeT: null,
+  showChrome() { clearTimeout(this._chromeT); document.getElementById('reader-view').classList.remove('hide-chrome'); },
+  hideChromeSoon() {
+    clearTimeout(this._chromeT);
+    this._chromeT = setTimeout(() => { if (TTS.active) document.getElementById('reader-view').classList.add('hide-chrome'); }, 2600);
+  },
+  toggleChrome() {
+    const v = document.getElementById('reader-view');
+    if (!v.classList.toggle('hide-chrome')) clearTimeout(this._chromeT); // revealed — don't auto-hide again
+  },
+
+  // Register a light/dark reading theme on the epub so the page itself (not just
+  // the app chrome) matches the active theme. Re-run when the theme changes.
+  applyReadTheme() {
+    if (!State.rendition) return;
+    const dark = Theme.isDark();
+    try {
+      State.rendition.themes.register('kb', { body: { color: dark ? '#cdd0e0' : '#2a2a2e', background: dark ? '#15161e' : '#ffffff' } });
+      State.rendition.themes.select('kb');
+    } catch (_) {}
   },
 
   // Snapshot the current page so it's saved even on an abrupt exit (the
@@ -1087,7 +1396,8 @@ const Reader = {
       const loc = State.rendition.currentLocation();
       const cfi = loc?.start?.cfi;
       if (!cfi) return;
-      State.progress[book.id] = { cfi, pct: State.progress[book.id]?.pct || 0 };
+      const prev = State.progress[book.id] || {};
+      State.progress[book.id] = { cfi, pct: prev.pct || 0, chapter: prev.chapter, ts: Date.now() };
       State.saveProgress();
     } catch (_) { /* best effort */ }
   },
@@ -1098,8 +1408,9 @@ const Reader = {
   close() {
     this._persistPosition();
     TTS.stop();
-    showView('library');
-    Library.render(); // refresh progress indicators
+    this.showChrome();
+    Library.render();              // refresh progress indicators in the grid
+    Nav.go(Nav.current || 'home'); // back to the tab we came from (re-renders Home)
   },
 };
 
@@ -1230,6 +1541,7 @@ const TTS = {
     this._skips = 0;
     this._dir = 1; // pressing play always reads forward
     document.getElementById('play-btn').classList.add('playing');
+    Stats.startTick();
     // If the current page has no readable text (e.g. the cover), _speak() will
     // turn the page and keep going until it finds something to read.
     this._speak();
@@ -1241,6 +1553,8 @@ const TTS = {
     window.speechSynthesis?.cancel();
     const btn = document.getElementById('play-btn');
     if (btn) btn.classList.remove('playing');
+    Stats.stopTick();
+    Reader.showChrome();
   },
 
   // Turn the page via `turn` and auto-read the new page once it relocates.
@@ -1252,6 +1566,7 @@ const TTS = {
     this._awaitingPage = true; // Reader._onRelocated resumes once the page lays out
     this._skips = 0;
     document.getElementById('play-btn').classList.add('playing');
+    Stats.startTick();
     turn();
   },
 
@@ -1285,6 +1600,7 @@ const TTS = {
     u.voice = this.voice;
     this._skips = 0; // we found real text — reset the blank-page counter
     this._dir = 1;   // reading real content — from here the flow is forward
+    Reader.hideChromeSoon(); // fade the controls while actively reading
     u.onend   = () => { this.idx++; if (this.active) this._speak(); };
     u.onerror = e => { if (e.error !== 'interrupted') console.warn('TTS:', e.error); };
     window.speechSynthesis.speak(u);
@@ -1328,7 +1644,9 @@ const TTS = {
   // Show the active voice's name on the reader's voice button.
   updateVoiceLabel() {
     const btn = document.getElementById('voice-btn');
-    if (btn) btn.textContent = '🗣 ' + this._shortVoiceName(this.voice);
+    if (btn) btn.textContent = this._shortVoiceName(this.voice);
+    const sub = document.getElementById('set-voice-sub');
+    if (sub) sub.textContent = this.voice?.name || 'System default';
   },
 
   allVoices() {
@@ -1439,6 +1757,16 @@ const ChapterModal = {
 window.addEventListener('load', () => {
   App.init();
   TTS.pickDefaultVoice(); // voices may already be loaded; voiceschanged refines later
+
+  // Restore the saved default playback speed.
+  const sp = parseFloat(localStorage.getItem('kba_speed'));
+  if (sp) { TTS.rate = sp; const r = document.getElementById('speed-select'); if (r) r.value = sp; }
+
+  // When following the system theme, re-skin an open book if the OS flips mode.
+  if (window.matchMedia) matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+    if (Theme.mode() === 'auto' && State.rendition) Reader.applyReadTheme();
+  });
+
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js').catch(e => console.warn('SW registration failed:', e));
   }

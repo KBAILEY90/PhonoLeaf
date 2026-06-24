@@ -26,8 +26,9 @@ epub.js, and reads the text using the browser's Web Speech (TTS) engine.
   Services** (GIS) for OAuth.
 
 The inline script is organized into plain object "modules":
-`CONFIG`, `State`, `App` (auth), `Drive` (Drive API), `Library`, `Reader`,
-`TTS`, `VoiceModal`, `ChapterModal`, plus `esc()`/`toast()`/`showView()` helpers.
+`CONFIG`, `State`, `Theme`, `Stats`, `Nav` (tab shell), `Home`, `Settings`,
+`App` (auth), `Drive` (Drive API), `Library`, `Covers`, `Reader`, `TTS`,
+`VoiceModal`, `ChapterModal`, plus `esc()`/`toast()`/`showView()` helpers.
 
 ## How to deploy
 
@@ -80,19 +81,44 @@ Google login); verify by inspection + the owner testing on device.
   automatically, and `[data-theme="light"]`/`[data-theme="dark"]` blocks (placed
   after the media query so they win) force a mode. An early inline `<script>` in
   `<head>` reads `localStorage.kba_theme` (`auto`|`light`|`dark`; default `auto`)
-  and sets `document.documentElement.dataset.theme` before paint (no flash). The
-  Settings theme switcher isn't built yet — for now only `prefers-color-scheme`
-  or a manually-set `kba_theme` changes it. Both themes share fonts (Manrope UI +
-  Literata reading); switching only flips colors. Use the tokens — `--bg`,
+  and sets `document.documentElement.dataset.theme` before paint (no flash).
+  **Settings → Theme** (Light/Dark/Auto segmented control) drives it via
+  `Theme.apply()` (writes `kba_theme`, sets/clears `data-theme`, re-skins an open
+  book); `Theme.isDark()` resolves the effective mode. Both themes share fonts
+  (Manrope UI + Literata reading); switching only flips colors. Use the tokens — `--bg`,
   `--surface`, `--card`, `--accent`/`--accent-rgb`, `--text`, `--text-dim`,
   `--line` (hairlines), `--overlay` (hover), `--track` (subtle fills/borders),
   `--cover-fallback`, `--read-bg`/`--read-text`, `--font-ui`/`--font-read` — never
   hardcode a hex that assumes one mode.
-- **Reader page stays light in both themes for now.** `--read-bg` is white in
-  Daylight *and* Midnight because epub.js renders the book's own (dark) text into
-  the iframe; a real dark reading surface needs `rendition.themes` work, deferred
-  to the immersive-reader (direction B) phase. So in dark mode the page is
-  currently a bright panel — known, intentional, fix it with the B reader.
+- **Reader has a real dark reading surface.** `Reader.applyReadTheme()`
+  registers an epub.js theme (`rendition.themes.register('kb', …)`) that sets the
+  iframe `body` color/background to match the app theme (light `#fff`/`#2a2a2e`,
+  dark `#15161e`/`#cdd0e0`), and `--read-bg`/`--read-text` match so the letterbox
+  agrees. Called on `Reader.open` and re-applied by `Theme.apply` / the
+  `prefers-color-scheme` change listener when in `auto`.
+- **App shell is a 3-tab nav (`Nav`): Home · Library · Settings.** A fixed
+  `.tab-bar` (`#tab-bar`, `.show` toggles visibility) sits under the three main
+  `.view`s; `Nav.go(tab)` swaps the view via `showView`, marks the active tab,
+  shows the bar, and re-renders Home/Settings. The bar is hidden on sign-in and
+  in the reader (`Nav.hideBar()`); `Reader.close()` returns via `Nav.go`. Auth
+  success now lands on **Home**, not Library.
+- **Home (`Home.render`)** = "Continue" hero (most recent `kba_prog` entry, which
+  now stores `{cfi,pct,chapter,ts}`), three stat tiles (`Stats.summary()`), and a
+  "Jump back in" cover row. **Library** keeps the grid + a search field
+  (`Library.filter`, index-preserving). **Settings (`Settings`)** holds the theme
+  switcher, default speed (`kba_speed`, restored on boot + in `TTS.rate`), the
+  voice picker (`VoiceModal`), and account/sign-out + folder.
+- **Listening stats (`Stats`, `kba_stats`)**: a 5-second interval started in
+  `TTS.start`/`skipPage` and cleared in `TTS.stop` accumulates seconds per day
+  (`days[YYYY-MM-DD]`); `summary()` derives hours-this-week, a consecutive-day
+  streak, and books-in-progress for Home.
+- **Immersive reader chrome auto-hides.** Controls are absolute overlays over a
+  full-bleed `#viewer`: a thin top progress line (`#tts-prog`), a `.reader-top`
+  bar, edge tap-zones (`.reader-edge` → prev/next), and a floating `.tts-pill`
+  (transport + speed + voice). `Reader.hideChromeSoon()` adds `hide-chrome` ~2.6s
+  after reading starts; `TTS.stop`/`showChrome()` reveal it; a tap on the viewer
+  (small-movement touch in `_addSwipe`) calls `toggleChrome()`.
+- **TTS reads only the currently visible page**, then turns the page via
 - **TTS reads only the currently visible page**, then turns the page via
   `rendition.next()`. `TTS.loadPageText()` extracts text from nodes whose
   on-screen box is inside the viewer (epub.js paginated mode keeps the whole
