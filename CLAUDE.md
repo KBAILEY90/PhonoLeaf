@@ -19,6 +19,8 @@ epub.js, and reads the text using the browser's Web Speech (TTS) engine.
   file: `index.html` (markup + styles + inline `<script>`).
 - `sw.js` — service worker (offline app shell).
 - `manifest.json` — PWA manifest.
+- `fonts/` — self-hosted variable woff2 (`manrope.woff2` UI, `literata.woff2`
+  reading), latin subset; precached by `sw.js`. No Google Fonts hotlink.
 - `.github/workflows/deploy.yml` — deploys to GitHub Pages on push to `main`.
 - External libs via CDN: **jszip** + **epub.js** (jsdelivr), **Google Identity
   Services** (GIS) for OAuth.
@@ -48,7 +50,9 @@ Edit `index.html` (or `sw.js`), commit, and **push to `main`**. GitHub Actions
 There's no test suite. Before pushing, syntax-check the inline script:
 
 ```bash
-node -e "const fs=require('fs');const h=fs.readFileSync('index.html','utf8');const m=h.match(/<script>([\s\S]*?)<\/script>\s*<\/body>/);require('vm').compileFunction(m[1]);console.log('JS OK');"
+# NB: there are two <script> tags now (early theme-init in <head> + the app
+# script before </body>), so grab the LAST script block, not the first.
+node -e "const fs=require('fs');const h=fs.readFileSync('index.html','utf8');const p=h.split('<script>').pop();require('vm').compileFunction(p.split('</script>')[0]);console.log('JS OK');"
 node --check sw.js
 ```
 
@@ -70,6 +74,25 @@ Google login); verify by inspection + the owner testing on device.
   `App` persists the token in `localStorage` (`kba_auth`) and resumes the
   session on load ("keep me logged in"); `Drive._fetch` silently re-auths once
   on a 401. There is no refresh token (browser-only implicit flow).
+- **Theming is CSS-variable driven (Daylight light / Midnight dark).** `:root`
+  holds the **Daylight** (light) tokens as the default; a
+  `@media (prefers-color-scheme: dark)` block supplies **Midnight** (dark)
+  automatically, and `[data-theme="light"]`/`[data-theme="dark"]` blocks (placed
+  after the media query so they win) force a mode. An early inline `<script>` in
+  `<head>` reads `localStorage.kba_theme` (`auto`|`light`|`dark`; default `auto`)
+  and sets `document.documentElement.dataset.theme` before paint (no flash). The
+  Settings theme switcher isn't built yet — for now only `prefers-color-scheme`
+  or a manually-set `kba_theme` changes it. Both themes share fonts (Manrope UI +
+  Literata reading); switching only flips colors. Use the tokens — `--bg`,
+  `--surface`, `--card`, `--accent`/`--accent-rgb`, `--text`, `--text-dim`,
+  `--line` (hairlines), `--overlay` (hover), `--track` (subtle fills/borders),
+  `--cover-fallback`, `--read-bg`/`--read-text`, `--font-ui`/`--font-read` — never
+  hardcode a hex that assumes one mode.
+- **Reader page stays light in both themes for now.** `--read-bg` is white in
+  Daylight *and* Midnight because epub.js renders the book's own (dark) text into
+  the iframe; a real dark reading surface needs `rendition.themes` work, deferred
+  to the immersive-reader (direction B) phase. So in dark mode the page is
+  currently a bright panel — known, intentional, fix it with the B reader.
 - **TTS reads only the currently visible page**, then turns the page via
   `rendition.next()`. `TTS.loadPageText()` extracts text from nodes whose
   on-screen box is inside the viewer (epub.js paginated mode keeps the whole

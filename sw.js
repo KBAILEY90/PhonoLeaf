@@ -3,11 +3,13 @@
 // Drive at runtime and are intentionally NOT cached (they can be very large and
 // require a live auth token).
 
-const CACHE = 'koboaudio-v3';
+const CACHE = 'koboaudio-v4';
 const SHELL = [
   './',
   './index.html',
   './manifest.json',
+  './fonts/manrope.woff2',
+  './fonts/literata.woff2',
   'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js',
   'https://cdn.jsdelivr.net/npm/epubjs@0.3.93/dist/epub.min.js',
 ];
