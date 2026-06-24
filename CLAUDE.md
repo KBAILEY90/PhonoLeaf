@@ -38,6 +38,10 @@ Edit `index.html` (or `sw.js`), commit, and **push to `main`**. GitHub Actions
 - The service worker is **network-first for the HTML** so deploys show up, but
   bump `CACHE` in `sw.js` (e.g. `koboaudio-v2` → `-v3`) whenever the precached
   asset list changes, to force clients off the old shell.
+- **After each push to `main`, update this CLAUDE.md** to reflect the shipped
+  change (behavior notes / gotchas / roadmap status) and push the doc too. The
+  owner treats this file as the living source of truth — keep it current without
+  being asked.
 
 ## How to verify changes
 
@@ -71,12 +75,44 @@ Google login); verify by inspection + the owner testing on device.
   on-screen box is inside the viewer (epub.js paginated mode keeps the whole
   chapter in off-screen columns; reading `body.innerText` would grab the whole
   chapter and loop forever — this was a real bug, don't reintroduce it).
-- **Empty pages are skipped.** A page with no extractable text (the cover, or
-  any image-only page) used to make `start()` bail with "No text found to read"
-  and do nothing. Now `start()`/`_speak()` turn the page and keep advancing until
-  readable text is found. `TTS._skips` counts consecutive blank pages and caps at
-  20 (then stops with the toast) so an all-image book can't loop forever; it
-  resets to 0 as soon as a real chunk is spoken.
+- **Empty pages are skipped — direction-aware.** A page with no extractable
+  text (the cover, or any image-only page) used to make `start()` bail with "No
+  text found to read". Now blank-page handling depends on travel direction
+  (`TTS._dir`: `1` forward, `-1` back; reset to `1` whenever a real chunk is
+  spoken or play is pressed): going **forward** into a blank page skips ahead to
+  the next page; going **backward** into a blank page **stops and waits** for the
+  user (no reading, no further skipping). `TTS._skips` caps consecutive forward
+  skips at 20 (then stops with the toast) so an all-image book can't loop forever.
+- **Don't re-read stale text on a blank page.** `TTS.loadPageText()` must
+  *clear* `chunks` when a page is genuinely blank, or `_speak()` re-reads the
+  previous page (a real bug). It tells a true blank page (the iframe's
+  `doc.body.textContent` is empty) apart from a text page whose layout hasn't
+  settled yet (textContent present but geometry not yet measurable) — only the
+  former clears chunks; the latter keeps them and is retried by the resume path.
+- **Reading auto-starts on navigation.** Opening a book auto-starts TTS once the
+  first page lays out (`Reader.open`, ~400ms delay). Manual page turns
+  (`next()`/`prev()`/swipe) and chapter jumps go through `TTS.skipPage()`, which
+  cancels current speech, marks TTS active + `_awaitingPage`, turns the page, and
+  lets `Reader._onRelocated` resume reading on the new page. (iOS may block
+  auto-start-on-open since the async Drive download breaks the tap's gesture
+  chain; skip/jump fire off the gesture so they're fine.)
+- **Resume where you left off.** Progress (`{cfi, pct}`) is saved per page turn
+  to `localStorage` (`kba_prog`); `Reader.open` restores via
+  `display(saved.cfi)` and shows a "Resuming where you left off" toast.
+  `Reader._persistPosition()` also snapshots the current page on
+  `visibilitychange`(hidden)/`pagehide`/`Reader.close()` so abrupt PWA exits
+  don't lose the spot.
+- **Reader status bar** (`#rs-chapter` + `#rs-page` pill) shows the chapter name
+  and `Page X / Y` (epub.js's per-section `loc.start.displayed`). It's a pinned
+  bar in the column flex layout (visible on any device); the `relocated` handler
+  is registered *before* `display()` so it populates on open. The bottom panel's
+  small line shows `"{pct}% through the book"` to avoid duplicating the chapter.
+- **Chapter jump** (`ChapterModal`): TOC hrefs can be relative to the nav doc
+  and/or carry a `#fragment` that won't match epub.js's spine lookup, so passing
+  the raw href to `display()` silently fails. `_resolveHref()` resolves it to a
+  canonical, fragment-free spine section href (`spine.get`, then a basename match
+  against `spine.spineItems`) so the jump lands on the chapter's first page;
+  failures now toast "Could not open chapter" instead of failing silently.
 - **Playback speed** is a fixed `0.5x–3x` dropdown (was a range slider), applied
   via `TTS.setRate()` which restarts the current utterance at the new rate.
 - **Book covers**: `Covers` extracts each epub's real cover via
