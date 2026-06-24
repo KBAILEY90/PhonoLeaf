@@ -3,7 +3,7 @@
 // Drive at runtime and are intentionally NOT cached (they can be very large and
 // require a live auth token).
 
-const CACHE = 'koboaudio-v2';
+const CACHE = 'koboaudio-v3';
 const SHELL = [
   './',
   './index.html',

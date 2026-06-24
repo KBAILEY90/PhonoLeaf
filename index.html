@@ -958,6 +958,7 @@ const TTS = {
   voice:  null,
   _awaitingPage: false,
   _lastText: '',
+  _skips: 0,
 
   // Read only the text on the CURRENTLY VISIBLE page. In paginated mode the
   // iframe holds the whole chapter laid out in off-screen columns, so we keep
@@ -1018,13 +1019,13 @@ const TTS = {
   },
 
   start() {
-    if (!this.chunks.length) {
-      this.loadPageText();
-      if (!this.chunks.length) { toast('No text found to read'); return; }
-    }
+    if (!this.chunks.length) this.loadPageText();
     if (this.idx >= this.chunks.length) this.idx = 0; // restart the page if it had finished
     this.active = true;
+    this._skips = 0;
     document.getElementById('play-btn').textContent = '⏸'; // ⏸
+    // If the current page has no readable text (e.g. the cover), _speak() will
+    // turn the page and keep going until it finds something to read.
     this._speak();
   },
 
@@ -1039,16 +1040,25 @@ const TTS = {
   _speak() {
     if (!this.active) return;
     if (this.idx >= this.chunks.length) {
-      // Finished the visible page — turn to the next page and keep reading.
+      // Either we finished the visible page, or the page had no readable text
+      // (e.g. a cover or full-page image). Turn to the next page and keep going.
       // Reader._onRelocated reloads the new page's text and resumes once it renders.
+      // Guard against an endless run of blank pages (e.g. an all-image book).
+      if (++this._skips > 20) {
+        this.stop();
+        toast('No text found to read');
+        return;
+      }
       this._awaitingPage = true;
-      State.rendition?.next();
+      if (State.rendition) State.rendition.next();
+      else this.stop();
       return;
     }
     window.speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(this.chunks[this.idx]);
     u.rate  = this.rate;
     u.voice = this.voice;
+    this._skips = 0; // we found real text — reset the blank-page counter
     u.onend   = () => { this.idx++; if (this.active) this._speak(); };
     u.onerror = e => { if (e.error !== 'interrupted') console.warn('TTS:', e.error); };
     window.speechSynthesis.speak(u);
