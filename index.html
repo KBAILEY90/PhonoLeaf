@@ -1284,12 +1284,37 @@ const ChapterModal = {
     document.getElementById('chapter-modal').classList.add('open');
   },
 
+  // TOC hrefs can be relative to the nav document and/or carry a #fragment,
+  // which may not match epub.js's spine lookup. Resolve to a canonical,
+  // fragment-free spine section href so we land on the chapter's first page.
+  _resolveHref(href) {
+    const book = State.epubBook;
+    const bare = href.split('#')[0];
+    if (!book?.spine) return bare;
+    try {
+      const section = book.spine.get(href) || book.spine.get(bare);
+      if (section?.href) return section.href;
+      // Last resort: match by filename against the spine items.
+      const base = bare.split('/').pop();
+      const hit = (book.spine.spineItems || [])
+        .find(s => (s.href || '').split('/').pop() === base);
+      if (hit?.href) return hit.href;
+    } catch (_) { /* fall through */ }
+    return bare;
+  },
+
   jump(i) {
-    const href = State.toc[i]?.href;
-    if (!href) return;
-    TTS.stop();
+    const item = State.toc[i];
+    if (!item?.href) return;
     this.close();
-    State.rendition?.display(href).catch(console.error);
+    const target = this._resolveHref(item.href);
+    // Jump to the chapter's first page and start reading from there.
+    TTS._dir = 1;
+    TTS.skipPage(() => State.rendition?.display(target).catch(err => {
+      console.error('chapter jump failed', err);
+      toast('Could not open chapter');
+      TTS.stop();
+    }));
   },
 
   close(e) {
