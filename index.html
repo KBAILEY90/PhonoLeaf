@@ -187,6 +187,29 @@
       color: var(--text);
     }
 
+    /* Always-visible status bar: chapter name + page number */
+    .reader-status {
+      display: flex; align-items: center; gap: 0.75rem;
+      padding: 0.4rem 0.9rem;
+      background: linear-gradient(180deg, var(--surface), rgba(26,26,46,0.6));
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      flex-shrink: 0;
+    }
+    .rs-chapter {
+      flex: 1; min-width: 0;
+      font-size: 0.74rem; font-weight: 600; letter-spacing: 0.01em;
+      color: var(--text);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .rs-page {
+      flex-shrink: 0;
+      font-size: 0.7rem; font-weight: 700; color: #fff;
+      background: var(--accent);
+      padding: 0.2rem 0.65rem; border-radius: 999px;
+      box-shadow: 0 2px 6px rgba(233,69,96,0.35);
+      white-space: nowrap;
+    }
+
     #viewer {
       flex: 1;
       background: #fff;
@@ -406,6 +429,11 @@
     <button class="icon-btn" onclick="Reader.close()" style="color:var(--text)">&larr;</button>
     <span class="reader-title" id="reader-title">Loading...</span>
     <button class="icon-btn" onclick="ChapterModal.open()" title="Chapters">&#9776;</button>
+  </div>
+
+  <div class="reader-status">
+    <span class="rs-chapter" id="rs-chapter">&ndash;</span>
+    <span class="rs-page" id="rs-page">Page &ndash;</span>
   </div>
 
   <div id="viewer">
@@ -841,6 +869,8 @@ const Reader = {
     document.getElementById('reader-title').textContent = book.name.replace(/\.epub$/i, '');
     document.getElementById('reader-loading').classList.remove('hidden');
     document.getElementById('tts-chapter').textContent = '-';
+    document.getElementById('rs-chapter').textContent = '–';
+    document.getElementById('rs-page').textContent = 'Page –';
     document.getElementById('tts-prog').style.width = '0%';
     TTS.stop();
     TTS._lastText = ''; // new book — allow the first section's text to load fresh
@@ -871,6 +901,12 @@ const Reader = {
         allowScriptedContent: false,
       });
 
+      // On each page turn — registered before display() so the very first
+      // relocation populates the status bar (chapter + page) on open.
+      State.rendition.on('relocated', loc => {
+        this._onRelocated(loc, book.id);
+      });
+
       // Restore or start from beginning
       const saved = State.progress[book.id];
       await State.rendition.display(saved?.cfi || undefined);
@@ -879,11 +915,6 @@ const Reader = {
 
       // Generate locations for % tracking (async, non-blocking)
       State.epubBook.locations.generate(1024).catch(() => {});
-
-      // On each page turn
-      State.rendition.on('relocated', loc => {
-        this._onRelocated(loc, book.id);
-      });
 
       // Swipe gestures
       this._addSwipe();
@@ -907,10 +938,16 @@ const Reader = {
   },
 
   _onRelocated(loc, bookId) {
-    // Update chapter label
+    // Chapter name (status bar)
     const href = loc.start.href;
     const tocItem = State.toc.find(t => href.includes(t.href?.split('#')[0]));
-    document.getElementById('tts-chapter').textContent = tocItem?.label?.trim() || `Section ${loc.start.index + 1}`;
+    const chapter = tocItem?.label?.trim() || `Section ${loc.start.index + 1}`;
+    document.getElementById('rs-chapter').textContent = chapter;
+
+    // Page number within the current chapter (epub.js per-section screen count).
+    const d = loc.start.displayed;
+    document.getElementById('rs-page').textContent =
+      d && d.total ? `Page ${d.page} / ${d.total}` : 'Page –';
 
     // Update progress %
     let pct = 0;
@@ -918,6 +955,8 @@ const Reader = {
       pct = Math.round(State.epubBook.locations.percentageFromCfi(loc.start.cfi) * 100);
     } catch(_) {}
     document.getElementById('tts-prog').style.width = pct + '%';
+    document.getElementById('tts-chapter').textContent =
+      State.epubBook.locations.length() ? `${pct}% through the book` : chapter;
 
     // Persist
     State.progress[bookId] = { cfi: loc.start.cfi, pct };
