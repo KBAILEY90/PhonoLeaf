@@ -253,9 +253,27 @@
     .ctrl-btn:active { transform: scale(0.9); }
     .ctrl-btn.nav { background: rgba(255,255,255,0.1); color: var(--text); }
     .ctrl-btn.play {
-      width: 50px; height: 50px; font-size: 1.3rem;
+      width: 50px; height: 50px;
       background: var(--accent); color: white;
       box-shadow: 0 4px 12px rgba(233,69,96,0.4);
+    }
+    /* Play/pause icons are drawn in CSS (not font glyphs) so they're always
+       white — the ⏸ emoji glyph rendered orange on some platforms. */
+    .ctrl-btn.play::before {
+      content: ''; display: block;
+      width: 0; height: 0; margin-left: 4px;
+      border-style: solid;
+      border-width: 9px 0 9px 15px;
+      border-color: transparent transparent transparent #fff;
+    }
+    .ctrl-btn.play::after { content: ''; display: none; }
+    .ctrl-btn.play.playing { gap: 5px; }
+    .ctrl-btn.play.playing::before,
+    .ctrl-btn.play.playing::after {
+      display: block;
+      width: 5px; height: 17px; margin: 0;
+      border: 0; border-radius: 1.5px;
+      background: #fff;
     }
 
     .tts-info { flex: 1; min-width: 0; }
@@ -446,7 +464,7 @@
   <div class="tts-panel">
     <div class="tts-row1">
       <button class="ctrl-btn nav" onclick="Reader.prev()" title="Previous page">&#9664;&#9664;</button>
-      <button class="ctrl-btn play" id="play-btn" onclick="TTS.toggle()">&#9654;</button>
+      <button class="ctrl-btn play" id="play-btn" onclick="TTS.toggle()" aria-label="Play or pause"></button>
       <button class="ctrl-btn nav" onclick="Reader.next()" title="Next page">&#9654;&#9654;</button>
       <div class="tts-info">
         <div class="tts-chapter" id="tts-chapter">-</div>
@@ -458,11 +476,12 @@
         <label class="speed-label" for="speed-select">Speed</label>
         <select class="speed-select" id="speed-select" onchange="TTS.setRate(+this.value)">
           <option value="0.5">0.5&times;</option>
+          <option value="0.75">0.75&times;</option>
           <option value="1" selected>1.0&times;</option>
+          <option value="1.25">1.25&times;</option>
           <option value="1.5">1.5&times;</option>
+          <option value="1.75">1.75&times;</option>
           <option value="2">2.0&times;</option>
-          <option value="2.5">2.5&times;</option>
-          <option value="3">3.0&times;</option>
         </select>
       </div>
       <button class="pill-btn" id="voice-btn" onclick="VoiceModal.open()">&#128483; Voice</button>
@@ -1152,7 +1171,7 @@ const TTS = {
     this.active = true;
     this._skips = 0;
     this._dir = 1; // pressing play always reads forward
-    document.getElementById('play-btn').textContent = '⏸'; // ⏸
+    document.getElementById('play-btn').classList.add('playing');
     // If the current page has no readable text (e.g. the cover), _speak() will
     // turn the page and keep going until it finds something to read.
     this._speak();
@@ -1163,7 +1182,7 @@ const TTS = {
     this._awaitingPage = false;
     window.speechSynthesis?.cancel();
     const btn = document.getElementById('play-btn');
-    if (btn) btn.textContent = '▶'; // ▶
+    if (btn) btn.classList.remove('playing');
   },
 
   // Turn the page via `turn` and auto-read the new page once it relocates.
@@ -1174,7 +1193,7 @@ const TTS = {
     this.active = true;
     this._awaitingPage = true; // Reader._onRelocated resumes once the page lays out
     this._skips = 0;
-    document.getElementById('play-btn').textContent = '⏸'; // ⏸
+    document.getElementById('play-btn').classList.add('playing');
     turn();
   },
 

@@ -123,8 +123,14 @@ Google login); verify by inspection + the owner testing on device.
   canonical, fragment-free spine section href (`spine.get`, then a basename match
   against `spine.spineItems`) so the jump lands on the chapter's first page;
   failures now toast "Could not open chapter" instead of failing silently.
-- **Playback speed** is a fixed `0.5x–3x` dropdown (was a range slider), applied
-  via `TTS.setRate()` which restarts the current utterance at the new rate.
+- **Playback speed** is a fixed `0.5x–2x` dropdown in `0.25` steps (default
+  `1.0x`), applied via `TTS.setRate()` which restarts the current utterance at
+  the new rate.
+- **Play/pause icon is drawn in CSS, not a font glyph.** `#play-btn` toggles a
+  `.playing` class; `.ctrl-btn.play::before`/`::after` draw a triangle (idle) or
+  two bars (playing), always white. Do NOT go back to a `⏸`/`▶` text glyph — the
+  `⏸` emoji (U+23F8) renders as an orange color-emoji on Windows against the
+  coral button. `start()`/`skipPage()` add `.playing`; `stop()` removes it.
 - **Book covers**: `Covers` extracts each epub's real cover via
   `book.coverUrl()` and caches the image in IndexedDB (`CoverCache`, store
   `covers`, keyed by `id:size`) so it's a one-time download per book. Loading is
