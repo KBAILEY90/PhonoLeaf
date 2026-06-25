@@ -1893,31 +1893,22 @@ const Reader = {
   // (the keyframe is suppressed via _dragTurn), then slide the new page in.
   _dragCommit(dir) { // dir: 1 = next, -1 = prev
     const v = this._pageEl(); if (!v) return;
-    // Slide the current page fully out (and fade to 0 so any repaint is hidden).
-    v.style.transition = 'transform .15s ease, opacity .15s ease';
+    // Slide the old page out while epub renders the new one in parallel —
+    // calling next()/prev() immediately gives epub the full slide-out duration
+    // to paint, so the new page is ready the instant the old one is gone.
+    v.style.transition = 'transform .2s ease, opacity .18s ease';
     v.style.transform = `translateX(${dir > 0 ? '-110%' : '110%'})`;
     v.style.opacity = '0';
+    this._dragTurn = true;
+    dir > 0 ? this.next() : this.prev();
+    // When the slide-out finishes, snap to the new page with no further animation.
+    clearTimeout(this._dragAnimT);
     this._dragAnimT = setTimeout(() => {
-      this._dragTurn = true;
-      dir > 0 ? this.next() : this.prev();
-      // Keep the iframe invisible while epub re-renders the new page content.
       const w = this._pageEl(); if (!w) return;
       w.style.transition = 'none';
-      w.style.opacity = '0';
       w.style.transform = 'none';
-      // After epub has had time to paint the new page, slide + fade it in.
-      setTimeout(() => {
-        const x = this._pageEl(); if (!x) return;
-        x.style.transition = 'none';
-        x.style.transform = `translateX(${dir > 0 ? '28%' : '-28%'})`;
-        requestAnimationFrame(() => {
-          const y = this._pageEl(); if (!y) return;
-          y.style.transition = 'transform .22s ease, opacity .2s ease';
-          y.style.transform = 'translateX(0)';
-          y.style.opacity = '1';
-        });
-      }, 120);
-    }, 150);
+      w.style.opacity = '1';
+    }, 210);
   },
 
   // --- Immersive chrome: auto-hides while reading; tap/click/hover reveals ---
