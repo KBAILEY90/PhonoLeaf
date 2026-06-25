@@ -603,11 +603,6 @@
     .sp-ch { font-weight: 500; max-width: 60vw; overflow: hidden; text-overflow: ellipsis; }
     .sp-pg { color: var(--text-dim); font-size: 0.64rem; margin-top: 1px; }
 
-    /* Voice gender filter tabs */
-    .voice-filter { display: flex; gap: 0.4rem; padding: 0 1rem 0.75rem; }
-    .vf-btn { flex: 1; padding: 0.38rem 0; border-radius: 999px; border: 1.5px solid var(--line); background: none; color: var(--text-dim); font: 500 0.8rem var(--font-ui); cursor: pointer; }
-    .vf-btn.active { background: var(--accent); border-color: transparent; color: #fff; }
-
     /* Folder browser */
     .fb-crumbs { font-size: 0.74rem; color: var(--text-dim); margin-bottom: 0.6rem; white-space: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; }
     .fb-crumbs span { cursor: pointer; }
@@ -803,11 +798,6 @@
   <div class="modal-sheet">
     <div class="modal-handle"></div>
     <div class="modal-title">Choose Voice</div>
-    <div class="voice-filter" id="voice-filter">
-      <button class="vf-btn active" onclick="VoiceModal.setGender('all')">All</button>
-      <button class="vf-btn" onclick="VoiceModal.setGender('female')">Female</button>
-      <button class="vf-btn" onclick="VoiceModal.setGender('male')">Male</button>
-    </div>
     <div id="voice-list"></div>
   </div>
 </div>
@@ -1810,14 +1800,15 @@ const Reader = {
 
   _turnAnim(dir) {
     const v = this._pageEl(); if (!v) return;
-    v.style.transition = 'transform .15s ease, opacity .15s ease';
-    v.style.transform = `translateX(${dir < 0 ? '30px' : '-30px'})`;
-    v.style.opacity = '0.35';
+    // Fade to 0 so the content swap is invisible, then fade the new page in.
+    v.style.transition = 'opacity .12s ease';
+    v.style.opacity = '0';
     clearTimeout(this._animClr);
     this._animClr = setTimeout(() => {
-      const w = this._pageEl(); if (!w) return;   // re-query: the iframe may have swapped
-      w.style.transform = 'translateX(0)'; w.style.opacity = '1';
-    }, 160);
+      const w = this._pageEl(); if (!w) return;
+      w.style.transition = 'opacity .2s ease';
+      w.style.opacity = '1';
+    }, 200);
   },
 
   // Briefly fade a play/pause icon in/out (on double-tap toggle).
@@ -1902,23 +1893,31 @@ const Reader = {
   // (the keyframe is suppressed via _dragTurn), then slide the new page in.
   _dragCommit(dir) { // dir: 1 = next, -1 = prev
     const v = this._pageEl(); if (!v) return;
-    v.style.transition = 'transform .14s ease, opacity .14s ease';
+    // Slide the current page fully out (and fade to 0 so any repaint is hidden).
+    v.style.transition = 'transform .15s ease, opacity .15s ease';
     v.style.transform = `translateX(${dir > 0 ? '-110%' : '110%'})`;
-    v.style.opacity = '0.15';
+    v.style.opacity = '0';
     this._dragAnimT = setTimeout(() => {
       this._dragTurn = true;
       dir > 0 ? this.next() : this.prev();
-      const w = this._pageEl(); if (!w) return;   // re-query: the iframe may have swapped
+      // Keep the iframe invisible while epub re-renders the new page content.
+      const w = this._pageEl(); if (!w) return;
       w.style.transition = 'none';
-      w.style.transform = `translateX(${dir > 0 ? '110%' : '-110%'})`;
-      w.style.opacity = '0.15';
-      requestAnimationFrame(() => {
+      w.style.opacity = '0';
+      w.style.transform = 'none';
+      // After epub has had time to paint the new page, slide + fade it in.
+      setTimeout(() => {
         const x = this._pageEl(); if (!x) return;
-        x.style.transition = 'transform .22s ease, opacity .22s ease';
-        x.style.transform = 'translateX(0)';
-        x.style.opacity = '1';
-      });
-    }, 145);
+        x.style.transition = 'none';
+        x.style.transform = `translateX(${dir > 0 ? '28%' : '-28%'})`;
+        requestAnimationFrame(() => {
+          const y = this._pageEl(); if (!y) return;
+          y.style.transition = 'transform .22s ease, opacity .2s ease';
+          y.style.transform = 'translateX(0)';
+          y.style.opacity = '1';
+        });
+      }, 120);
+    }, 150);
   },
 
   // --- Immersive chrome: auto-hides while reading; tap/click/hover reveals ---
@@ -2244,7 +2243,10 @@ const TTS = {
     window.speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(chunk.text);
     u.rate  = this.rate;
-    u.voice = this.voice;
+    // Always resolve from the live getVoices() list — cached objects can be
+    // silently ignored by Chrome/Safari if the voice list has refreshed.
+    const voiceName = this.voice?.name;
+    u.voice = (voiceName && window.speechSynthesis.getVoices().find(v => v.name === voiceName)) || this.voice || null;
     this._skips = 0; // we found real text — reset the blank-page counter
     this._dir = 1;   // reading real content — from here the flow is forward
     u.onend   = () => {
@@ -2282,13 +2284,6 @@ const TTS = {
 
   _isNatural(v) { return this._voiceRank(v) >= 40; },
 
-  // Heuristic gender from voice name (Web Speech API has no gender field).
-  _voiceGender(v) {
-    const n = (v.name || '').toLowerCase();
-    if (/\b(aria|zira|emily|hazel|susan|karen|catherine|victoria|monica|samantha|ava|helena|libby|mia|natasha|raveena|vicki|salli|joanna|kendra|kimberly|ivy|amy|emma|olivia|elsa|alice|alva|nora|yuna|tessa|veena|naja|aditi|lekha|laila|zosia|ioana|marisol|paulina|sabina|monika|evita|ines|joana|filipa|carmit|daria|milena|hye-won|sin-ji|mei-jia|ting-ting)\b/.test(n)) return 'female';
-    if (/\b(david|george|mark|james|liam|daniel|oliver|noah|william|henry|thomas|arthur|richard|paul|ryan|luke|ethan|rishi|magnus|nils|onyx|steffan|tom|guy|igor|bogdan|dieter|yannick|nicolas|mathieu|pierre|jordi|xavier|enrique|pablo|arjun|kangkang|raman|heami|lee|reed|rod)\b/.test(n)) return 'male';
-    return 'unknown';
-  },
 
   // Compact display name, e.g. "Microsoft Aria Online (Natural) - English (US)" -> "Aria"
   _shortVoiceName(v) {
@@ -2334,42 +2329,26 @@ window.speechSynthesis?.addEventListener('voiceschanged', () => TTS.pickDefaultV
 // --- Voice Modal ------------------------------------------
 const VoiceModal = {
   _list: [],
-  _gender: 'all',
 
   open() {
     this._list = TTS.allVoices();
     if (!this._list.length) { toast('No voices available yet — try again in a moment'); return; }
-    this._render();
+    document.getElementById('voice-list').innerHTML = this._list.map(v => `
+      <div class="voice-item ${TTS.voice?.name === v.name ? 'active' : ''}" onclick="VoiceModal.selectNamed(this.dataset.vname)" data-vname="${esc(v.name)}">
+        <div>
+          <div class="voice-name">${esc(v.name)}${TTS._isNatural(v) ? ' <span class="voice-badge">&#10024; Natural</span>' : ''}</div>
+          <div class="voice-lang">${esc(v.lang)}${v.localService ? ' &middot; Local' : ' &middot; Online'}</div>
+        </div>
+        ${TTS.voice?.name === v.name ? '<span class="voice-check">&#10003;</span>' : ''}
+      </div>`).join('');
     document.getElementById('voice-modal').classList.add('open');
   },
 
-  setGender(g) {
-    this._gender = g;
-    document.querySelectorAll('.vf-btn').forEach(b =>
-      b.classList.toggle('active', b.textContent.toLowerCase() === g)
-    );
-    this._render();
-  },
-
-  _render() {
-    const filtered = this._list.filter(v =>
-      this._gender === 'all' || TTS._voiceGender(v) === this._gender
-    );
-    const glyph = v => { const g = TTS._voiceGender(v); return g === 'female' ? ' <span style="opacity:.6">♀</span>' : g === 'male' ? ' <span style="opacity:.6">♂</span>' : ''; };
-    document.getElementById('voice-list').innerHTML = filtered.length
-      ? filtered.map(v => `
-        <div class="voice-item ${TTS.voice?.name === v.name ? 'active' : ''}" onclick="VoiceModal.selectNamed(this.dataset.vname)" data-vname="${esc(v.name)}">
-          <div>
-            <div class="voice-name">${esc(v.name)}${TTS._isNatural(v) ? ' <span class="voice-badge">&#10024; Natural</span>' : ''}${glyph(v)}</div>
-            <div class="voice-lang">${esc(v.lang)}${v.localService ? ' &middot; Local' : ' &middot; Online'}</div>
-          </div>
-          ${TTS.voice?.name === v.name ? '<span class="voice-check">&#10003;</span>' : ''}
-        </div>`).join('')
-      : '<p style="padding:1.2rem;text-align:center;color:var(--text-dim);font-size:0.85rem">No voices in this category</p>';
-  },
-
+  // Select by name so the index from render time can't mismatch a re-sorted list.
   selectNamed(name) {
-    const v = this._list.find(x => x.name === name);
+    // Always resolve from a live getVoices() call — cached objects can be stale on Chrome.
+    const live = window.speechSynthesis.getVoices();
+    const v = live.find(x => x.name === name) || this._list.find(x => x.name === name);
     if (!v) return;
     TTS.voice = v;
     localStorage.setItem('kba_voice', v.name);
