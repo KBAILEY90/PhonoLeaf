@@ -299,10 +299,10 @@ Google login); verify by inspection + the owner testing on device.
   the active voice on the reader's `#voice-btn`. **`VoiceModal`** caches the
   voice list at `open()` time into `_list` (fixes an index-mismatch bug where
   `allVoices()` could re-sort between render and select). Selection is
-  name-based (`selectNamed`, `data-vname` attribute) not index-based. Gender
-  filter tabs (All / Female / Male) use `TTS._voiceGender(v)` — a heuristic
-  regex match on the voice name since Web Speech API has no gender field. A ♀/♂
-  glyph appears next to recognised voices.
+  name-based (`selectNamed`, `data-vname` attribute) not index-based.
+  `_speak()` always resolves the voice from a live `getVoices()` call before
+  creating each `SpeechSynthesisUtterance` — cached voice objects are silently
+  ignored by Chrome/Safari if the browser's voice list has refreshed.
 - **Web Speech TTS does not play in the background / with the screen locked** on
   mobile. This is a platform limitation, not a bug — see roadmap.
 - Use `100dvh` (not `100vh`) for full-height views so mobile browser chrome
