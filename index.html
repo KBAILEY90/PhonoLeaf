@@ -1890,25 +1890,23 @@ const Reader = {
   },
 
   // Commit a finger-drag turn: slide the page the rest of the way out, turn it
-  // (the keyframe is suppressed via _dragTurn), then slide the new page in.
+  // (the keyframe is suppressed via _dragTurn), then the new page snaps in.
   _dragCommit(dir) { // dir: 1 = next, -1 = prev
     const v = this._pageEl(); if (!v) return;
-    // Slide the old page out while epub renders the new one in parallel —
-    // calling next()/prev() immediately gives epub the full slide-out duration
-    // to paint, so the new page is ready the instant the old one is gone.
-    v.style.transition = 'transform .2s ease, opacity .18s ease';
+    // Slide the old page off-screen. No opacity change — touching opacity makes
+    // the iframe transparent and exposes the dark --bg behind it. Just translate.
+    v.style.transition = 'transform .13s ease';
     v.style.transform = `translateX(${dir > 0 ? '-110%' : '110%'})`;
-    v.style.opacity = '0';
+    // Turn the page immediately so epub renders the new content during the slide.
     this._dragTurn = true;
     dir > 0 ? this.next() : this.prev();
-    // When the slide-out finishes, snap to the new page with no further animation.
+    // Snap the iframe back to centre. epub has had 130ms to render the new page.
     clearTimeout(this._dragAnimT);
     this._dragAnimT = setTimeout(() => {
       const w = this._pageEl(); if (!w) return;
       w.style.transition = 'none';
       w.style.transform = 'none';
-      w.style.opacity = '1';
-    }, 210);
+    }, 140);
   },
 
   // --- Immersive chrome: auto-hides while reading; tap/click/hover reveals ---
