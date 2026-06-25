@@ -556,6 +556,26 @@
     .hh-btn.play.playing { gap: 4px; }
     .hh-btn.play.playing::before, .hh-btn.play.playing::after { content: ''; display: block; width: 4px; height: 14px; margin: 0; border: 0; border-radius: 1px; background: #fff; }
     .hh-btn.expand svg { width: 17px; height: 17px; stroke: #fff; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+    /* Home "jump back in" items: clamp to the cover width so a long title can't
+       widen the item and push the covers apart (flex min-width:auto guard). */
+    .cr-item { min-width: 0; overflow: hidden; }
+    .cr-title { max-width: 88px; }
+
+    /* Reader gesture layer: a transparent overlay over the page that catches
+       taps (toggle chrome) and swipes (turn page) — touches inside the epub
+       iframe don't reach the parent, so we capture them here. */
+    .reader-touch { position: absolute; inset: 0; z-index: 4; }
+
+    /* Seek scrubber + drag popup (chapter + position) */
+    .scrub { -webkit-appearance: none; appearance: none; width: 100%; height: 4px; border-radius: 2px; background: var(--track); outline: none; }
+    .scrub::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: var(--accent); cursor: pointer; }
+    .scrub::-moz-range-thumb { width: 14px; height: 14px; border: none; border-radius: 50%; background: var(--accent); cursor: pointer; }
+    .reader-bottom .scrub { width: 86%; max-width: 440px; margin-bottom: 2px; }
+    #scrub-pop { position: fixed; transform: translate(-50%, -100%); background: var(--surface); border: 0.5px solid var(--line); border-radius: 8px; padding: 0.4rem 0.6rem; font-size: 0.7rem; color: var(--text); box-shadow: 0 4px 14px rgba(0,0,0,0.2); z-index: 300; opacity: 0; pointer-events: none; transition: opacity 0.15s; white-space: nowrap; text-align: center; }
+    #scrub-pop.show { opacity: 1; }
+    .sp-ch { font-weight: 500; max-width: 60vw; overflow: hidden; text-overflow: ellipsis; }
+    .sp-pg { color: var(--text-dim); font-size: 0.64rem; margin-top: 1px; }
   </style>
   <script>
     /* Apply the saved theme before paint to avoid a flash. 'auto' (default)
@@ -598,8 +618,7 @@
 <!-- ============== HOME VIEW ============== -->
 <div id="home-view" class="view">
   <div class="scrolly">
-    <div class="home-greet" id="home-greet">Welcome back</div>
-    <div class="home-title">Home</div>
+    <div class="home-title" id="home-title">Home</div>
     <div id="home-continue"></div>
     <div class="stat-row" id="home-stats"></div>
     <div class="sec-label">Jump back in <a onclick="Nav.go('library')">See all</a></div>
@@ -660,6 +679,7 @@
       </div>
       <div class="set-row">
         <div><div class="sr-k">Drive folder</div><div class="sr-sub" id="set-folder">Rakuten Kobo</div></div>
+        <button class="set-link" onclick="Settings.changeFolder()">Change</button>
       </div>
     </div>
     <div style="text-align:center;color:var(--text-dim);font-size:0.7rem;margin-top:1.4rem">KoboAudio &middot; reads your epubs aloud</div>
@@ -683,10 +703,10 @@
     </div>
   </div>
 
-  <div class="reader-edge re-left" onclick="Reader.prev()" aria-label="Previous page"></div>
-  <div class="reader-edge re-right" onclick="Reader.next()" aria-label="Next page"></div>
+  <div class="reader-touch" id="reader-touch"></div>
 
   <div class="reader-bottom">
+    <input type="range" class="scrub" id="reader-scrub" min="0" max="1000" value="0" aria-label="Seek through book">
     <div class="reader-meta"><span id="rs-chapter">&ndash;</span><span id="tts-chapter"></span></div>
     <div class="tts-pill">
       <button class="ctrl-btn nav" onclick="Reader.prev()" aria-label="Previous">&#9664;&#9664;</button>
@@ -739,6 +759,7 @@
 
 <!-- ============== TOAST ============== -->
 <div id="toast"></div>
+<div id="scrub-pop"></div>
 
 <!-- ============== SCRIPTS ============== -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" crossorigin="anonymous"></script>
@@ -764,9 +785,15 @@ const State = {
   rendition:   null,
   epubBook:    null,
   toc:         [],
+  userName:    (() => { try { return localStorage.getItem('kba_user') || ''; } catch (_) { return ''; } })(),
   progress:    JSON.parse(localStorage.getItem('kba_prog') || '{}'),
   saveProgress() { localStorage.setItem('kba_prog', JSON.stringify(this.progress)); },
 };
+
+// The Google Drive folder to read books from — overridable in Settings.
+function activeFolder() {
+  try { return localStorage.getItem('kba_folder') || CONFIG.FOLDER_NAME; } catch (_) { return CONFIG.FOLDER_NAME; }
+}
 
 // --- Utilities -------------------------------------------
 let _toastTimer;
@@ -887,7 +914,8 @@ const Home = {
   render() {
     const books = State.books || [], prog = State.progress || {};
     const h = new Date().getHours();
-    document.getElementById('home-greet').textContent = h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
+    const greeting = h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
+    document.getElementById('home-title').textContent = State.userName ? `${greeting}, ${State.userName}` : greeting;
 
     const hi = this._continueIndex();
     const contEl = document.getElementById('home-continue');
@@ -903,7 +931,7 @@ const Home = {
             <div class="hh-k">${playing ? 'Now playing' : 'Continue'}</div>
             <div class="hh-title">${esc(t)}</div>
             <div class="hh-sub">${esc(sub)}</div>
-            <div class="hh-bar"><div style="width:${p.pct || 0}%"></div></div>
+            <input type="range" class="scrub hh-scrub" min="0" max="1000" value="${Math.round((p.pct || 0) * 10)}" aria-label="Seek through book">
           </div>
           <div class="hh-btns">
             <button class="hh-btn play${playing ? ' playing' : ''}" aria-label="Play or pause" onclick="Player.toggle(${hi})"></button>
@@ -952,6 +980,55 @@ const Player = {
   },
 };
 
+// --- Seek scrubber (shared by the Home mini-player + the reader) ----
+const Scrub = {
+  _drag: false,
+  setPct(pct) {
+    if (this._drag) return;
+    const v = Math.round((pct || 0) * 10);
+    document.querySelectorAll('.scrub').forEach(el => { el.value = v; });
+  },
+  // Chapter + position at a given percentage (needs generated locations).
+  _info(pct) {
+    try {
+      const book = State.epubBook;
+      if (!book || !book.locations || !book.locations.length()) return { ch: '', pg: Math.round(pct) + '%' };
+      const cfi = book.locations.cfiFromPercentage(pct / 100);
+      const sec = book.spine.get(cfi);
+      const href = sec && sec.href;
+      const toc = href && State.toc.find(t => href.includes((t.href || '').split('#')[0]));
+      const ch = (toc && toc.label && toc.label.trim()) || (sec ? `Section ${sec.index + 1}` : '');
+      return { ch, pg: `p. ${book.locations.locationFromCfi(cfi)} / ${book.locations.length()}` };
+    } catch (_) { return { ch: '', pg: Math.round(pct) + '%' }; }
+  },
+  show(el) {
+    const pct = +el.value / 10, info = this._info(pct), pop = document.getElementById('scrub-pop');
+    pop.innerHTML = `<div class="sp-ch">${esc(info.ch || '—')}</div><div class="sp-pg">${esc(info.pg)} · ${Math.round(pct)}%</div>`;
+    pop.classList.add('show');
+    const r = el.getBoundingClientRect();
+    pop.style.left = Math.min(Math.max(r.left + (pct / 100) * r.width, 64), window.innerWidth - 64) + 'px';
+    pop.style.top = r.top - 8 + 'px';
+  },
+  hide() { const p = document.getElementById('scrub-pop'); if (p) p.classList.remove('show'); },
+  seek(pct) {
+    const book = State.epubBook;
+    if (!book || !State.rendition || !book.locations || !book.locations.length()) return;
+    try {
+      const cfi = book.locations.cfiFromPercentage(pct / 100);
+      if (!cfi) return;
+      TTS._dir = 1;
+      TTS.skipPage(() => State.rendition.display(cfi).catch(e => { console.error('seek failed', e); TTS.stop(); }));
+    } catch (_) {}
+  },
+};
+// Delegated so it works for the reader scrubber and each freshly-rendered Home one.
+document.addEventListener('input', e => {
+  if (e.target.classList && e.target.classList.contains('scrub')) { Scrub._drag = true; Scrub.show(e.target); }
+});
+document.addEventListener('change', e => {
+  if (e.target.classList && e.target.classList.contains('scrub')) { Scrub._drag = false; Scrub.hide(); Scrub.seek(+e.target.value / 10); }
+});
+
 // --- Settings ---------------------------------------------
 const Settings = {
   render() {
@@ -959,7 +1036,19 @@ const Settings = {
     document.querySelectorAll('#theme-seg button').forEach(b => b.classList.toggle('on', b.dataset.mode === m));
     const sel = document.getElementById('set-speed'); if (sel) sel.value = localStorage.getItem('kba_speed') || '1';
     const vs = document.getElementById('set-voice-sub'); if (vs) vs.textContent = TTS.voice?.name || 'System default';
-    const f = document.getElementById('set-folder'); if (f) f.textContent = CONFIG.FOLDER_NAME;
+    const f = document.getElementById('set-folder'); if (f) f.textContent = activeFolder();
+    const a = document.getElementById('set-account'); if (a) a.textContent = State.userName ? 'Signed in as ' + State.userName : 'Signed in';
+  },
+  changeFolder() {
+    const cur = activeFolder();
+    const n = prompt('Read books from which Google Drive folder?', cur);
+    if (n == null) return;
+    const name = n.trim();
+    if (!name || name === cur) return;
+    try { localStorage.setItem('kba_folder', name); } catch (_) {}
+    this.render();
+    toast(`Loading "${name}"…`);
+    Library.load();
   },
   setTheme(mode) { Theme.apply(mode); this.render(); },
   setSpeed(v) { try { localStorage.setItem('kba_speed', v); } catch (_) {} TTS.setRate(v); const r = document.getElementById('speed-select'); if (r) r.value = v; },
@@ -993,6 +1082,7 @@ const App = {
     if (saved && saved.exp > Date.now() + 30000) {
       State.token = saved.token;
       Nav.go('home');
+      this.loadUser();
       Library.load(); // a stale/revoked token surfaces as a 401 -> silent refresh
     }
   },
@@ -1003,6 +1093,17 @@ const App = {
   },
   _loadAuth() {
     try { return JSON.parse(localStorage.getItem('kba_auth') || 'null'); } catch (_) { return null; }
+  },
+
+  // Fetch the signed-in user's name (Drive "about") to greet them on Home.
+  async loadUser() {
+    try {
+      const d = await Drive.get('about', { fields: 'user(displayName)' });
+      const dn = ((d && d.user && d.user.displayName) || '').trim();
+      State.userName = dn ? dn.split(/\s+/)[0] : '';
+      try { localStorage.setItem('kba_user', State.userName); } catch (_) {}
+      Home.render();
+    } catch (_) { /* name is optional */ }
   },
 
   // Request an access token; resolves with the token string.
@@ -1024,6 +1125,7 @@ const App = {
     try {
       await this.getToken('');
       Nav.go('home');
+      this.loadUser();
       Library.load();
     } catch (e) {
       toast('Sign-in failed: ' + e.message);
@@ -1115,14 +1217,15 @@ const Library = {
     const grid = document.getElementById('books-grid');
     grid.innerHTML = '<div class="loading"><div class="spinner"></div><span>Finding your books...</span></div>';
     try {
-      const fid = await Drive.findFolder(CONFIG.FOLDER_NAME);
+      const folder = activeFolder();
+      const fid = await Drive.findFolder(folder);
       if (!fid) {
-        grid.innerHTML = `<div class="empty"><p>Could not find a folder named<br><strong>"${CONFIG.FOLDER_NAME}"</strong><br>in your Google Drive.</p></div>`;
+        grid.innerHTML = `<div class="empty"><p>Could not find a folder named<br><strong>"${esc(folder)}"</strong><br>in your Google Drive.</p></div>`;
         return;
       }
       State.books = await Drive.listEpubs(fid);
       if (!State.books.length) {
-        grid.innerHTML = `<div class="empty"><p>No epub files found in<br><strong>"${CONFIG.FOLDER_NAME}"</strong>.</p></div>`;
+        grid.innerHTML = `<div class="empty"><p>No epub files found in<br><strong>"${esc(folder)}"</strong>.</p></div>`;
         return;
       }
       this.render();
@@ -1416,11 +1519,12 @@ const Reader = {
     } catch(_) {}
     document.getElementById('tts-prog').style.width = pct + '%';
     document.getElementById('tts-chapter').textContent = pct ? ` · ${pct}%` : '';
+    Scrub.setPct(pct);
 
     // Persist (incl. chapter + timestamp so Home's "Continue" can use it).
     State.progress[bookId] = { cfi: loc.start.cfi, pct, chapter, ts: Date.now() };
     State.saveProgress();
-    if (Nav.current === 'home' && document.getElementById('reader-view').classList.contains('minimized')) Home.render();
+    if (Nav.current === 'home' && !Scrub._drag && document.getElementById('reader-view').classList.contains('minimized')) Home.render();
 
     // Feed the new page's visible text to TTS (no-op if it's the same page).
     TTS.loadPageText();
@@ -1439,27 +1543,40 @@ const Reader = {
     }
   },
 
-  _addSwipe() {
-    const el = document.getElementById('viewer');
-    let sx = 0, sy = 0;
-    el.addEventListener('touchstart', e => { sx = e.touches[0].clientX; sy = e.touches[0].clientY; }, { passive: true });
+  _addSwipe() { this._bindGestures(); }, // open() calls this; overlay is persistent
+
+  // Gestures via the transparent overlay (touches inside the epub iframe don't
+  // reach the parent): swipe L/R turns the page, a tap toggles the controls,
+  // a click toggles (desktop), and mouse movement reveals them (desktop).
+  _bindGestures() {
+    if (this._gesturesBound) return;
+    this._gesturesBound = true;
+    const el = document.getElementById('reader-touch');
+    let sx = 0, sy = 0, touched = 0;
+    el.addEventListener('touchstart', e => { const t = e.touches[0]; sx = t.clientX; sy = t.clientY; }, { passive: true });
     el.addEventListener('touchend', e => {
-      const dx = e.changedTouches[0].clientX - sx, dy = e.changedTouches[0].clientY - sy;
-      if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy)) { dx < 0 ? this.next() : this.prev(); }
-      else if (Math.abs(dx) < 12 && Math.abs(dy) < 12) { this.toggleChrome(); } // a tap toggles the controls
+      const t = e.changedTouches[0], dx = t.clientX - sx, dy = t.clientY - sy;
+      touched = Date.now();
+      if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy)) { dx < 0 ? this.next() : this.prev(); } // swipe = turn page
+      else if (Math.abs(dx) < 12 && Math.abs(dy) < 12) { this.toggleChrome(); }                      // tap = toggle controls
     }, { passive: true });
+    el.addEventListener('click', () => { if (Date.now() - touched < 500) return; this.toggleChrome(); });
+    this._rv().addEventListener('mousemove', () => { if (!this._rv().classList.contains('minimized')) this.revealChrome(); });
   },
 
-  // --- Immersive chrome (auto-hides while reading, tap to toggle) ---
+  // --- Immersive chrome: auto-hides while reading; tap/click/hover reveals ---
   _chromeT: null,
-  showChrome() { clearTimeout(this._chromeT); document.getElementById('reader-view').classList.remove('hide-chrome'); },
+  _rv() { return document.getElementById('reader-view'); },
+  showChrome() { clearTimeout(this._chromeT); this._rv().classList.remove('hide-chrome'); },
   hideChromeSoon() {
     clearTimeout(this._chromeT);
-    this._chromeT = setTimeout(() => { if (TTS.active) document.getElementById('reader-view').classList.add('hide-chrome'); }, 2600);
+    this._chromeT = setTimeout(() => { if (TTS.active) this._rv().classList.add('hide-chrome'); }, 3200);
   },
+  revealChrome() { this._rv().classList.remove('hide-chrome'); this.hideChromeSoon(); },
   toggleChrome() {
-    const v = document.getElementById('reader-view');
-    if (!v.classList.toggle('hide-chrome')) clearTimeout(this._chromeT); // revealed — don't auto-hide again
+    const rv = this._rv();
+    if (rv.classList.contains('hide-chrome')) this.revealChrome();
+    else { clearTimeout(this._chromeT); rv.classList.add('hide-chrome'); }
   },
 
   // Register a light/dark reading theme on the epub so the page itself (not just
@@ -1497,6 +1614,8 @@ const Reader = {
     rv.classList.remove('minimized');
     Nav.hideBar();
     showView('reader');
+    this.showChrome();                  // always show controls on entry…
+    if (TTS.active) this.hideChromeSoon(); // …then fade while reading
   },
 
   // Shrink the full reader back to the Home mini-player; playback continues

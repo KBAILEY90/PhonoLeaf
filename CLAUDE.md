@@ -125,12 +125,33 @@ Google login); verify by inspection + the owner testing on device.
   `TTS.start`/`skipPage` and cleared in `TTS.stop` accumulates seconds per day
   (`days[YYYY-MM-DD]`); `summary()` derives hours-this-week, a consecutive-day
   streak, and books-in-progress for Home.
-- **Immersive reader chrome auto-hides.** Controls are absolute overlays over a
-  full-bleed `#viewer`: a thin top progress line (`#tts-prog`), a `.reader-top`
-  bar, edge tap-zones (`.reader-edge` → prev/next), and a floating `.tts-pill`
-  (transport + speed + voice). `Reader.hideChromeSoon()` adds `hide-chrome` ~2.6s
-  after reading starts; `TTS.stop`/`showChrome()` reveal it; a tap on the viewer
-  (small-movement touch in `_addSwipe`) calls `toggleChrome()`.
+- **Immersive reader chrome auto-hides; a gesture overlay drives it.** Controls
+  are absolute overlays over a full-bleed `#viewer`: thin top progress
+  (`#tts-prog`), a `.reader-top` bar, a seek scrubber + the floating `.tts-pill`
+  in `.reader-bottom`. Touches inside the epub iframe don't reach the parent, so
+  a transparent `#reader-touch` overlay (`Reader._bindGestures`, bound once)
+  captures them: **swipe L/R turns the page**, a **tap toggles** the controls;
+  on desktop a **click toggles** and **mousemove reveals**. `hideChromeSoon()`
+  hides `hide-chrome` ~3.2s into playback; `showChrome`/`revealChrome`/
+  `toggleChrome` manage it; `Reader.expand()` always shows controls on entry
+  (fixes "controls never appear when expanding a playing book").
+- **Seek scrubber (`Scrub`)** lives on the Home mini-player hero and in the
+  reader; both are `.scrub` range inputs wired by **delegated** input/change.
+  Dragging shows `#scrub-pop` (chapter + `p. N/total` + %, from
+  `locations.cfiFromPercentage`/`spine.get`); release seeks via
+  `rendition.display(cfi)` through `TTS.skipPage`. `_onRelocated` calls
+  `Scrub.setPct` (skipped while dragging). Needs generated locations; before
+  they're ready the popup shows only a %.
+- **Home greeting uses the user's name.** `App.loadUser()` reads Drive
+  `about → user.displayName` (works under `drive.readonly`), caches the first
+  name in `kba_user`/`State.userName`, and the Home title shows
+  "Good {morning/afternoon/evening}, {name}".
+- **Drive folder is changeable.** `activeFolder()` = `localStorage.kba_folder ||
+  CONFIG.FOLDER_NAME`; `Library.load` reads it; Settings → "Change"
+  (`Settings.changeFolder`, a `prompt`) saves a new folder and reloads.
+- **Home "jump back in" items clamp to the cover width** (`.cr-item` gets
+  `min-width:0; overflow:hidden`) so a long title can't widen the item and space
+  the covers apart (flex `min-width:auto` guard).
 - **Mini-player + minimize (playback decoupled from the visible reader).**
   `Reader.open(index, mode)`: `'full'` (from Library / expand) shows the reading
   page; `'mini'` (from Home / `Player.play`) keeps the reader **laid out but
