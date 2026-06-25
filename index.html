@@ -576,6 +576,19 @@
     #scrub-pop.show { opacity: 1; }
     .sp-ch { font-weight: 500; max-width: 60vw; overflow: hidden; text-overflow: ellipsis; }
     .sp-pg { color: var(--text-dim); font-size: 0.64rem; margin-top: 1px; }
+
+    /* Folder browser */
+    .fb-crumbs { font-size: 0.74rem; color: var(--text-dim); margin-bottom: 0.6rem; white-space: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .fb-crumbs span { cursor: pointer; }
+    .fb-crumbs span.cur { color: var(--text); font-weight: 500; }
+    .fb-crumbs i { margin: 0 0.35rem; font-style: normal; color: var(--text-dim); }
+    #fb-list { max-height: 46vh; overflow-y: auto; -webkit-overflow-scrolling: touch; margin-bottom: 0.9rem; }
+    .fb-row { display: flex; align-items: center; gap: 0.6rem; padding: 0.7rem 0.4rem; border-bottom: 0.5px solid var(--line); cursor: pointer; }
+    .fb-row:last-child { border-bottom: none; }
+    .fb-ico { color: var(--accent); flex-shrink: 0; }
+    .fb-name { flex: 1; min-width: 0; font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .fb-empty { color: var(--text-dim); font-size: 0.82rem; padding: 1rem 0.4rem; text-align: center; }
+    .fb-use { width: 100%; background: var(--accent); color: #fff; border: none; border-radius: 10px; padding: 0.75rem; font: 500 0.9rem var(--font-ui); cursor: pointer; }
   </style>
   <script>
     /* Apply the saved theme before paint to avoid a flash. 'auto' (default)
@@ -757,7 +770,18 @@
   </div>
 </div>
 
-<!-- ============== FOLDER MODAL (fallback when Picker isn't configured) ============== -->
+<!-- ============== FOLDER BROWSER (themed, sorted) ============== -->
+<div class="modal-backdrop" id="browser-modal" onclick="FolderBrowser.close(event)">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Choose your books folder</div>
+    <div class="fb-crumbs" id="fb-crumbs"></div>
+    <div id="fb-list"></div>
+    <button class="fb-use" id="fb-use" onclick="FolderBrowser.useCurrent()">Use this folder</button>
+  </div>
+</div>
+
+<!-- ============== FOLDER MODAL (typed fallback if not signed in) ============== -->
 <div class="modal-backdrop" id="folder-modal" onclick="FolderModal.close(event)">
   <div class="modal-sheet">
     <div class="modal-handle"></div>
@@ -1065,7 +1089,7 @@ const Settings = {
     const f = document.getElementById('set-folder'); if (f) f.textContent = activeFolder();
     const a = document.getElementById('set-account'); if (a) a.textContent = State.userName ? 'Signed in as ' + State.userName : 'Signed in';
   },
-  changeFolder() { FolderPicker.open(); },
+  changeFolder() { FolderBrowser.open(); },
   setTheme(mode) { Theme.apply(mode); this.render(); },
   setSpeed(v) { try { localStorage.setItem('kba_speed', v); } catch (_) {} TTS.setRate(v); const r = document.getElementById('speed-select'); if (r) r.value = v; },
 };
@@ -1083,47 +1107,48 @@ function setFolder(id, name) {
   Library.load();
 }
 
-// Google Picker: browse Drive and pick a folder using the OAuth token from
-// login (no separate API key needed — the developer key is optional). Falls
-// back to a typed-name modal only if the Picker can't load/run.
-const FolderPicker = {
-  _loading: false,
+// Custom folder browser — themed to the app (CSS vars) and sorted by name.
+// Browses the user's Drive hierarchy via the Drive API with the login token;
+// starts at the current folder (re-selecting) or My Drive root.
+const FolderBrowser = {
+  _stack: [], _items: [],
   open() {
-    if (!State.token) { FolderModal.open(); return; } // not signed in
-    if (window.google && google.picker) return this._show();
-    if (this._loading) return;
-    this._loading = true;
-    const s = document.createElement('script');
-    s.src = 'https://apis.google.com/js/api.js';
-    s.onload = () => gapi.load('picker', () => { this._loading = false; this._show(); });
-    s.onerror = () => { this._loading = false; toast('Could not load the Drive picker'); FolderModal.open(); };
-    document.head.appendChild(s);
+    if (!State.token) { FolderModal.open(); return; }
+    this._stack = [{ id: 'root', name: 'My Drive' }];
+    const id = activeFolderId();
+    if (id && id !== 'root') this._stack.push({ id, name: activeFolder() });
+    document.getElementById('browser-modal').classList.add('open');
+    this._render(); this._load();
   },
-  _show() {
+  _cur() { return this._stack[this._stack.length - 1]; },
+  _render() {
+    document.getElementById('fb-crumbs').innerHTML = this._stack.map((c, i) =>
+      `<span class="${i === this._stack.length - 1 ? 'cur' : ''}" onclick="FolderBrowser.crumb(${i})">${esc(c.name)}</span>`
+    ).join('<i>›</i>');
+    const u = document.getElementById('fb-use'); if (u) u.textContent = `Use “${this._cur().name}”`;
+  },
+  crumb(i) { if (i < this._stack.length - 1) { this._stack = this._stack.slice(0, i + 1); this._render(); this._load(); } },
+  enter(i) { const f = this._items[i]; if (!f) return; this._stack.push({ id: f.id, name: f.name }); this._render(); this._load(); },
+  async _load() {
+    const list = document.getElementById('fb-list');
+    list.innerHTML = '<div class="fb-empty">Loading…</div>';
     try {
-      // Start at the folder in use (when re-selecting) or My Drive root, and let
-      // the user navigate the real folder hierarchy (only folders are shown).
-      const start = activeFolderId() || 'root';
-      const view = new google.picker.DocsView(google.picker.ViewId.DOCS)
-        .setParent(start)
-        .setIncludeFolders(true)
-        .setSelectFolderEnabled(true)
-        .setMimeTypes('application/vnd.google-apps.folder')
-        .setMode(google.picker.DocsViewMode.LIST);
-      const pb = new google.picker.PickerBuilder()
-        .setOrigin(location.protocol + '//' + location.host)
-        .addView(view)
-        .setOAuthToken(State.token)
-        .setTitle('Select your books folder')
-        .setCallback(d => {
-          if (d.action === google.picker.Action.PICKED && d.docs && d.docs[0]) {
-            setFolder(d.docs[0].id, d.docs[0].name);
-          }
-        });
-      if (CONFIG.API_KEY) pb.setDeveloperKey(CONFIG.API_KEY); // optional (quota)
-      pb.build().setVisible(true);
-    } catch (e) { console.error('picker failed', e); FolderModal.open(); }
+      const d = await Drive.get('files', {
+        q: `'${this._cur().id}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`,
+        fields: 'files(id,name)', orderBy: 'name', pageSize: '200',
+      });
+      this._items = d.files || [];
+      list.innerHTML = this._items.length ? this._items.map((f, i) =>
+        `<div class="fb-row" onclick="FolderBrowser.enter(${i})">
+           <svg class="fb-ico" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+           <span class="fb-name">${esc(f.name)}</span>
+           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--text-dim);flex-shrink:0"><path d="M9 6l6 6-6 6"/></svg>
+         </div>`).join('')
+        : '<div class="fb-empty">No sub-folders here — tap the button below to use this folder.</div>';
+    } catch (e) { console.error('folder list failed', e); list.innerHTML = '<div class="fb-empty">Couldn’t load folders. Try again.</div>'; }
   },
+  useCurrent() { const c = this._cur(); this.close(); setFolder(c.id, c.name); },
+  close(e) { if (!e || e.target.classList.contains('modal-backdrop')) document.getElementById('browser-modal').classList.remove('open'); },
 };
 
 // Typed-folder fallback (replaces the native prompt so the wording is ours).
@@ -1374,7 +1399,7 @@ const Library = {
   refresh() { this.load(); },
 
   _pickBtn() {
-    return `<button onclick="FolderPicker.open()" style="margin-top:1rem;padding:0.6rem 1.2rem;background:var(--accent);color:#fff;border:none;border-radius:10px;font:500 0.85rem var(--font-ui);cursor:pointer">Choose folder</button>`;
+    return `<button onclick="FolderBrowser.open()" style="margin-top:1rem;padding:0.6rem 1.2rem;background:var(--accent);color:#fff;border:none;border-radius:10px;font:500 0.85rem var(--font-ui);cursor:pointer">Choose folder</button>`;
   },
 };
 
@@ -1649,11 +1674,10 @@ const Reader = {
     if (this._gesturesBound) return;
     this._gesturesBound = true;
     const el = document.getElementById('reader-touch');
-    let sx = 0, sy = 0, touched = 0;
-    el.addEventListener('touchstart', e => { const t = e.touches[0]; sx = t.clientX; sy = t.clientY; }, { passive: true });
+    let sx = 0, sy = 0;
+    el.addEventListener('touchstart', e => { this._touchUsed = true; const t = e.touches[0]; sx = t.clientX; sy = t.clientY; }, { passive: true });
     el.addEventListener('touchend', e => {
       const t = e.changedTouches[0], dx = t.clientX - sx, dy = t.clientY - sy;
-      touched = Date.now();
       if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy)) {        // swipe = turn page
         clearTimeout(this._tapT); this._tapT = null;
         dx < 0 ? this.next() : this.prev();
@@ -1666,8 +1690,10 @@ const Reader = {
         }
       }
     }, { passive: true });
-    el.addEventListener('click', () => { if (Date.now() - touched < 500) return; this.toggleChrome(); });
-    this._rv().addEventListener('mousemove', () => { if (!this._rv().classList.contains('minimized')) this.revealChrome(); });
+    // Desktop only — ignore the synthetic click/mousemove that touch generates
+    // (a delayed synthetic click was toggling the just-revealed controls off).
+    el.addEventListener('click', () => { if (this._touchUsed) return; this.toggleChrome(); });
+    this._rv().addEventListener('mousemove', () => { if (this._touchUsed || this._rv().classList.contains('minimized')) return; this.revealChrome(); });
   },
 
   // --- Immersive chrome: auto-hides while reading; tap/click/hover reveals ---
@@ -1769,11 +1795,18 @@ const TTS = {
 
       const vbox = viewer.getBoundingClientRect();
       const ibox = iframe.getBoundingClientRect();
+      // Is an iframe-space rect inside the visible viewer box? (Node rects are in
+      // the iframe's viewport; add the iframe's offset to get top-window coords.)
+      const inView = r => {
+        if (!r.width || !r.height) return false;
+        const left = ibox.left + r.left, right = ibox.left + r.right;
+        const top  = ibox.top + r.top,  bottom = ibox.top + r.bottom;
+        return right > vbox.left + 2 && left < vbox.right - 2 && bottom > vbox.top && top < vbox.bottom;
+      };
       const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT, null);
       const range = doc.createRange();
       // Group visible text by its nearest block-level ancestor so we can pause
-      // between blocks (e.g. a chapter heading vs. the first paragraph) instead
-      // of running them together as one breathless sentence.
+      // between blocks (e.g. a chapter heading vs. the first paragraph).
       const BLOCK = /^(P|DIV|LI|BLOCKQUOTE|SECTION|ARTICLE|H[1-6]|HGROUP|HEADER|FOOTER|FIGCAPTION|CAPTION|TD|DD|DT|PRE|MAIN|ASIDE)$/;
       const blockOf = n => {
         let el = n.parentElement;
@@ -1785,24 +1818,34 @@ const TTS = {
         const s = node.nodeValue;
         if (!s || !s.trim()) continue;
         range.selectNodeContents(node);
-        // Node rects are in the iframe's viewport; add the iframe's offset to
-        // get absolute (top-window) coords, then test against the viewer box.
-        let visible = false;
+        let any = false, all = true, has = false;
         for (const r of range.getClientRects()) {
           if (!r.width || !r.height) continue;
-          const left = ibox.left + r.left, right = ibox.left + r.right;
-          const top  = ibox.top + r.top,  bottom = ibox.top + r.bottom;
-          if (right > vbox.left + 2 && left < vbox.right - 2 && bottom > vbox.top && top < vbox.bottom) {
-            visible = true; break;
-          }
+          has = true; const v = inView(r); any = any || v; all = all && v;
         }
-        if (!visible) continue;
+        if (!any) continue;
+        // Whole node on this page → take it all (fast path). Otherwise the node
+        // straddles a page edge (a paragraph that began on the previous page or
+        // runs onto the next), so keep only the WORDS actually on this page — the
+        // audio then starts at the first visible word and ends at the last.
+        let nodeText = s;
+        if (has && !all) {
+          nodeText = '';
+          const re = /\S+/g; let m;
+          while ((m = re.exec(s))) {
+            range.setStart(node, m.index); range.setEnd(node, m.index + m[0].length);
+            let wv = false;
+            for (const r of range.getClientRects()) { if (inView(r)) { wv = true; break; } }
+            if (wv) nodeText += m[0] + ' ';
+          }
+          if (!nodeText.trim()) continue;
+        }
         const block = blockOf(node);
         if (!curSeg || curSeg.block !== block) {
           curSeg = { block, text: '', heading: /^H[1-6]$/.test(block.tagName) || block.tagName === 'HGROUP' };
           segs.push(curSeg);
         }
-        curSeg.text += s + ' ';
+        curSeg.text += nodeText + ' ';
       }
       // Flat string for dedupe / blank detection.
       const text = segs.map(g => g.text.trim()).filter(Boolean).join(' ').trim();
@@ -2123,13 +2166,18 @@ window.addEventListener('load', () => {
   // Back/edge-swipe should step back inside the app, not leave it. The full
   // reader pushes a history entry; popping it minimizes to Home instead.
   history.replaceState({ app: 'base' }, '');
+  history.pushState({ app: 'home' }, ''); // buffer so the first Back is interceptable
   window.addEventListener('popstate', () => {
     const rv = document.getElementById('reader-view');
     if (rv && rv.classList.contains('active') && !rv.classList.contains('minimized')) {
-      Reader.minimize();
-    } else {
-      history.pushState({ app: 'base' }, ''); // stay in the app
+      Reader.minimize();                 // Back/swipe in the reader → Home
+      return;
     }
+    if (Reader._exitArmed) { history.back(); return; } // second Back → actually leave
+    Reader._exitArmed = true;            // first Back at Home → warn, don't leave
+    toast('Swipe again to leave');
+    setTimeout(() => { Reader._exitArmed = false; }, 2000);
+    history.pushState({ app: 'home' }, '');
   });
 
   if ('serviceWorker' in navigator) {

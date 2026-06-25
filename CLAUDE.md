@@ -135,18 +135,23 @@ Google login); verify by inspection + the owner testing on device.
   (`TTS.toggle`); on desktop a **click toggles** and **mousemove reveals**.
   `hideChromeSoon(ms=5000)` hides `hide-chrome`; it's armed **once** in
   `TTS.start` (not per chunk) so a tap/`revealChrome` gives a full ~5s before it
-  fades again; `Reader.expand()` always shows controls on entry. The reader's
-  top-left button is a clear back **arrow** (`Reader.minimize()` → Home).
+  fades again; `Reader.expand()` always shows controls on entry. **Once touch is
+  used (`_touchUsed`), the `click`/`mousemove` handlers are ignored** — a delayed
+  synthetic `click` was toggling the just-revealed controls back off (~0.5s bug).
+  The reader's top-left button is a clear back **arrow** (`Reader.minimize()` → Home).
 - **Audio↔page sync (`TTS._resumeRead`).** After any page change the resume
   retries extraction until the new page's text is actually laid out **and** is no
   longer the page we left (`_prevText`, set in `skipPage`/forward-advance) —
   forcing a fresh `loadPageText` each try (~14×/110ms). epub can report the old
   column for a frame after `next()`, so without the `_prevText` guard the audio
   read the previous page; this is the real fix for "audio doesn't match".
-- **Back/edge-swipe steps back in-app, doesn't exit.** The full reader
-  `pushState({app:'reader'})` (in `open` 'full' + `expand`); a `popstate` handler
-  (bound in boot, after `replaceState({app:'base'})`) minimizes the reader to
-  Home instead of leaving, and otherwise re-pushes a sentinel to stay in the app.
+- **Back/edge-swipe steps back in-app, doesn't exit.** Boot does
+  `replaceState({app:'base'})` then `pushState({app:'home'})` (a buffer); the full
+  reader `pushState({app:'reader'})` (in `open` 'full' + `expand`). A `popstate`
+  handler: in the full reader → `Reader.minimize()` (→ Home); at Home, the first
+  Back shows a "Swipe again to leave" toast and re-pushes a buffer (`_exitArmed`,
+  2s window); a second Back within the window calls `history.back()` to actually
+  leave.
 - **Seek scrubber (`Scrub`)** lives on the Home mini-player hero and in the
   reader; both are `.scrub` range inputs wired by **delegated** input/change.
   Dragging shows `#scrub-pop` (chapter + `p. N/total` + %, from
@@ -158,20 +163,20 @@ Google login); verify by inspection + the owner testing on device.
   `about → user.displayName` (works under `drive.readonly`), caches the first
   name in `kba_user`/`State.userName`, and the Home title shows
   "Good {morning/afternoon/evening}, {name}".
-- **Drive folder is changeable (Google Picker + fallback).** Settings → "Change"
-  → `FolderPicker.open()` lazy-loads `apis.google.com/js/api.js` + the Picker and
-  browses Drive **hierarchically** (`DocsView(ViewId.DOCS).setParent(start)` with
-  `setIncludeFolders`/`setSelectFolderEnabled`, folders-only, LIST mode), where
-  `start` = the current folder id or `'root'` (My Drive). Uses the **login OAuth
-  token** (`setOAuthToken`) + `setOrigin` — **no separate API key**;
-  `CONFIG.API_KEY` is optional (`setDeveloperKey`, quota only). Needs the Picker
-  API enabled. Falls back to `FolderModal` (styled in-app typed-name modal, no
-  native `prompt`) if not signed in or the Picker fails. `setFolder(id, name)`
-  persists `kba_folder_id` (picked id, wins) / `kba_folder` (name) and reloads;
-  `Library.load` uses `activeFolderId() || findFolder(activeFolder())`.
+- **Drive folder selector is a custom themed browser (`FolderBrowser`), not the
+  Google Picker.** The Picker couldn't be themed or name-sorted (and looked
+  off), so Settings → "Change" / onboarding open `#browser-modal`: a normal
+  in-app modal (inherits theme via CSS vars) that lists sub-folders via the Drive
+  API (`'<id>' in parents and mimeType=folder`, `orderBy:'name'` → **name asc**),
+  with a clickable breadcrumb (`_stack`), tap-a-row to navigate in, and "Use this
+  folder" to pick the current one. Starts at the current folder (re-selecting) or
+  `root` = My Drive. `setFolder(id,name)` persists `kba_folder_id` (id wins) /
+  `kba_folder` and reloads; `Library.load` uses `activeFolderId() ||
+  findFolder(activeFolder())`. (`FolderModal` typed-entry remains only as a
+  not-signed-in fallback; `CONFIG.API_KEY` is now unused.)
 - **Folder onboarding.** When no folder is found / no books, the Library and Home
   empty states show a "Choose folder" button (`Library._pickBtn` →
-  `FolderPicker.open`). `State.ready` (set when a load attempt finishes) gates the
+  `FolderBrowser.open`). `State.ready` (set when a load attempt finishes) gates the
   Home prompt so it shows "Loading your library…" first rather than flashing the
   onboarding for users who do have books.
 - **Home "jump back in"** shows only *started* books (a `kba_prog` entry with a
@@ -194,6 +199,12 @@ Google login); verify by inspection + the owner testing on device.
   on-screen box is inside the viewer (epub.js paginated mode keeps the whole
   chapter in off-screen columns; reading `body.innerText` would grab the whole
   chapter and loop forever — this was a real bug, don't reintroduce it).
+- **Visibility is word-level at the page edges (`inView`).** A text node fully on
+  the page is taken whole (fast path); a node that straddles the column break (a
+  paragraph that began on the previous page or runs onto the next) is measured
+  **per word** (a `Range` over each `\S+`) and only the words actually on this
+  page are kept. Without this, the audio started at the paragraph's first word on
+  the *previous* page and ran past the last visible word into the next.
 - **Chunking is block-aware — don't flatten text into one string.**
   `loadPageText()` groups visible text by its nearest block-level ancestor
   (`P`/`DIV`/`LI`/`H1-6`/…) and `_chunksFromSegments()` makes each block its own
