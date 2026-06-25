@@ -1816,14 +1816,41 @@ const Reader = {
     if (this._gesturesBound) return;
     this._gesturesBound = true;
     const el = document.getElementById('reader-touch');
-    let sx = 0, sy = 0;
-    el.addEventListener('touchstart', e => { this._touchUsed = true; const t = e.touches[0]; sx = t.clientX; sy = t.clientY; }, { passive: true });
+    const vw = () => document.getElementById('viewer');
+    let sx = 0, sy = 0, dragging = false, decided = false;
+
+    el.addEventListener('touchstart', e => {
+      this._touchUsed = true;
+      const t = e.touches[0]; sx = t.clientX; sy = t.clientY;
+      dragging = false; decided = false;
+      clearTimeout(this._dragAnimT);
+    }, { passive: true });
+
+    // Finger-following drag: the page tracks your finger horizontally.
+    el.addEventListener('touchmove', e => {
+      const t = e.touches[0], dx = t.clientX - sx, dy = t.clientY - sy;
+      if (!decided) {
+        if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+        decided = true;
+        dragging = Math.abs(dx) > Math.abs(dy); // horizontal intent only
+      }
+      if (!dragging) return;
+      const v = vw(); if (!v) return;
+      const w = v.offsetWidth || 400;
+      v.style.transition = 'none';
+      v.style.transform = `translateX(${dx}px)`;
+      v.style.opacity = String(Math.max(0.35, 1 - Math.abs(dx) / w));
+    }, { passive: true });
+
     el.addEventListener('touchend', e => {
       const t = e.changedTouches[0], dx = t.clientX - sx, dy = t.clientY - sy;
-      if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy)) {        // swipe = turn page
-        clearTimeout(this._tapT); this._tapT = null;
-        dx < 0 ? this.next() : this.prev();
-      } else if (Math.abs(dx) < 12 && Math.abs(dy) < 12) {           // tap
+      if (dragging) {
+        const v = vw(), w = (v && v.offsetWidth) || 400;
+        if (Math.abs(dx) > Math.min(90, w * 0.2)) this._dragCommit(dx < 0 ? 1 : -1); // far enough → turn
+        else this._dragSnapBack();                                                    // not far → spring back
+        return;
+      }
+      if (Math.abs(dx) < 12 && Math.abs(dy) < 12) {           // tap
         if (this._tapT) {                  // second tap within the window = double-tap
           clearTimeout(this._tapT); this._tapT = null;
           TTS.toggle();                    // double-tap = play / pause
@@ -1833,10 +1860,39 @@ const Reader = {
         }
       }
     }, { passive: true });
+
     // Desktop only — ignore the synthetic click/mousemove that touch generates
     // (a delayed synthetic click was toggling the just-revealed controls off).
     el.addEventListener('click', () => { if (this._touchUsed) return; this.toggleChrome(); });
     this._rv().addEventListener('mousemove', () => { if (this._touchUsed || this._rv().classList.contains('minimized')) return; this.revealChrome(); });
+  },
+
+  _dragSnapBack() {
+    const v = document.getElementById('viewer'); if (!v) return;
+    v.style.transition = 'transform .2s ease, opacity .2s ease';
+    v.style.transform = 'translateX(0)';
+    v.style.opacity = '1';
+  },
+
+  // Commit a finger-drag turn: slide the page the rest of the way out, turn it
+  // (the keyframe is suppressed via _dragTurn), then slide the new page in.
+  _dragCommit(dir) { // dir: 1 = next, -1 = prev
+    const v = document.getElementById('viewer'); if (!v) return;
+    v.style.transition = 'transform .14s ease, opacity .14s ease';
+    v.style.transform = `translateX(${dir > 0 ? '-110%' : '110%'})`;
+    v.style.opacity = '0.15';
+    this._dragAnimT = setTimeout(() => {
+      this._dragTurn = true;
+      dir > 0 ? this.next() : this.prev();
+      v.style.transition = 'none';
+      v.style.transform = `translateX(${dir > 0 ? '110%' : '-110%'})`;
+      v.style.opacity = '0.15';
+      requestAnimationFrame(() => {
+        v.style.transition = 'transform .22s ease, opacity .22s ease';
+        v.style.transform = 'translateX(0)';
+        v.style.opacity = '1';
+      });
+    }, 145);
   },
 
   // --- Immersive chrome: auto-hides while reading; tap/click/hover reveals ---
@@ -2101,7 +2157,8 @@ const TTS = {
     document.getElementById('play-btn').classList.add('playing');
     Stats.startTick();
     this._prevText = this._lastText; // remember the page we're leaving (sync guard)
-    Reader._turnAnim(this._dir); // visible page-turn slide
+    if (Reader._dragTurn) Reader._dragTurn = false; // drag handles its own animation
+    else Reader._turnAnim(this._dir);               // button/keyboard turn → keyframe slide
     turn();
   },
 

@@ -103,11 +103,15 @@ Google login); verify by inspection + the owner testing on device.
   (`H2–H6`) `pre 2000 / post 1000`; body chunks get `0/0`. `_speak` applies `pre`
   once per chunk (`_preIdx` guard, `_gapT` timer) and `post` in `onend`. Reset
   `_preIdx` whenever the page text reloads.
-- **Page-turn slide animation (v1).** `TTS.skipPage` calls `Reader._turnAnim(dir)`,
-  which adds `#viewer.turn-next`/`turn-prev` (a CSS keyframe that slides out then
-  in) — robust to relocate timing, unlike the earlier inline-transition attempt.
-  Only manual navigation animates. A true finger-following live preview is still
-  a larger epub.js task.
+- **Page-turn animation.** Two paths: (1) **finger-following drag** — `touchmove`
+  in `_bindGestures` translates `#viewer` with the finger; `touchend` past ~20%
+  width `_dragCommit(dir)` slides it out, turns the page (sets `_dragTurn` so
+  `skipPage` skips the keyframe), and slides the new page in; otherwise
+  `_dragSnapBack()` springs to 0. (2) **button/keyboard** turns use
+  `Reader._turnAnim(dir)` (`#viewer.turn-next/turn-prev` keyframe). The drag
+  slides the page over the reader background — a *live* peek of the adjacent
+  page's content during the drag would need epub.js column-internals work and
+  isn't done.
 - **Double-tap = play/pause with icon feedback.** The double-tap toggles `TTS`
   and `Reader._tapFeedback(playing)` fades a centered play/pause glyph
   (`#tap-fb`, `@keyframes tapfb`) in and out.
