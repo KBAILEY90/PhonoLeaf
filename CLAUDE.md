@@ -97,15 +97,20 @@ Google login); verify by inspection + the owner testing on device.
   5%` (side margins to centre the text) and `line-height:1.65`. `--read-bg`/
   `--read-text` match so the letterbox agrees. Called on `Reader.open` and
   re-applied by `Theme.apply` / the `prefers-color-scheme` listener when `auto`.
-- **~4s pause before a new chapter.** `_onRelocated` sets `TTS._chapterPause`
-  when `loc.start.index` (spine section) changes from `TTS._lastSection`; `_speak`
-  then waits 4s (`_chapterT`) before the section's first words. Reset on
-  `Reader.open`; cleared in `TTS.stop`.
-- **Page-turn slide animation (v1).** Manual navigation (`TTS.skipPage`) slides
-  the `#viewer` out (`Reader._turnOut(dir)`) and `_onRelocated` slides the new
-  page in (`_turnIn`, gated by `_animPending` so passive auto-advance during
-  listening doesn't animate). A true finger-following live preview of the
-  prev/next page is still a larger epub.js task — this is the first pass.
+- **Heading pauses are per-chunk (not a section timer).** Chunks are now
+  `{text, pre, post}` (ms of silence around each); `_chunksFromSegments` gives a
+  **chapter title** (`H1`/`HGROUP`) `pre 3000 / post 2000` and a **subtitle**
+  (`H2–H6`) `pre 2000 / post 1000`; body chunks get `0/0`. `_speak` applies `pre`
+  once per chunk (`_preIdx` guard, `_gapT` timer) and `post` in `onend`. Reset
+  `_preIdx` whenever the page text reloads.
+- **Page-turn slide animation (v1).** `TTS.skipPage` calls `Reader._turnAnim(dir)`,
+  which adds `#viewer.turn-next`/`turn-prev` (a CSS keyframe that slides out then
+  in) — robust to relocate timing, unlike the earlier inline-transition attempt.
+  Only manual navigation animates. A true finger-following live preview is still
+  a larger epub.js task.
+- **Double-tap = play/pause with icon feedback.** The double-tap toggles `TTS`
+  and `Reader._tapFeedback(playing)` fades a centered play/pause glyph
+  (`#tap-fb`, `@keyframes tapfb`) in and out.
 - **App shell is a 4-tab nav (`Nav`): Home · Library · Stats · Settings.** A fixed
   `.tab-bar` (`#tab-bar`, `.show` toggles visibility) sits under the main `.view`s;
   `Nav.go(tab)` swaps the view via `showView`, marks the active tab, shows the
@@ -159,13 +164,16 @@ Google login); verify by inspection + the owner testing on device.
   forcing a fresh `loadPageText` each try (~14×/110ms). epub can report the old
   column for a frame after `next()`, so without the `_prevText` guard the audio
   read the previous page; this is the real fix for "audio doesn't match".
-- **Back/edge-swipe steps back in-app, doesn't exit.** `App._initHistory()` runs
-  **after auth** (not at boot — else the back-gesture peek flashed the sign-in
-  view): `replaceState({app:'base'})` + `pushState({app:'home'})` buffer. The full
-  reader `pushState({app:'reader'})` (in `open` 'full' + `expand`). A `popstate`
-  handler: in the full reader → `Reader.minimize()` (→ Home); at Home the first
-  Back shows a "Swipe again to leave" toast and re-pushes a buffer (`_exitArmed`,
-  2s); a second Back within the window calls `history.back()` to actually leave.
+- **Back/edge-swipe uses real tab history (no flash).** `App._initHistory()`
+  (after auth) does `replaceState({app:'base'})`; `Nav.go(tab)` then pushes
+  `{app:'tab',tab}` per navigation, and the full reader pushes `{app:'reader'}`.
+  The `popstate` handler: full reader → `Reader.minimize()`; a `{tab}` entry →
+  `Nav.go(tab, fromPop=true)` (a real back to that tab, so the gesture peek's
+  snapshot matches — fixes the previous-page flash); at base → arm `_exitArmed`,
+  show the centered dimmed `#exit-hint` ("Swipe again to leave", `ExitHint`),
+  push a buffer, and reset after **2s** (a back after the window re-prompts; a
+  back within it calls `history.back()` to leave). The reader back arrow is just
+  `history.back()`.
 - **Seek scrubber (`Scrub`)** lives on the Home mini-player hero and in the
   reader; both are `.scrub` range inputs wired by **delegated** input/change.
   Dragging shows `#scrub-pop` (chapter + `p. N/total` + %, from
@@ -243,8 +251,10 @@ Google login); verify by inspection + the owner testing on device.
   `doc.body.textContent` is empty) apart from a text page whose layout hasn't
   settled yet (textContent present but geometry not yet measurable) — only the
   former clears chunks; the latter keeps them and is retried by the resume path.
-- **Reading auto-starts on navigation.** Opening a book auto-starts TTS once the
-  first page lays out (`Reader.open`, ~400ms delay). Manual page turns
+- **Reading auto-starts on navigation.** Opening a book sets `Reader._autoStartBook`
+  and `_onRelocated` starts TTS ~400ms after the page **settles** to the restored
+  `display(saved.cfi)` position — NOT a fixed timer from `open` (which read the
+  page that was briefly visible mid-settle, i.e. the *previous* page). Manual page turns
   (`next()`/`prev()`/swipe) and chapter jumps go through `TTS.skipPage()`, which
   cancels current speech, marks TTS active + `_awaitingPage`, turns the page, and
   lets `Reader._onRelocated` resume reading on the new page. (iOS may block

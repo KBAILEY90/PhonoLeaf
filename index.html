@@ -574,6 +574,23 @@
        iframe don't reach the parent, so we capture them here. */
     .reader-touch { position: absolute; inset: 0; z-index: 4; }
 
+    /* Page-turn slide animation */
+    @keyframes pageNext { 0%{transform:translateX(0);opacity:1} 45%{transform:translateX(-34px);opacity:.18} 55%{transform:translateX(34px);opacity:.18} 100%{transform:translateX(0);opacity:1} }
+    @keyframes pagePrev { 0%{transform:translateX(0);opacity:1} 45%{transform:translateX(34px);opacity:.18} 55%{transform:translateX(-34px);opacity:.18} 100%{transform:translateX(0);opacity:1} }
+    #viewer.turn-next { animation: pageNext .34s ease; }
+    #viewer.turn-prev { animation: pagePrev .34s ease; }
+
+    /* Double-tap play/pause feedback (fades in then out) */
+    #tap-fb { position: absolute; top: 50%; left: 50%; width: 84px; height: 84px; margin: -42px 0 0 -42px; border-radius: 50%; background: rgba(0,0,0,0.45); display: flex; align-items: center; justify-content: center; z-index: 8; opacity: 0; pointer-events: none; }
+    #tap-fb svg { width: 40px; height: 40px; fill: #fff; }
+    #tap-fb.show { animation: tapfb 0.7s ease; }
+    @keyframes tapfb { 0%{opacity:0;transform:scale(.7)} 25%{opacity:1;transform:scale(1)} 100%{opacity:0;transform:scale(1.12)} }
+
+    /* Centered, dimmed "swipe again to leave" hint */
+    #exit-hint { position: fixed; inset: 0; z-index: 400; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.45); opacity: 0; pointer-events: none; transition: opacity 0.2s; }
+    #exit-hint.show { opacity: 1; }
+    .eh-box { background: var(--surface); color: var(--text); padding: 0.9rem 1.4rem; border-radius: 14px; font: 500 0.95rem var(--font-ui); box-shadow: 0 8px 30px rgba(0,0,0,0.3); }
+
     /* Seek scrubber + drag popup (chapter + position) */
     .scrub { -webkit-appearance: none; appearance: none; width: 100%; height: 4px; border-radius: 2px; background: var(--track); outline: none; }
     .scrub::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: var(--accent); cursor: pointer; }
@@ -719,7 +736,7 @@
   <div id="tts-prog-line"><div id="tts-prog"></div></div>
 
   <div class="reader-top">
-    <button class="icon-btn" onclick="Reader.minimize()" aria-label="Back to home" style="color:var(--text)"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg></button>
+    <button class="icon-btn" onclick="history.back()" aria-label="Back to home" style="color:var(--text)"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg></button>
     <span class="reader-top-page" id="rs-page">Page &ndash;</span>
     <button class="icon-btn" onclick="ChapterModal.open()" aria-label="Chapters">&#9776;</button>
   </div>
@@ -732,6 +749,7 @@
   </div>
 
   <div class="reader-touch" id="reader-touch"></div>
+  <div id="tap-fb"></div>
 
   <div class="reader-bottom">
     <input type="range" class="scrub" id="reader-scrub" min="0" max="1000" value="0" aria-label="Seek through book">
@@ -813,6 +831,7 @@
 <!-- ============== TOAST ============== -->
 <div id="toast"></div>
 <div id="scrub-pop"></div>
+<div id="exit-hint"><div class="eh-box">Swipe again to leave</div></div>
 
 <!-- ============== SCRIPTS ============== -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" crossorigin="anonymous"></script>
@@ -949,8 +968,10 @@ const Meta = {
 
 // --- Tab navigation shell ---------------------------------
 const Nav = {
-  current: 'home',
-  go(tab) {
+  current: null,
+  // fromPop = invoked by a history popstate (don't push a new entry).
+  go(tab, fromPop) {
+    const changed = this.current !== tab;
     this.current = tab;
     showView(tab);
     document.querySelectorAll('#tab-bar .tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
@@ -958,8 +979,23 @@ const Nav = {
     if (tab === 'home') Home.render();
     if (tab === 'stats') StatsPage.render();
     if (tab === 'settings') Settings.render();
+    // Push one history entry per tab so Back returns to the previous tab (the
+    // entry's snapshot matches that tab → no flash) rather than exiting.
+    if (!fromPop && changed) history.pushState({ app: 'tab', tab }, '');
   },
   hideBar() { document.getElementById('tab-bar').classList.remove('show'); },
+};
+
+// Centered, dimmed "swipe again to leave" hint.
+const ExitHint = {
+  _t: null,
+  show() {
+    const el = document.getElementById('exit-hint');
+    if (!el) return;
+    el.classList.add('show');
+    clearTimeout(this._t);
+    this._t = setTimeout(() => el.classList.remove('show'), 2000);
+  },
 };
 
 // --- Home dashboard ---------------------------------------
@@ -1258,8 +1294,8 @@ const App = {
     const saved = this._loadAuth();
     if (saved && saved.exp > Date.now() + 30000) {
       State.token = saved.token;
-      Nav.go('home');
       this._initHistory();
+      Nav.go('home');
       this.loadUser();
       Library.load(); // a stale/revoked token surfaces as a 401 -> silent refresh
     }
@@ -1279,8 +1315,7 @@ const App = {
   _initHistory() {
     if (this._histInit) return;
     this._histInit = true;
-    history.replaceState({ app: 'base' }, '');
-    history.pushState({ app: 'home' }, '');
+    history.replaceState({ app: 'base' }, ''); // bottom of the in-app stack
   },
 
   // Fetch the signed-in user's name (Drive "about") to greet them on Home.
@@ -1312,8 +1347,8 @@ const App = {
     if (!this._client) { toast('Auth loading, please wait...'); return; }
     try {
       await this.getToken('');
-      Nav.go('home');
       this._initHistory();
+      Nav.go('home');
       this.loadUser();
       Library.load();
     } catch (e) {
@@ -1622,7 +1657,7 @@ const Reader = {
     TTS.stop();
     TTS._lastText = ''; // new book — allow the first section's text to load fresh
     TTS.chunks = []; TTS.idx = 0; // drop the previous book's text so auto-start reloads
-    TTS._lastSection = null; TTS._chapterPause = false; // no chapter pause at book open
+    TTS._preIdx = -1; // reset chapter/subtitle pre-pause tracking for the new book
 
     try {
       toast('Downloading...', 0);
@@ -1686,9 +1721,10 @@ const Reader = {
         if (e.key === 'ArrowLeft')  this.prev();
       });
 
-      // Auto-start reading once the first page has laid out in the iframe.
-      // (Blank first pages like the cover are skipped by _speak's page-turn loop.)
-      setTimeout(() => { if (State.currentBook === book && !TTS.active) TTS.start(); }, 400);
+      // Auto-start reading once the page has *settled* to the restored position.
+      // Driven by `relocated` (see _onRelocated) so resume reads the saved page,
+      // not whatever was briefly visible while display(cfi) was still settling.
+      this._autoStartBook = book;
 
       if (mode === 'mini') Home.render(); // reflect the now-playing book in the hero
 
@@ -1706,10 +1742,6 @@ const Reader = {
     const tocItem = State.toc.find(t => href.includes(t.href?.split('#')[0]));
     const chapter = tocItem?.label?.trim() || `Section ${loc.start.index + 1}`;
     document.getElementById('rs-chapter').textContent = chapter;
-
-    // Entering a new spine section = a new chapter → ask _speak to pause ~4s.
-    if (TTS._lastSection != null && loc.start.index !== TTS._lastSection) TTS._chapterPause = true;
-    TTS._lastSection = loc.start.index;
 
     // Page number within the current chapter (epub.js per-section screen count).
     const d = loc.start.displayed;
@@ -1741,29 +1773,38 @@ const Reader = {
       setTimeout(() => TTS._resumeRead(0), 80);
     }
 
-    // Slide the new page in (only for manual navigation — see skipPage).
-    if (this._animPending != null) { this._turnIn(this._animPending); this._animPending = null; }
+    // Auto-start reading once the page has settled to the restored position
+    // (relocation-driven so resume reads the saved page, not the previous one).
+    if (this._autoStartBook && !TTS.active) {
+      clearTimeout(this._autoStartT);
+      this._autoStartT = setTimeout(() => {
+        if (this._autoStartBook && State.currentBook === this._autoStartBook && !TTS.active) {
+          this._autoStartBook = null;
+          TTS.start();
+        }
+      }, 400);
+    }
   },
 
-  // Page-turn slide (v1): current page slides out, the new one slides in. A true
-  // finger-following live preview is a bigger epub.js effort; this is a first pass.
-  _animPending: null,
-  _turnOut(dir) {
+  // Page-turn slide (v1): a keyframe on #viewer so the motion is visible
+  // regardless of when the relocate lands. A true finger-following live preview
+  // of the prev/next page is a bigger epub.js task — this is the first pass.
+  _turnAnim(dir) {
     const v = document.getElementById('viewer'); if (!v) return;
-    v.style.transition = 'transform .16s ease, opacity .16s ease';
-    v.style.transform = `translateX(${dir < 0 ? '26px' : '-26px'})`;
-    v.style.opacity = '0.3';
+    v.classList.remove('turn-next', 'turn-prev');
+    void v.offsetWidth; // reflow so the animation restarts every turn
+    v.classList.add(dir < 0 ? 'turn-prev' : 'turn-next');
   },
-  _turnIn(dir) {
-    const v = document.getElementById('viewer'); if (!v) return;
-    v.style.transition = 'none';
-    v.style.transform = `translateX(${dir < 0 ? '-26px' : '26px'})`;
-    v.style.opacity = '0.3';
-    requestAnimationFrame(() => {
-      v.style.transition = 'transform .2s ease, opacity .2s ease';
-      v.style.transform = 'translateX(0)';
-      v.style.opacity = '1';
-    });
+
+  // Briefly fade a play/pause icon in/out (on double-tap toggle).
+  _tapFeedback(playing) {
+    const el = document.getElementById('tap-fb'); if (!el) return;
+    el.innerHTML = playing
+      ? '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>'
+      : '<svg viewBox="0 0 24 24"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>';
+    el.classList.remove('show');
+    void el.offsetWidth;
+    el.classList.add('show');
   },
 
   _addSwipe() { this._bindGestures(); }, // open() calls this; overlay is persistent
@@ -1786,6 +1827,7 @@ const Reader = {
         if (this._tapT) {                  // second tap within the window = double-tap
           clearTimeout(this._tapT); this._tapT = null;
           TTS.toggle();                    // double-tap = play / pause
+          this._tapFeedback(TTS.active);   // fade a play/pause icon in/out
         } else {                           // wait briefly to see if a second tap follows
           this._tapT = setTimeout(() => { this._tapT = null; this.toggleChrome(); }, 280);
         }
@@ -1865,7 +1907,7 @@ const Reader = {
     rv.classList.remove('active');
     rv.classList.add('minimized');
     this.showChrome();
-    Nav.go('home');
+    Nav.go('home', true); // invoked from popstate (Back) — don't push another entry
   },
 
   close() {
@@ -1888,8 +1930,8 @@ const TTS = {
   _lastText: '',
   _skips: 0,
   _dir: 1, // last navigation direction: 1 = forward, -1 = backward
-  _lastSection: null, // spine index of the section being read (to detect new chapters)
-  _chapterPause: false, _chapterT: null, // ~4s pause when entering a new chapter
+  _gapT: null,  // timer for inter-chunk pauses (chapter/subtitle gaps)
+  _preIdx: -1,  // chunk index whose pre-pause has already been applied
 
   // Read only the text on the CURRENTLY VISIBLE page. In paginated mode the
   // iframe holds the whole chapter laid out in off-screen columns, so we keep
@@ -1951,7 +1993,7 @@ const TTS = {
         }
         const block = blockOf(node);
         if (!curSeg || curSeg.block !== block) {
-          curSeg = { block, text: '', heading: /^H[1-6]$/.test(block.tagName) || block.tagName === 'HGROUP' };
+          curSeg = { block, text: '', tag: block.tagName, heading: /^H[1-6]$/.test(block.tagName) || block.tagName === 'HGROUP' };
           segs.push(curSeg);
         }
         curSeg.text += nodeText + ' ';
@@ -1962,7 +2004,7 @@ const TTS = {
         if (text === this._lastText) return; // same page re-rendered — don't restart
         this._lastText = text;
         this.chunks = this._chunksFromSegments(segs);
-        this.idx = 0;
+        this.idx = 0; this._preIdx = -1;
         return;
       }
       // No visible text on this page. Tell a genuinely blank page (a cover or
@@ -1985,15 +2027,19 @@ const TTS = {
   // — and therefore its own utterance with a gap after it — so a heading never
   // glues onto the first sentence of the chapter. Headings also get a terminal
   // stop so the voice falls/pauses rather than running straight on.
+  // Each chunk is { text, pre, post } — pre/post are ms of silence around it.
+  // Chapter titles (H1/HGROUP): 3s before, 2s after. Subtitles (H2–H6): 2s / 1s.
   _chunksFromSegments(segs) {
     const out = [];
     for (const seg of segs) {
       const t = seg.text.replace(/\s+/g, ' ').trim();
       if (!t) continue;
       if (seg.heading) {
-        out.push(/[.!?…:;]$/.test(t) ? t : t + '.');
+        const chapter = seg.tag === 'H1' || seg.tag === 'HGROUP';
+        const txt = /[.!?…:;]$/.test(t) ? t : t + '.';
+        out.push({ text: txt, pre: chapter ? 3000 : 2000, post: chapter ? 2000 : 1000 });
       } else {
-        for (const c of this._split(t)) out.push(c);
+        for (const c of this._split(t)) out.push({ text: c, pre: 0, post: 0 });
       }
     }
     return out;
@@ -2017,6 +2063,7 @@ const TTS = {
   },
 
   start() {
+    Reader._autoStartBook = null; // playback started — cancel any pending auto-start
     this.loadPageText(); // always read the page we're actually on (no stale text)
     if (this.idx >= this.chunks.length) this.idx = 0; // restart the page if it had finished
     this.active = true;
@@ -2034,7 +2081,7 @@ const TTS = {
   stop() {
     this.active = false;
     this._awaitingPage = false;
-    this._chapterPause = false; clearTimeout(this._chapterT);
+    clearTimeout(this._gapT);
     window.speechSynthesis?.cancel();
     const btn = document.getElementById('play-btn');
     if (btn) btn.classList.remove('playing');
@@ -2054,7 +2101,7 @@ const TTS = {
     document.getElementById('play-btn').classList.add('playing');
     Stats.startTick();
     this._prevText = this._lastText; // remember the page we're leaving (sync guard)
-    Reader._turnOut(this._dir); Reader._animPending = this._dir; // slide animation
+    Reader._turnAnim(this._dir); // visible page-turn slide
     turn();
   },
 
@@ -2064,7 +2111,7 @@ const TTS = {
     if (!this.active) return;
     const doc = document.querySelector('#viewer iframe')?.contentDocument;
     const hasText = !!(doc && doc.body && doc.body.textContent.trim());
-    this._lastText = ''; this.chunks = []; this.idx = 0; // force fresh extraction
+    this._lastText = ''; this.chunks = []; this.idx = 0; this._preIdx = -1; // force fresh extraction
     this.loadPageText();
     // Keep retrying while the page isn't laid out yet, OR the text we extracted
     // is still the page we just left (epub can report the old column for a frame).
@@ -2102,21 +2149,28 @@ const TTS = {
       else this.stop();
       return;
     }
-    // Entering a new chapter — hold for ~4s before the first words.
-    if (this._chapterPause) {
-      this._chapterPause = false;
+    const chunk = this.chunks[this.idx];
+    // Pre-pause (3s before a chapter title, 2s before a subtitle) — once per chunk.
+    if (chunk.pre && this._preIdx !== this.idx) {
+      this._preIdx = this.idx;
       window.speechSynthesis.cancel();
-      clearTimeout(this._chapterT);
-      this._chapterT = setTimeout(() => { if (this.active) this._speak(); }, 4000);
+      clearTimeout(this._gapT);
+      this._gapT = setTimeout(() => { if (this.active) this._speak(); }, chunk.pre);
       return;
     }
     window.speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(this.chunks[this.idx]);
+    const u = new SpeechSynthesisUtterance(chunk.text);
     u.rate  = this.rate;
     u.voice = this.voice;
     this._skips = 0; // we found real text — reset the blank-page counter
     this._dir = 1;   // reading real content — from here the flow is forward
-    u.onend   = () => { this.idx++; if (this.active) this._speak(); };
+    u.onend   = () => {
+      this.idx++;
+      if (!this.active) return;
+      // Post-pause (2s after a chapter title, 1s after a subtitle).
+      if (chunk.post) { clearTimeout(this._gapT); this._gapT = setTimeout(() => { if (this.active) this._speak(); }, chunk.post); }
+      else this._speak();
+    };
     u.onerror = e => { if (e.error !== 'interrupted') console.warn('TTS:', e.error); };
     window.speechSynthesis.speak(u);
 
@@ -2284,17 +2338,26 @@ window.addEventListener('load', () => {
 
   // Back/edge-swipe should step back inside the app, not leave it. The full
   // reader pushes a history entry; popping it minimizes to Home instead.
-  window.addEventListener('popstate', () => {
+  window.addEventListener('popstate', (e) => {
     const rv = document.getElementById('reader-view');
     if (rv && rv.classList.contains('active') && !rv.classList.contains('minimized')) {
-      Reader.minimize();                 // Back/swipe in the reader → Home
+      Reader.minimize();                 // Back in the full reader → mini-player on Home
+      Reader._exitArmed = false;
       return;
     }
-    if (Reader._exitArmed) { history.back(); return; } // second Back → actually leave
-    Reader._exitArmed = true;            // first Back at Home → warn, don't leave
-    toast('Swipe again to leave');
-    setTimeout(() => { Reader._exitArmed = false; }, 2000);
-    history.pushState({ app: 'home' }, '');
+    const st = e.state;
+    if (st && st.app === 'tab' && st.tab) {
+      Nav.go(st.tab, true);              // real back to the previous tab (snapshot matches → no flash)
+      Reader._exitArmed = false;
+      return;
+    }
+    // Bottom of the in-app stack → require a second Back within 2s to leave.
+    if (Reader._exitArmed) { Reader._exitArmed = false; history.back(); return; }
+    Reader._exitArmed = true;
+    ExitHint.show();
+    clearTimeout(Reader._exitT);
+    Reader._exitT = setTimeout(() => { Reader._exitArmed = false; }, 2000);
+    history.pushState({ app: 'base' }, ''); // re-buffer so we stay in the app
   });
 
   if ('serviceWorker' in navigator) {
