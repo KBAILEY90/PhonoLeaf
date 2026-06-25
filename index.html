@@ -529,7 +529,9 @@
       background: linear-gradient(var(--surface), transparent);
       transition: opacity 0.25s, transform 0.25s;
     }
-    .reader-top-page { flex: 1; text-align: center; font-size: 0.7rem; color: var(--text-dim); }
+    .reader-top-center { flex: 1; min-width: 0; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 1px; }
+    .reader-top-chapter { font-size: 0.72rem; font-weight: 600; color: var(--text); max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .reader-top-page { font-size: 0.65rem; color: var(--text-dim); }
     .reader-edge { position: absolute; top: 52px; bottom: 96px; width: 14%; z-index: 5; cursor: pointer; }
     .reader-edge.re-left { left: 0; } .reader-edge.re-right { right: 0; }
     .reader-bottom {
@@ -600,6 +602,11 @@
     #scrub-pop.show { opacity: 1; }
     .sp-ch { font-weight: 500; max-width: 60vw; overflow: hidden; text-overflow: ellipsis; }
     .sp-pg { color: var(--text-dim); font-size: 0.64rem; margin-top: 1px; }
+
+    /* Voice gender filter tabs */
+    .voice-filter { display: flex; gap: 0.4rem; padding: 0 1rem 0.75rem; }
+    .vf-btn { flex: 1; padding: 0.38rem 0; border-radius: 999px; border: 1.5px solid var(--line); background: none; color: var(--text-dim); font: 500 0.8rem var(--font-ui); cursor: pointer; }
+    .vf-btn.active { background: var(--accent); border-color: transparent; color: #fff; }
 
     /* Folder browser */
     .fb-crumbs { font-size: 0.74rem; color: var(--text-dim); margin-bottom: 0.6rem; white-space: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; }
@@ -737,7 +744,10 @@
 
   <div class="reader-top">
     <button class="icon-btn" onclick="history.back()" aria-label="Back to home" style="color:var(--text)"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg></button>
-    <span class="reader-top-page" id="rs-page">Page &ndash;</span>
+    <div class="reader-top-center">
+      <div class="reader-top-chapter" id="rs-chapter"></div>
+      <div class="reader-top-page" id="rs-page">Page &ndash;</div>
+    </div>
     <button class="icon-btn" onclick="ChapterModal.open()" aria-label="Chapters">&#9776;</button>
   </div>
 
@@ -753,7 +763,7 @@
 
   <div class="reader-bottom">
     <input type="range" class="scrub" id="reader-scrub" min="0" max="1000" value="0" aria-label="Seek through book">
-    <div class="reader-meta"><span id="rs-chapter">&ndash;</span><span id="tts-chapter"></span></div>
+    <div class="reader-meta"><span id="tts-chapter"></span></div>
     <div class="tts-pill">
       <button class="ctrl-btn nav" onclick="Reader.prev()" aria-label="Previous">&#9664;&#9664;</button>
       <button class="ctrl-btn play" id="play-btn" onclick="TTS.toggle()" aria-label="Play or pause"></button>
@@ -793,6 +803,11 @@
   <div class="modal-sheet">
     <div class="modal-handle"></div>
     <div class="modal-title">Choose Voice</div>
+    <div class="voice-filter" id="voice-filter">
+      <button class="vf-btn active" onclick="VoiceModal.setGender('all')">All</button>
+      <button class="vf-btn" onclick="VoiceModal.setGender('female')">Female</button>
+      <button class="vf-btn" onclick="VoiceModal.setGender('male')">Male</button>
+    </div>
     <div id="voice-list"></div>
   </div>
 </div>
@@ -2267,6 +2282,14 @@ const TTS = {
 
   _isNatural(v) { return this._voiceRank(v) >= 40; },
 
+  // Heuristic gender from voice name (Web Speech API has no gender field).
+  _voiceGender(v) {
+    const n = (v.name || '').toLowerCase();
+    if (/\b(aria|zira|emily|hazel|susan|karen|catherine|victoria|monica|samantha|ava|helena|libby|mia|natasha|raveena|vicki|salli|joanna|kendra|kimberly|ivy|amy|emma|olivia|elsa|alice|alva|nora|yuna|tessa|veena|naja|aditi|lekha|laila|zosia|ioana|marisol|paulina|sabina|monika|evita|ines|joana|filipa|carmit|daria|milena|hye-won|sin-ji|mei-jia|ting-ting)\b/.test(n)) return 'female';
+    if (/\b(david|george|mark|james|liam|daniel|oliver|noah|william|henry|thomas|arthur|richard|paul|ryan|luke|ethan|rishi|magnus|nils|onyx|steffan|tom|guy|igor|bogdan|dieter|yannick|nicolas|mathieu|pierre|jordi|xavier|enrique|pablo|arjun|kangkang|raman|heami|lee|reed|rod)\b/.test(n)) return 'male';
+    return 'unknown';
+  },
+
   // Compact display name, e.g. "Microsoft Aria Online (Natural) - English (US)" -> "Aria"
   _shortVoiceName(v) {
     if (!v) return 'Voice';
@@ -2310,25 +2333,48 @@ window.speechSynthesis?.addEventListener('voiceschanged', () => TTS.pickDefaultV
 
 // --- Voice Modal ------------------------------------------
 const VoiceModal = {
+  _list: [],
+  _gender: 'all',
+
   open() {
-    const voices = TTS.allVoices();
-    if (!voices.length) { toast('No voices available yet — try again in a moment'); return; }
-    document.getElementById('voice-list').innerHTML = voices.map((v, i) => `
-      <div class="voice-item ${TTS.voice?.name === v.name ? 'active' : ''}" onclick="VoiceModal.select(${i})">
-        <div>
-          <div class="voice-name">${esc(v.name)}${TTS._isNatural(v) ? ' <span class="voice-badge">&#10024; Natural</span>' : ''}</div>
-          <div class="voice-lang">${esc(v.lang)}${v.localService ? ' &middot; Local' : ' &middot; Online'}</div>
-        </div>
-        ${TTS.voice?.name === v.name ? '<span class="voice-check">&#10003;</span>' : ''}
-      </div>`).join('');
+    this._list = TTS.allVoices();
+    if (!this._list.length) { toast('No voices available yet — try again in a moment'); return; }
+    this._render();
     document.getElementById('voice-modal').classList.add('open');
   },
 
-  select(i) {
-    TTS.voice = TTS.allVoices()[i];
-    localStorage.setItem('kba_voice', TTS.voice.name);
+  setGender(g) {
+    this._gender = g;
+    document.querySelectorAll('.vf-btn').forEach(b =>
+      b.classList.toggle('active', b.textContent.toLowerCase() === g)
+    );
+    this._render();
+  },
+
+  _render() {
+    const filtered = this._list.filter(v =>
+      this._gender === 'all' || TTS._voiceGender(v) === this._gender
+    );
+    const glyph = v => { const g = TTS._voiceGender(v); return g === 'female' ? ' <span style="opacity:.6">♀</span>' : g === 'male' ? ' <span style="opacity:.6">♂</span>' : ''; };
+    document.getElementById('voice-list').innerHTML = filtered.length
+      ? filtered.map(v => `
+        <div class="voice-item ${TTS.voice?.name === v.name ? 'active' : ''}" onclick="VoiceModal.selectNamed(this.dataset.vname)" data-vname="${esc(v.name)}">
+          <div>
+            <div class="voice-name">${esc(v.name)}${TTS._isNatural(v) ? ' <span class="voice-badge">&#10024; Natural</span>' : ''}${glyph(v)}</div>
+            <div class="voice-lang">${esc(v.lang)}${v.localService ? ' &middot; Local' : ' &middot; Online'}</div>
+          </div>
+          ${TTS.voice?.name === v.name ? '<span class="voice-check">&#10003;</span>' : ''}
+        </div>`).join('')
+      : '<p style="padding:1.2rem;text-align:center;color:var(--text-dim);font-size:0.85rem">No voices in this category</p>';
+  },
+
+  selectNamed(name) {
+    const v = this._list.find(x => x.name === name);
+    if (!v) return;
+    TTS.voice = v;
+    localStorage.setItem('kba_voice', v.name);
     TTS.updateVoiceLabel();
-    toast('Voice: ' + TTS.voice.name);
+    toast('Voice: ' + v.name);
     this.close();
     if (TTS.active) { window.speechSynthesis.cancel(); TTS._speak(); }
   },
