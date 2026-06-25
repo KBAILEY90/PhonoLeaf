@@ -786,9 +786,9 @@ const CONFIG = {
   CLIENT_ID:   '871446308528-r12mb3i1r87jrk681ms3bp55msubojt7.apps.googleusercontent.com',
   FOLDER_NAME: 'Rakuten Kobo',
   SCOPE:       'https://www.googleapis.com/auth/drive.readonly',
-  // For the Google Picker "browse Drive" folder selector. Enable the Picker API
-  // in Google Cloud and paste a (referrer-restricted) browser API key here.
-  // Until set, Settings → Change folder falls back to a typed-name modal.
+  // Optional: the Google Picker (browse-Drive folder selector) runs on the
+  // login OAuth token alone. A browser API key here is only needed for Picker
+  // quota tracking — leave blank otherwise. (Requires the Picker API enabled.)
   API_KEY:     '',
 };
 
@@ -1080,12 +1080,13 @@ function setFolder(id, name) {
   Library.load();
 }
 
-// Google Picker: browse Drive and pick a folder. Needs CONFIG.API_KEY + the
-// Picker API enabled; otherwise falls back to a typed-name modal.
+// Google Picker: browse Drive and pick a folder using the OAuth token from
+// login (no separate API key needed — the developer key is optional). Falls
+// back to a typed-name modal only if the Picker can't load/run.
 const FolderPicker = {
   _loading: false,
   open() {
-    if (!CONFIG.API_KEY) { FolderModal.open(); return; }
+    if (!State.token) { FolderModal.open(); return; } // not signed in
     if (window.google && google.picker) return this._show();
     if (this._loading) return;
     this._loading = true;
@@ -1099,17 +1100,17 @@ const FolderPicker = {
     try {
       const view = new google.picker.DocsView(google.picker.ViewId.FOLDERS)
         .setSelectFolderEnabled(true).setMimeTypes('application/vnd.google-apps.folder');
-      new google.picker.PickerBuilder()
+      const pb = new google.picker.PickerBuilder()
         .addView(view)
         .setOAuthToken(State.token)
-        .setDeveloperKey(CONFIG.API_KEY)
         .setTitle('Select which folder to read from')
         .setCallback(d => {
           if (d.action === google.picker.Action.PICKED && d.docs && d.docs[0]) {
             setFolder(d.docs[0].id, d.docs[0].name);
           }
-        })
-        .build().setVisible(true);
+        });
+      if (CONFIG.API_KEY) pb.setDeveloperKey(CONFIG.API_KEY); // optional (quota)
+      pb.build().setVisible(true);
     } catch (e) { console.error('picker failed', e); FolderModal.open(); }
   },
 };

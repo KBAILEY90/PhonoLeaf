@@ -153,14 +153,14 @@ Google login); verify by inspection + the owner testing on device.
   name in `kba_user`/`State.userName`, and the Home title shows
   "Good {morning/afternoon/evening}, {name}".
 - **Drive folder is changeable (Google Picker + fallback).** Settings → "Change"
-  → `FolderPicker.open()`: if `CONFIG.API_KEY` is set it lazy-loads
-  `apis.google.com/js/api.js` + the Picker and lets you browse Drive for a
-  folder; otherwise it opens `FolderModal` (a styled in-app typed-name modal —
-  no native `prompt`). `setFolder(id,name)` persists `kba_folder_id` (picked id,
-  wins) / `kba_folder` (name) and reloads; `Library.load` uses
-  `activeFolderId() || findFolder(activeFolder())`. **To enable browse-Drive:
-  enable the Picker API in Google Cloud and put a referrer-restricted browser
-  API key in `CONFIG.API_KEY`.**
+  → `FolderPicker.open()` lazy-loads `apis.google.com/js/api.js` + the Picker and
+  browses Drive for a folder using the **login OAuth token** (`setOAuthToken`) —
+  **no separate API key needed**; `CONFIG.API_KEY` is optional (only added via
+  `setDeveloperKey` for quota when present). Requires the Picker API enabled in
+  Google Cloud. Falls back to `FolderModal` (styled in-app typed-name modal, no
+  native `prompt`) if not signed in or the Picker fails to load. `setFolder(id,
+  name)` persists `kba_folder_id` (picked id, wins) / `kba_folder` (name) and
+  reloads; `Library.load` uses `activeFolderId() || findFolder(activeFolder())`.
 - **Home "jump back in"** shows only *started* books (a `kba_prog` entry with a
   `ts`) opened in the **last 30 days**, newest (left) → oldest; clamped to the
   cover width (`.cr-item { min-width:0; overflow:hidden }`) so a long title can't
