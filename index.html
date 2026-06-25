@@ -691,7 +691,7 @@
   <div id="tts-prog-line"><div id="tts-prog"></div></div>
 
   <div class="reader-top">
-    <button class="icon-btn" onclick="Reader.minimize()" aria-label="Reduce" style="color:var(--text)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>
+    <button class="icon-btn" onclick="Reader.minimize()" aria-label="Back to home" style="color:var(--text)"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg></button>
     <span class="reader-top-page" id="rs-page">Page &ndash;</span>
     <button class="icon-btn" onclick="ChapterModal.open()" aria-label="Chapters">&#9776;</button>
   </div>
@@ -757,6 +757,17 @@
   </div>
 </div>
 
+<!-- ============== FOLDER MODAL (fallback when Picker isn't configured) ============== -->
+<div class="modal-backdrop" id="folder-modal" onclick="FolderModal.close(event)">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Choose your books folder</div>
+    <p style="font-size:0.82rem;color:var(--text-dim);margin:0 0 0.9rem">Please type which Google Drive folder to read from.</p>
+    <input id="folder-input" type="text" placeholder="Folder name" style="width:100%;background:var(--bg);color:var(--text);border:0.5px solid var(--line);border-radius:10px;padding:0.6rem 0.8rem;font:0.9rem var(--font-ui);outline:none;margin-bottom:0.9rem">
+    <button onclick="FolderModal.submit()" style="width:100%;background:var(--accent);color:#fff;border:none;border-radius:10px;padding:0.7rem;font:500 0.9rem var(--font-ui);cursor:pointer">Load folder</button>
+  </div>
+</div>
+
 <!-- ============== TOAST ============== -->
 <div id="toast"></div>
 <div id="scrub-pop"></div>
@@ -775,6 +786,10 @@ const CONFIG = {
   CLIENT_ID:   '871446308528-r12mb3i1r87jrk681ms3bp55msubojt7.apps.googleusercontent.com',
   FOLDER_NAME: 'Rakuten Kobo',
   SCOPE:       'https://www.googleapis.com/auth/drive.readonly',
+  // For the Google Picker "browse Drive" folder selector. Enable the Picker API
+  // in Google Cloud and paste a (referrer-restricted) browser API key here.
+  // Until set, Settings → Change folder falls back to a typed-name modal.
+  API_KEY:     '',
 };
 
 // --- State -----------------------------------------------
@@ -793,6 +808,10 @@ const State = {
 // The Google Drive folder to read books from — overridable in Settings.
 function activeFolder() {
   try { return localStorage.getItem('kba_folder') || CONFIG.FOLDER_NAME; } catch (_) { return CONFIG.FOLDER_NAME; }
+}
+// A specific folder id (set when picked via Google Picker); takes priority.
+function activeFolderId() {
+  try { return localStorage.getItem('kba_folder_id') || ''; } catch (_) { return ''; }
 }
 
 // --- Utilities -------------------------------------------
@@ -948,14 +967,18 @@ const Home = {
        <div class="stat"><b>${s.streak}</b><span>day streak</span></div>
        <div class="stat"><b>${s.books}</b><span>in progress</span></div>`;
 
+    // Only books actually started, in the last 30 days, newest (left) → oldest.
+    const cutoff = Date.now() - 30 * 864e5;
     const recent = books.map((b, i) => ({ b, i }))
-      .sort((a, z) => (prog[z.b.id]?.ts || 0) - (prog[a.b.id]?.ts || 0)).slice(0, 12);
+      .filter(({ b }) => { const p = prog[b.id]; return p && p.ts && p.ts >= cutoff; })
+      .sort((a, z) => prog[z.b.id].ts - prog[a.b.id].ts)
+      .slice(0, 20);
     document.getElementById('home-recent').innerHTML = recent.map(({ b, i }) => {
       const t = b.name.replace(/\.epub$/i, ''), cov = Covers.urls[b.id];
       return `<div class="cr-item" onclick="Player.play(${i})">
         <div class="cr-cover" style="${cov ? `background-image:url('${esc(cov)}')` : ''}"></div>
         <div class="cr-title">${esc(t)}</div></div>`;
-    }).join('') || '<div class="home-empty">No books yet.</div>';
+    }).join('') || '<div class="home-empty">Books you’ve started will appear here.</div>';
   },
 };
 
@@ -1039,19 +1062,76 @@ const Settings = {
     const f = document.getElementById('set-folder'); if (f) f.textContent = activeFolder();
     const a = document.getElementById('set-account'); if (a) a.textContent = State.userName ? 'Signed in as ' + State.userName : 'Signed in';
   },
-  changeFolder() {
-    const cur = activeFolder();
-    const n = prompt('Read books from which Google Drive folder?', cur);
-    if (n == null) return;
-    const name = n.trim();
-    if (!name || name === cur) return;
-    try { localStorage.setItem('kba_folder', name); } catch (_) {}
-    this.render();
-    toast(`Loading "${name}"…`);
-    Library.load();
-  },
+  changeFolder() { FolderPicker.open(); },
   setTheme(mode) { Theme.apply(mode); this.render(); },
   setSpeed(v) { try { localStorage.setItem('kba_speed', v); } catch (_) {} TTS.setRate(v); const r = document.getElementById('speed-select'); if (r) r.value = v; },
+};
+
+// --- Drive folder selection -------------------------------
+// Persist a chosen folder (id wins; name is for display + the no-key fallback)
+// and reload the library.
+function setFolder(id, name) {
+  try {
+    if (id) localStorage.setItem('kba_folder_id', id); else localStorage.removeItem('kba_folder_id');
+    if (name) localStorage.setItem('kba_folder', name);
+  } catch (_) {}
+  Settings.render();
+  toast(`Loading "${name || 'folder'}"…`);
+  Library.load();
+}
+
+// Google Picker: browse Drive and pick a folder. Needs CONFIG.API_KEY + the
+// Picker API enabled; otherwise falls back to a typed-name modal.
+const FolderPicker = {
+  _loading: false,
+  open() {
+    if (!CONFIG.API_KEY) { FolderModal.open(); return; }
+    if (window.google && google.picker) return this._show();
+    if (this._loading) return;
+    this._loading = true;
+    const s = document.createElement('script');
+    s.src = 'https://apis.google.com/js/api.js';
+    s.onload = () => gapi.load('picker', () => { this._loading = false; this._show(); });
+    s.onerror = () => { this._loading = false; toast('Could not load the Drive picker'); FolderModal.open(); };
+    document.head.appendChild(s);
+  },
+  _show() {
+    try {
+      const view = new google.picker.DocsView(google.picker.ViewId.FOLDERS)
+        .setSelectFolderEnabled(true).setMimeTypes('application/vnd.google-apps.folder');
+      new google.picker.PickerBuilder()
+        .addView(view)
+        .setOAuthToken(State.token)
+        .setDeveloperKey(CONFIG.API_KEY)
+        .setTitle('Select which folder to read from')
+        .setCallback(d => {
+          if (d.action === google.picker.Action.PICKED && d.docs && d.docs[0]) {
+            setFolder(d.docs[0].id, d.docs[0].name);
+          }
+        })
+        .build().setVisible(true);
+    } catch (e) { console.error('picker failed', e); FolderModal.open(); }
+  },
+};
+
+// Typed-folder fallback (replaces the native prompt so the wording is ours).
+const FolderModal = {
+  open() {
+    const i = document.getElementById('folder-input');
+    if (i) i.value = activeFolder();
+    document.getElementById('folder-modal').classList.add('open');
+    if (i) setTimeout(() => i.focus(), 50);
+  },
+  submit() {
+    const v = (document.getElementById('folder-input').value || '').trim();
+    if (!v) return;
+    this.close();
+    setFolder('', v); // clear any picked id; look up by name
+  },
+  close(e) {
+    if (!e || e.target.classList.contains('modal-backdrop'))
+      document.getElementById('folder-modal').classList.remove('open');
+  },
 };
 
 // --- Auth -------------------------------------------------
@@ -1218,7 +1298,8 @@ const Library = {
     grid.innerHTML = '<div class="loading"><div class="spinner"></div><span>Finding your books...</span></div>';
     try {
       const folder = activeFolder();
-      const fid = await Drive.findFolder(folder);
+      let fid = activeFolderId();
+      if (!fid) fid = await Drive.findFolder(folder);
       if (!fid) {
         grid.innerHTML = `<div class="empty"><p>Could not find a folder named<br><strong>"${esc(folder)}"</strong><br>in your Google Drive.</p></div>`;
         return;
@@ -1532,14 +1613,9 @@ const Reader = {
     // If TTS was reading and asked to turn the page, resume on the new page.
     if (TTS.active && TTS._awaitingPage) {
       TTS._awaitingPage = false;
-      // Small delay so the new page is fully laid out in the iframe, then
-      // re-extract its text (now that geometry has settled) before reading —
-      // this is what tells a blank page apart from stale previous-page text.
-      setTimeout(() => {
-        if (!TTS.active) return;
-        TTS.loadPageText();
-        TTS._speak();
-      }, 350);
+      // Resume on the new page, retrying until its text is actually laid out so
+      // the audio matches the visible page.
+      setTimeout(() => TTS._resumeRead(0), 80);
     }
   },
 
@@ -1557,8 +1633,17 @@ const Reader = {
     el.addEventListener('touchend', e => {
       const t = e.changedTouches[0], dx = t.clientX - sx, dy = t.clientY - sy;
       touched = Date.now();
-      if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy)) { dx < 0 ? this.next() : this.prev(); } // swipe = turn page
-      else if (Math.abs(dx) < 12 && Math.abs(dy) < 12) { this.toggleChrome(); }                      // tap = toggle controls
+      if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy)) {        // swipe = turn page
+        clearTimeout(this._tapT); this._tapT = null;
+        dx < 0 ? this.next() : this.prev();
+      } else if (Math.abs(dx) < 12 && Math.abs(dy) < 12) {           // tap
+        if (this._tapT) {                  // second tap within the window = double-tap
+          clearTimeout(this._tapT); this._tapT = null;
+          TTS.toggle();                    // double-tap = play / pause
+        } else {                           // wait briefly to see if a second tap follows
+          this._tapT = setTimeout(() => { this._tapT = null; this.toggleChrome(); }, 280);
+        }
+      }
     }, { passive: true });
     el.addEventListener('click', () => { if (Date.now() - touched < 500) return; this.toggleChrome(); });
     this._rv().addEventListener('mousemove', () => { if (!this._rv().classList.contains('minimized')) this.revealChrome(); });
@@ -1793,6 +1878,21 @@ const TTS = {
     document.getElementById('play-btn').classList.add('playing');
     Stats.startTick();
     turn();
+  },
+
+  // Read the page we just navigated to, retrying until its text is actually
+  // laid out — so the audio matches the visible page (no stale or skipped text).
+  _resumeRead(tries) {
+    if (!this.active) return;
+    const doc = document.querySelector('#viewer iframe')?.contentDocument;
+    const hasText = !!(doc && doc.body && doc.body.textContent.trim());
+    this._lastText = ''; this.chunks = []; this.idx = 0; // force fresh extraction
+    this.loadPageText();
+    if (!this.chunks.length && hasText && (tries || 0) < 10) {
+      setTimeout(() => this._resumeRead((tries || 0) + 1), 120); // page not laid out yet
+      return;
+    }
+    this._speak();
   },
 
   _speak() {

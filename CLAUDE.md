@@ -130,11 +130,17 @@ Google login); verify by inspection + the owner testing on device.
   (`#tts-prog`), a `.reader-top` bar, a seek scrubber + the floating `.tts-pill`
   in `.reader-bottom`. Touches inside the epub iframe don't reach the parent, so
   a transparent `#reader-touch` overlay (`Reader._bindGestures`, bound once)
-  captures them: **swipe L/R turns the page**, a **tap toggles** the controls;
-  on desktop a **click toggles** and **mousemove reveals**. `hideChromeSoon()`
-  hides `hide-chrome` ~3.2s into playback; `showChrome`/`revealChrome`/
-  `toggleChrome` manage it; `Reader.expand()` always shows controls on entry
-  (fixes "controls never appear when expanding a playing book").
+  captures them: **swipe L/R turns the page**, a **single tap toggles** the
+  controls (debounced ~280ms via `_tapT`), a **double-tap plays/pauses**
+  (`TTS.toggle`); on desktop a **click toggles** and **mousemove reveals**.
+  `hideChromeSoon()` hides `hide-chrome` ~3.2s into playback;
+  `showChrome`/`revealChrome`/`toggleChrome` manage it; `Reader.expand()`
+  always shows controls on entry. The reader's top-left button is a clear back
+  **arrow** (`Reader.minimize()` → Home).
+- **Audio↔page sync (`TTS._resumeRead`).** After any page change the resume
+  retries extraction until the new page's text is actually laid out (forcing a
+  fresh `loadPageText` each try, up to ~10×/120ms), instead of reading on a
+  fixed timer — fixes audio reading stale/skipped text when layout lagged.
 - **Seek scrubber (`Scrub`)** lives on the Home mini-player hero and in the
   reader; both are `.scrub` range inputs wired by **delegated** input/change.
   Dragging shows `#scrub-pop` (chapter + `p. N/total` + %, from
@@ -146,12 +152,19 @@ Google login); verify by inspection + the owner testing on device.
   `about → user.displayName` (works under `drive.readonly`), caches the first
   name in `kba_user`/`State.userName`, and the Home title shows
   "Good {morning/afternoon/evening}, {name}".
-- **Drive folder is changeable.** `activeFolder()` = `localStorage.kba_folder ||
-  CONFIG.FOLDER_NAME`; `Library.load` reads it; Settings → "Change"
-  (`Settings.changeFolder`, a `prompt`) saves a new folder and reloads.
-- **Home "jump back in" items clamp to the cover width** (`.cr-item` gets
-  `min-width:0; overflow:hidden`) so a long title can't widen the item and space
-  the covers apart (flex `min-width:auto` guard).
+- **Drive folder is changeable (Google Picker + fallback).** Settings → "Change"
+  → `FolderPicker.open()`: if `CONFIG.API_KEY` is set it lazy-loads
+  `apis.google.com/js/api.js` + the Picker and lets you browse Drive for a
+  folder; otherwise it opens `FolderModal` (a styled in-app typed-name modal —
+  no native `prompt`). `setFolder(id,name)` persists `kba_folder_id` (picked id,
+  wins) / `kba_folder` (name) and reloads; `Library.load` uses
+  `activeFolderId() || findFolder(activeFolder())`. **To enable browse-Drive:
+  enable the Picker API in Google Cloud and put a referrer-restricted browser
+  API key in `CONFIG.API_KEY`.**
+- **Home "jump back in"** shows only *started* books (a `kba_prog` entry with a
+  `ts`) opened in the **last 30 days**, newest (left) → oldest; clamped to the
+  cover width (`.cr-item { min-width:0; overflow:hidden }`) so a long title can't
+  space the covers apart (flex `min-width:auto` guard).
 - **Mini-player + minimize (playback decoupled from the visible reader).**
   `Reader.open(index, mode)`: `'full'` (from Library / expand) shows the reading
   page; `'mini'` (from Home / `Player.play`) keeps the reader **laid out but
