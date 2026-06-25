@@ -272,11 +272,7 @@ Google login); verify by inspection + the owner testing on device.
   `Reader._persistPosition()` also snapshots the current page on
   `visibilitychange`(hidden)/`pagehide`/`Reader.close()` so abrupt PWA exits
   don't lose the spot.
-- **Reader status bar** (`#rs-chapter` + `#rs-page` pill) shows the chapter name
-  and `Page X / Y` (epub.js's per-section `loc.start.displayed`). It's a pinned
-  bar in the column flex layout (visible on any device); the `relocated` handler
-  is registered *before* `display()` so it populates on open. The bottom panel's
-  small line shows `"{pct}% through the book"` to avoid duplicating the chapter.
+- **Reader overlay top bar (`.reader-top`)** shows: `[← back]` · `[chapter name + Page X/Y center]` · `[≡ chapters]`. `#rs-chapter` (chapter title, `0.72rem` bold) and `#rs-page` (page pill, `0.65rem` dim) are stacked in `.reader-top-center`; both live in the hideable chrome so they appear/disappear with the overlay. `_onRelocated` populates both from `loc`. The bottom `reader-meta` shows only `{pct}% through the book` (`#tts-chapter`).
 - **Chapter jump** (`ChapterModal`): TOC hrefs can be relative to the nav doc
   and/or carry a `#fragment` that won't match epub.js's spine lookup, so passing
   the raw href to `display()` silently fails. `_resolveHref()` resolves it to a
@@ -300,7 +296,13 @@ Google login); verify by inspection + the owner testing on device.
   once to grab its cover — heavy on a large library (revisit for the product).
 - **Voices**: `TTS` ranks system voices (Natural/Neural/Siri/Google/Online float
   to top), auto-selects the best, persists the choice (`kba_voice`), and shows
-  the active voice on the reader's `#voice-btn`.
+  the active voice on the reader's `#voice-btn`. **`VoiceModal`** caches the
+  voice list at `open()` time into `_list` (fixes an index-mismatch bug where
+  `allVoices()` could re-sort between render and select). Selection is
+  name-based (`selectNamed`, `data-vname` attribute) not index-based. Gender
+  filter tabs (All / Female / Male) use `TTS._voiceGender(v)` — a heuristic
+  regex match on the voice name since Web Speech API has no gender field. A ♀/♂
+  glyph appears next to recognised voices.
 - **Web Speech TTS does not play in the background / with the screen locked** on
   mobile. This is a platform limitation, not a bug — see roadmap.
 - Use `100dvh` (not `100vh`) for full-height views so mobile browser chrome
