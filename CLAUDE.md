@@ -107,7 +107,20 @@ Google login); verify by inspection + the owner testing on device.
   "Jump back in" cover row. **Library** keeps the grid + a search field
   (`Library.filter`, index-preserving). **Settings (`Settings`)** holds the theme
   switcher, default speed (`kba_speed`, restored on boot + in `TTS.rate`), the
-  voice picker (`VoiceModal`), and account/sign-out + folder.
+  voice picker (`VoiceModal`), and account/sign-out + folder. The Home title is
+  "Home" (not "Your library" — it's not the Library tab).
+- **Epub metadata (`Meta`, `kba_meta`)**: `Meta.capture(id, book)` reads
+  `book.packaging.metadata` (author=`creator`, `year` from `pubdate`, publisher,
+  language) for free during cover extraction (`Covers._extract`/`fromBook`) and
+  on open, and caches it in `localStorage`. Library cards show the author on a
+  fixed-height `.book-meta` line (replaced the file-size line) so cards are a
+  uniform height — grid spacing no longer depends on title length; titles are
+  single-line ellipsis-clipped to the cover width. (Genre isn't a reliable epub
+  field; `subject` is sometimes present but inconsistent.)
+- **Covers/metadata refresh Home as they load.** `Covers` runs in the
+  background after the library loads; each finished cover now also re-renders
+  Home (when it's the active tab) so the dashboard's covers/authors fill in
+  without first visiting Library.
 - **Listening stats (`Stats`, `kba_stats`)**: a 5-second interval started in
   `TTS.start`/`skipPage` and cleared in `TTS.stop` accumulates seconds per day
   (`days[YYYY-MM-DD]`); `summary()` derives hours-this-week, a consecutive-day
