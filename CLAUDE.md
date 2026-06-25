@@ -133,14 +133,20 @@ Google login); verify by inspection + the owner testing on device.
   captures them: **swipe L/R turns the page**, a **single tap toggles** the
   controls (debounced ~280ms via `_tapT`), a **double-tap plays/pauses**
   (`TTS.toggle`); on desktop a **click toggles** and **mousemove reveals**.
-  `hideChromeSoon()` hides `hide-chrome` ~3.2s into playback;
-  `showChrome`/`revealChrome`/`toggleChrome` manage it; `Reader.expand()`
-  always shows controls on entry. The reader's top-left button is a clear back
-  **arrow** (`Reader.minimize()` → Home).
+  `hideChromeSoon(ms=5000)` hides `hide-chrome`; it's armed **once** in
+  `TTS.start` (not per chunk) so a tap/`revealChrome` gives a full ~5s before it
+  fades again; `Reader.expand()` always shows controls on entry. The reader's
+  top-left button is a clear back **arrow** (`Reader.minimize()` → Home).
 - **Audio↔page sync (`TTS._resumeRead`).** After any page change the resume
-  retries extraction until the new page's text is actually laid out (forcing a
-  fresh `loadPageText` each try, up to ~10×/120ms), instead of reading on a
-  fixed timer — fixes audio reading stale/skipped text when layout lagged.
+  retries extraction until the new page's text is actually laid out **and** is no
+  longer the page we left (`_prevText`, set in `skipPage`/forward-advance) —
+  forcing a fresh `loadPageText` each try (~14×/110ms). epub can report the old
+  column for a frame after `next()`, so without the `_prevText` guard the audio
+  read the previous page; this is the real fix for "audio doesn't match".
+- **Back/edge-swipe steps back in-app, doesn't exit.** The full reader
+  `pushState({app:'reader'})` (in `open` 'full' + `expand`); a `popstate` handler
+  (bound in boot, after `replaceState({app:'base'})`) minimizes the reader to
+  Home instead of leaving, and otherwise re-pushes a sentinel to stay in the app.
 - **Seek scrubber (`Scrub`)** lives on the Home mini-player hero and in the
   reader; both are `.scrub` range inputs wired by **delegated** input/change.
   Dragging shows `#scrub-pop` (chapter + `p. N/total` + %, from
@@ -154,13 +160,20 @@ Google login); verify by inspection + the owner testing on device.
   "Good {morning/afternoon/evening}, {name}".
 - **Drive folder is changeable (Google Picker + fallback).** Settings → "Change"
   → `FolderPicker.open()` lazy-loads `apis.google.com/js/api.js` + the Picker and
-  browses Drive for a folder using the **login OAuth token** (`setOAuthToken`) —
-  **no separate API key needed**; `CONFIG.API_KEY` is optional (only added via
-  `setDeveloperKey` for quota when present). Requires the Picker API enabled in
-  Google Cloud. Falls back to `FolderModal` (styled in-app typed-name modal, no
-  native `prompt`) if not signed in or the Picker fails to load. `setFolder(id,
-  name)` persists `kba_folder_id` (picked id, wins) / `kba_folder` (name) and
-  reloads; `Library.load` uses `activeFolderId() || findFolder(activeFolder())`.
+  browses Drive **hierarchically** (`DocsView(ViewId.DOCS).setParent(start)` with
+  `setIncludeFolders`/`setSelectFolderEnabled`, folders-only, LIST mode), where
+  `start` = the current folder id or `'root'` (My Drive). Uses the **login OAuth
+  token** (`setOAuthToken`) + `setOrigin` — **no separate API key**;
+  `CONFIG.API_KEY` is optional (`setDeveloperKey`, quota only). Needs the Picker
+  API enabled. Falls back to `FolderModal` (styled in-app typed-name modal, no
+  native `prompt`) if not signed in or the Picker fails. `setFolder(id, name)`
+  persists `kba_folder_id` (picked id, wins) / `kba_folder` (name) and reloads;
+  `Library.load` uses `activeFolderId() || findFolder(activeFolder())`.
+- **Folder onboarding.** When no folder is found / no books, the Library and Home
+  empty states show a "Choose folder" button (`Library._pickBtn` →
+  `FolderPicker.open`). `State.ready` (set when a load attempt finishes) gates the
+  Home prompt so it shows "Loading your library…" first rather than flashing the
+  onboarding for users who do have books.
 - **Home "jump back in"** shows only *started* books (a `kba_prog` entry with a
   `ts`) opened in the **last 30 days**, newest (left) → oldest; clamped to the
   cover width (`.cr-item { min-width:0; overflow:hidden }`) so a long title can't

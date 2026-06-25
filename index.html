@@ -801,6 +801,7 @@ const State = {
   epubBook:    null,
   toc:         [],
   userName:    (() => { try { return localStorage.getItem('kba_user') || ''; } catch (_) { return ''; } })(),
+  ready:       false, // true once a library load attempt has finished
   progress:    JSON.parse(localStorage.getItem('kba_prog') || '{}'),
   saveProgress() { localStorage.setItem('kba_prog', JSON.stringify(this.progress)); },
 };
@@ -958,7 +959,9 @@ const Home = {
           </div>
         </div>`;
     } else {
-      contEl.innerHTML = books.length ? '' : '<div class="home-empty">Open a book to start listening.</div>';
+      contEl.innerHTML = books.length ? '' : (State.ready
+        ? `<div class="home-empty">Choose your Google Drive books folder to get started.</div>${Library._pickBtn()}`
+        : '<div class="home-empty">Loading your library…</div>');
     }
 
     const s = Stats.summary();
@@ -1098,12 +1101,20 @@ const FolderPicker = {
   },
   _show() {
     try {
-      const view = new google.picker.DocsView(google.picker.ViewId.FOLDERS)
-        .setSelectFolderEnabled(true).setMimeTypes('application/vnd.google-apps.folder');
+      // Start at the folder in use (when re-selecting) or My Drive root, and let
+      // the user navigate the real folder hierarchy (only folders are shown).
+      const start = activeFolderId() || 'root';
+      const view = new google.picker.DocsView(google.picker.ViewId.DOCS)
+        .setParent(start)
+        .setIncludeFolders(true)
+        .setSelectFolderEnabled(true)
+        .setMimeTypes('application/vnd.google-apps.folder')
+        .setMode(google.picker.DocsViewMode.LIST);
       const pb = new google.picker.PickerBuilder()
+        .setOrigin(location.protocol + '//' + location.host)
         .addView(view)
         .setOAuthToken(State.token)
-        .setTitle('Select which folder to read from')
+        .setTitle('Select your books folder')
         .setCallback(d => {
           if (d.action === google.picker.Action.PICKED && d.docs && d.docs[0]) {
             setFolder(d.docs[0].id, d.docs[0].name);
@@ -1302,12 +1313,16 @@ const Library = {
       let fid = activeFolderId();
       if (!fid) fid = await Drive.findFolder(folder);
       if (!fid) {
-        grid.innerHTML = `<div class="empty"><p>Could not find a folder named<br><strong>"${esc(folder)}"</strong><br>in your Google Drive.</p></div>`;
+        State.books = []; State.ready = true;
+        grid.innerHTML = `<div class="empty"><p>Choose the Google Drive folder<br>your epubs live in to get started.</p>${this._pickBtn()}</div>`;
+        Home.render();
         return;
       }
       State.books = await Drive.listEpubs(fid);
+      State.ready = true;
       if (!State.books.length) {
-        grid.innerHTML = `<div class="empty"><p>No epub files found in<br><strong>"${esc(folder)}"</strong>.</p></div>`;
+        grid.innerHTML = `<div class="empty"><p>No epub files found in<br><strong>"${esc(folder)}"</strong>.</p>${this._pickBtn()}</div>`;
+        Home.render();
         return;
       }
       this.render();
@@ -1357,6 +1372,10 @@ const Library = {
   },
 
   refresh() { this.load(); },
+
+  _pickBtn() {
+    return `<button onclick="FolderPicker.open()" style="margin-top:1rem;padding:0.6rem 1.2rem;background:var(--accent);color:#fff;border:none;border-radius:10px;font:500 0.85rem var(--font-ui);cursor:pointer">Choose folder</button>`;
+  },
 };
 
 // --- Cover cache (IndexedDB) ------------------------------
@@ -1495,6 +1514,7 @@ const Reader = {
       rv.classList.remove('minimized');
       showView('reader');
       Nav.hideBar();
+      history.pushState({ app: 'reader' }, ''); // Back/swipe minimizes instead of exiting
     }
     document.getElementById('reader-loading').classList.remove('hidden');
     document.getElementById('tts-chapter').textContent = '';
@@ -1654,9 +1674,9 @@ const Reader = {
   _chromeT: null,
   _rv() { return document.getElementById('reader-view'); },
   showChrome() { clearTimeout(this._chromeT); this._rv().classList.remove('hide-chrome'); },
-  hideChromeSoon() {
+  hideChromeSoon(ms) {
     clearTimeout(this._chromeT);
-    this._chromeT = setTimeout(() => { if (TTS.active) this._rv().classList.add('hide-chrome'); }, 3200);
+    this._chromeT = setTimeout(() => { if (TTS.active) this._rv().classList.add('hide-chrome'); }, ms || 5000);
   },
   revealChrome() { this._rv().classList.remove('hide-chrome'); this.hideChromeSoon(); },
   toggleChrome() {
@@ -1700,6 +1720,7 @@ const Reader = {
     rv.classList.remove('minimized');
     Nav.hideBar();
     showView('reader');
+    history.pushState({ app: 'reader' }, ''); // so Back/swipe minimizes, not exits
     this.showChrome();                  // always show controls on entry…
     if (TTS.active) this.hideChromeSoon(); // …then fade while reading
   },
@@ -1851,6 +1872,7 @@ const TTS = {
     this._dir = 1; // pressing play always reads forward
     document.getElementById('play-btn').classList.add('playing');
     Stats.startTick();
+    Reader.hideChromeSoon(); // fade the controls ~5s after playback starts
     if (document.getElementById('reader-view').classList.contains('minimized')) Home.render();
     // If the current page has no readable text (e.g. the cover), _speak() will
     // turn the page and keep going until it finds something to read.
@@ -1878,6 +1900,7 @@ const TTS = {
     this._skips = 0;
     document.getElementById('play-btn').classList.add('playing');
     Stats.startTick();
+    this._prevText = this._lastText; // remember the page we're leaving (sync guard)
     turn();
   },
 
@@ -1889,10 +1912,14 @@ const TTS = {
     const hasText = !!(doc && doc.body && doc.body.textContent.trim());
     this._lastText = ''; this.chunks = []; this.idx = 0; // force fresh extraction
     this.loadPageText();
-    if (!this.chunks.length && hasText && (tries || 0) < 10) {
-      setTimeout(() => this._resumeRead((tries || 0) + 1), 120); // page not laid out yet
+    // Keep retrying while the page isn't laid out yet, OR the text we extracted
+    // is still the page we just left (epub can report the old column for a frame).
+    const stale = this._lastText && this._lastText === this._prevText;
+    if (((!this.chunks.length && hasText) || stale) && (tries || 0) < 14) {
+      setTimeout(() => this._resumeRead((tries || 0) + 1), 110);
       return;
     }
+    this._prevText = '';
     this._speak();
   },
 
@@ -1916,6 +1943,7 @@ const TTS = {
         return;
       }
       this._awaitingPage = true;
+      this._prevText = this._lastText; // sync guard for the resume
       if (State.rendition) State.rendition.next();
       else this.stop();
       return;
@@ -1926,7 +1954,6 @@ const TTS = {
     u.voice = this.voice;
     this._skips = 0; // we found real text — reset the blank-page counter
     this._dir = 1;   // reading real content — from here the flow is forward
-    Reader.hideChromeSoon(); // fade the controls while actively reading
     u.onend   = () => { this.idx++; if (this.active) this._speak(); };
     u.onerror = e => { if (e.error !== 'interrupted') console.warn('TTS:', e.error); };
     window.speechSynthesis.speak(u);
@@ -2091,6 +2118,18 @@ window.addEventListener('load', () => {
   // When following the system theme, re-skin an open book if the OS flips mode.
   if (window.matchMedia) matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
     if (Theme.mode() === 'auto' && State.rendition) Reader.applyReadTheme();
+  });
+
+  // Back/edge-swipe should step back inside the app, not leave it. The full
+  // reader pushes a history entry; popping it minimizes to Home instead.
+  history.replaceState({ app: 'base' }, '');
+  window.addEventListener('popstate', () => {
+    const rv = document.getElementById('reader-view');
+    if (rv && rv.classList.contains('active') && !rv.classList.contains('minimized')) {
+      Reader.minimize();
+    } else {
+      history.pushState({ app: 'base' }, ''); // stay in the app
+    }
   });
 
   if ('serviceWorker' in navigator) {
