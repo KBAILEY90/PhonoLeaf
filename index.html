@@ -1789,11 +1789,20 @@ const Reader = {
   // Page-turn slide (v1): a keyframe on #viewer so the motion is visible
   // regardless of when the relocate lands. A true finger-following live preview
   // of the prev/next page is a bigger epub.js task — this is the first pass.
+  // The element to slide: the epub iframe itself (transforming the #viewer
+  // ancestor doesn't reliably repaint a cross-document iframe on mobile).
+  _pageEl() { return document.querySelector('#viewer iframe') || document.getElementById('viewer'); },
+
   _turnAnim(dir) {
-    const v = document.getElementById('viewer'); if (!v) return;
-    v.classList.remove('turn-next', 'turn-prev');
-    void v.offsetWidth; // reflow so the animation restarts every turn
-    v.classList.add(dir < 0 ? 'turn-prev' : 'turn-next');
+    const v = this._pageEl(); if (!v) return;
+    v.style.transition = 'transform .15s ease, opacity .15s ease';
+    v.style.transform = `translateX(${dir < 0 ? '30px' : '-30px'})`;
+    v.style.opacity = '0.35';
+    clearTimeout(this._animClr);
+    this._animClr = setTimeout(() => {
+      const w = this._pageEl(); if (!w) return;   // re-query: the iframe may have swapped
+      w.style.transform = 'translateX(0)'; w.style.opacity = '1';
+    }, 160);
   },
 
   // Briefly fade a play/pause icon in/out (on double-tap toggle).
@@ -1816,7 +1825,6 @@ const Reader = {
     if (this._gesturesBound) return;
     this._gesturesBound = true;
     const el = document.getElementById('reader-touch');
-    const vw = () => document.getElementById('viewer');
     let sx = 0, sy = 0, dragging = false, decided = false;
 
     el.addEventListener('touchstart', e => {
@@ -1835,17 +1843,18 @@ const Reader = {
         dragging = Math.abs(dx) > Math.abs(dy); // horizontal intent only
       }
       if (!dragging) return;
-      const v = vw(); if (!v) return;
-      const w = v.offsetWidth || 400;
+      e.preventDefault(); // own the gesture so the browser doesn't swallow the move
+      const v = this._pageEl(); if (!v) return;
+      const w = v.offsetWidth || window.innerWidth || 400;
       v.style.transition = 'none';
       v.style.transform = `translateX(${dx}px)`;
       v.style.opacity = String(Math.max(0.35, 1 - Math.abs(dx) / w));
-    }, { passive: true });
+    }, { passive: false });
 
     el.addEventListener('touchend', e => {
       const t = e.changedTouches[0], dx = t.clientX - sx, dy = t.clientY - sy;
       if (dragging) {
-        const v = vw(), w = (v && v.offsetWidth) || 400;
+        const v = this._pageEl(), w = (v && v.offsetWidth) || window.innerWidth || 400;
         if (Math.abs(dx) > Math.min(90, w * 0.2)) this._dragCommit(dx < 0 ? 1 : -1); // far enough → turn
         else this._dragSnapBack();                                                    // not far → spring back
         return;
@@ -1868,7 +1877,7 @@ const Reader = {
   },
 
   _dragSnapBack() {
-    const v = document.getElementById('viewer'); if (!v) return;
+    const v = this._pageEl(); if (!v) return;
     v.style.transition = 'transform .2s ease, opacity .2s ease';
     v.style.transform = 'translateX(0)';
     v.style.opacity = '1';
@@ -1877,20 +1886,22 @@ const Reader = {
   // Commit a finger-drag turn: slide the page the rest of the way out, turn it
   // (the keyframe is suppressed via _dragTurn), then slide the new page in.
   _dragCommit(dir) { // dir: 1 = next, -1 = prev
-    const v = document.getElementById('viewer'); if (!v) return;
+    const v = this._pageEl(); if (!v) return;
     v.style.transition = 'transform .14s ease, opacity .14s ease';
     v.style.transform = `translateX(${dir > 0 ? '-110%' : '110%'})`;
     v.style.opacity = '0.15';
     this._dragAnimT = setTimeout(() => {
       this._dragTurn = true;
       dir > 0 ? this.next() : this.prev();
-      v.style.transition = 'none';
-      v.style.transform = `translateX(${dir > 0 ? '110%' : '-110%'})`;
-      v.style.opacity = '0.15';
+      const w = this._pageEl(); if (!w) return;   // re-query: the iframe may have swapped
+      w.style.transition = 'none';
+      w.style.transform = `translateX(${dir > 0 ? '110%' : '-110%'})`;
+      w.style.opacity = '0.15';
       requestAnimationFrame(() => {
-        v.style.transition = 'transform .22s ease, opacity .22s ease';
-        v.style.transform = 'translateX(0)';
-        v.style.opacity = '1';
+        const x = this._pageEl(); if (!x) return;
+        x.style.transition = 'transform .22s ease, opacity .22s ease';
+        x.style.transform = 'translateX(0)';
+        x.style.opacity = '1';
       });
     }, 145);
   },
