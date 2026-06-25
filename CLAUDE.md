@@ -131,7 +131,17 @@ Google login); verify by inspection + the owner testing on device.
   (transport + speed + voice). `Reader.hideChromeSoon()` adds `hide-chrome` ~2.6s
   after reading starts; `TTS.stop`/`showChrome()` reveal it; a tap on the viewer
   (small-movement touch in `_addSwipe`) calls `toggleChrome()`.
-- **TTS reads only the currently visible page**, then turns the page via
+- **Mini-player + minimize (playback decoupled from the visible reader).**
+  `Reader.open(index, mode)`: `'full'` (from Library / expand) shows the reading
+  page; `'mini'` (from Home / `Player.play`) keeps the reader **laid out but
+  hidden** — `.view.minimized` is `position:fixed; inset:0; z-index:-1;
+  pointer-events:none`, so the rendition geometry stays valid and TTS keeps
+  working while the Home hero acts as the player. The hero shows the
+  loaded/most-recent book with stacked play/pause + expand buttons (`Player`);
+  `Reader.expand()` un-minimizes to full screen and the reader's top-left button
+  (`Reader.minimize()`) shrinks back to Home. Tab views are opaque (`--bg`) so
+  the minimized reader stays hidden behind them. NB: TTS needs a laid-out
+  rendition — never `display:none` the reader while it should keep playing.
 - **TTS reads only the currently visible page**, then turns the page via
   `rendition.next()`. `TTS.loadPageText()` extracts text from nodes whose
   on-screen box is inside the viewer (epub.js paginated mode keeps the whole

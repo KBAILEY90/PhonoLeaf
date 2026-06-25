@@ -543,6 +543,19 @@
     .tts-pill { display: flex; align-items: center; gap: 0.6rem; background: var(--surface); border: 0.5px solid var(--line); border-radius: 999px; padding: 0.4rem 0.6rem; box-shadow: 0 4px 18px rgba(0,0,0,0.18); }
     #reader-view.hide-chrome .reader-top { opacity: 0; transform: translateY(-8px); pointer-events: none; }
     #reader-view.hide-chrome .reader-bottom { opacity: 0; transform: translateY(12px); pointer-events: none; }
+
+    /* Minimized reader: kept laid out (so TTS geometry stays valid) but hidden
+       behind the active tab; the Home hero acts as the mini-player. */
+    .view.minimized { display: flex !important; position: fixed; inset: 0; z-index: -1; pointer-events: none; }
+    #home-view, #settings-view { background: var(--bg); }
+    /* Home hero player buttons — play stacked over expand, same size/shape/color */
+    .hh-btns { display: flex; flex-direction: column; gap: 7px; flex-shrink: 0; }
+    .hh-btn { width: 38px; height: 38px; border-radius: 50%; background: var(--accent); border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #fff; }
+    .hh-btn.play::before { content: ''; width: 0; height: 0; margin-left: 3px; border-style: solid; border-width: 7px 0 7px 12px; border-color: transparent transparent transparent #fff; }
+    .hh-btn.play::after { content: ''; display: none; }
+    .hh-btn.play.playing { gap: 4px; }
+    .hh-btn.play.playing::before, .hh-btn.play.playing::after { content: ''; display: block; width: 4px; height: 14px; margin: 0; border: 0; border-radius: 1px; background: #fff; }
+    .hh-btn.expand svg { width: 17px; height: 17px; stroke: #fff; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
   </style>
   <script>
     /* Apply the saved theme before paint to avoid a flash. 'auto' (default)
@@ -658,7 +671,7 @@
   <div id="tts-prog-line"><div id="tts-prog"></div></div>
 
   <div class="reader-top">
-    <button class="icon-btn" onclick="Reader.close()" aria-label="Back" style="color:var(--text)">&larr;</button>
+    <button class="icon-btn" onclick="Reader.minimize()" aria-label="Reduce" style="color:var(--text)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>
     <span class="reader-top-page" id="rs-page">Page &ndash;</span>
     <button class="icon-btn" onclick="ChapterModal.open()" aria-label="Chapters">&#9776;</button>
   </div>
@@ -861,28 +874,41 @@ const Nav = {
 
 // --- Home dashboard ---------------------------------------
 const Home = {
+  // Index of the book to feature in the hero: the one currently loaded, else the
+  // most recently read. -1 if the library is empty.
+  _continueIndex() {
+    const books = State.books || [], prog = State.progress || {};
+    if (State.currentBook) { const i = books.indexOf(State.currentBook); if (i >= 0) return i; }
+    let idx = -1, best = -1;
+    books.forEach((b, i) => { const p = prog[b.id]; if (p && (p.ts || 1) > best) { best = p.ts || 1; idx = i; } });
+    return idx;
+  },
+
   render() {
     const books = State.books || [], prog = State.progress || {};
     const h = new Date().getHours();
     document.getElementById('home-greet').textContent = h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
 
-    // Continue = the book with the most recent saved position.
-    let cont = null, best = -1;
-    books.forEach((b, i) => { const p = prog[b.id]; if (p && (p.ts || 1) > best) { best = p.ts || 1; cont = { b, i, p }; } });
+    const hi = this._continueIndex();
     const contEl = document.getElementById('home-continue');
-    if (cont) {
-      const t = cont.b.name.replace(/\.epub$/i, ''), cov = Covers.urls[cont.b.id];
-      const sub = [cont.p.chapter, cont.p.pct ? cont.p.pct + '%' : ''].filter(Boolean).join(' · ');
+    if (hi >= 0) {
+      const b = books[hi], p = prog[b.id] || {};
+      const t = b.name.replace(/\.epub$/i, ''), cov = Covers.urls[b.id];
+      const playing = State.currentBook === b && TTS.active;
+      const sub = [Meta.get(b.id)?.author, p.chapter, p.pct ? p.pct + '%' : ''].filter(Boolean).join(' · ');
       contEl.innerHTML =
         `<div class="home-hero">
           <div class="hh-cover" style="${cov ? `background-image:url('${esc(cov)}')` : ''}"></div>
           <div class="hh-info">
-            <div class="hh-k">Continue</div>
+            <div class="hh-k">${playing ? 'Now playing' : 'Continue'}</div>
             <div class="hh-title">${esc(t)}</div>
             <div class="hh-sub">${esc(sub)}</div>
-            <div class="hh-bar"><div style="width:${cont.p.pct || 0}%"></div></div>
+            <div class="hh-bar"><div style="width:${p.pct || 0}%"></div></div>
           </div>
-          <button class="hh-play" aria-label="Resume" onclick="Reader.open(${cont.i})"></button>
+          <div class="hh-btns">
+            <button class="hh-btn play${playing ? ' playing' : ''}" aria-label="Play or pause" onclick="Player.toggle(${hi})"></button>
+            <button class="hh-btn expand" aria-label="Open reader" onclick="Player.expand(${hi})"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+          </div>
         </div>`;
     } else {
       contEl.innerHTML = books.length ? '' : '<div class="home-empty">Open a book to start listening.</div>';
@@ -898,10 +924,31 @@ const Home = {
       .sort((a, z) => (prog[z.b.id]?.ts || 0) - (prog[a.b.id]?.ts || 0)).slice(0, 12);
     document.getElementById('home-recent').innerHTML = recent.map(({ b, i }) => {
       const t = b.name.replace(/\.epub$/i, ''), cov = Covers.urls[b.id];
-      return `<div class="cr-item" onclick="Reader.open(${i})">
+      return `<div class="cr-item" onclick="Player.play(${i})">
         <div class="cr-cover" style="${cov ? `background-image:url('${esc(cov)}')` : ''}"></div>
         <div class="cr-title">${esc(t)}</div></div>`;
     }).join('') || '<div class="home-empty">No books yet.</div>';
+  },
+};
+
+// --- Player: Home mini-player (audio without opening the reader) ----
+const Player = {
+  // Select a book from Home → play audio only (reader stays minimized).
+  play(i) {
+    const b = State.books[i];
+    if (b && State.currentBook === b && State.rendition) { TTS.toggle(); Home.render(); return; }
+    Reader.open(i, 'mini');
+  },
+  // Hero play/pause button.
+  toggle(i) {
+    if (State.rendition && State.currentBook === State.books[i]) { TTS.toggle(); Home.render(); return; }
+    this.play(i >= 0 ? i : Home._continueIndex());
+  },
+  // Hero expand / full-screen button → open the full reading page.
+  expand(i) {
+    if (State.rendition && State.currentBook === State.books[i]) { Reader.expand(); return; }
+    const idx = i >= 0 ? i : Home._continueIndex();
+    if (idx >= 0) Reader.open(idx, 'full');
   },
 };
 
@@ -1248,12 +1295,22 @@ const Covers = {
 
 // --- Reader ----------------------------------------------
 const Reader = {
-  async open(index) {
+  // mode 'full' (from Library) opens the reading page; mode 'mini' (from Home)
+  // keeps the reader laid out but hidden behind Home so audio plays without the
+  // reading page — the Home hero acts as the mini-player.
+  async open(index, mode = 'full') {
     const book = State.books[index];
     State.currentBook = book;
-    showView('reader');
-    Nav.hideBar();
-    document.getElementById('reader-view').classList.remove('hide-chrome');
+    const rv = document.getElementById('reader-view');
+    rv.classList.remove('hide-chrome');
+    if (mode === 'mini') {
+      rv.classList.remove('active');
+      rv.classList.add('minimized'); // laid out (TTS geometry valid) but hidden
+    } else {
+      rv.classList.remove('minimized');
+      showView('reader');
+      Nav.hideBar();
+    }
     document.getElementById('reader-loading').classList.remove('hidden');
     document.getElementById('tts-chapter').textContent = '';
     document.getElementById('rs-chapter').textContent = '–';
@@ -1330,6 +1387,8 @@ const Reader = {
       // (Blank first pages like the cover are skipped by _speak's page-turn loop.)
       setTimeout(() => { if (State.currentBook === book && !TTS.active) TTS.start(); }, 400);
 
+      if (mode === 'mini') Home.render(); // reflect the now-playing book in the hero
+
     } catch (e) {
       console.error(e);
       document.getElementById('reader-loading').classList.add('hidden');
@@ -1361,6 +1420,7 @@ const Reader = {
     // Persist (incl. chapter + timestamp so Home's "Continue" can use it).
     State.progress[bookId] = { cfi: loc.start.cfi, pct, chapter, ts: Date.now() };
     State.saveProgress();
+    if (Nav.current === 'home' && document.getElementById('reader-view').classList.contains('minimized')) Home.render();
 
     // Feed the new page's visible text to TTS (no-op if it's the same page).
     TTS.loadPageText();
@@ -1430,6 +1490,24 @@ const Reader = {
 
   next() { TTS._dir = 1;  TTS.skipPage(() => State.rendition?.next()); },
   prev() { TTS._dir = -1; TTS.skipPage(() => State.rendition?.prev()); },
+
+  // Bring the (minimized) reader to full screen — the "expand / full screen".
+  expand() {
+    const rv = document.getElementById('reader-view');
+    rv.classList.remove('minimized');
+    Nav.hideBar();
+    showView('reader');
+  },
+
+  // Shrink the full reader back to the Home mini-player; playback continues
+  // (the reader stays laid out behind Home so TTS keeps working).
+  minimize() {
+    const rv = document.getElementById('reader-view');
+    rv.classList.remove('active');
+    rv.classList.add('minimized');
+    this.showChrome();
+    Nav.go('home');
+  },
 
   close() {
     this._persistPosition();
@@ -1568,6 +1646,7 @@ const TTS = {
     this._dir = 1; // pressing play always reads forward
     document.getElementById('play-btn').classList.add('playing');
     Stats.startTick();
+    if (document.getElementById('reader-view').classList.contains('minimized')) Home.render();
     // If the current page has no readable text (e.g. the cover), _speak() will
     // turn the page and keep going until it finds something to read.
     this._speak();
@@ -1581,6 +1660,7 @@ const TTS = {
     if (btn) btn.classList.remove('playing');
     Stats.stopTick();
     Reader.showChrome();
+    if (document.getElementById('reader-view').classList.contains('minimized')) Home.render();
   },
 
   // Turn the page via `turn` and auto-read the new page once it relocates.
