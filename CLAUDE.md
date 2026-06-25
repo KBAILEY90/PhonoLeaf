@@ -90,25 +90,39 @@ Google login); verify by inspection + the owner testing on device.
   `--line` (hairlines), `--overlay` (hover), `--track` (subtle fills/borders),
   `--cover-fallback`, `--read-bg`/`--read-text`, `--font-ui`/`--font-read` — never
   hardcode a hex that assumes one mode.
-- **Reader has a real dark reading surface.** `Reader.applyReadTheme()`
+- **Reader reading surface (dimmed + centered).** `Reader.applyReadTheme()`
   registers an epub.js theme (`rendition.themes.register('kb', …)`) that sets the
-  iframe `body` color/background to match the app theme (light `#fff`/`#2a2a2e`,
-  dark `#15161e`/`#cdd0e0`), and `--read-bg`/`--read-text` match so the letterbox
-  agrees. Called on `Reader.open` and re-applied by `Theme.apply` / the
-  `prefers-color-scheme` change listener when in `auto`.
-- **App shell is a 3-tab nav (`Nav`): Home · Library · Settings.** A fixed
-  `.tab-bar` (`#tab-bar`, `.show` toggles visibility) sits under the three main
-  `.view`s; `Nav.go(tab)` swaps the view via `showView`, marks the active tab,
-  shows the bar, and re-renders Home/Settings. The bar is hidden on sign-in and
-  in the reader (`Nav.hideBar()`); `Reader.close()` returns via `Nav.go`. Auth
-  success now lands on **Home**, not Library.
+  iframe `body` to match the app theme — light is a **softly dimmed** `#f3f1ea`
+  (not stark white) / `#2b2b2b`, dark `#15161e`/`#cdd0e0` — plus `padding:0.5em
+  5%` (side margins to centre the text) and `line-height:1.65`. `--read-bg`/
+  `--read-text` match so the letterbox agrees. Called on `Reader.open` and
+  re-applied by `Theme.apply` / the `prefers-color-scheme` listener when `auto`.
+- **~4s pause before a new chapter.** `_onRelocated` sets `TTS._chapterPause`
+  when `loc.start.index` (spine section) changes from `TTS._lastSection`; `_speak`
+  then waits 4s (`_chapterT`) before the section's first words. Reset on
+  `Reader.open`; cleared in `TTS.stop`.
+- **Page-turn slide animation (v1).** Manual navigation (`TTS.skipPage`) slides
+  the `#viewer` out (`Reader._turnOut(dir)`) and `_onRelocated` slides the new
+  page in (`_turnIn`, gated by `_animPending` so passive auto-advance during
+  listening doesn't animate). A true finger-following live preview of the
+  prev/next page is still a larger epub.js task — this is the first pass.
+- **App shell is a 4-tab nav (`Nav`): Home · Library · Stats · Settings.** A fixed
+  `.tab-bar` (`#tab-bar`, `.show` toggles visibility) sits under the main `.view`s;
+  `Nav.go(tab)` swaps the view via `showView`, marks the active tab, shows the
+  bar, and re-renders Home/Stats/Settings. The bar is hidden on sign-in and in the
+  reader (`Nav.hideBar()`); `Reader.close()` returns via `Nav.go`. Auth success
+  lands on **Home**.
 - **Home (`Home.render`)** = "Continue" hero (most recent `kba_prog` entry, which
-  now stores `{cfi,pct,chapter,ts}`), three stat tiles (`Stats.summary()`), and a
-  "Jump back in" cover row. **Library** keeps the grid + a search field
-  (`Library.filter`, index-preserving). **Settings (`Settings`)** holds the theme
-  switcher, default speed (`kba_speed`, restored on boot + in `TTS.rate`), the
-  voice picker (`VoiceModal`), and account/sign-out + folder. The Home title is
-  "Home" (not "Your library" — it's not the Library tab).
+  now stores `{cfi,pct,chapter,ts}`), three stat tiles (`Stats.summary()`; tapping
+  them opens the Stats tab), and a "Jump back in" cover row. **Library** keeps the
+  grid + a search field (`Library.filter`, index-preserving). **Settings**
+  (`Settings`) holds the theme switcher, default speed (`kba_speed`), voice picker,
+  account/sign-out + folder. The Home title shows the greeting + user name.
+- **Stats tab (`StatsPage.render` → `#stats-view`)** derives metrics from the
+  listening data (`Stats.data.days`), progress (`kba_prog`), and cached epub
+  metadata (`Meta`): all-time / this-week hours, day streak, library/started/
+  finished counts, a 14-day CSS bar chart, top authors, languages, and the
+  publication-year range.
 - **Epub metadata (`Meta`, `kba_meta`)**: `Meta.capture(id, book)` reads
   `book.packaging.metadata` (author=`creator`, `year` from `pubdate`, publisher,
   language) for free during cover extraction (`Covers._extract`/`fromBook`) and
@@ -145,13 +159,13 @@ Google login); verify by inspection + the owner testing on device.
   forcing a fresh `loadPageText` each try (~14×/110ms). epub can report the old
   column for a frame after `next()`, so without the `_prevText` guard the audio
   read the previous page; this is the real fix for "audio doesn't match".
-- **Back/edge-swipe steps back in-app, doesn't exit.** Boot does
-  `replaceState({app:'base'})` then `pushState({app:'home'})` (a buffer); the full
+- **Back/edge-swipe steps back in-app, doesn't exit.** `App._initHistory()` runs
+  **after auth** (not at boot — else the back-gesture peek flashed the sign-in
+  view): `replaceState({app:'base'})` + `pushState({app:'home'})` buffer. The full
   reader `pushState({app:'reader'})` (in `open` 'full' + `expand`). A `popstate`
-  handler: in the full reader → `Reader.minimize()` (→ Home); at Home, the first
+  handler: in the full reader → `Reader.minimize()` (→ Home); at Home the first
   Back shows a "Swipe again to leave" toast and re-pushes a buffer (`_exitArmed`,
-  2s window); a second Back within the window calls `history.back()` to actually
-  leave.
+  2s); a second Back within the window calls `history.back()` to actually leave.
 - **Seek scrubber (`Scrub`)** lives on the Home mini-player hero and in the
   reader; both are `.scrub` range inputs wired by **delegated** input/change.
   Dragging shows `#scrub-pop` (chapter + `p. N/total` + %, from

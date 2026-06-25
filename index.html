@@ -28,8 +28,8 @@
       --overlay:   rgba(0,0,0,0.05);
       --track:     rgba(0,0,0,0.10);
       --cover-fallback: #e7e8f0;
-      --read-bg:   #ffffff;
-      --read-text: #333333;
+      --read-bg:   #f3f1ea;
+      --read-text: #2b2b2b;
       --font-ui:   'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       --font-read: 'Literata', Georgia, serif;
       --radius:    12px;
@@ -547,7 +547,14 @@
     /* Minimized reader: kept laid out (so TTS geometry stays valid) but hidden
        behind the active tab; the Home hero acts as the mini-player. */
     .view.minimized { display: flex !important; position: fixed; inset: 0; z-index: -1; pointer-events: none; }
-    #home-view, #settings-view { background: var(--bg); }
+    #home-view, #settings-view, #stats-view { background: var(--bg); }
+    /* Stats page */
+    .bars { display: flex; align-items: flex-end; gap: 4px; height: 92px; margin-bottom: 1.3rem; }
+    .bar { flex: 1; background: var(--track); border-radius: 3px; display: flex; align-items: flex-end; overflow: hidden; }
+    .bar-fill { width: 100%; background: var(--accent); border-radius: 3px; min-height: 2px; }
+    .srow { display: flex; justify-content: space-between; gap: 1rem; padding: 0.6rem 0.2rem; border-bottom: 0.5px solid var(--line); font-size: 0.86rem; }
+    .srow span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .srow-n { color: var(--text-dim); flex-shrink: 0; }
     /* Home hero player buttons — play stacked over expand, same size/shape/color */
     .hh-btns { display: flex; flex-direction: column; gap: 7px; flex-shrink: 0; }
     .hh-btn { width: 38px; height: 38px; border-radius: 50%; background: var(--accent); border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #fff; }
@@ -633,7 +640,7 @@
   <div class="scrolly">
     <div class="home-title" id="home-title">Home</div>
     <div id="home-continue"></div>
-    <div class="stat-row" id="home-stats"></div>
+    <div class="stat-row" id="home-stats" onclick="Nav.go('stats')" style="cursor:pointer"></div>
     <div class="sec-label">Jump back in <a onclick="Nav.go('library')">See all</a></div>
     <div class="cover-row" id="home-recent"></div>
   </div>
@@ -699,6 +706,14 @@
   </div>
 </div>
 
+<!-- ============== STATS VIEW ============== -->
+<div id="stats-view" class="view">
+  <div class="scrolly">
+    <div class="home-title">Your stats</div>
+    <div id="stats-body"></div>
+  </div>
+</div>
+
 <!-- ============== READER VIEW (immersive) ============== -->
 <div id="reader-view" class="view">
   <div id="tts-prog-line"><div id="tts-prog"></div></div>
@@ -746,6 +761,9 @@
   </button>
   <button class="tab" data-tab="library" onclick="Nav.go('library')">
     <svg viewBox="0 0 24 24"><path d="M5 4h5v16H5z"/><path d="M10 4h5v16h-5z"/><path d="M15 5l4 .8-2.6 14.5-4-.8"/></svg>Library
+  </button>
+  <button class="tab" data-tab="stats" onclick="Nav.go('stats')">
+    <svg viewBox="0 0 24 24"><path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M2 20h20"/></svg>Stats
   </button>
   <button class="tab" data-tab="settings" onclick="Nav.go('settings')">
     <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 13a7.6 7.6 0 0 0 0-2l2-1.5-2-3.4-2.3 1a7.6 7.6 0 0 0-1.7-1L15 3.4h-4l-.4 2.6a7.6 7.6 0 0 0-1.7 1l-2.3-1-2 3.4L6.6 11a7.6 7.6 0 0 0 0 2l-2 1.5 2 3.4 2.3-1a7.6 7.6 0 0 0 1.7 1l.4 2.6h4l.4-2.6a7.6 7.6 0 0 0 1.7-1l2.3 1 2-3.4z"/></svg>Settings
@@ -938,6 +956,7 @@ const Nav = {
     document.querySelectorAll('#tab-bar .tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
     document.getElementById('tab-bar').classList.add('show');
     if (tab === 'home') Home.render();
+    if (tab === 'stats') StatsPage.render();
     if (tab === 'settings') Settings.render();
   },
   hideBar() { document.getElementById('tab-bar').classList.remove('show'); },
@@ -1094,6 +1113,47 @@ const Settings = {
   setSpeed(v) { try { localStorage.setItem('kba_speed', v); } catch (_) {} TTS.setRate(v); const r = document.getElementById('speed-select'); if (r) r.value = v; },
 };
 
+// --- Stats page (from listening data + cached epub metadata) ---
+const StatsPage = {
+  render() {
+    const days = (Stats.data && Stats.data.days) || {}, prog = State.progress || {}, books = State.books || [];
+    const key = o => o.toISOString().slice(0, 10);
+    const now = new Date();
+    let total = 0; for (const k in days) total += days[k];
+    const sum = Stats.summary();
+    const started = Object.values(prog).filter(p => p && p.ts).length;
+    const finished = Object.values(prog).filter(p => p && (p.pct || 0) >= 95).length;
+
+    // Last 14 days (minutes/day).
+    const bars = []; let maxMin = 1;
+    for (let i = 13; i >= 0; i--) { const d = new Date(now); d.setDate(now.getDate() - i); const m = Math.round((days[key(d)] || 0) / 60); bars.push(m); if (m > maxMin) maxMin = m; }
+
+    // Authors / languages / year range from cached metadata.
+    const authors = {}, langs = {}; let yMin = null, yMax = null;
+    for (const b of books) {
+      const m = Meta.get(b.id); if (!m) continue;
+      if (m.author) authors[m.author] = (authors[m.author] || 0) + 1;
+      if (m.language) { const l = m.language.toUpperCase(); langs[l] = (langs[l] || 0) + 1; }
+      const y = parseInt(m.year, 10); if (y) { if (yMin == null || y < yMin) yMin = y; if (yMax == null || y > yMax) yMax = y; }
+    }
+    const topAuthors = Object.entries(authors).sort((a, z) => z[1] - a[1]).slice(0, 5);
+
+    const fmtH = h => h >= 1 ? h.toFixed(1) + 'h' : Math.round(h * 60) + 'm';
+    const tile = (b, l) => `<div class="stat"><b>${esc(b)}</b><span>${esc(l)}</span></div>`;
+    const srow = (a, n) => `<div class="srow"><span>${esc(a)}</span><span class="srow-n">${esc(n)}</span></div>`;
+
+    document.getElementById('stats-body').innerHTML =
+      `<div class="stat-row">${tile(fmtH(total / 3600), 'all time')}${tile(sum.hours, 'this week')}${tile(sum.streak, 'day streak')}</div>
+       <div class="stat-row">${tile(books.length, 'in library')}${tile(started, 'started')}${tile(finished, 'finished')}</div>
+       <div class="sec-label">Last 14 days</div>
+       <div class="bars">${bars.map(m => `<div class="bar"><div class="bar-fill" style="height:${Math.round((m / maxMin) * 100)}%"></div></div>`).join('')}</div>
+       ${topAuthors.length ? `<div class="sec-label">Top authors</div>${topAuthors.map(([a, n]) => srow(a, n)).join('')}` : ''}
+       ${(yMin || Object.keys(langs).length) ? `<div class="sec-label">Library</div>` : ''}
+       ${yMin ? srow('Publication years', yMin === yMax ? yMin : `${yMin}–${yMax}`) : ''}
+       ${Object.keys(langs).length ? srow('Languages', Object.keys(langs).join(', ')) : ''}`;
+  },
+};
+
 // --- Drive folder selection -------------------------------
 // Persist a chosen folder (id wins; name is for display + the no-key fallback)
 // and reload the library.
@@ -1199,6 +1259,7 @@ const App = {
     if (saved && saved.exp > Date.now() + 30000) {
       State.token = saved.token;
       Nav.go('home');
+      this._initHistory();
       this.loadUser();
       Library.load(); // a stale/revoked token surfaces as a 401 -> silent refresh
     }
@@ -1210,6 +1271,16 @@ const App = {
   },
   _loadAuth() {
     try { return JSON.parse(localStorage.getItem('kba_auth') || 'null'); } catch (_) { return null; }
+  },
+
+  // Set up in-app history once we're past sign-in, so the Back/swipe buffer
+  // snapshots Home (not the sign-in view → no flash on the first swipe).
+  _histInit: false,
+  _initHistory() {
+    if (this._histInit) return;
+    this._histInit = true;
+    history.replaceState({ app: 'base' }, '');
+    history.pushState({ app: 'home' }, '');
   },
 
   // Fetch the signed-in user's name (Drive "about") to greet them on Home.
@@ -1242,6 +1313,7 @@ const App = {
     try {
       await this.getToken('');
       Nav.go('home');
+      this._initHistory();
       this.loadUser();
       Library.load();
     } catch (e) {
@@ -1550,6 +1622,7 @@ const Reader = {
     TTS.stop();
     TTS._lastText = ''; // new book — allow the first section's text to load fresh
     TTS.chunks = []; TTS.idx = 0; // drop the previous book's text so auto-start reloads
+    TTS._lastSection = null; TTS._chapterPause = false; // no chapter pause at book open
 
     try {
       toast('Downloading...', 0);
@@ -1634,6 +1707,10 @@ const Reader = {
     const chapter = tocItem?.label?.trim() || `Section ${loc.start.index + 1}`;
     document.getElementById('rs-chapter').textContent = chapter;
 
+    // Entering a new spine section = a new chapter → ask _speak to pause ~4s.
+    if (TTS._lastSection != null && loc.start.index !== TTS._lastSection) TTS._chapterPause = true;
+    TTS._lastSection = loc.start.index;
+
     // Page number within the current chapter (epub.js per-section screen count).
     const d = loc.start.displayed;
     document.getElementById('rs-page').textContent =
@@ -1663,6 +1740,30 @@ const Reader = {
       // the audio matches the visible page.
       setTimeout(() => TTS._resumeRead(0), 80);
     }
+
+    // Slide the new page in (only for manual navigation — see skipPage).
+    if (this._animPending != null) { this._turnIn(this._animPending); this._animPending = null; }
+  },
+
+  // Page-turn slide (v1): current page slides out, the new one slides in. A true
+  // finger-following live preview is a bigger epub.js effort; this is a first pass.
+  _animPending: null,
+  _turnOut(dir) {
+    const v = document.getElementById('viewer'); if (!v) return;
+    v.style.transition = 'transform .16s ease, opacity .16s ease';
+    v.style.transform = `translateX(${dir < 0 ? '26px' : '-26px'})`;
+    v.style.opacity = '0.3';
+  },
+  _turnIn(dir) {
+    const v = document.getElementById('viewer'); if (!v) return;
+    v.style.transition = 'none';
+    v.style.transform = `translateX(${dir < 0 ? '-26px' : '26px'})`;
+    v.style.opacity = '0.3';
+    requestAnimationFrame(() => {
+      v.style.transition = 'transform .2s ease, opacity .2s ease';
+      v.style.transform = 'translateX(0)';
+      v.style.opacity = '1';
+    });
   },
 
   _addSwipe() { this._bindGestures(); }, // open() calls this; overlay is persistent
@@ -1716,8 +1817,14 @@ const Reader = {
   applyReadTheme() {
     if (!State.rendition) return;
     const dark = Theme.isDark();
+    const bg = dark ? '#15161e' : '#f3f1ea';   // softly dimmed page (not stark white)
+    const fg = dark ? '#cdd0e0' : '#2b2b2b';
     try {
-      State.rendition.themes.register('kb', { body: { color: dark ? '#cdd0e0' : '#2a2a2e', background: dark ? '#15161e' : '#ffffff' } });
+      State.rendition.themes.register('kb', {
+        'body': { background: bg + ' !important', color: fg + ' !important',
+                  'padding': '0.5em 5% !important', 'line-height': '1.65 !important' },
+        'p': { 'line-height': '1.65 !important' },
+      });
       State.rendition.themes.select('kb');
     } catch (_) {}
   },
@@ -1781,6 +1888,8 @@ const TTS = {
   _lastText: '',
   _skips: 0,
   _dir: 1, // last navigation direction: 1 = forward, -1 = backward
+  _lastSection: null, // spine index of the section being read (to detect new chapters)
+  _chapterPause: false, _chapterT: null, // ~4s pause when entering a new chapter
 
   // Read only the text on the CURRENTLY VISIBLE page. In paginated mode the
   // iframe holds the whole chapter laid out in off-screen columns, so we keep
@@ -1925,6 +2034,7 @@ const TTS = {
   stop() {
     this.active = false;
     this._awaitingPage = false;
+    this._chapterPause = false; clearTimeout(this._chapterT);
     window.speechSynthesis?.cancel();
     const btn = document.getElementById('play-btn');
     if (btn) btn.classList.remove('playing');
@@ -1944,6 +2054,7 @@ const TTS = {
     document.getElementById('play-btn').classList.add('playing');
     Stats.startTick();
     this._prevText = this._lastText; // remember the page we're leaving (sync guard)
+    Reader._turnOut(this._dir); Reader._animPending = this._dir; // slide animation
     turn();
   },
 
@@ -1989,6 +2100,14 @@ const TTS = {
       this._prevText = this._lastText; // sync guard for the resume
       if (State.rendition) State.rendition.next();
       else this.stop();
+      return;
+    }
+    // Entering a new chapter — hold for ~4s before the first words.
+    if (this._chapterPause) {
+      this._chapterPause = false;
+      window.speechSynthesis.cancel();
+      clearTimeout(this._chapterT);
+      this._chapterT = setTimeout(() => { if (this.active) this._speak(); }, 4000);
       return;
     }
     window.speechSynthesis.cancel();
@@ -2165,8 +2284,6 @@ window.addEventListener('load', () => {
 
   // Back/edge-swipe should step back inside the app, not leave it. The full
   // reader pushes a history entry; popping it minimizes to Home instead.
-  history.replaceState({ app: 'base' }, '');
-  history.pushState({ app: 'home' }, ''); // buffer so the first Back is interceptable
   window.addEventListener('popstate', () => {
     const rv = document.getElementById('reader-view');
     if (rv && rv.classList.contains('active') && !rv.classList.contains('minimized')) {
