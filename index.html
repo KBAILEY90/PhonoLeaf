@@ -762,10 +762,10 @@
 
   <div class="reader-touch" id="reader-touch"></div>
   <div id="tap-fb"></div>
-  <button class="reader-edge re-left" onclick="Reader.prev()" aria-label="Previous page">
+  <button class="reader-edge re-left" onclick="Reader.turnPage(-1)" aria-label="Previous page">
     <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
   </button>
-  <button class="reader-edge re-right" onclick="Reader.next()" aria-label="Next page">
+  <button class="reader-edge re-right" onclick="Reader.turnPage(1)" aria-label="Next page">
     <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
   </button>
 
@@ -773,9 +773,9 @@
     <input type="range" class="scrub" id="reader-scrub" min="0" max="1000" value="0" aria-label="Seek through book">
     <div class="reader-meta"><span id="tts-chapter"></span></div>
     <div class="tts-pill">
-      <button class="ctrl-btn nav" onclick="Reader.prev()" aria-label="Previous">&#9664;&#9664;</button>
+      <button class="ctrl-btn nav" onclick="Reader.turnPage(-1)" aria-label="Previous">&#9664;&#9664;</button>
       <button class="ctrl-btn play" id="play-btn" onclick="TTS.toggle()" aria-label="Play or pause"></button>
-      <button class="ctrl-btn nav" onclick="Reader.next()" aria-label="Next">&#9654;&#9654;</button>
+      <button class="ctrl-btn nav" onclick="Reader.turnPage(1)" aria-label="Next">&#9654;&#9654;</button>
       <select class="speed-select" id="speed-select" onchange="TTS.setRate(+this.value)" aria-label="Speed">
         <option value="0.5">0.5&times;</option>
         <option value="0.75">0.75&times;</option>
@@ -1734,8 +1734,8 @@ const Reader = {
 
       // Keyboard nav inside iframe
       State.rendition.on('keydown', e => {
-        if (e.key === 'ArrowRight') this.next();
-        if (e.key === 'ArrowLeft')  this.prev();
+        if (e.key === 'ArrowRight') this.turnPage(1);
+        if (e.key === 'ArrowLeft')  this.turnPage(-1);
       });
 
       // Auto-start reading once the page has *settled* to the restored position.
@@ -1754,8 +1754,15 @@ const Reader = {
   },
 
   _onRelocated(loc, bookId) {
-    // Drag-turn snap: next()/prev() fires only after the old page is off-screen,
-    // so by the time this relocation lands the slide is done — snap immediately.
+    // Slide-turn: epub has now scrolled the viewport to the neighbour, so drop
+    // the leftover slide transform in this same task — the scroll and the clear
+    // paint together, leaving the destination page in place with no flash.
+    if (this._slidePendingClear) {
+      this._slidePendingClear = false;
+      const el = this._pageEl();
+      if (el) { el.style.transition = 'none'; el.style.transform = 'none'; }
+    }
+    // Boundary render-turn: fade the freshly loaded page back in.
     if (this._dragPendingSnap) this._dragSnapNow();
 
     // Chapter name + page: flatten the full TOC tree (subitems hold the real
@@ -1927,37 +1934,78 @@ const Reader = {
     v.style.transform = 'translateX(0)';
   },
 
-  // Commit a finger-drag turn. The whole trick: slide the CURRENT page fully
-  // off-screen (its content frozen) and only THEN turn the page — while the
-  // iframe is invisible. Turning mid-slide makes epub re-render the iframe's
-  // columns while it's still on screen, which reads as several pages "flying
-  // past". With the turn deferred until off-screen, all the user sees is the
-  // old page leaving, then the new page in place.
-  _dragCommit(dir) { // dir: 1 = next, -1 = prev
-    const v = this._pageEl(); if (!v) return;
-    v.style.opacity = '1';
-    v.style.transition = 'transform .13s ease';
-    v.style.transform = `translateX(${dir > 0 ? '-110%' : '110%'})`;
-    this._dragTurn = true;
-    this._dragPendingSnap = true;
-    // Once the old page is off-screen, perform the turn invisibly. _onRelocated
-    // (or the fallback) then snaps the new page into the centre with no motion.
-    clearTimeout(this._dragAnimT);
-    this._dragAnimT = setTimeout(() => {
+  // --- Page turning -------------------------------------------------------
+  // epub.js renders the WHOLE current section as side-by-side columns inside a
+  // single iframe (e.g. 5120px wide for a 4-page section); the visible page is
+  // just the slice `.epub-container` is scrolled to. So the adjacent page is
+  // ALREADY rendered — a within-section turn is purely a one-page scroll, and
+  // the destination page is what peeks out from under the finger during a drag.
+  //
+  // _slidePage exploits this: translate the iframe one page in the swipe
+  // direction to reveal the already-rendered neighbour, then normalise (advance
+  // the container scroll by one page AND clear the transform in the same frame —
+  // pixel-identical, no repaint) and sync epub's location. The destination page
+  // is visible the entire time, so there's no blank/flash. Returns false at a
+  // section boundary (neighbour lives in another section, not yet rendered) so
+  // the caller can fall back to a render-based turn.
+  _slidePage(dir) { // dir: 1 = next, -1 = prev
+    const v = this._pageEl();
+    const cont = document.querySelector('#viewer .epub-container');
+    const view = document.querySelector('#viewer .epub-view');
+    if (!v || !cont || !view) return false;
+    const pageW = cont.clientWidth;
+    const maxScroll = view.offsetWidth - pageW;
+    const cur = cont.scrollLeft;
+    const dest = cur + (dir > 0 ? pageW : -pageW);
+    if (dest < -1 || dest > maxScroll + 1) return false; // neighbour not rendered
+    // Once the slide has revealed the neighbour, hand off to epub: next()/prev()
+    // scrolls the real viewport from the ORIGINAL position to the neighbour AND
+    // syncs location/CFI/progress/TTS. We DON'T touch scrollLeft ourselves
+    // (that would make epub's relative scroll overshoot). The leftover transform
+    // is cleared in _onRelocated — same task epub reports the move, so the
+    // scroll and the transform-clear paint together: no flash. Driven by
+    // transitionend with a timeout fallback in case the event is missed.
+    this._slidePendingClear = true;
+    let done = false;
+    const advance = () => {
+      if (done) return; done = true;
+      clearTimeout(this._slideT);
+      v.removeEventListener('transitionend', advance);
+      this._dragTurn = true; // we handled the motion; suppress the fade in skipPage
       dir > 0 ? this.next() : this.prev();
-      clearTimeout(this._dragSnapFallback);
-      this._dragSnapFallback = setTimeout(() => this._dragSnapNow(), 350);
-    }, 135);
+    };
+    v.addEventListener('transitionend', advance, { once: true });
+    clearTimeout(this._slideT);
+    this._slideT = setTimeout(advance, 320);
+    v.style.transition = 'transform .2s ease';
+    v.style.transform = `translateX(${dir > 0 ? -pageW : pageW}px)`;
+    return true;
   },
 
-  // Drop the iframe back to centre instantly (no transition) — used once epub
-  // has the new page laid out, so it appears in place rather than sliding in.
+  // Section-boundary turn: the neighbouring page isn't rendered yet (it's in the
+  // next/prev section), so epub must load it. Quick fade to cover the swap.
+  _renderTurn(dir) {
+    const v = this._pageEl();
+    if (v) { v.style.transition = 'opacity .12s ease'; v.style.opacity = '0'; }
+    this._dragTurn = true;
+    this._dragPendingSnap = true; // _onRelocated → _dragSnapNow fades it back in
+    dir > 0 ? this.next() : this.prev();
+  },
+
+  // User-facing page turn (swipe commit, edge arrows, nav buttons, keyboard):
+  // slide within the section, or fall back to a render turn at a boundary.
+  turnPage(dir) {
+    if (!this._slidePage(dir)) this._renderTurn(dir);
+  },
+
+  _dragCommit(dir) { this.turnPage(dir); }, // finger-drag past threshold
+
+  // Restore the iframe (boundary-turn fade-in path; no-op for the slide path).
   _dragSnapNow() {
     if (!this._dragPendingSnap) return;
     this._dragPendingSnap = false;
-    clearTimeout(this._dragSnapFallback);
     const w = this._pageEl(); if (!w) return;
-    w.style.transition = 'none';
+    w.style.transition = 'opacity .18s ease';
     w.style.transform = 'none';
     w.style.opacity = '1';
   },
