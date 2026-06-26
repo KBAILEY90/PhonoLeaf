@@ -531,8 +531,17 @@
     }
     .reader-top-center { flex: 1; min-width: 0; text-align: center; }
     .reader-top-info { font-size: 0.7rem; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .reader-edge { position: absolute; top: 52px; bottom: 96px; width: 14%; z-index: 5; cursor: pointer; }
-    .reader-edge.re-left { left: 0; } .reader-edge.re-right { right: 0; }
+    .reader-edge {
+      position: absolute; top: 52px; bottom: 96px; width: 12%;
+      z-index: 6; display: flex; align-items: center; justify-content: center;
+      background: none; border: none; padding: 0; cursor: pointer;
+      color: var(--text); opacity: 0.28;
+      transition: opacity 0.25s, transform 0.25s;
+    }
+    .reader-edge.re-left { left: 0; }
+    .reader-edge.re-right { right: 0; }
+    .reader-edge:hover { opacity: 0.75; }
+    #reader-view.hide-chrome .reader-edge { opacity: 0; pointer-events: none; transform: none; }
     .reader-bottom {
       position: absolute; left: 0; right: 0; bottom: 0; z-index: 7;
       display: flex; flex-direction: column; align-items: center; gap: 0.5rem;
@@ -753,6 +762,12 @@
 
   <div class="reader-touch" id="reader-touch"></div>
   <div id="tap-fb"></div>
+  <button class="reader-edge re-left" onclick="Reader.prev()" aria-label="Previous page">
+    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+  </button>
+  <button class="reader-edge re-right" onclick="Reader.next()" aria-label="Next page">
+    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+  </button>
 
   <div class="reader-bottom">
     <input type="range" class="scrub" id="reader-scrub" min="0" max="1000" value="0" aria-label="Seek through book">
