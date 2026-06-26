@@ -529,9 +529,8 @@
       background: linear-gradient(var(--surface), transparent);
       transition: opacity 0.25s, transform 0.25s;
     }
-    .reader-top-center { flex: 1; min-width: 0; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 1px; }
-    .reader-top-chapter { font-size: 0.72rem; font-weight: 600; color: var(--text); max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .reader-top-page { font-size: 0.65rem; color: var(--text-dim); }
+    .reader-top-center { flex: 1; min-width: 0; text-align: center; }
+    .reader-top-info { font-size: 0.7rem; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .reader-edge { position: absolute; top: 52px; bottom: 96px; width: 14%; z-index: 5; cursor: pointer; }
     .reader-edge.re-left { left: 0; } .reader-edge.re-right { right: 0; }
     .reader-bottom {
@@ -740,8 +739,7 @@
   <div class="reader-top">
     <button class="icon-btn" onclick="history.back()" aria-label="Back to home" style="color:var(--text)"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg></button>
     <div class="reader-top-center">
-      <div class="reader-top-chapter" id="rs-chapter"></div>
-      <div class="reader-top-page" id="rs-page">Page &ndash;</div>
+      <div class="reader-top-info" id="rs-chapter"></div>
     </div>
     <button class="icon-btn" onclick="ChapterModal.open()" aria-label="Chapters">&#9776;</button>
   </div>
@@ -1656,7 +1654,6 @@ const Reader = {
     document.getElementById('reader-loading').classList.remove('hidden');
     document.getElementById('tts-chapter').textContent = '';
     document.getElementById('rs-chapter').textContent = '–';
-    document.getElementById('rs-page').textContent = 'Page –';
     document.getElementById('tts-prog').style.width = '0%';
     document.getElementById('speed-select').value = TTS.rate;
     TTS.stop();
@@ -1756,21 +1753,26 @@ const Reader = {
       }, wait);
     }
 
-    // Chapter name (status bar).
-    // TOC hrefs are often basename-only ("chapter01.xhtml") while loc.start.href
-    // has a path prefix ("xhtml/chapter01.xhtml") — compare basenames.
-    // Flat TOCs (parts only, no sub-chapters) won't match the current file at all,
-    // so fall back to the nearest preceding TOC entry by spine index.
+    // Chapter name + page: flatten the full TOC tree (subitems hold the real
+    // chapter titles), compare basenames (loc href has a path prefix, TOC hrefs
+    // are often bare filenames), fall back to the nearest preceding entry in
+    // spine order for books where sub-chapters aren't in the TOC at all.
     const href = loc.start.href;
     const curBase = href.split('/').pop()?.split('#')[0];
-    let tocItem = State.toc.find(t => {
+    const flatToc = (items => {
+      const out = [];
+      const walk = arr => arr?.forEach(t => { out.push(t); walk(t.subitems); });
+      walk(items);
+      return out;
+    })(State.toc);
+    let tocItem = flatToc.find(t => {
       const b = t.href?.split('/').pop()?.split('#')[0];
       return b && b === curBase;
     });
     if (!tocItem) {
       const spine = State.epubBook?.spine?.spineItems;
       if (spine) {
-        const preceding = State.toc
+        const preceding = flatToc
           .map(t => {
             const b = t.href?.split('/').pop()?.split('#')[0];
             const si = b ? spine.findIndex(s => s.href.split('/').pop() === b) : -1;
@@ -1782,12 +1784,10 @@ const Reader = {
       }
     }
     const chapter = tocItem?.label?.trim() || `Section ${loc.start.index + 1}`;
-    document.getElementById('rs-chapter').textContent = chapter;
-
-    // Page number within the current chapter (epub.js per-section screen count).
     const d = loc.start.displayed;
-    document.getElementById('rs-page').textContent =
-      d && d.total ? `Page ${d.page} / ${d.total}` : 'Page –';
+    const pageStr = d?.total ? `Page ${d.page} / ${d.total}` : '';
+    document.getElementById('rs-chapter').textContent =
+      pageStr ? `${chapter}  ·  ${pageStr}` : chapter;
 
     // Update progress %
     let pct = 0;
