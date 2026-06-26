@@ -1756,9 +1756,31 @@ const Reader = {
       }, wait);
     }
 
-    // Chapter name (status bar)
+    // Chapter name (status bar).
+    // TOC hrefs are often basename-only ("chapter01.xhtml") while loc.start.href
+    // has a path prefix ("xhtml/chapter01.xhtml") — compare basenames.
+    // Flat TOCs (parts only, no sub-chapters) won't match the current file at all,
+    // so fall back to the nearest preceding TOC entry by spine index.
     const href = loc.start.href;
-    const tocItem = State.toc.find(t => href.includes(t.href?.split('#')[0]));
+    const curBase = href.split('/').pop()?.split('#')[0];
+    let tocItem = State.toc.find(t => {
+      const b = t.href?.split('/').pop()?.split('#')[0];
+      return b && b === curBase;
+    });
+    if (!tocItem) {
+      const spine = State.epubBook?.spine?.spineItems;
+      if (spine) {
+        const preceding = State.toc
+          .map(t => {
+            const b = t.href?.split('/').pop()?.split('#')[0];
+            const si = b ? spine.findIndex(s => s.href.split('/').pop() === b) : -1;
+            return { item: t, si };
+          })
+          .filter(x => x.si >= 0 && x.si <= loc.start.index)
+          .sort((a, b) => a.si - b.si);
+        tocItem = preceding[preceding.length - 1]?.item;
+      }
+    }
     const chapter = tocItem?.label?.trim() || `Section ${loc.start.index + 1}`;
     document.getElementById('rs-chapter').textContent = chapter;
 
@@ -1948,9 +1970,14 @@ const Reader = {
     const bg = dark ? '#15161e' : '#f3f1ea';   // softly dimmed page (not stark white)
     const fg = dark ? '#cdd0e0' : '#2b2b2b';
     try {
+      // Measure the chrome overlays so content isn't hidden under them.
+      // Both are position:absolute over #viewer; absolute elements still have
+      // measurable offsetHeight even when opacity:0.
+      const topH = (document.querySelector('.reader-top')?.offsetHeight || 44) + 10;
+      const botH = (document.querySelector('.reader-bottom')?.offsetHeight || 88) + 10;
       State.rendition.themes.register('kb', {
         'body': { background: bg + ' !important', color: fg + ' !important',
-                  'padding': '0.5em 5% !important', 'line-height': '1.65 !important' },
+                  'padding': `${topH}px 5% ${botH}px !important`, 'line-height': '1.65 !important' },
         'p': { 'line-height': '1.65 !important' },
       });
       State.rendition.themes.select('kb');
