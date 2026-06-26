@@ -1754,19 +1754,9 @@ const Reader = {
   },
 
   _onRelocated(loc, bookId) {
-    // Snap the iframe back as soon as epub has rendered the new page (drag-turn path).
-    // Wait for the slide animation (130ms) before snapping, in case epub rendered faster.
-    if (this._dragPendingSnap) {
-      this._dragPendingSnap = false;
-      clearTimeout(this._dragAnimT);
-      const elapsed = Date.now() - (this._dragSlideStart || 0);
-      const wait = Math.max(0, 130 - elapsed);
-      setTimeout(() => {
-        const w = this._pageEl(); if (!w) return;
-        w.style.transition = 'none';
-        w.style.transform = 'none';
-      }, wait);
-    }
+    // Drag-turn snap: next()/prev() fires only after the old page is off-screen,
+    // so by the time this relocation lands the slide is done — snap immediately.
+    if (this._dragPendingSnap) this._dragSnapNow();
 
     // Chapter name + page: flatten the full TOC tree (subitems hold the real
     // chapter titles), compare basenames (loc href has a path prefix, TOC hrefs
@@ -1937,29 +1927,39 @@ const Reader = {
     v.style.transform = 'translateX(0)';
   },
 
-  // Commit a finger-drag turn: slide the page the rest of the way out, turn it
-  // (the keyframe is suppressed via _dragTurn), then the new page snaps in.
+  // Commit a finger-drag turn. The whole trick: slide the CURRENT page fully
+  // off-screen (its content frozen) and only THEN turn the page — while the
+  // iframe is invisible. Turning mid-slide makes epub re-render the iframe's
+  // columns while it's still on screen, which reads as several pages "flying
+  // past". With the turn deferred until off-screen, all the user sees is the
+  // old page leaving, then the new page in place.
   _dragCommit(dir) { // dir: 1 = next, -1 = prev
     const v = this._pageEl(); if (!v) return;
-    // Ensure opacity is 1 (drag no longer changes it, but guard against old state).
     v.style.opacity = '1';
-    // Slide the old page off-screen. _onRelocated snaps it back the moment epub
-    // has the new page rendered — no fixed wait, so no dark-background gap.
     v.style.transition = 'transform .13s ease';
     v.style.transform = `translateX(${dir > 0 ? '-110%' : '110%'})`;
     this._dragTurn = true;
     this._dragPendingSnap = true;
-    this._dragSlideStart = Date.now();
-    dir > 0 ? this.next() : this.prev();
-    // Fallback: snap back if _onRelocated never fires (e.g. last page of book).
+    // Once the old page is off-screen, perform the turn invisibly. _onRelocated
+    // (or the fallback) then snaps the new page into the centre with no motion.
     clearTimeout(this._dragAnimT);
     this._dragAnimT = setTimeout(() => {
-      if (!this._dragPendingSnap) return;
-      this._dragPendingSnap = false;
-      const w = this._pageEl(); if (!w) return;
-      w.style.transition = 'none';
-      w.style.transform = 'none';
-    }, 400);
+      dir > 0 ? this.next() : this.prev();
+      clearTimeout(this._dragSnapFallback);
+      this._dragSnapFallback = setTimeout(() => this._dragSnapNow(), 350);
+    }, 135);
+  },
+
+  // Drop the iframe back to centre instantly (no transition) — used once epub
+  // has the new page laid out, so it appears in place rather than sliding in.
+  _dragSnapNow() {
+    if (!this._dragPendingSnap) return;
+    this._dragPendingSnap = false;
+    clearTimeout(this._dragSnapFallback);
+    const w = this._pageEl(); if (!w) return;
+    w.style.transition = 'none';
+    w.style.transform = 'none';
+    w.style.opacity = '1';
   },
 
   // --- Immersive chrome: auto-hides while reading; tap/click/hover reveals ---
