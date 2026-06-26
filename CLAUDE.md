@@ -272,7 +272,7 @@ Google login); verify by inspection + the owner testing on device.
   `Reader._persistPosition()` also snapshots the current page on
   `visibilitychange`(hidden)/`pagehide`/`Reader.close()` so abrupt PWA exits
   don't lose the spot.
-- **Reader overlay top bar (`.reader-top`)** shows: `[← back]` · `[chapter name + Page X/Y center]` · `[≡ chapters]`. `#rs-chapter` (chapter title, `0.72rem` bold) and `#rs-page` (page pill, `0.65rem` dim) are stacked in `.reader-top-center`; both live in the hideable chrome so they appear/disappear with the overlay. `_onRelocated` populates both from `loc`. The bottom `reader-meta` shows only `{pct}% through the book` (`#tts-chapter`).
+- **Reader overlay top bar (`.reader-top`)** shows: `[← back]` · `[chapter · Page X/Y center]` · `[≡ chapters]`. A single `#rs-chapter` element (`.reader-top-info`, `0.7rem`) displays the combined string `"Chapter Name  ·  Page X / Y"`. `_onRelocated` populates it by flattening the full TOC tree (including `subitems`) and matching by basename — TOC hrefs are often bare filenames while `loc.start.href` has a path prefix (`xhtml/ch.xhtml`). If no direct match, falls back to the nearest preceding TOC entry by spine index (handles flat TOCs where sub-chapters aren't listed individually). The bottom `reader-meta` shows only `{pct}% through the book` (`#tts-chapter`). `applyReadTheme()` measures `.reader-top` and `.reader-bottom` `offsetHeight` and uses those as pixel padding for the epub `body`, so text isn't hidden under either overlay.
 - **Chapter jump** (`ChapterModal`): TOC hrefs can be relative to the nav doc
   and/or carry a `#fragment` that won't match epub.js's spine lookup, so passing
   the raw href to `display()` silently fails. `_resolveHref()` resolves it to a
