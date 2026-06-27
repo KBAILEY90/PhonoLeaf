@@ -976,7 +976,7 @@ const Stats = {
     const hStr = hrs >= 1 ? hrs.toFixed(1) + 'h' : Math.round(secs / 60) + 'm';
     let streak = 0;
     for (let i = 0; i < 400; i++) { const d = new Date(now); d.setDate(now.getDate() - i); if ((days[this._key(d)] || 0) > 0) streak++; else break; }
-    return { hours: hStr, streak, books: Object.keys(State.progress || {}).length };
+    return { hours: hStr, streak, books: Object.values(State.progress || {}).filter(p => p && p.ts).length };
   },
 };
 
