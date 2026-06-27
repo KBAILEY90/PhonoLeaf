@@ -566,6 +566,11 @@
     .bar:hover .bar-val, .bar.show .bar-val { opacity: 1; }
     .sec-note { font-size: 0.72rem; color: var(--text-dim); font-weight: 400; }
     .bars-empty { display: flex; align-items: center; justify-content: center; height: 92px; margin-bottom: 1.3rem; color: var(--text-dim); font-size: 0.82rem; text-align: center; }
+    .atable { font-size: 0.82rem; width: 100%; border-collapse: collapse; }
+    .ath, .arow { display: grid; grid-template-columns: 1fr auto auto auto; gap: 0 0.75rem; padding: 0.5rem 0.2rem; border-bottom: 0.5px solid var(--line); align-items: center; }
+    .ath { color: var(--text-dim); font-size: 0.72rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em; }
+    .ath span:not(:first-child), .arow span:not(:first-child) { text-align: right; min-width: 3rem; }
+    .aname { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .srow { display: flex; justify-content: space-between; gap: 1rem; padding: 0.6rem 0.2rem; border-bottom: 0.5px solid var(--line); font-size: 0.86rem; }
     .srow span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .srow-n { color: var(--text-dim); flex-shrink: 0; }
@@ -951,7 +956,14 @@ const Stats = {
   _iv: null,
   _key(o) { return o.toISOString().slice(0, 10); },
   _save() { try { localStorage.setItem('kba_stats', JSON.stringify(this.data)); } catch (_) {} },
-  add(sec) { this.data.days = this.data.days || {}; const d = this._key(new Date()); this.data.days[d] = (this.data.days[d] || 0) + sec; this._save(); },
+  add(sec) {
+    this.data.days = this.data.days || {};
+    const d = this._key(new Date());
+    this.data.days[d] = (this.data.days[d] || 0) + sec;
+    const id = State.currentBook && State.currentBook.id;
+    if (id) { this.data.books = this.data.books || {}; this.data.books[id] = (this.data.books[id] || 0) + sec; }
+    this._save();
+  },
   startTick() { if (this._iv) return; this._iv = setInterval(() => this.add(5), 5000); },
   stopTick() { if (this._iv) { clearInterval(this._iv); this._iv = null; } },
   summary() {
@@ -1193,19 +1205,27 @@ const StatsPage = {
       if (s > maxSec) maxSec = s;
     }
 
-    // Top authors from cached metadata.
-    const authors = {};
+    // Per-author stats: minutes listened, books started, books read.
+    const bookSecs = (Stats.data && Stats.data.books) || {};
+    const authorMap = {};
     for (const b of books) {
-      const m = Meta.get(b.id); if (!m) continue;
-      if (m.author) authors[m.author] = (authors[m.author] || 0) + 1;
+      const m = Meta.get(b.id); if (!m || !m.author) continue;
+      const a = m.author;
+      if (!authorMap[a]) authorMap[a] = { mins: 0, started: 0, read: 0 };
+      authorMap[a].mins += Math.round((bookSecs[b.id] || 0) / 60);
+      const p = prog[b.id];
+      if (p && p.ts) authorMap[a].started++;
+      if (p && (p.pct || 0) >= 95) authorMap[a].read++;
     }
-    const topAuthors = Object.entries(authors).sort((a, z) => z[1] - a[1]).slice(0, 5);
+    // Sort by minutes desc, then started desc.
+    const authorRows = Object.entries(authorMap)
+      .sort((a, z) => (z[1].mins - a[1].mins) || (z[1].started - a[1].started));
+
     const anyListening = bars.some(b => b.s > 0);
     const fmtMin = s => s >= 60 ? Math.round(s / 60) + 'min' : (s > 0 ? '<1min' : '0min');
 
     const fmtH = h => h >= 1 ? h.toFixed(1) + 'h' : Math.round(h * 60) + 'm';
     const tile = (b, l) => `<div class="stat"><b>${esc(b)}</b><span>${esc(l)}</span></div>`;
-    const srow = (a, n) => `<div class="srow"><span>${esc(a)}</span><span class="srow-n">${esc(n)}</span></div>`;
 
     document.getElementById('stats-body').innerHTML =
       `<div class="stat-row">${tile(fmtH(total / 3600), 'all time')}${tile(sum.hours, 'this week')}${tile(sum.streak, 'day streak')}</div>
@@ -1214,11 +1234,12 @@ const StatsPage = {
        ${anyListening
           ? `<div class="bars">${bars.map(b => { const fp = b.s ? Math.max(4, Math.round((b.s / maxSec) * 92)) : 0; return `<div class="bar" onclick="StatsPage.tapBar(this)" title="${esc(b.label)}"><span class="bar-val" style="bottom:${Math.min(fp + 3, 72)}px">${esc(fmtMin(b.s))}</span><div class="bar-fill" style="height:${fp}px"></div></div>`; }).join('')}</div>`
           : `<div class="bars-empty">No listening yet — press play to start tracking.</div>`}
-       ${topAuthors.length ? `<div class="sec-label">Top authors</div>${topAuthors.map(([a, n]) => srow(a, n)).join('')}` : ''}
-       <div class="sec-label">Reading</div>
-       ${srow('Minutes read', Math.round(total / 60).toLocaleString())}
-       ${srow('Books started', started)}
-       ${srow('Books read', finished)}`;
+       ${authorRows.length ? `
+         <div class="sec-label">By author</div>
+         <div class="atable">
+           <div class="ath"><span>Author</span><span>Min read</span><span>Started</span><span>Read</span></div>
+           ${authorRows.map(([a, v]) => `<div class="arow"><span class="aname">${esc(a)}</span><span>${v.mins > 0 ? v.mins.toLocaleString() : '—'}</span><span>${v.started || '—'}</span><span>${v.read || '—'}</span></div>`).join('')}
+         </div>` : ''}`;
   },
   // Tap a bar (mobile) to reveal its minutes; desktop uses :hover. Tapping a bar
   // hides any other shown value so only one is visible at a time.
