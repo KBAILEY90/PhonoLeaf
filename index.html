@@ -1209,7 +1209,7 @@ const StatsPage = {
 
     document.getElementById('stats-body').innerHTML =
       `<div class="stat-row">${tile(fmtH(total / 3600), 'all time')}${tile(sum.hours, 'this week')}${tile(sum.streak, 'day streak')}</div>
-       <div class="stat-row">${tile(Math.round(total / 60), 'minutes read')}${tile(started, 'books started')}${tile(finished, 'books read')}</div>
+       <div class="stat-row">${tile(books.length, 'in library')}${tile(started, 'started')}${tile(finished, 'finished')}</div>
        <div class="sec-label">Listening &middot; last 14 days</div>
        ${anyListening
           ? `<div class="bars">${bars.map(b => { const fp = b.s ? Math.max(4, Math.round((b.s / maxSec) * 92)) : 0; return `<div class="bar" onclick="StatsPage.tapBar(this)" title="${esc(b.label)}"><span class="bar-val" style="bottom:${Math.min(fp + 3, 72)}px">${esc(fmtMin(b.s))}</span><div class="bar-fill" style="height:${fp}px"></div></div>`; }).join('')}</div>`
