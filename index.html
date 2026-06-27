@@ -1214,7 +1214,11 @@ const StatsPage = {
        ${anyListening
           ? `<div class="bars">${bars.map(b => { const fp = b.s ? Math.max(4, Math.round((b.s / maxSec) * 92)) : 0; return `<div class="bar" onclick="StatsPage.tapBar(this)" title="${esc(b.label)}"><span class="bar-val" style="bottom:${Math.min(fp + 3, 72)}px">${esc(fmtMin(b.s))}</span><div class="bar-fill" style="height:${fp}px"></div></div>`; }).join('')}</div>`
           : `<div class="bars-empty">No listening yet — press play to start tracking.</div>`}
-       ${topAuthors.length ? `<div class="sec-label">Top authors</div>${topAuthors.map(([a, n]) => srow(a, n)).join('')}` : ''}`;
+       ${topAuthors.length ? `<div class="sec-label">Top authors</div>${topAuthors.map(([a, n]) => srow(a, n)).join('')}` : ''}
+       <div class="sec-label">Reading</div>
+       ${srow('Minutes read', Math.round(total / 60).toLocaleString())}
+       ${srow('Books started', started)}
+       ${srow('Books read', finished)}`;
   },
   // Tap a bar (mobile) to reveal its minutes; desktop uses :hover. Tapping a bar
   // hides any other shown value so only one is visible at a time.
