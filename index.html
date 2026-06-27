@@ -559,8 +559,8 @@
     .view.minimized { display: flex !important; position: fixed; inset: 0; z-index: -1; pointer-events: none; }
     #home-view, #settings-view, #stats-view { background: var(--bg); }
     /* Stats page */
-    .bars { display: flex; align-items: flex-end; gap: 4px; height: 92px; margin-bottom: 1.3rem; }
-    .bar { flex: 1; height: 100%; background: var(--track); border-radius: 3px; display: flex; align-items: flex-end; overflow: hidden; }
+    .bars { display: flex; align-items: stretch; gap: 4px; height: 92px; margin-bottom: 1.3rem; }
+    .bar { flex: 1; background: var(--track); border-radius: 3px; display: flex; flex-direction: column; justify-content: flex-end; overflow: hidden; }
     .bar-fill { width: 100%; background: var(--accent); border-radius: 3px; transition: height 0.3s ease; }
     .sec-note { font-size: 0.72rem; color: var(--text-dim); font-weight: 400; }
     .bars-empty { display: flex; align-items: center; justify-content: center; height: 92px; margin-bottom: 1.3rem; color: var(--text-dim); font-size: 0.82rem; text-align: center; }
@@ -1211,7 +1211,7 @@ const StatsPage = {
        <div class="stat-row">${tile(books.length, 'in library')}${tile(started, 'started')}${tile(finished, 'finished')}</div>
        <div class="sec-label">Listening &middot; last 14 days${anyListening ? `<span class="sec-note">peak ${esc(peak)}</span>` : ''}</div>
        ${anyListening
-          ? `<div class="bars">${bars.map(b => `<div class="bar" title="${esc(b.label)}: ${esc(fmtMin(b.s))}"><div class="bar-fill" style="height:${b.s ? Math.max(6, Math.round((b.s / maxSec) * 100)) : 0}%"></div></div>`).join('')}</div>`
+          ? `<div class="bars">${bars.map(b => `<div class="bar" title="${esc(b.label)}: ${esc(fmtMin(b.s))}"><div class="bar-fill" style="height:${b.s ? Math.max(4, Math.round((b.s / maxSec) * 92)) : 0}px"></div></div>`).join('')}</div>`
           : `<div class="bars-empty">No listening yet — press play to start tracking.</div>`}
        ${topAuthors.length ? `<div class="sec-label">Top authors</div>${topAuthors.map(([a, n]) => srow(a, n)).join('')}` : ''}`;
   },
