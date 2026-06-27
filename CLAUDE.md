@@ -141,14 +141,21 @@ Google login); verify by inspection + the owner testing on device.
   grid + a search field (`Library.filter`, index-preserving). **Settings**
   (`Settings`) holds the theme switcher, default speed (`kba_speed`), voice picker,
   account/sign-out + folder. The Home title shows the greeting + user name.
-- **Stats tab (`StatsPage.render` → `#stats-view`)** derives metrics from the
-  listening data (`Stats.data.days`), progress (`kba_prog`), and cached epub
-  metadata (`Meta`): all-time / this-week hours, day streak, library/started/
-  finished counts, a **"Listening minutes · last 14 days"** CSS bar chart (each
-  bar = that day's minutes; shows a `.bars-empty` "No listening yet" hint when no
-  day has data, since bars only accrue while TTS plays), and **top authors**.
-  (Publication-year range and languages were intentionally removed, along with
-  the "Library" section heading that grouped them.)
+- **Stats tab (`StatsPage.render` → `#stats-view`)** layout:
+  - **Row 1 tiles**: all-time hours · this-week hours · day streak.
+  - **Row 2 tiles**: in library · started · finished.
+  - **"Listening · last 14 days"** CSS bar chart. Bar heights are explicit px
+    (ratio × 92px) computed in JS from raw seconds — percentage heights don't
+    resolve reliably through flexbox. Peak day = full height; non-zero days get
+    at least 4px. Hover (desktop) or tap (mobile) a bar to reveal a centered
+    `"Xmin"` pill above it (`StatsPage.tapBar`); only one shows at a time.
+    Empty state shows a `.bars-empty` hint. (Publication-year range and languages
+    were intentionally removed.)
+  - **"By author" table** (`.atable`): 4-column grid — Author · Min read ·
+    Started · Read. Only authors with ≥1 book started or read appear; top 5,
+    sorted by minutes desc then engagement desc. `—` shows for zero values.
+    A **"Reset listening data"** ghost button at the bottom triggers a native
+    `confirm()` dialog and clears `kba_stats` + re-renders on confirm.
 - **Epub metadata (`Meta`, `kba_meta`)**: `Meta.capture(id, book)` reads
   `book.packaging.metadata` (author=`creator`, `year` from `pubdate`, publisher,
   language) for free during cover extraction (`Covers._extract`/`fromBook`) and
@@ -162,9 +169,12 @@ Google login); verify by inspection + the owner testing on device.
   Home (when it's the active tab) so the dashboard's covers/authors fill in
   without first visiting Library.
 - **Listening stats (`Stats`, `kba_stats`)**: a 5-second interval started in
-  `TTS.start`/`skipPage` and cleared in `TTS.stop` accumulates seconds per day
-  (`days[YYYY-MM-DD]`); `summary()` derives hours-this-week, a consecutive-day
-  streak, and books-in-progress for Home.
+  `TTS.start`/`skipPage` and cleared in `TTS.stop` accumulates seconds both
+  per day (`data.days[YYYY-MM-DD]`) **and** per book (`data.books[driveFileId]`)
+  via `State.currentBook.id`. Per-book tracking was added mid-project — earlier
+  day-only totals cannot be retroactively attributed to books. `summary()`
+  derives hours-this-week, a consecutive-day streak, and books-in-progress for
+  Home.
 - **Immersive reader chrome auto-hides; a gesture overlay drives it.** Controls
   are absolute overlays over a full-bleed `#viewer`: thin top progress
   (`#tts-prog`), a `.reader-top` bar, a seek scrubber + the floating `.tts-pill`
