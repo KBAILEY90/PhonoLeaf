@@ -2240,8 +2240,19 @@ const TTS = {
   _speak() {
     if (!this.active) return;
     if (this.idx >= this.chunks.length) {
-      // Either we finished the visible page, or the page had no readable text
-      // (e.g. a cover or full-page image).
+      // We're here because either we FINISHED reading this page's chunks
+      // (chunks.length > 0 → advance to keep reading), or the page produced NO
+      // chunks at all (chunks.length === 0).
+      if (this.chunks.length === 0) {
+        // No chunks. Only auto-skip a GENUINELY blank page (a cover or full-page
+        // image, whose DOM has no text). If the page actually has text we just
+        // failed to extract (e.g. a short last page of a chapter whose geometry
+        // we mis-measured), DON'T skip past it — stop here so the page isn't
+        // silently jumped over (the user can press play to retry).
+        const doc = document.querySelector('#viewer iframe')?.contentDocument;
+        const hasDomText = !!(doc && doc.body && doc.body.textContent.trim());
+        if (hasDomText) { this.stop(); return; }
+      }
       if (this._dir < 0) {
         // We arrived here moving BACKWARD — stop on this page and wait for the
         // user instead of reading stale text or skipping further back.

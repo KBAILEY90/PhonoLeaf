@@ -263,6 +263,15 @@ Google login); verify by inspection + the owner testing on device.
   the next page; going **backward** into a blank page **stops and waits** for the
   user (no reading, no further skipping). `TTS._skips` caps consecutive forward
   skips at 20 (then stops with the toast) so an all-image book can't loop forever.
+  **Only GENUINELY blank pages auto-skip.** `_speak()`'s forward-skip distinguishes
+  "finished reading this page" (`chunks.length > 0` → advance, normal continuous
+  reading) from "no chunks at all" (`chunks.length === 0`). For the latter it only
+  skips when the page is truly text-empty (`doc.body.textContent` blank — a cover/
+  image); if the page **has** DOM text we just failed to extract (e.g. a short last
+  page of a chapter whose geometry was mis-measured), it **stops on the page**
+  rather than skipping to the next chapter. This fixed "the last page of a chapter
+  gets skipped on a forward swipe" — the swipe's `rendition.next()` plus the
+  over-eager forward-skip were double-advancing.
 - **Don't re-read stale text on a blank page.** `TTS.loadPageText()` must
   *clear* `chunks` when a page is genuinely blank, or `_speak()` re-reads the
   previous page (a real bug). It tells a true blank page (the iframe's
