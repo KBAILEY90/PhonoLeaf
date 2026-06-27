@@ -562,6 +562,7 @@
     .bars { display: flex; align-items: flex-end; gap: 4px; height: 92px; margin-bottom: 1.3rem; }
     .bar { flex: 1; background: var(--track); border-radius: 3px; display: flex; align-items: flex-end; overflow: hidden; }
     .bar-fill { width: 100%; background: var(--accent); border-radius: 3px; min-height: 2px; }
+    .bars-empty { display: flex; align-items: center; justify-content: center; height: 92px; margin-bottom: 1.3rem; color: var(--text-dim); font-size: 0.82rem; text-align: center; }
     .srow { display: flex; justify-content: space-between; gap: 1rem; padding: 0.6rem 0.2rem; border-bottom: 0.5px solid var(--line); font-size: 0.86rem; }
     .srow span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .srow-n { color: var(--text-dim); flex-shrink: 0; }
@@ -1182,15 +1183,14 @@ const StatsPage = {
     const bars = []; let maxMin = 1;
     for (let i = 13; i >= 0; i--) { const d = new Date(now); d.setDate(now.getDate() - i); const m = Math.round((days[key(d)] || 0) / 60); bars.push(m); if (m > maxMin) maxMin = m; }
 
-    // Authors / languages / year range from cached metadata.
-    const authors = {}, langs = {}; let yMin = null, yMax = null;
+    // Top authors from cached metadata.
+    const authors = {};
     for (const b of books) {
       const m = Meta.get(b.id); if (!m) continue;
       if (m.author) authors[m.author] = (authors[m.author] || 0) + 1;
-      if (m.language) { const l = m.language.toUpperCase(); langs[l] = (langs[l] || 0) + 1; }
-      const y = parseInt(m.year, 10); if (y) { if (yMin == null || y < yMin) yMin = y; if (yMax == null || y > yMax) yMax = y; }
     }
     const topAuthors = Object.entries(authors).sort((a, z) => z[1] - a[1]).slice(0, 5);
+    const anyListening = bars.some(m => m > 0);
 
     const fmtH = h => h >= 1 ? h.toFixed(1) + 'h' : Math.round(h * 60) + 'm';
     const tile = (b, l) => `<div class="stat"><b>${esc(b)}</b><span>${esc(l)}</span></div>`;
@@ -1199,12 +1199,11 @@ const StatsPage = {
     document.getElementById('stats-body').innerHTML =
       `<div class="stat-row">${tile(fmtH(total / 3600), 'all time')}${tile(sum.hours, 'this week')}${tile(sum.streak, 'day streak')}</div>
        <div class="stat-row">${tile(books.length, 'in library')}${tile(started, 'started')}${tile(finished, 'finished')}</div>
-       <div class="sec-label">Last 14 days</div>
-       <div class="bars">${bars.map(m => `<div class="bar"><div class="bar-fill" style="height:${Math.round((m / maxMin) * 100)}%"></div></div>`).join('')}</div>
-       ${topAuthors.length ? `<div class="sec-label">Top authors</div>${topAuthors.map(([a, n]) => srow(a, n)).join('')}` : ''}
-       ${(yMin || Object.keys(langs).length) ? `<div class="sec-label">Library</div>` : ''}
-       ${yMin ? srow('Publication years', yMin === yMax ? yMin : `${yMin}–${yMax}`) : ''}
-       ${Object.keys(langs).length ? srow('Languages', Object.keys(langs).join(', ')) : ''}`;
+       <div class="sec-label">Listening minutes &middot; last 14 days</div>
+       ${anyListening
+          ? `<div class="bars">${bars.map(m => `<div class="bar"><div class="bar-fill" style="height:${Math.round((m / maxMin) * 100)}%"></div></div>`).join('')}</div>`
+          : `<div class="bars-empty">No listening yet — press play to start tracking.</div>`}
+       ${topAuthors.length ? `<div class="sec-label">Top authors</div>${topAuthors.map(([a, n]) => srow(a, n)).join('')}` : ''}`;
   },
 };
 

@@ -144,8 +144,11 @@ Google login); verify by inspection + the owner testing on device.
 - **Stats tab (`StatsPage.render` → `#stats-view`)** derives metrics from the
   listening data (`Stats.data.days`), progress (`kba_prog`), and cached epub
   metadata (`Meta`): all-time / this-week hours, day streak, library/started/
-  finished counts, a 14-day CSS bar chart, top authors, languages, and the
-  publication-year range.
+  finished counts, a **"Listening minutes · last 14 days"** CSS bar chart (each
+  bar = that day's minutes; shows a `.bars-empty` "No listening yet" hint when no
+  day has data, since bars only accrue while TTS plays), and **top authors**.
+  (Publication-year range and languages were intentionally removed, along with
+  the "Library" section heading that grouped them.)
 - **Epub metadata (`Meta`, `kba_meta`)**: `Meta.capture(id, book)` reads
   `book.packaging.metadata` (author=`creator`, `year` from `pubdate`, publisher,
   language) for free during cover extraction (`Covers._extract`/`fromBook`) and
