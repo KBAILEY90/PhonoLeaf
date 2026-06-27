@@ -560,8 +560,10 @@
     #home-view, #settings-view, #stats-view { background: var(--bg); }
     /* Stats page */
     .bars { display: flex; align-items: stretch; gap: 4px; height: 92px; margin-bottom: 1.3rem; }
-    .bar { flex: 1; background: var(--track); border-radius: 3px; display: flex; flex-direction: column; justify-content: flex-end; overflow: hidden; }
+    .bar { flex: 1; background: var(--track); border-radius: 3px; display: flex; flex-direction: column; justify-content: flex-end; position: relative; cursor: pointer; }
     .bar-fill { width: 100%; background: var(--accent); border-radius: 3px; transition: height 0.3s ease; }
+    .bar-val { position: absolute; left: 50%; transform: translateX(-50%); font-size: 0.6rem; color: var(--text); background: var(--surface); border: 0.5px solid var(--line); padding: 1px 5px; border-radius: 6px; white-space: nowrap; opacity: 0; transition: opacity .15s ease; pointer-events: none; z-index: 3; }
+    .bar:hover .bar-val, .bar.show .bar-val { opacity: 1; }
     .sec-note { font-size: 0.72rem; color: var(--text-dim); font-weight: 400; }
     .bars-empty { display: flex; align-items: center; justify-content: center; height: 92px; margin-bottom: 1.3rem; color: var(--text-dim); font-size: 0.82rem; text-align: center; }
     .srow { display: flex; justify-content: space-between; gap: 1rem; padding: 0.6rem 0.2rem; border-bottom: 0.5px solid var(--line); font-size: 0.86rem; }
@@ -1199,8 +1201,7 @@ const StatsPage = {
     }
     const topAuthors = Object.entries(authors).sort((a, z) => z[1] - a[1]).slice(0, 5);
     const anyListening = bars.some(b => b.s > 0);
-    const fmtMin = s => s >= 60 ? Math.round(s / 60) + 'm' : (s > 0 ? '<1m' : '0m');
-    const peak = fmtMin(maxSec);
+    const fmtMin = s => s >= 60 ? Math.round(s / 60) + 'min' : (s > 0 ? '<1min' : '0min');
 
     const fmtH = h => h >= 1 ? h.toFixed(1) + 'h' : Math.round(h * 60) + 'm';
     const tile = (b, l) => `<div class="stat"><b>${esc(b)}</b><span>${esc(l)}</span></div>`;
@@ -1208,12 +1209,19 @@ const StatsPage = {
 
     document.getElementById('stats-body').innerHTML =
       `<div class="stat-row">${tile(fmtH(total / 3600), 'all time')}${tile(sum.hours, 'this week')}${tile(sum.streak, 'day streak')}</div>
-       <div class="stat-row">${tile(books.length, 'in library')}${tile(started, 'started')}${tile(finished, 'finished')}</div>
-       <div class="sec-label">Listening &middot; last 14 days${anyListening ? `<span class="sec-note">peak ${esc(peak)}</span>` : ''}</div>
+       <div class="stat-row">${tile(Math.round(total / 60), 'minutes read')}${tile(started, 'books started')}${tile(finished, 'books read')}</div>
+       <div class="sec-label">Listening &middot; last 14 days</div>
        ${anyListening
-          ? `<div class="bars">${bars.map(b => `<div class="bar" title="${esc(b.label)}: ${esc(fmtMin(b.s))}"><div class="bar-fill" style="height:${b.s ? Math.max(4, Math.round((b.s / maxSec) * 92)) : 0}px"></div></div>`).join('')}</div>`
+          ? `<div class="bars">${bars.map(b => { const fp = b.s ? Math.max(4, Math.round((b.s / maxSec) * 92)) : 0; return `<div class="bar" onclick="StatsPage.tapBar(this)" title="${esc(b.label)}"><span class="bar-val" style="bottom:${Math.min(fp + 3, 72)}px">${esc(fmtMin(b.s))}</span><div class="bar-fill" style="height:${fp}px"></div></div>`; }).join('')}</div>`
           : `<div class="bars-empty">No listening yet — press play to start tracking.</div>`}
        ${topAuthors.length ? `<div class="sec-label">Top authors</div>${topAuthors.map(([a, n]) => srow(a, n)).join('')}` : ''}`;
+  },
+  // Tap a bar (mobile) to reveal its minutes; desktop uses :hover. Tapping a bar
+  // hides any other shown value so only one is visible at a time.
+  tapBar(el) {
+    const wrap = el.parentElement;
+    wrap.querySelectorAll('.bar.show').forEach(b => { if (b !== el) b.classList.remove('show'); });
+    el.classList.toggle('show');
   },
 };
 
