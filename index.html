@@ -1960,14 +1960,24 @@ const Reader = {
     // Clear any leftover snapshot from a very fast previous turn.
     viewer.querySelectorAll('.kb-snap').forEach(n => n.remove());
 
-    let snap;
+    // The clone is the FULL-width column strip — it contains every page of the
+    // section. So we slide WITHIN the clone (a clipped container shows one page at
+    // a time) from the current page to the destination, exactly like the finger
+    // drag. The live iframe is never exposed during the slide, so no strip of it
+    // can flicker. `viewW` clone, offset by `-cur` shows the current page; we
+    // animate that offset to `-dest`.
+    const viewW = view.offsetWidth;
+    const startDx = this._dragDx || 0;
+    let snap, sf;
     try {
       snap = document.createElement('div');
       snap.className = 'kb-snap';
       snap.style.cssText = 'position:absolute;inset:0;z-index:8;overflow:hidden;background:var(--read-bg);';
-      const sf = document.createElement('iframe');
+      sf = document.createElement('iframe');
       sf.setAttribute('aria-hidden', 'true'); sf.setAttribute('tabindex', '-1');
-      sf.style.cssText = `position:absolute;top:0;left:0;height:100%;border:0;width:${view.offsetWidth}px;transform:translateX(${-cur}px);`;
+      // Start where the finger left it (continues the drag), or centred on the
+      // current page for a button/keyboard turn.
+      sf.style.cssText = `position:absolute;top:0;left:0;height:100%;border:0;width:${viewW}px;transform:translateX(${-cur + startDx}px);`;
       snap.appendChild(sf);
       viewer.appendChild(snap);
       const sdoc = sf.contentDocument;
@@ -1977,23 +1987,19 @@ const Reader = {
       return false;
     }
 
-    // Continue the snapshot from wherever the finger left it (seamless with the
-    // drag), or dead-centre for a button/keyboard turn.
-    const startDx = this._dragDx || 0;
-    snap.style.transform = `translateX(${startDx}px)`;
-
-    // Reset the live iframe (it may still carry the drag transform) — it's hidden
-    // under the snapshot, so this is invisible — then turn underneath. epub's
-    // instant scroll + late relocate happen behind the cover; nothing flashes.
+    // Turn the real page underneath (hidden by the clone) so epub's location/CFI/
+    // progress/TTS sync; reset any leftover drag transform on the live iframe.
     iframe.style.transition = 'none';
     iframe.style.transform = 'none';
     this._dragTurn = true;
     dir > 0 ? this.next() : this.prev();
 
-    // Slide the snapshot off-screen, revealing the already-turned page beneath.
+    // Slide the clone to the destination page (within its clip). When done, the
+    // clone shows the destination page and the real iframe beneath has turned to
+    // the same page — removing the clone is seamless.
     requestAnimationFrame(() => {
-      snap.style.transition = 'transform .22s ease';
-      snap.style.transform = `translateX(${dir > 0 ? '-100%' : '100%'})`;
+      sf.style.transition = 'transform .22s ease';
+      sf.style.transform = `translateX(${-dest}px)`;
     });
     clearTimeout(this._snapClrT);
     this._snapClrT = setTimeout(() => { try { snap.remove(); } catch (e) {} }, 320);
