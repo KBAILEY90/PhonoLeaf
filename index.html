@@ -1217,9 +1217,12 @@ const StatsPage = {
       if (p && p.ts) authorMap[a].started++;
       if (p && (p.pct || 0) >= 95) authorMap[a].read++;
     }
-    // Sort by minutes desc, then started desc.
+    // Top 5: only authors you've engaged with (started or read ≥ 1 book),
+    // sorted by minutes desc then by books engaged desc.
     const authorRows = Object.entries(authorMap)
-      .sort((a, z) => (z[1].mins - a[1].mins) || (z[1].started - a[1].started));
+      .filter(([, v]) => v.started > 0 || v.read > 0)
+      .sort((a, z) => (z[1].mins - a[1].mins) || ((z[1].started + z[1].read) - (a[1].started + a[1].read)))
+      .slice(0, 5);
 
     const anyListening = bars.some(b => b.s > 0);
     const fmtMin = s => s >= 60 ? Math.round(s / 60) + 'min' : (s > 0 ? '<1min' : '0min');
