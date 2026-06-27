@@ -103,17 +103,31 @@ Google login); verify by inspection + the owner testing on device.
   (`H2–H6`) `pre 2000 / post 1000`; body chunks get `0/0`. `_speak` applies `pre`
   once per chunk (`_preIdx` guard, `_gapT` timer) and `post` in `onend`. Reset
   `_preIdx` whenever the page text reloads.
-- **Page-turn animation transforms the epub iframe, not `#viewer`.** Transforming
-  the `#viewer` *ancestor* didn't repaint the cross-document iframe on mobile, so
-  `Reader._pageEl()` returns the `#viewer iframe` and all slides set
-  `transform`/`opacity` on it (re-querying after a turn since epub may swap the
-  iframe). The drag `touchmove` is **`{passive:false}` + `preventDefault()`** once
-  horizontal, or the browser swallowed the move (this was why "nothing moved").
-  Paths: (1) **finger drag** — track the finger; `touchend` past ~20% width →
-  `_dragCommit(dir)` (slide out, turn with `_dragTurn` suppressing the button
-  animation, slide in), else `_dragSnapBack()`. (2) **buttons/keyboard** →
-  `_turnAnim(dir)` (a short JS slide on the iframe). A *live* peek of the adjacent
-  page during the drag would need epub.js column internals and isn't done.
+- **Page turn = snapshot-overlay slide (`Reader._slideTurn`).** epub.js owns its
+  single iframe: it does the real turn as an **instant scroll** of the
+  `.epub-container` (one `clientWidth` per page; the whole section is pre-rendered
+  as side-by-side columns in a 5120px-ish iframe) and then **reports the new
+  position one frame late**. So animating the *live* iframe with a transform
+  conflicts for that one frame — it briefly shows the *page after* the
+  destination (the "page-3 flash" bug). Likewise a manual `scrollLeft` gets
+  snapped back by epub, and CSS `scroll-behavior:smooth` breaks epub's scroll.
+  Fix: don't animate the live iframe. `_slideTurn(dir)` freezes the current page
+  as an opaque **snapshot** — a clone of the same-origin epub document
+  (`importNode` of `documentElement` into a throwaway iframe, clipped to the
+  viewer and `translateX(-scrollLeft)` to show the current page; reuses the cached
+  blob CSS so it renders identically) layered on top (`.kb-snap`, z-index 8). Then
+  epub turns **underneath** (hidden behind the snapshot, so its instant scroll +
+  late relocate never show), and the snapshot slides off-screen to reveal the
+  already-turned page. Static snapshot ⇒ no other page can flash. The snapshot
+  starts at the finger offset (`_dragDx`, tracked in `touchmove`) so a swipe is
+  seamless, or dead-centre for buttons/keyboard/edge-arrows. The drag `touchmove`
+  is **`{passive:false}` + `preventDefault()`** once horizontal (else the browser
+  swallows the move). `Reader._pageEl()` returns the `#viewer iframe` (re-queried;
+  epub may swap it). Paths: **finger drag** past ~20% width → `_dragCommit` →
+  `turnPage(dir)`, else `_dragSnapBack()`; **buttons/edge-arrows/keyboard** →
+  `turnPage(dir)` directly. `turnPage` falls back to `_renderTurn` (a quick
+  opacity fade) at a **section boundary**, where the neighbour page lives in
+  another section and isn't pre-rendered yet.
 - **Double-tap = play/pause with icon feedback.** The double-tap toggles `TTS`
   and `Reader._tapFeedback(playing)` fades a centered play/pause glyph
   (`#tap-fb`, `@keyframes tapfb`) in and out.
