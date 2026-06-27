@@ -566,6 +566,8 @@
     .bar:hover .bar-val, .bar.show .bar-val { opacity: 1; }
     .sec-note { font-size: 0.72rem; color: var(--text-dim); font-weight: 400; }
     .bars-empty { display: flex; align-items: center; justify-content: center; height: 92px; margin-bottom: 1.3rem; color: var(--text-dim); font-size: 0.82rem; text-align: center; }
+    .stats-reset-btn { display: block; margin: 2rem auto 0.5rem; background: none; border: 1px solid var(--line); border-radius: 8px; padding: 0.5rem 1.2rem; font-size: 0.8rem; color: var(--text-dim); cursor: pointer; }
+    .stats-reset-btn:hover { border-color: #e05; color: #e05; }
     .atable { font-size: 0.82rem; width: 100%; border-collapse: collapse; }
     .ath, .arow { display: grid; grid-template-columns: 1fr auto auto auto; gap: 0 0.75rem; padding: 0.5rem 0.2rem; border-bottom: 0.5px solid var(--line); align-items: center; }
     .ath { color: var(--text-dim); font-size: 0.72rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em; }
@@ -1242,7 +1244,16 @@ const StatsPage = {
          <div class="atable">
            <div class="ath"><span>Author</span><span>Min read</span><span>Started</span><span>Read</span></div>
            ${authorRows.map(([a, v]) => `<div class="arow"><span class="aname">${esc(a)}</span><span>${v.mins > 0 ? v.mins.toLocaleString() : '—'}</span><span>${v.started || '—'}</span><span>${v.read || '—'}</span></div>`).join('')}
-         </div>` : ''}`;
+         </div>` : ''}
+       <button class="stats-reset-btn" onclick="StatsPage.resetConfirm()">Reset listening data</button>`;
+  },
+  resetConfirm() {
+    if (confirm('Are you sure you want to reset your listening data? This cannot be undone.')) {
+      localStorage.removeItem('kba_stats');
+      Stats.data = {};
+      this.render();
+      toast('Listening data reset.');
+    }
   },
   // Tap a bar (mobile) to reveal its minutes; desktop uses :hover. Tapping a bar
   // hides any other shown value so only one is visible at a time.
