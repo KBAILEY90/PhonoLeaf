@@ -561,7 +561,8 @@
     /* Stats page */
     .bars { display: flex; align-items: flex-end; gap: 4px; height: 92px; margin-bottom: 1.3rem; }
     .bar { flex: 1; background: var(--track); border-radius: 3px; display: flex; align-items: flex-end; overflow: hidden; }
-    .bar-fill { width: 100%; background: var(--accent); border-radius: 3px; min-height: 2px; }
+    .bar-fill { width: 100%; background: var(--accent); border-radius: 3px; transition: height 0.3s ease; }
+    .sec-note { font-size: 0.72rem; color: var(--text-dim); font-weight: 400; }
     .bars-empty { display: flex; align-items: center; justify-content: center; height: 92px; margin-bottom: 1.3rem; color: var(--text-dim); font-size: 0.82rem; text-align: center; }
     .srow { display: flex; justify-content: space-between; gap: 1rem; padding: 0.6rem 0.2rem; border-bottom: 0.5px solid var(--line); font-size: 0.86rem; }
     .srow span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -1179,9 +1180,16 @@ const StatsPage = {
     const started = Object.values(prog).filter(p => p && p.ts).length;
     const finished = Object.values(prog).filter(p => p && (p.pct || 0) >= 95).length;
 
-    // Last 14 days (minutes/day).
-    const bars = []; let maxMin = 1;
-    for (let i = 13; i >= 0; i--) { const d = new Date(now); d.setDate(now.getDate() - i); const m = Math.round((days[key(d)] || 0) / 60); bars.push(m); if (m > maxMin) maxMin = m; }
+    // Last 14 days. Scale bar height from raw SECONDS (not rounded minutes) so a
+    // low-volume day still shows a proportional bar; the y-axis max is the peak
+    // day, so the tallest bar is always full height regardless of absolute volume.
+    const bars = []; let maxSec = 1;
+    for (let i = 13; i >= 0; i--) {
+      const d = new Date(now); d.setDate(now.getDate() - i);
+      const s = days[key(d)] || 0;
+      bars.push({ s, label: d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) });
+      if (s > maxSec) maxSec = s;
+    }
 
     // Top authors from cached metadata.
     const authors = {};
@@ -1190,7 +1198,9 @@ const StatsPage = {
       if (m.author) authors[m.author] = (authors[m.author] || 0) + 1;
     }
     const topAuthors = Object.entries(authors).sort((a, z) => z[1] - a[1]).slice(0, 5);
-    const anyListening = bars.some(m => m > 0);
+    const anyListening = bars.some(b => b.s > 0);
+    const fmtMin = s => s >= 60 ? Math.round(s / 60) + 'm' : (s > 0 ? '<1m' : '0m');
+    const peak = fmtMin(maxSec);
 
     const fmtH = h => h >= 1 ? h.toFixed(1) + 'h' : Math.round(h * 60) + 'm';
     const tile = (b, l) => `<div class="stat"><b>${esc(b)}</b><span>${esc(l)}</span></div>`;
@@ -1199,9 +1209,9 @@ const StatsPage = {
     document.getElementById('stats-body').innerHTML =
       `<div class="stat-row">${tile(fmtH(total / 3600), 'all time')}${tile(sum.hours, 'this week')}${tile(sum.streak, 'day streak')}</div>
        <div class="stat-row">${tile(books.length, 'in library')}${tile(started, 'started')}${tile(finished, 'finished')}</div>
-       <div class="sec-label">Listening minutes &middot; last 14 days</div>
+       <div class="sec-label">Listening &middot; last 14 days${anyListening ? `<span class="sec-note">peak ${esc(peak)}</span>` : ''}</div>
        ${anyListening
-          ? `<div class="bars">${bars.map(m => `<div class="bar"><div class="bar-fill" style="height:${Math.round((m / maxMin) * 100)}%"></div></div>`).join('')}</div>`
+          ? `<div class="bars">${bars.map(b => `<div class="bar" title="${esc(b.label)}: ${esc(fmtMin(b.s))}"><div class="bar-fill" style="height:${b.s ? Math.max(6, Math.round((b.s / maxSec) * 100)) : 0}%"></div></div>`).join('')}</div>`
           : `<div class="bars-empty">No listening yet — press play to start tracking.</div>`}
        ${topAuthors.length ? `<div class="sec-label">Top authors</div>${topAuthors.map(([a, n]) => srow(a, n)).join('')}` : ''}`;
   },
