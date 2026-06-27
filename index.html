@@ -1754,9 +1754,6 @@ const Reader = {
   },
 
   _onRelocated(loc, bookId) {
-    // Boundary render-turn: fade the freshly loaded page back in.
-    if (this._dragPendingSnap) this._dragSnapNow();
-
     // Chapter name + page: flatten the full TOC tree (subitems hold the real
     // chapter titles), compare basenames (loc href has a path prefix, TOC hrefs
     // are often bare filenames), fall back to the nearest preceding entry in
@@ -1928,113 +1925,26 @@ const Reader = {
     v.style.transform = 'translateX(0)';
   },
 
-  // --- Page turning (snapshot-overlay slide) ------------------------------
-  // epub.js owns its single iframe: it does the real page turn as an INSTANT
-  // scroll and then reports the new position one frame LATE. Any transform we
-  // lay on the live iframe therefore conflicts for one frame (that was the
-  // "page-3 flash"). The robust fix: don't animate the live iframe at all.
-  // Instead freeze the current page as an opaque SNAPSHOT layered on top, let
-  // epub do its instant turn UNDERNEATH (hidden behind the snapshot, so its
-  // flash never shows), then slide the snapshot away to reveal the page epub
-  // already turned to. Because the snapshot is static, no other page can flash.
-  //
-  // The snapshot is a clone of the live (same-origin) epub document in a
-  // throwaway iframe, clipped/offset to show exactly the page being left. The
-  // cloned doc reuses the same blob CSS/font URLs, so it renders identically
-  // from cache. Returns false at a section boundary (neighbour not rendered) so
-  // the caller can fall back to a simple render turn.
-  _slideTurn(dir) { // dir: 1 = next, -1 = prev
-    const iframe = this._pageEl();
-    const cont = document.querySelector('#viewer .epub-container');
-    const view = document.querySelector('#viewer .epub-view');
-    const viewer = document.getElementById('viewer');
-    if (!iframe || !cont || !view || !viewer) return false;
-    let srcDoc; try { srcDoc = iframe.contentDocument; } catch (e) { return false; }
-    if (!srcDoc || !srcDoc.documentElement) return false;
-    const pageW = cont.clientWidth;
-    const maxScroll = view.offsetWidth - pageW;
-    const cur = cont.scrollLeft;
-    const dest = cur + (dir > 0 ? pageW : -pageW);
-    if (dest < -1 || dest > maxScroll + 1) return false; // neighbour in another section
-
-    // Clear any leftover snapshot from a very fast previous turn.
-    viewer.querySelectorAll('.kb-snap').forEach(n => n.remove());
-
-    // The clone is the FULL-width column strip — it contains every page of the
-    // section. So we slide WITHIN the clone (a clipped container shows one page at
-    // a time) from the current page to the destination, exactly like the finger
-    // drag. The live iframe is never exposed during the slide, so no strip of it
-    // can flicker. `viewW` clone, offset by `-cur` shows the current page; we
-    // animate that offset to `-dest`.
-    const viewW = view.offsetWidth;
-    const startDx = this._dragDx || 0;
-    let snap, sf;
-    try {
-      snap = document.createElement('div');
-      snap.className = 'kb-snap';
-      snap.style.cssText = 'position:absolute;inset:0;z-index:8;overflow:hidden;background:var(--read-bg);';
-      sf = document.createElement('iframe');
-      sf.setAttribute('aria-hidden', 'true'); sf.setAttribute('tabindex', '-1');
-      // Start where the finger left it (continues the drag), or centred on the
-      // current page for a button/keyboard turn.
-      sf.style.cssText = `position:absolute;top:0;left:0;height:100%;border:0;width:${viewW}px;transform:translateX(${-cur + startDx}px);`;
-      snap.appendChild(sf);
-      viewer.appendChild(snap);
-      const sdoc = sf.contentDocument;
-      sdoc.replaceChild(sdoc.importNode(srcDoc.documentElement, true), sdoc.documentElement);
-    } catch (e) {
-      if (snap) snap.remove();
-      return false;
-    }
-
-    // Turn the real page underneath (hidden by the clone) so epub's location/CFI/
-    // progress/TTS sync; reset any leftover drag transform on the live iframe.
-    iframe.style.transition = 'none';
-    iframe.style.transform = 'none';
-    this._dragTurn = true;
-    dir > 0 ? this.next() : this.prev();
-
-    // Slide the clone to the destination page (within its clip). When done, the
-    // clone shows the destination page and the real iframe beneath has turned to
-    // the same page — removing the clone is seamless.
-    requestAnimationFrame(() => {
-      sf.style.transition = 'transform .22s ease';
-      sf.style.transform = `translateX(${-dest}px)`;
-    });
-    clearTimeout(this._snapClrT);
-    this._snapClrT = setTimeout(() => { try { snap.remove(); } catch (e) {} }, 320);
-    this._dragDx = 0;
-    return true;
-  },
-
-  // Section-boundary turn: the neighbour isn't rendered yet (it's in the next/prev
-  // section), so epub must load it. Quick fade on the live iframe to cover the swap.
-  _renderTurn(dir) {
+  // --- Page turning (clean instant turn) ----------------------------------
+  // Every animated slide we tried fought epub.js's single-iframe architecture:
+  // it does the real turn as an INSTANT scroll and reports the new position one
+  // frame LATE, so a transform on the live iframe flashes the page-after for one
+  // frame; a manual scrollLeft gets reverted by epub; CSS smooth-scroll breaks
+  // epub; and a cloned-document snapshot overlay renders blank/unreliably. So
+  // the turn is now INSTANT — epub's own next()/prev() scroll, no transform on
+  // top — which has no race and therefore no blank, flash, or flicker. The
+  // finger-drag still gives live feedback during the swipe (transform follows
+  // the finger over epub's pre-rendered columns); the commit snaps that back and
+  // lets epub turn cleanly.
+  turnPage(dir) { // dir: 1 = next, -1 = prev
     const v = this._pageEl();
-    if (v) { v.style.transition = 'opacity .12s ease'; v.style.opacity = '0'; v.style.transform = 'none'; }
-    this._dragTurn = true;
-    this._dragPendingSnap = true; // _onRelocated → _dragSnapNow fades it back in
+    if (v) { v.style.transition = 'none'; v.style.transform = 'none'; v.style.opacity = '1'; }
     this._dragDx = 0;
+    this._dragTurn = true; // suppress the _turnAnim fade in skipPage
     dir > 0 ? this.next() : this.prev();
-  },
-
-  // User-facing page turn (swipe commit, edge arrows, nav buttons, keyboard):
-  // snapshot-slide within the section, or fall back to a render turn at a boundary.
-  turnPage(dir) {
-    if (!this._slideTurn(dir)) this._renderTurn(dir);
   },
 
   _dragCommit(dir) { this.turnPage(dir); }, // finger-drag past threshold
-
-  // Restore the live iframe (boundary render-turn fade-in path).
-  _dragSnapNow() {
-    if (!this._dragPendingSnap) return;
-    this._dragPendingSnap = false;
-    const w = this._pageEl(); if (!w) return;
-    w.style.transition = 'opacity .18s ease';
-    w.style.transform = 'none';
-    w.style.opacity = '1';
-  },
 
   // --- Immersive chrome: auto-hides while reading; tap/click/hover reveals ---
   _chromeT: null,
