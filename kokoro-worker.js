@@ -27,8 +27,10 @@ self.onmessage = async ({ data }) => {
     try {
       const audio = await tts.generate(text, { voice: voice || 'af_heart', speed: +speed || 1 });
       if (genId !== id) return; // cancelled while generating
-      // audio.data is Float32Array at 24 kHz — transfer the buffer (zero-copy).
-      self.postMessage({ type: 'audio', id, samples: audio.data, sampleRate: 24000 }, [audio.data.buffer]);
+      // kokoro-js returns RawAudio { audio: Float32Array, sampling_rate: number }.
+      const samples = audio.audio;
+      const sampleRate = audio.sampling_rate ?? 24000;
+      self.postMessage({ type: 'audio', id, samples, sampleRate }, [samples.buffer]);
     } catch (e) {
       if (genId === id) self.postMessage({ type: 'error', id, message: e.message });
     }
