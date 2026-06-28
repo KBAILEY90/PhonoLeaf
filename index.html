@@ -415,6 +415,11 @@
     }
     .voice-lang { font-size: 0.72rem; color: var(--text-dim); margin-top: 0.1rem; }
     .voice-check { color: var(--accent); font-size: 1.1rem; }
+    .voice-section-label {
+      font-size: 0.68rem; font-weight: 700; letter-spacing: 0.06em;
+      text-transform: uppercase; color: var(--text-dim);
+      padding: 0.5rem 0.25rem 0.25rem;
+    }
 
     /* Chapter list */
     .chapter-item {
@@ -2105,6 +2110,104 @@ const Reader = {
   },
 };
 
+// --- Kokoro neural TTS engine ----------------------------
+// Runs KokoroTTS inference in a Web Worker and plays result
+// through AudioContext. Falls back silently to Web Speech
+// while the model is still downloading.
+const KokoroEngine = {
+  _worker: null,
+  _ready:  false,
+  _loading: false,
+  _audioCtx: null,
+  _nextTime: 0,
+  _pendingId: 0,
+  _pendingResolve: null,
+  _lastPct: -1,
+
+  // Call once (idempotent) to start downloading the model.
+  init() {
+    if (this._worker || this._loading) return;
+    this._loading = true;
+    this._worker = new Worker('./kokoro-worker.js', { type: 'module' });
+    this._worker.onmessage = ({ data }) => this._onMsg(data);
+    this._worker.postMessage({ type: 'init' });
+    toast('Downloading Kokoro voice model (~92 MB)…');
+  },
+
+  _onMsg(data) {
+    if (data.type === 'progress') {
+      // Throttle toasts: only update every 20%.
+      const p = data.progress;
+      if (p - this._lastPct >= 20) { this._lastPct = p; toast('Kokoro loading… ' + p + '%'); }
+    } else if (data.type === 'ready') {
+      this._ready = true;
+      this._loading = false;
+      this._lastPct = -1;
+      toast('Kokoro voice ready');
+      // If TTS is already active, restart the current chunk with Kokoro.
+      if (TTS.active) { TTS._cancelSpeech(); TTS._speak(); }
+    } else if (data.type === 'audio') {
+      this._playBuffer(data.id, data.samples, data.sampleRate);
+    } else if (data.type === 'error') {
+      console.warn('Kokoro:', data.message);
+      this._done(); // resolve so TTS loop doesn't hang
+    }
+  },
+
+  _ctx() {
+    if (!this._audioCtx || this._audioCtx.state === 'closed') {
+      this._audioCtx = new AudioContext();
+    }
+    if (this._audioCtx.state === 'suspended') this._audioCtx.resume();
+    return this._audioCtx;
+  },
+
+  _playBuffer(id, samples, sampleRate) {
+    if (id !== this._pendingId) return; // superseded or cancelled
+    const ctx = this._ctx();
+    const buf = ctx.createBuffer(1, samples.length, sampleRate);
+    buf.getChannelData(0).set(samples);
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    src.connect(ctx.destination);
+    const when = Math.max(ctx.currentTime + 0.04, this._nextTime);
+    src.start(when);
+    this._nextTime = when + buf.duration;
+    src.onended = () => {
+      // Resolve only when there's no more audio queued after this node.
+      if (id === this._pendingId && ctx.currentTime >= this._nextTime - 0.08) this._done();
+    };
+  },
+
+  _done() {
+    const r = this._pendingResolve; this._pendingResolve = null; if (r) r();
+  },
+
+  // Generate audio for `text` and return a Promise that resolves when
+  // playback finishes. The promise resolves immediately if cancelled.
+  speak(text, speed) {
+    return new Promise(resolve => {
+      const id = ++this._pendingId;
+      this._pendingResolve = resolve;
+      this._nextTime = 0;
+      const v = (localStorage.getItem('kba_voice') || 'kokoro:af_heart').replace('kokoro:', '');
+      this._worker.postMessage({ type: 'generate', id, text, voice: v, speed: +speed || 1 });
+    });
+  },
+
+  cancel() {
+    this._pendingId++;
+    if (this._worker) this._worker.postMessage({ type: 'cancel' });
+    // Close the AudioContext to immediately silence any playing audio.
+    if (this._audioCtx) { this._audioCtx.close().catch(() => {}); this._audioCtx = null; }
+    this._nextTime = 0;
+    this._done();
+  },
+
+  isReady() { return this._ready; },
+  isKokoroVoice() { return (localStorage.getItem('kba_voice') || '').startsWith('kokoro:'); },
+};
+
 // --- TTS -------------------------------------------------
 const TTS = {
   chunks: [],
@@ -2279,7 +2382,7 @@ const TTS = {
     this.active = false;
     this._awaitingPage = false;
     clearTimeout(this._gapT);
-    window.speechSynthesis?.cancel();
+    this._cancelSpeech();
     const btn = document.getElementById('play-btn');
     if (btn) btn.classList.remove('playing');
     Stats.stopTick();
@@ -2292,7 +2395,7 @@ const TTS = {
   // Used by manual skips (next/prev/swipe) so turning a page starts reading.
   skipPage(turn) {
     if (!State.rendition) return;
-    window.speechSynthesis?.cancel();
+    this._cancelSpeech();
     this.active = true;
     this._awaitingPage = true; // Reader._onRelocated resumes once the page lays out
     this._skips = 0;
@@ -2363,37 +2466,48 @@ const TTS = {
     // Pre-pause (3s before a chapter title, 2s before a subtitle) — once per chunk.
     if (chunk.pre && this._preIdx !== this.idx) {
       this._preIdx = this.idx;
-      window.speechSynthesis.cancel();
+      this._cancelSpeech();
       clearTimeout(this._gapT);
       this._gapT = setTimeout(() => { if (this.active) this._speak(); }, chunk.pre);
       return;
     }
-    window.speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(chunk.text);
-    u.rate  = this.rate;
-    // Always resolve from the live getVoices() list — cached objects can be
-    // silently ignored by Chrome/Safari if the voice list has refreshed.
-    const voiceName = this.voice?.name;
-    u.voice = (voiceName && window.speechSynthesis.getVoices().find(v => v.name === voiceName)) || this.voice || null;
     this._skips = 0; // we found real text — reset the blank-page counter
     this._dir = 1;   // reading real content — from here the flow is forward
-    u.onend   = () => {
+    this._cancelSpeech();
+    this._utterance(chunk.text, () => {
       this.idx++;
       if (!this.active) return;
       // Post-pause (2s after a chapter title, 1s after a subtitle).
       if (chunk.post) { clearTimeout(this._gapT); this._gapT = setTimeout(() => { if (this.active) this._speak(); }, chunk.post); }
       else this._speak();
-    };
-    u.onerror = e => { if (e.error !== 'interrupted') console.warn('TTS:', e.error); };
-    window.speechSynthesis.speak(u);
-
-    // iOS workaround: resume if paused
-    if (window.speechSynthesis.paused) window.speechSynthesis.resume();
+    });
   },
 
   setRate(v) {
     this.rate = v;
-    if (this.active) { window.speechSynthesis.cancel(); this._speak(); }
+    if (this.active) { this._cancelSpeech(); this._speak(); }
+  },
+
+  _cancelSpeech() {
+    window.speechSynthesis?.cancel();
+    KokoroEngine.cancel();
+  },
+
+  // Speak one chunk of text, routing to Kokoro or Web Speech depending on
+  // what's selected and ready. Calls onend when playback finishes.
+  _utterance(text, onend) {
+    if (KokoroEngine.isReady() && KokoroEngine.isKokoroVoice()) {
+      KokoroEngine.speak(text, this.rate).then(() => { if (this.active) onend(); });
+    } else {
+      const u = new SpeechSynthesisUtterance(text);
+      u.rate = this.rate;
+      const voiceName = this.voice?.name;
+      u.voice = (voiceName && window.speechSynthesis.getVoices().find(v => v.name === voiceName)) || this.voice || null;
+      u.onend = onend;
+      u.onerror = e => { if (e.error !== 'interrupted') console.warn('TTS:', e.error); };
+      window.speechSynthesis.speak(u);
+      if (window.speechSynthesis.paused) window.speechSynthesis.resume();
+    }
   },
 
   // Score a voice so the most natural-sounding ones float to the top.
@@ -2427,9 +2541,18 @@ const TTS = {
   // Show the active voice's name on the reader's voice button.
   updateVoiceLabel() {
     const btn = document.getElementById('voice-btn');
-    if (btn) btn.textContent = this._shortVoiceName(this.voice);
     const sub = document.getElementById('set-voice-sub');
-    if (sub) sub.textContent = this.voice?.name || 'System default';
+    const saved = localStorage.getItem('kba_voice') || '';
+    if (saved.startsWith('kokoro:')) {
+      const id = saved.slice(7);
+      const parts = id.split('_');
+      const label = 'Kokoro · ' + parts.slice(1).map(w => w[0].toUpperCase() + w.slice(1)).join(' ');
+      if (btn) btn.textContent = label;
+      if (sub) sub.textContent = label;
+    } else {
+      if (btn) btn.textContent = this._shortVoiceName(this.voice);
+      if (sub) sub.textContent = this.voice?.name || 'System default';
+    }
   },
 
   allVoices() {
@@ -2441,9 +2564,20 @@ const TTS = {
 
   // Choose the best available voice, restoring the user's saved choice if present.
   pickDefaultVoice() {
+    const savedName = localStorage.getItem('kba_voice') || '';
+    if (savedName.startsWith('kokoro:')) {
+      // Kokoro voice selected — update label and kick off model download.
+      this.updateVoiceLabel();
+      KokoroEngine.init();
+      // Keep a system voice loaded as a fallback while Kokoro downloads.
+      if (!this.voice) {
+        const voices = this.allVoices();
+        if (voices.length) this.voice = voices[0];
+      }
+      return;
+    }
     const voices = this.allVoices();
     if (!voices.length) return;
-    const savedName = localStorage.getItem('kba_voice');
     const saved = savedName && voices.find(v => v.name === savedName);
     this.voice = saved || voices[0];
     this.updateVoiceLabel();
@@ -2457,19 +2591,61 @@ window.speechSynthesis?.addEventListener('voiceschanged', () => TTS.pickDefaultV
 // --- Voice Modal ------------------------------------------
 const VoiceModal = {
   _list: [],
+  _kokoro: [
+    { id: 'af_heart',    label: 'Heart',    desc: 'American Female' },
+    { id: 'af_bella',    label: 'Bella',    desc: 'American Female' },
+    { id: 'af_nova',     label: 'Nova',     desc: 'American Female' },
+    { id: 'af_sarah',    label: 'Sarah',    desc: 'American Female' },
+    { id: 'am_michael',  label: 'Michael',  desc: 'American Male'   },
+    { id: 'am_eric',     label: 'Eric',     desc: 'American Male'   },
+    { id: 'am_puck',     label: 'Puck',     desc: 'American Male'   },
+    { id: 'bf_emma',     label: 'Emma',     desc: 'British Female'  },
+    { id: 'bf_isabella', label: 'Isabella', desc: 'British Female'  },
+    { id: 'bm_george',   label: 'George',   desc: 'British Male'    },
+  ],
 
   open() {
+    const curVoice = localStorage.getItem('kba_voice') || '';
+    const kokoroHTML = `<div class="voice-section-label">Kokoro AI</div>` +
+      this._kokoro.map(v => {
+        const key = 'kokoro:' + v.id;
+        const active = curVoice === key;
+        return `<div class="voice-item${active ? ' active' : ''}" onclick="VoiceModal.selectKokoro('${v.id}')">
+          <div>
+            <div class="voice-name">${esc(v.label)} <span class="voice-badge">AI</span></div>
+            <div class="voice-lang">${esc(v.desc)}</div>
+          </div>
+          ${active ? '<span class="voice-check">&#10003;</span>' : ''}
+        </div>`;
+      }).join('');
+
     this._list = TTS.allVoices();
-    if (!this._list.length) { toast('No voices available yet — try again in a moment'); return; }
-    document.getElementById('voice-list').innerHTML = this._list.map(v => `
-      <div class="voice-item ${TTS.voice?.name === v.name ? 'active' : ''}" onclick="VoiceModal.selectNamed(this.dataset.vname)" data-vname="${esc(v.name)}">
-        <div>
-          <div class="voice-name">${esc(v.name)}${TTS._isNatural(v) ? ' <span class="voice-badge">&#10024; Natural</span>' : ''}</div>
-          <div class="voice-lang">${esc(v.lang)}${v.localService ? ' &middot; Local' : ' &middot; Online'}</div>
-        </div>
-        ${TTS.voice?.name === v.name ? '<span class="voice-check">&#10003;</span>' : ''}
-      </div>`).join('');
+    const isKokoro = curVoice.startsWith('kokoro:');
+    const systemHTML = this._list.length
+      ? `<div class="voice-section-label">System voices</div>` +
+        this._list.map(v => {
+          const active = !isKokoro && TTS.voice?.name === v.name;
+          return `<div class="voice-item${active ? ' active' : ''}" onclick="VoiceModal.selectNamed(this.dataset.vname)" data-vname="${esc(v.name)}">
+            <div>
+              <div class="voice-name">${esc(v.name)}${TTS._isNatural(v) ? ' <span class="voice-badge">&#10024; Natural</span>' : ''}</div>
+              <div class="voice-lang">${esc(v.lang)}${v.localService ? ' &middot; Local' : ' &middot; Online'}</div>
+            </div>
+            ${active ? '<span class="voice-check">&#10003;</span>' : ''}
+          </div>`;
+        }).join('')
+      : '';
+
+    document.getElementById('voice-list').innerHTML = kokoroHTML + systemHTML;
     document.getElementById('voice-modal').classList.add('open');
+  },
+
+  selectKokoro(id) {
+    localStorage.setItem('kba_voice', 'kokoro:' + id);
+    TTS.updateVoiceLabel();
+    KokoroEngine.init(); // no-op if already loading/ready
+    toast('Voice: Kokoro ' + id);
+    this.close();
+    if (TTS.active) { TTS._cancelSpeech(); TTS._speak(); }
   },
 
   // Select by name so the index from render time can't mismatch a re-sorted list.
@@ -2483,7 +2659,7 @@ const VoiceModal = {
     TTS.updateVoiceLabel();
     toast('Voice: ' + v.name);
     this.close();
-    if (TTS.active) { window.speechSynthesis.cancel(); TTS._speak(); }
+    if (TTS.active) { TTS._cancelSpeech(); TTS._speak(); }
   },
 
   close(e) {

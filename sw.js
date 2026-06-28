@@ -3,11 +3,12 @@
 // Drive at runtime and are intentionally NOT cached (they can be very large and
 // require a live auth token).
 
-const CACHE = 'koboaudio-v7';
+const CACHE = 'koboaudio-v8';
 const SHELL = [
   './',
   './index.html',
   './manifest.json',
+  './kokoro-worker.js',
   './fonts/manrope.woff2',
   './fonts/literata.woff2',
   'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js',
