@@ -2119,10 +2119,12 @@ const KokoroEngine = {
   _ready:  false,
   _loading: false,
   _audioCtx: null,
+  _gain: null,      // master gain node — muted on hard stop, unmuted on speak
   _nextTime: 0,
   _pendingId: 0,
   _pendingResolve: null,
   _lastPct: -1,
+  voice: 'af_heart', // active Kokoro voice ID (no 'kokoro:' prefix)
 
   // Call once (idempotent) to start downloading the model.
   init() {
@@ -2149,7 +2151,7 @@ const KokoroEngine = {
     } else if (data.type === 'audio') {
       this._playBuffer(data.id, data.samples, data.sampleRate);
     } else if (data.type === 'error') {
-      console.warn('Kokoro:', data.message);
+      console.warn('Kokoro error:', data.message);
       this._done(); // resolve so TTS loop doesn't hang
     }
   },
@@ -2157,6 +2159,8 @@ const KokoroEngine = {
   _ctx() {
     if (!this._audioCtx || this._audioCtx.state === 'closed') {
       this._audioCtx = new AudioContext();
+      this._gain = this._audioCtx.createGain();
+      this._gain.connect(this._audioCtx.destination);
     }
     if (this._audioCtx.state === 'suspended') this._audioCtx.resume();
     return this._audioCtx;
@@ -2169,7 +2173,7 @@ const KokoroEngine = {
     buf.getChannelData(0).set(samples);
     const src = ctx.createBufferSource();
     src.buffer = buf;
-    src.connect(ctx.destination);
+    src.connect(this._gain); // through master gain so hard-stop works
     const when = Math.max(ctx.currentTime + 0.04, this._nextTime);
     src.start(when);
     this._nextTime = when + buf.duration;
@@ -2190,18 +2194,27 @@ const KokoroEngine = {
       const id = ++this._pendingId;
       this._pendingResolve = resolve;
       this._nextTime = 0;
-      const v = (localStorage.getItem('kba_voice') || 'kokoro:af_heart').replace('kokoro:', '');
-      this._worker.postMessage({ type: 'generate', id, text, voice: v, speed: +speed || 1 });
+      // Unmute in case a hard-stop muted the gain.
+      if (this._gain) this._gain.gain.value = 1;
+      console.log('[Kokoro] voice:', this.voice, '|', text.slice(0, 40));
+      this._worker.postMessage({ type: 'generate', id, text, voice: this.voice, speed: +speed || 1 });
     });
   },
 
+  // Soft cancel: invalidates in-flight requests but keeps AudioContext alive
+  // so there's no gap on iOS when the next chunk starts.
   cancel() {
     this._pendingId++;
     if (this._worker) this._worker.postMessage({ type: 'cancel' });
-    // Close the AudioContext to immediately silence any playing audio.
-    if (this._audioCtx) { this._audioCtx.close().catch(() => {}); this._audioCtx = null; }
     this._nextTime = 0;
     this._done();
+  },
+
+  // Hard stop: immediately silences audio via the gain node.
+  // Call this when the user explicitly stops or skips a page.
+  hardStop() {
+    this.cancel();
+    if (this._gain) this._gain.gain.value = 0;
   },
 
   isReady() { return this._ready; },
@@ -2382,7 +2395,7 @@ const TTS = {
     this.active = false;
     this._awaitingPage = false;
     clearTimeout(this._gapT);
-    this._cancelSpeech();
+    this._hardStopAll();
     const btn = document.getElementById('play-btn');
     if (btn) btn.classList.remove('playing');
     Stats.stopTick();
@@ -2395,7 +2408,7 @@ const TTS = {
   // Used by manual skips (next/prev/swipe) so turning a page starts reading.
   skipPage(turn) {
     if (!State.rendition) return;
-    this._cancelSpeech();
+    this._hardStopAll();
     this.active = true;
     this._awaitingPage = true; // Reader._onRelocated resumes once the page lays out
     this._skips = 0;
@@ -2485,12 +2498,17 @@ const TTS = {
 
   setRate(v) {
     this.rate = v;
-    if (this.active) { this._cancelSpeech(); this._speak(); }
+    if (this.active) { this._hardStopAll(); this._speak(); }
   },
 
   _cancelSpeech() {
     window.speechSynthesis?.cancel();
-    KokoroEngine.cancel();
+    KokoroEngine.cancel(); // soft: invalidates pending, keeps AudioContext alive
+  },
+
+  _hardStopAll() {
+    window.speechSynthesis?.cancel();
+    KokoroEngine.hardStop(); // mutes immediately via gain node
   },
 
   // Speak one chunk of text, routing to Kokoro or Web Speech depending on
@@ -2566,10 +2584,11 @@ const TTS = {
   pickDefaultVoice() {
     const savedName = localStorage.getItem('kba_voice') || '';
     if (savedName.startsWith('kokoro:')) {
-      // Kokoro voice selected — update label and kick off model download.
+      // Kokoro voice selected — restore voice ID, update label, kick off download.
+      KokoroEngine.voice = savedName.slice(7);
       this.updateVoiceLabel();
       KokoroEngine.init();
-      // Keep a system voice loaded as a fallback while Kokoro downloads.
+      // Keep a system voice as fallback while Kokoro downloads.
       if (!this.voice) {
         const voices = this.allVoices();
         if (voices.length) this.voice = voices[0];
@@ -2641,6 +2660,7 @@ const VoiceModal = {
 
   selectKokoro(id) {
     localStorage.setItem('kba_voice', 'kokoro:' + id);
+    KokoroEngine.voice = id;
     TTS.updateVoiceLabel();
     KokoroEngine.init(); // no-op if already loading/ready
     toast('Voice: Kokoro ' + id);
