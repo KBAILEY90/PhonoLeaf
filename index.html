@@ -2201,13 +2201,15 @@ const KokoroEngine = {
     });
   },
 
-  // Soft cancel: invalidates in-flight requests but keeps AudioContext alive
-  // so there's no gap on iOS when the next chunk starts.
+  // Cancel: invalidates the in-flight request and keeps AudioContext alive.
+  // Does NOT resolve the pending promise — the caller either doesn't need it
+  // resolved (hard stop) or it was already resolved by src.onended (chunk
+  // transition). Resolving here would fire onend() at the wrong time and
+  // double-advance the page.
   cancel() {
     this._pendingId++;
     if (this._worker) this._worker.postMessage({ type: 'cancel' });
     this._nextTime = 0;
-    this._done();
   },
 
   // Hard stop: immediately silences audio via the gain node.
