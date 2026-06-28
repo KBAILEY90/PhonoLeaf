@@ -1778,6 +1778,8 @@ const Reader = {
         const save = () => this._persistPosition();
         document.addEventListener('visibilitychange', () => {
           if (document.visibilityState === 'hidden') save();
+          // Wake lock is auto-released when tab hides; re-acquire when visible if still playing.
+          if (document.visibilityState === 'visible' && TTS.active) TTS._acquireWakeLock();
         });
         window.addEventListener('pagehide', save);
       }
@@ -2230,6 +2232,15 @@ const TTS = {
     this.active ? this.stop() : this.start();
   },
 
+  _wakeLock: null,
+  async _acquireWakeLock() {
+    if (!('wakeLock' in navigator)) return;
+    try { this._wakeLock = await navigator.wakeLock.request('screen'); } catch (_) {}
+  },
+  _releaseWakeLock() {
+    if (this._wakeLock) { this._wakeLock.release(); this._wakeLock = null; }
+  },
+
   start() {
     Reader._autoStartBook = null; // playback started — cancel any pending auto-start
     this.loadPageText(); // always read the page we're actually on (no stale text)
@@ -2239,6 +2250,7 @@ const TTS = {
     this._dir = 1; // pressing play always reads forward
     document.getElementById('play-btn').classList.add('playing');
     Stats.startTick();
+    this._acquireWakeLock();
     Reader.hideChromeSoon(); // fade the controls ~5s after playback starts
     if (document.getElementById('reader-view').classList.contains('minimized')) Home.render();
     // If the current page has no readable text (e.g. the cover), _speak() will
@@ -2254,6 +2266,7 @@ const TTS = {
     const btn = document.getElementById('play-btn');
     if (btn) btn.classList.remove('playing');
     Stats.stopTick();
+    this._releaseWakeLock();
     Reader.showChrome();
     if (document.getElementById('reader-view').classList.contains('minimized')) Home.render();
   },
