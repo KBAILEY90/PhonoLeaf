@@ -1,9 +1,9 @@
-// KoboAudio service worker — makes the app shell installable & offline-capable.
+// PhonoLeaf service worker — makes the app shell installable & offline-capable.
 // Note: this caches the UI and its libraries only. Book bytes come from Google
 // Drive at runtime and are intentionally NOT cached (they can be very large and
 // require a live auth token).
 
-const CACHE = 'koboaudio-v9';
+const CACHE = 'phonoleaf-v10';
 const SHELL = [
   './',
   './index.html',

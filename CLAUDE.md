@@ -4,14 +4,22 @@ Guidance for working in this repository.
 
 ## What this is
 
-**KoboAudio** — a mobile-first PWA that reads your epubs aloud. It connects to
-Google Drive (read-only), lists epub files from a folder, renders them with
-epub.js, and reads the text using the browser's Web Speech (TTS) engine.
+**PhonoLeaf** (formerly KoboAudio) — a mobile-first PWA that reads your epubs
+aloud. It connects to Google Drive (read-only), lists epub files from a folder,
+renders them with epub.js, and reads the text using the browser's Web Speech
+(TTS) engine.
 
 - Live: https://kbailey90.github.io/koboaudio/
 - Repo: https://github.com/KBAILEY90/koboaudio
 - Status: working personal project; owner is evaluating turning it into a
   sellable product (see "Productization roadmap" below).
+- **Brand vs. infra:** the app is now branded **PhonoLeaf** (2026-06-28), but the
+  GitHub repo, the Pages URL (`/koboaudio`), the IndexedDB name (`koboaudio`),
+  the default Drive folder (`Rakuten Kobo`), and the OAuth client ID / authorized
+  JavaScript origins are deliberately **kept as `koboaudio`**. Renaming any of
+  those would break Google sign-in (origins are domain-bound) or orphan cached
+  covers. Only the user-facing name, `manifest.json`, and the `sw.js` cache
+  prefix were changed.
 
 ## Tech stack & structure
 
@@ -39,8 +47,8 @@ Edit `index.html` (or `sw.js`), commit, and **push to `main`**. GitHub Actions
   `git fetch` and check `git log HEAD..origin/main` before pushing to avoid
   collisions, and rebase rather than clobber.
 - The service worker is **network-first for the HTML** so deploys show up, but
-  bump `CACHE` in `sw.js` (e.g. `koboaudio-v2` → `-v3`) whenever the precached
-  asset list changes, to force clients off the old shell.
+  bump `CACHE` in `sw.js` (currently `phonoleaf-v10`; e.g. `-v10` → `-v11`)
+  whenever the precached asset list changes, to force clients off the old shell.
 - **After each push to `main`, update this CLAUDE.md** to reflect the shipped
   change (behavior notes / gotchas / roadmap status) and push the doc too. The
   owner treats this file as the living source of truth — keep it current without
@@ -352,7 +360,12 @@ Google login); verify by inspection + the owner testing on device.
 ## Productization roadmap (owner is exploring selling this)
 
 Pending / discussed, not yet done:
-1. **Rename/rebrand** off "Kobo" (trademark) — owner will supply a new name.
+1. ~~**Rename/rebrand** off "Kobo" (trademark)~~ — **DONE (2026-06-28):
+   rebranded to PhonoLeaf.** Only the user-facing name, `manifest.json`, and the
+   `sw.js` cache prefix changed; repo/URL/OAuth/IndexedDB/default-folder all kept
+   as `koboaudio`/`Rakuten Kobo` to avoid breaking sign-in and caches. Domains
+   `phonoleaf.com/.ca/.app/.io` were all available and no conflicting trademark
+   was found (formal CIPO/USPTO clearance still recommended before filing).
 2. **Switch `drive.readonly` → `drive.file` + Google Picker** to escape
    restricted-scope verification (avoids a ~$15k+/yr security assessment).
    Free; needs the Picker API enabled + a (public, referrer-restricted) API key.
@@ -362,3 +375,4 @@ Pending / discussed, not yet done:
 5. **Backend** for real refresh tokens, payments (Stripe), and a TTS key proxy.
 
 Already hardened for multi-user: XSS escaping of dynamic content.
+                                                                                                                                                                         
