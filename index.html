@@ -1022,6 +1022,54 @@ const Meta = {
     if (!m || (!m.author && !m.year && !m.publisher)) return;
     this.data[id] = m; this._save();
   },
+  // Fetch genre + page count from Open Library (background, 2 concurrent max).
+  async fetchAll(books) {
+    const pending = books.filter(b => { const m = this.data[b.id]; return !m || (!m.genre && !m.pages); });
+    if (!pending.length) return;
+    const run = async () => {
+      while (pending.length) {
+        const b = pending.shift();
+        await this._fetchOL(b.id, b.name.replace(/\.epub$/i, ''), (this.data[b.id] || {}).author || '');
+      }
+    };
+    await Promise.all([run(), run()]); // 2 concurrent
+    if (Nav.current === 'stats') StatsPage.render();
+  },
+  async _fetchOL(id, title, author) {
+    try {
+      const q = new URLSearchParams({ title, fields: 'subject,number_of_pages_median', limit: '1' });
+      if (author) q.set('author', author);
+      const res = await fetch('https://openlibrary.org/search.json?' + q);
+      if (!res.ok) return;
+      const { docs } = await res.json();
+      const hit = docs && docs[0];
+      if (!hit) return;
+      if (!this.data[id]) this.data[id] = {};
+      if (hit.number_of_pages_median) this.data[id].pages = hit.number_of_pages_median;
+      const genre = this._pickGenre(hit.subject || []);
+      if (genre) this.data[id].genre = genre;
+      this._save();
+    } catch (_) {}
+  },
+  _pickGenre(subjects) {
+    if (!subjects.length) return '';
+    const map = [
+      ['science fiction', 'Science fiction'], ['fantasy', 'Fantasy'],
+      ['mystery', 'Mystery'], ['detective', 'Mystery'],
+      ['romance', 'Romance'], ['thriller', 'Thriller'], ['horror', 'Horror'],
+      ['historical fiction', 'Historical fiction'],
+      ['biography', 'Biography'], ['autobiography', 'Biography'],
+      ['history', 'History'], ['self-help', 'Self-help'],
+      ['young adult', 'Young adult'],
+      ['juvenile', "Children's"], ['children', "Children's"],
+    ];
+    for (const s of subjects) {
+      const low = s.toLowerCase();
+      for (const [k, label] of map) if (low.includes(k)) return label;
+    }
+    const first = subjects[0] || '';
+    return first.length <= 36 ? first : first.slice(0, 34) + '…';
+  },
 };
 
 // --- Tab navigation shell ---------------------------------
@@ -1258,6 +1306,7 @@ const StatsPage = {
            <select class="set-select" onchange="StatsPage.setGroup(this.value)" aria-label="Group breakdown by">
              <option value="author"${this._group === 'author' ? ' selected' : ''}>By author</option>
              <option value="book"${this._group === 'book' ? ' selected' : ''}>By book</option>
+             <option value="genre"${this._group === 'genre' ? ' selected' : ''}>By genre</option>
              <option value="length"${this._group === 'length' ? ' selected' : ''}>By book length</option>
            </select>
          </div>
@@ -1284,22 +1333,40 @@ const StatsPage = {
         rows.map(r => row(r.name, dash(r.m), r.pct ? r.pct + '%' : '—', r.rd ? '✓' : '—')).join('');
     }
 
+    if (g === 'genre') {
+      const map = {};
+      for (const b of books) {
+        const genre = (Meta.get(b.id) || {}).genre || '';
+        if (!genre) continue;
+        const a = (map[genre] || (map[genre] = { n: 0, m: 0, rd: 0 }));
+        a.n++; a.m += mins(b.id); if (read(b.id)) a.rd++;
+      }
+      const rows = Object.entries(map).sort((a, z) => z[1].m - a[1].m).slice(0, 8);
+      if (!rows.length) return `<div class="arow"><span class="aname" style="color:var(--text-dim)">Genre data is loading in the background — check back in a moment.</span><span></span><span></span><span></span></div>`;
+      return head('Genre', 'Books', 'Min read', 'Finished') +
+        rows.map(([g2, v]) => row(g2, v.n, dash(v.m), dash(v.rd))).join('');
+    }
+
     if (g === 'length') {
       const tiers = [
-        { k: 'Short', lo: 0, hi: 1e6, sub: 'under 1 MB' },
-        { k: 'Medium', lo: 1e6, hi: 3e6, sub: '1–3 MB' },
-        { k: 'Long', lo: 3e6, hi: Infinity, sub: 'over 3 MB' },
+        { k: '<300 pages', lo: 0, hi: 300 },
+        { k: '300–499 pages', lo: 300, hi: 500 },
+        { k: '500+ pages', lo: 500, hi: Infinity },
       ];
-      const agg = { Short: { n: 0, m: 0, rd: 0 }, Medium: { n: 0, m: 0, rd: 0 }, Long: { n: 0, m: 0, rd: 0 } };
+      const agg = {};
+      tiers.forEach(t => { agg[t.k] = { n: 0, m: 0, rd: 0 }; });
+      let known = 0;
       for (const b of books) {
-        const sz = +b.size || 0;
-        const t = tiers.find(x => sz >= x.lo && sz < x.hi) || tiers[0];
+        const pg = (Meta.get(b.id) || {}).pages || 0;
+        if (!pg) continue;
+        known++;
+        const t = tiers.find(x => pg >= x.lo && pg < x.hi) || tiers[tiers.length - 1];
         const a = agg[t.k]; a.n++; a.m += mins(b.id); if (read(b.id)) a.rd++;
       }
+      if (!known) return `<div class="arow"><span class="aname" style="color:var(--text-dim)">Page counts are loading in the background — check back in a moment.</span><span></span><span></span><span></span></div>`;
       const rows = tiers.filter(t => agg[t.k].n > 0);
-      if (!rows.length) return this._emptyBreak('length');
       return head('Length', 'Books', 'Min read', 'Finished') +
-        rows.map(t => { const a = agg[t.k]; return row(t.k, a.n, dash(a.m), dash(a.rd), `${t.k}: ${t.sub} (by file size)`); }).join('');
+        rows.map(t => { const a = agg[t.k]; return row(t.k, a.n, dash(a.m), dash(a.rd)); }).join('');
     }
 
     // default: by author
@@ -1620,6 +1687,7 @@ const Library = {
       this.render();
       Home.render(); // home pulls continue/recent from the loaded books
       Covers.loadAll(); // fill in real epub covers in the background
+      Meta.fetchAll(State.books); // fetch Open Library genre + page counts in background
     } catch (e) {
       console.error(e);
       grid.innerHTML = `<div class="empty"><p style="color:var(--accent)">Error: ${esc(e.message)}</p><button onclick="Library.load()" style="margin-top:1rem;padding:0.5rem 1rem;background:var(--accent);color:white;border:none;border-radius:8px;cursor:pointer">Retry</button></div>`;

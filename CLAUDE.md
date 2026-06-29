@@ -9,17 +9,22 @@ aloud. It connects to Google Drive (read-only), lists epub files from a folder,
 renders them with epub.js, and reads the text using the browser's Web Speech
 (TTS) engine.
 
-- Live: https://kbailey90.github.io/koboaudio/
-- Repo: https://github.com/KBAILEY90/koboaudio
+- Live: https://kbailey90.github.io/phonoleaf/
+- Repo: https://github.com/KBAILEY90/phonoleaf
 - Status: working personal project; owner is evaluating turning it into a
   sellable product (see "Productization roadmap" below).
-- **Brand vs. infra:** the app is now branded **PhonoLeaf** (2026-06-28), but the
-  GitHub repo, the Pages URL (`/koboaudio`), the IndexedDB name (`koboaudio`),
-  and the OAuth client ID / authorized JavaScript origins are deliberately
-  **kept as `koboaudio`**. Renaming any of those would break Google sign-in
-  (origins are domain-bound) or orphan cached covers. Only the user-facing name,
-  `manifest.json`, and the `sw.js` cache prefix were changed. (The Drive folder
-  is no longer hardcoded — see "Folder onboarding" below.)
+- **Brand vs. infra (post-rename, 2026-06-28):** branded **PhonoLeaf**, and the
+  GitHub repo + GitHub Pages path were renamed `koboaudio` → `phonoleaf` (Live is
+  now `kbailey90.github.io/phonoleaf`). **No OAuth change was needed:** the
+  authorized JavaScript origin is host-only (`https://kbailey90.github.io`) — the
+  same for the old and new path — so Google sign-in keeps working. Browser storage
+  is per-origin (host, not path), so existing users keep their token (`kba_auth`),
+  progress (`kba_prog`), and cached covers across the rename. Deliberately left
+  unchanged (all origin-scoped, not URL-scoped): the OAuth client ID, the `kba_*`
+  localStorage keys, and the IndexedDB name (`koboaudio`). Only a future custom
+  domain (e.g. `phonoleaf.com`) would require adding a NEW authorized origin in
+  Google Cloud Console. (The Drive folder is no longer hardcoded — see "Folder
+  onboarding" below.)
 
 ## Tech stack & structure
 
@@ -169,23 +174,30 @@ Google login); verify by inspection + the owner testing on device.
     were intentionally removed.)
   - **Breakdown table with a grouping dropdown** (`.atable`): a `.set-select`
     (persisted to `kba_stats_group`, default `author`) switches `StatsPage._group`
-    between **By author**, **By book**, and **By book length**; `setGroup()` saves
-    the choice + re-renders, and `StatsPage._breakdown(g, books, bookSecs, prog)`
-    builds the rows. All three are 4-column grids: *Author* (Min read · Started ·
-    Read; top 8 authors engaged), *Book* (Min read · % · Read; top 8 by minutes),
-    *Length* (Books · Min read · Finished; bucketed **Short <1 MB / Medium 1–3 MB /
-    Long >3 MB** by Drive file size — a rough length proxy, revisit with a real
-    page-count captured at open time). `—` shows for zero values.
+    between **By author**, **By book**, **By genre**, and **By book length**;
+    `setGroup()` saves the choice + re-renders, and
+    `StatsPage._breakdown(g, books, bookSecs, prog)` builds the rows.
+    All four are 4-column grids: *Author* (Min read · Started · Read; top 8
+    by minutes), *Book* (Min read · % · Read; top 8 by minutes), *Genre*
+    (Books · Min read · Finished; top 8 by minutes; genres from Open Library),
+    *Length* (Books · Min read · Finished; bucketed **<300 pages / 300–499 pages /
+    500+ pages** using `Meta.get(b.id).pages` from Open Library). Length and
+    genre show a "loading in background" placeholder until `Meta.fetchAll`
+    has fetched the data. `—` shows for zero values.
     A **"Reset listening data"** ghost button at the bottom triggers a native
     `confirm()` dialog and clears `kba_stats` + re-renders on confirm.
 - **Epub metadata (`Meta`, `kba_meta`)**: `Meta.capture(id, book)` reads
   `book.packaging.metadata` (author=`creator`, `year` from `pubdate`, publisher,
   language) for free during cover extraction (`Covers._extract`/`fromBook`) and
-  on open, and caches it in `localStorage`. Library cards show the author on a
-  fixed-height `.book-meta` line (replaced the file-size line) so cards are a
-  uniform height — grid spacing no longer depends on title length; titles are
-  single-line ellipsis-clipped to the cover width. (Genre isn't a reliable epub
-  field; `subject` is sometimes present but inconsistent.)
+  on open, and caches it in `localStorage`. `Meta.fetchAll(books)` runs in the
+  background after the library loads (2 concurrent requests); for each book not
+  yet in cache it calls `Meta._fetchOL(id, title, author)` → Open Library
+  `search.json` → stores `pages` (number_of_pages_median) and `genre`
+  (`Meta._pickGenre` maps the subject list to a normalized label: Science
+  fiction / Fantasy / Mystery / Romance / Thriller / Horror / Historical fiction /
+  Biography / History / Self-help / Young adult / Children's; falls back to the
+  first subject). After all fetches complete, re-renders the Stats tab if active.
+  Library cards show the author on a fixed-height `.book-meta` line.
 - **Covers/metadata refresh Home as they load.** `Covers` runs in the
   background after the library loads; each finished cover now also re-renders
   Home (when it's the active tab) so the dashboard's covers/authors fill in
@@ -381,11 +393,13 @@ Google login); verify by inspection + the owner testing on device.
 
 Pending / discussed, not yet done:
 1. ~~**Rename/rebrand** off "Kobo" (trademark)~~ — **DONE (2026-06-28):
-   rebranded to PhonoLeaf.** Only the user-facing name, `manifest.json`, and the
-   `sw.js` cache prefix changed; repo/URL/OAuth/IndexedDB kept as `koboaudio` to
-   avoid breaking sign-in and caches. Domains `phonoleaf.com/.ca/.app/.io` were
-   all available and no conflicting trademark was found (formal CIPO/USPTO
-   clearance still recommended before filing).
+   rebranded to PhonoLeaf**, and the GitHub repo + Pages path renamed
+   `koboaudio` → `phonoleaf`. OAuth needed no change — the JS origin is host-only
+   (`https://kbailey90.github.io`), the same for both paths — and because storage
+   is per-origin, the `kba_*` keys and `koboaudio` IndexedDB name stay and user
+   data carries over. Domains `phonoleaf.com/.ca/.app/.io` were all available and
+   no conflicting trademark was found (formal CIPO/USPTO clearance still
+   recommended before filing).
 2. **Switch `drive.readonly` → `drive.file` + Google Picker** to escape
    restricted-scope verification (avoids a ~$15k+/yr security assessment).
    Free; needs the Picker API enabled + a (public, referrer-restricted) API key.
