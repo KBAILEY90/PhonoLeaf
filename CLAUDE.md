@@ -23,14 +23,12 @@ epub.js, and reads the text using the browser's Web Speech (TTS) engine.
   reading), latin subset; precached by `sw.js`. No Google Fonts hotlink.
 - `.github/workflows/deploy.yml` — deploys to GitHub Pages on push to `main`.
 - External libs via CDN: **jszip** + **epub.js** (jsdelivr), **Google Identity
-  Services** (GIS) for OAuth, **kokoro-js** (jsdelivr ESM) for neural TTS.
-- `kokoro-worker.js` — module Web Worker that downloads and runs Kokoro TTS inference
-  off the main thread, posting `Float32Array` audio chunks back to the app.
+  Services** (GIS) for OAuth.
 
 The inline script is organized into plain object "modules":
 `CONFIG`, `State`, `Theme`, `Stats`, `Nav` (tab shell), `Home`, `Settings`,
 `App` (auth), `Drive` (Drive API), `Library`, `Covers`, `Reader`, `TTS`,
-`KokoroEngine`, `VoiceModal`, `ChapterModal`, plus `esc()`/`toast()`/`showView()` helpers.
+`VoiceModal`, `ChapterModal`, plus `esc()`/`toast()`/`showView()` helpers.
 
 ## How to deploy
 
@@ -339,18 +337,6 @@ Google login); verify by inspection + the owner testing on device.
   `_speak()` always resolves the voice from a live `getVoices()` call before
   creating each `SpeechSynthesisUtterance` — cached voice objects are silently
   ignored by Chrome/Safari if the browser's voice list has refreshed.
-- **Kokoro neural TTS** (`KokoroEngine`, `kokoro-worker.js`). Selecting a Kokoro
-  voice in `VoiceModal` stores `kba_voice = "kokoro:<id>"` and calls
-  `KokoroEngine.init()`, which spawns a module Web Worker that downloads the
-  82M-q8 ONNX model (~92 MB, one-time) from HuggingFace via `kokoro-js` on
-  jsdelivr. The worker generates `Float32Array` audio at 24 kHz and posts it
-  back; the main thread plays it through `AudioContext`. `TTS._speak()` now
-  routes through `TTS._utterance(text, onend)` — Kokoro if ready and selected,
-  Web Speech otherwise. `TTS._cancelSpeech()` cancels both engines. During
-  model download the app falls back to the last system voice so playback keeps
-  working. Ten voices across American/British English in `VoiceModal._kokoro`.
-  The model is first-load only; transformers.js caches it in the browser's
-  cache/IndexedDB automatically.
 - **Web Speech TTS does not play in the background / with the screen locked** on
   mobile. This is a platform limitation, not a bug — see roadmap.
 - Use `100dvh` (not `100vh`) for full-height views so mobile browser chrome
