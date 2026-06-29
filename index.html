@@ -96,13 +96,15 @@
     }
     .app-icon {
       width: 90px; height: 90px;
-      background: linear-gradient(135deg, var(--accent), #7b2d8b);
       border-radius: 22px;
       display: flex; align-items: center; justify-content: center;
-      font-size: 2.8rem;
       margin: 0 auto 1.5rem;
       box-shadow: 0 8px 32px rgba(var(--accent-rgb),0.4);
+      overflow: hidden;
     }
+    .home-brand { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.9rem; }
+    .home-brand-name { font-weight: 700; font-size: 0.95rem; color: var(--text); }
+    .home-brand-tag { color: var(--text-dim); font-size: 0.8rem; }
     .app-name { font-size: 2.2rem; font-weight: 800; letter-spacing: -0.5px; }
     .app-tagline { color: var(--text-dim); margin: 0.4rem 0 2.5rem; font-size: 1rem; }
 
@@ -661,7 +663,7 @@
     &#9888; Set your Google Client ID in CONFIG at the top of this file before use.
   </div>
   <div style="padding: 3rem 2rem; display:flex; flex-direction:column; align-items:center;">
-    <div class="app-icon">&#127911;</div>
+    <div class="app-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="90" height="90" aria-hidden="true"><rect width="100" height="100" rx="22" fill="#3E8E6B"/><path d="M50 24 C68 38 68 66 50 82 C32 66 32 38 50 24 Z" fill="#F4F1E8"/><path d="M50 82 L50 90" stroke="#F4F1E8" stroke-width="3.2" stroke-linecap="round"/><path d="M35 53 Q40 42 45 53 T55 53 T65 53" fill="none" stroke="#3E8E6B" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
     <div class="app-name">PhonoLeaf</div>
     <div class="app-tagline">A voice for every page</div>
     <button class="signin-btn" onclick="App.signIn()">
@@ -683,6 +685,11 @@
 <!-- ============== HOME VIEW ============== -->
 <div id="home-view" class="view">
   <div class="scrolly">
+    <div class="home-brand">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="28" height="28" aria-hidden="true"><rect width="100" height="100" rx="22" fill="#3E8E6B"/><path d="M50 24 C68 38 68 66 50 82 C32 66 32 38 50 24 Z" fill="#F4F1E8"/><path d="M50 82 L50 90" stroke="#F4F1E8" stroke-width="3.2" stroke-linecap="round"/><path d="M35 53 Q40 42 45 53 T55 53 T65 53" fill="none" stroke="#3E8E6B" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span class="home-brand-name">PhonoLeaf</span>
+      <span class="home-brand-tag">A voice for every page</span>
+    </div>
     <div class="home-title" id="home-title">Home</div>
     <div id="home-continue"></div>
     <div class="stat-row" id="home-stats" onclick="Nav.go('stats')" style="cursor:pointer"></div>
@@ -751,7 +758,7 @@
         <button class="set-link" onclick="Settings.changeFolder()">Change</button>
       </div>
     </div>
-    <div style="text-align:center;color:var(--text-dim);font-size:0.7rem;margin-top:1.4rem">PhonoLeaf &middot; reads your epubs aloud</div>
+    <div style="text-align:center;color:var(--text-dim);font-size:0.7rem;margin-top:1.4rem">PhonoLeaf &middot; A voice for every page</div>
   </div>
 </div>
 
