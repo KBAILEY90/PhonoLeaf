@@ -15,11 +15,11 @@ renders them with epub.js, and reads the text using the browser's Web Speech
   sellable product (see "Productization roadmap" below).
 - **Brand vs. infra:** the app is now branded **PhonoLeaf** (2026-06-28), but the
   GitHub repo, the Pages URL (`/koboaudio`), the IndexedDB name (`koboaudio`),
-  the default Drive folder (`Rakuten Kobo`), and the OAuth client ID / authorized
-  JavaScript origins are deliberately **kept as `koboaudio`**. Renaming any of
-  those would break Google sign-in (origins are domain-bound) or orphan cached
-  covers. Only the user-facing name, `manifest.json`, and the `sw.js` cache
-  prefix were changed.
+  and the OAuth client ID / authorized JavaScript origins are deliberately
+  **kept as `koboaudio`**. Renaming any of those would break Google sign-in
+  (origins are domain-bound) or orphan cached covers. Only the user-facing name,
+  `manifest.json`, and the `sw.js` cache prefix were changed. (The Drive folder
+  is no longer hardcoded — see "Folder onboarding" below.)
 
 ## Tech stack & structure
 
@@ -47,7 +47,7 @@ Edit `index.html` (or `sw.js`), commit, and **push to `main`**. GitHub Actions
   `git fetch` and check `git log HEAD..origin/main` before pushing to avoid
   collisions, and rebase rather than clobber.
 - The service worker is **network-first for the HTML** so deploys show up, but
-  bump `CACHE` in `sw.js` (currently `phonoleaf-v10`; e.g. `-v10` → `-v11`)
+  bump `CACHE` in `sw.js` (currently `phonoleaf-v12`; e.g. `-v12` → `-v13`)
   whenever the precached asset list changes, to force clients off the old shell.
 - **After each push to `main`, update this CLAUDE.md** to reflect the shipped
   change (behavior notes / gotchas / roadmap status) and push the doc too. The
@@ -100,11 +100,19 @@ Google login); verify by inspection + the owner testing on device.
   hardcode a hex that assumes one mode.
 - **Reader reading surface (dimmed + centered).** `Reader.applyReadTheme()`
   registers an epub.js theme (`rendition.themes.register('kb', …)`) that sets the
-  iframe `body` to match the app theme — light is a **softly dimmed** `#f3f1ea`
-  (not stark white) / `#2b2b2b`, dark `#15161e`/`#cdd0e0` — plus `padding:0.5em
+  iframe `body` to match the app theme — light is a **softly dimmed** `#F3F0E7`
+  (warm paper, not stark white) / `#2b2b2b`, dark `#14160F`/`#CDD0C4` — plus `padding:0.5em
   5%` (side margins to centre the text) and `line-height:1.65`. `--read-bg`/
   `--read-text` match so the letterbox agrees. Called on `Reader.open` and
   re-applied by `Theme.apply` / the `prefers-color-scheme` listener when `auto`.
+- **Brand palette & logo (PhonoLeaf).** Accent is **leaf green** (light `#3E8E6B`
+  / dark `#6FC598`) with a **brass** secondary `--accent2` (light `#C98A3C` / dark
+  `#E0A857`) on warm-paper / forest neutrals; tokens live in `:root`, the dark
+  media query, and the `[data-theme]` blocks, with `applyReadTheme()` mirroring the
+  reading surface and `theme-color` metas matching. The app icon (`manifest.json`)
+  and favicon are an inline-SVG **"Soundwave Vein"** mark — a cream leaf on a green
+  tile whose central vein is a sound waveform. Manifest `theme_color` = leaf green,
+  `background_color` = forest `#0F1310`.
 - **Heading pauses are per-chunk (not a section timer).** Chunks are now
   `{text, pre, post}` (ms of silence around each); `_chunksFromSegments` gives a
   **chapter title** (`H1`/`HGROUP`) `pre 3000 / post 2000` and a **subtitle**
@@ -159,9 +167,15 @@ Google login); verify by inspection + the owner testing on device.
     `"Xmin"` pill above it (`StatsPage.tapBar`); only one shows at a time.
     Empty state shows a `.bars-empty` hint. (Publication-year range and languages
     were intentionally removed.)
-  - **"By author" table** (`.atable`): 4-column grid — Author · Min read ·
-    Started · Read. Only authors with ≥1 book started or read appear; top 5,
-    sorted by minutes desc then engagement desc. `—` shows for zero values.
+  - **Breakdown table with a grouping dropdown** (`.atable`): a `.set-select`
+    (persisted to `kba_stats_group`, default `author`) switches `StatsPage._group`
+    between **By author**, **By book**, and **By book length**; `setGroup()` saves
+    the choice + re-renders, and `StatsPage._breakdown(g, books, bookSecs, prog)`
+    builds the rows. All three are 4-column grids: *Author* (Min read · Started ·
+    Read; top 8 authors engaged), *Book* (Min read · % · Read; top 8 by minutes),
+    *Length* (Books · Min read · Finished; bucketed **Short <1 MB / Medium 1–3 MB /
+    Long >3 MB** by Drive file size — a rough length proxy, revisit with a real
+    page-count captured at open time). `—` shows for zero values.
     A **"Reset listening data"** ghost button at the bottom triggers a native
     `confirm()` dialog and clears `kba_stats` + re-renders on confirm.
 - **Epub metadata (`Meta`, `kba_meta`)**: `Meta.capture(id, book)` reads
@@ -232,14 +246,20 @@ Google login); verify by inspection + the owner testing on device.
   with a clickable breadcrumb (`_stack`), tap-a-row to navigate in, and "Use this
   folder" to pick the current one. Starts at the current folder (re-selecting) or
   `root` = My Drive. `setFolder(id,name)` persists `kba_folder_id` (id wins) /
-  `kba_folder` and reloads; `Library.load` uses `activeFolderId() ||
-  findFolder(activeFolder())`. (`FolderModal` typed-entry remains only as a
-  not-signed-in fallback; `CONFIG.API_KEY` is now unused.)
-- **Folder onboarding.** When no folder is found / no books, the Library and Home
-  empty states show a "Choose folder" button (`Library._pickBtn` →
-  `FolderBrowser.open`). `State.ready` (set when a load attempt finishes) gates the
-  Home prompt so it shows "Loading your library…" first rather than flashing the
-  onboarding for users who do have books.
+  `kba_folder` and reloads; `Library.load` uses `activeFolderId()` then, only if
+  a folder name is set, `findFolder(activeFolder())`. (`FolderModal` typed-entry
+  remains only as a not-signed-in fallback; `CONFIG.API_KEY` is now unused.)
+- **Folder onboarding — no hardcoded default.** `activeFolder()` returns `''`
+  when nothing is chosen (the old `CONFIG.FOLDER_NAME = 'Rakuten Kobo'` default
+  was removed), and `hasChosenFolder()` reports whether `kba_folder_id` /
+  `kba_folder` is set. After auth, `App._promptFolderIfNeeded()` (called from both
+  `signIn` and `tryResume`) auto-opens `FolderBrowser` ~300ms later when no folder
+  is chosen, so first-run users are prompted to pick their Drive books folder.
+  When no folder is chosen / no books, the Library and Home empty states also show
+  a "Choose folder" button (`Library._pickBtn` → `FolderBrowser.open`).
+  `State.ready` (set when a load attempt finishes) gates the Home prompt so it
+  shows "Loading your library…" first rather than flashing onboarding for users
+  who do have books.
 - **Home "jump back in"** shows only *started* books (a `kba_prog` entry with a
   `ts`) opened in the **last 30 days**, newest (left) → oldest; clamped to the
   cover width (`.cr-item { min-width:0; overflow:hidden }`) so a long title can't
@@ -328,7 +348,7 @@ Google login); verify by inspection + the owner testing on device.
   `.playing` class; `.ctrl-btn.play::before`/`::after` draw a triangle (idle) or
   two bars (playing), always white. Do NOT go back to a `⏸`/`▶` text glyph — the
   `⏸` emoji (U+23F8) renders as an orange color-emoji on Windows against the
-  coral button. `start()`/`skipPage()` add `.playing`; `stop()` removes it.
+  green accent button. `start()`/`skipPage()` add `.playing`; `stop()` removes it.
 - **Book covers**: `Covers` extracts each epub's real cover via
   `book.coverUrl()` and caches the image in IndexedDB (`CoverCache`, store
   `covers`, keyed by `id:size`) so it's a one-time download per book. Loading is
@@ -362,10 +382,10 @@ Google login); verify by inspection + the owner testing on device.
 Pending / discussed, not yet done:
 1. ~~**Rename/rebrand** off "Kobo" (trademark)~~ — **DONE (2026-06-28):
    rebranded to PhonoLeaf.** Only the user-facing name, `manifest.json`, and the
-   `sw.js` cache prefix changed; repo/URL/OAuth/IndexedDB/default-folder all kept
-   as `koboaudio`/`Rakuten Kobo` to avoid breaking sign-in and caches. Domains
-   `phonoleaf.com/.ca/.app/.io` were all available and no conflicting trademark
-   was found (formal CIPO/USPTO clearance still recommended before filing).
+   `sw.js` cache prefix changed; repo/URL/OAuth/IndexedDB kept as `koboaudio` to
+   avoid breaking sign-in and caches. Domains `phonoleaf.com/.ca/.app/.io` were
+   all available and no conflicting trademark was found (formal CIPO/USPTO
+   clearance still recommended before filing).
 2. **Switch `drive.readonly` → `drive.file` + Google Picker** to escape
    restricted-scope verification (avoids a ~$15k+/yr security assessment).
    Free; needs the Picker API enabled + a (public, referrer-restricted) API key.
@@ -375,4 +395,3 @@ Pending / discussed, not yet done:
 5. **Backend** for real refresh tokens, payments (Stripe), and a TTS key proxy.
 
 Already hardened for multi-user: XSS escaping of dynamic content.
-                                                                                                                                                                         

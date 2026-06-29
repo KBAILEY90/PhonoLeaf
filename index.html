@@ -3,12 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <meta name="theme-color" content="#e7e9ef" media="(prefers-color-scheme: light)">
-  <meta name="theme-color" content="#0f1018" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#F4F1E8" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0F1310" media="(prefers-color-scheme: dark)">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="PhonoLeaf">
   <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%233E8E6B'/%3E%3Cpath d='M50 24 C68 38 68 66 50 82 C32 66 32 38 50 24 Z' fill='%23F4F1E8'/%3E%3Cpath d='M50 82 L50 90' stroke='%23F4F1E8' stroke-width='3.2' stroke-linecap='round'/%3E%3Cpath d='M35 53 Q40 42 45 53 T55 53 T65 53' fill='none' stroke='%233E8E6B' stroke-width='3.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
   <title>PhonoLeaf</title>
   <style>
     /* --- Reset & Variables --- */
@@ -16,19 +17,19 @@
 
     :root {
       /* Daylight (light) — default theme */
-      --bg:        #e7e9ef;
-      --surface:   #ffffff;
-      --card:      #ffffff;
-      --accent:    #4f5bd5;
-      --accent-rgb: 79,91,213;
-      --accent2:   #6b76e0;
-      --text:      #1b1c1f;
-      --text-dim:  #898c93;
-      --line:      rgba(0,0,0,0.08);
-      --overlay:   rgba(0,0,0,0.05);
-      --track:     rgba(0,0,0,0.10);
-      --cover-fallback: #e7e8f0;
-      --read-bg:   #f3f1ea;
+      --bg:        #F4F1E8;
+      --surface:   #FBF9F2;
+      --card:      #FFFFFF;
+      --accent:    #3E8E6B;
+      --accent-rgb: 62,142,107;
+      --accent2:   #C98A3C;
+      --text:      #1E2A22;
+      --text-dim:  #6E7A70;
+      --line:      #E6E1D3;
+      --overlay:   rgba(62,142,107,0.08);
+      --track:     #ECE7D9;
+      --cover-fallback: #E0DBCB;
+      --read-bg:   #F3F0E7;
       --read-text: #2b2b2b;
       --font-ui:   'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       --font-read: 'Literata', Georgia, serif;
@@ -39,28 +40,28 @@
     /* Midnight (dark) — auto when the device is in dark mode */
     @media (prefers-color-scheme: dark) {
       :root {
-        --bg:#0f1018; --surface:#1a1b26; --card:#1a1b26;
-        --accent:#ff5a6e; --accent-rgb:255,90,110; --accent2:#3a3c66;
-        --text:#e8e8f0; --text-dim:#8a8ca0;
-        --line:rgba(255,255,255,0.07); --overlay:var(--line); --track:rgba(255,255,255,0.12);
-        --cover-fallback:#2a2c3a; --read-bg:#15161e; --read-text:#cdd0e0;
+        --bg:#0F1310; --surface:#161B14; --card:#1D241B;
+        --accent:#6FC598; --accent-rgb:111,197,152; --accent2:#E0A857;
+        --text:#E8ECE1; --text-dim:#97A290;
+        --line:#2A3225; --overlay:rgba(111,197,152,0.12); --track:#232A20;
+        --cover-fallback:#2A3225; --read-bg:#14160F; --read-text:#CDD0C4;
       }
     }
 
     /* Manual override (Settings → Light / Dark / Auto) — wins over the media query */
     [data-theme="light"] {
-      --bg:#e7e9ef; --surface:#ffffff; --card:#ffffff;
-      --accent:#4f5bd5; --accent-rgb:79,91,213; --accent2:#6b76e0;
-      --text:#1b1c1f; --text-dim:#898c93;
-      --line:rgba(0,0,0,0.08); --overlay:rgba(0,0,0,0.05); --track:rgba(0,0,0,0.10);
-      --cover-fallback:#e7e8f0;
+      --bg:#F4F1E8; --surface:#FBF9F2; --card:#FFFFFF;
+      --accent:#3E8E6B; --accent-rgb:62,142,107; --accent2:#C98A3C;
+      --text:#1E2A22; --text-dim:#6E7A70;
+      --line:#E6E1D3; --overlay:rgba(62,142,107,0.08); --track:#ECE7D9;
+      --cover-fallback:#E0DBCB;
     }
     [data-theme="dark"] {
-      --bg:#0f1018; --surface:#1a1b26; --card:#1a1b26;
-      --accent:#ff5a6e; --accent-rgb:255,90,110; --accent2:#3a3c66;
-      --text:#e8e8f0; --text-dim:#8a8ca0;
-      --line:rgba(255,255,255,0.07); --overlay:var(--line); --track:rgba(255,255,255,0.12);
-      --cover-fallback:#2a2c3a; --read-bg:#15161e; --read-text:#cdd0e0;
+      --bg:#0F1310; --surface:#161B14; --card:#1D241B;
+      --accent:#6FC598; --accent-rgb:111,197,152; --accent2:#E0A857;
+      --text:#E8ECE1; --text-dim:#97A290;
+      --line:#2A3225; --overlay:rgba(111,197,152,0.12); --track:#232A20;
+      --cover-fallback:#2A3225; --read-bg:#14160F; --read-text:#CDD0C4;
     }
 
     @font-face {
@@ -673,7 +674,7 @@
       Sign in with Google
     </button>
     <p class="signin-note">
-      Connects to your Google Drive "Rakuten Kobo" folder.<br>
+      Pick a Google Drive folder of epubs to read from.<br>
       Only reads your epub files - never modifies anything.
     </p>
   </div>
@@ -746,7 +747,7 @@
         <button class="set-link" onclick="App.signOut()">Sign out</button>
       </div>
       <div class="set-row">
-        <div><div class="sr-k">Drive folder</div><div class="sr-sub" id="set-folder">Rakuten Kobo</div></div>
+        <div><div class="sr-k">Drive folder</div><div class="sr-sub" id="set-folder">Not selected</div></div>
         <button class="set-link" onclick="Settings.changeFolder()">Change</button>
       </div>
     </div>
@@ -884,7 +885,6 @@
 // +======================================================+
 const CONFIG = {
   CLIENT_ID:   '871446308528-r12mb3i1r87jrk681ms3bp55msubojt7.apps.googleusercontent.com',
-  FOLDER_NAME: 'Rakuten Kobo',
   SCOPE:       'https://www.googleapis.com/auth/drive.readonly',
   // Optional: the Google Picker (browse-Drive folder selector) runs on the
   // login OAuth token alone. A browser API key here is only needed for Picker
@@ -906,13 +906,18 @@ const State = {
   saveProgress() { localStorage.setItem('kba_prog', JSON.stringify(this.progress)); },
 };
 
-// The Google Drive folder to read books from — overridable in Settings.
+// The Google Drive folder to read books from — chosen by the user at onboarding
+// (no hardcoded default), overridable in Settings.
 function activeFolder() {
-  try { return localStorage.getItem('kba_folder') || CONFIG.FOLDER_NAME; } catch (_) { return CONFIG.FOLDER_NAME; }
+  try { return localStorage.getItem('kba_folder') || ''; } catch (_) { return ''; }
 }
-// A specific folder id (set when picked via Google Picker); takes priority.
+// A specific folder id (set when picked via the folder browser); takes priority.
 function activeFolderId() {
   try { return localStorage.getItem('kba_folder_id') || ''; } catch (_) { return ''; }
+}
+// Has the user chosen a books folder yet? Gates the onboarding folder prompt.
+function hasChosenFolder() {
+  return !!(activeFolderId() || activeFolder());
 }
 
 // --- Utilities -------------------------------------------
@@ -1188,7 +1193,7 @@ const Settings = {
     const sel = document.getElementById('set-speed'); if (sel) sel.value = localStorage.getItem('kba_speed') || '1';
     const vs = document.getElementById('set-voice-sub'); if (vs) vs.textContent = TTS.voice?.name || 'System default';
     const wl = document.getElementById('set-wakelock'); if (wl) wl.checked = localStorage.getItem('kba_wakelock') !== 'false';
-    const f = document.getElementById('set-folder'); if (f) f.textContent = activeFolder();
+    const f = document.getElementById('set-folder'); if (f) f.textContent = activeFolder() || 'Not selected';
     const a = document.getElementById('set-account'); if (a) a.textContent = State.userName ? 'Signed in as ' + State.userName : 'Signed in';
   },
   changeFolder() { FolderBrowser.open(); },
@@ -1203,6 +1208,7 @@ const Settings = {
 
 // --- Stats page (from listening data + cached epub metadata) ---
 const StatsPage = {
+  _group: (() => { try { return localStorage.getItem('kba_stats_group') || 'author'; } catch (_) { return 'author'; } })(),
   render() {
     const days = (Stats.data && Stats.data.days) || {}, prog = State.progress || {}, books = State.books || [];
     const key = o => o.toISOString().slice(0, 10);
@@ -1223,24 +1229,9 @@ const StatsPage = {
       if (s > maxSec) maxSec = s;
     }
 
-    // Per-author stats: minutes listened, books started, books read.
+    // Per-book listening seconds — the breakdown table (below) derives the
+    // author / book / length-bucket views from these on demand.
     const bookSecs = (Stats.data && Stats.data.books) || {};
-    const authorMap = {};
-    for (const b of books) {
-      const m = Meta.get(b.id); if (!m || !m.author) continue;
-      const a = m.author;
-      if (!authorMap[a]) authorMap[a] = { mins: 0, started: 0, read: 0 };
-      authorMap[a].mins += Math.round((bookSecs[b.id] || 0) / 60);
-      const p = prog[b.id];
-      if (p && p.ts) authorMap[a].started++;
-      if (p && (p.pct || 0) >= 95) authorMap[a].read++;
-    }
-    // Top 5: only authors you've engaged with (started or read ≥ 1 book),
-    // sorted by minutes desc then by books engaged desc.
-    const authorRows = Object.entries(authorMap)
-      .filter(([, v]) => v.started > 0 || v.read > 0)
-      .sort((a, z) => (z[1].mins - a[1].mins) || ((z[1].started + z[1].read) - (a[1].started + a[1].read)))
-      .slice(0, 5);
 
     const anyListening = bars.some(b => b.s > 0);
     const fmtMin = s => s >= 60 ? Math.round(s / 60) + 'min' : (s > 0 ? '<1min' : '0min');
@@ -1255,13 +1246,77 @@ const StatsPage = {
        ${anyListening
           ? `<div class="bars">${bars.map(b => { const fp = b.s ? Math.max(4, Math.round((b.s / maxSec) * 92)) : 0; return `<div class="bar" onclick="StatsPage.tapBar(this)" title="${esc(b.label)}"><span class="bar-val" style="bottom:${Math.min(fp + 3, 72)}px">${esc(fmtMin(b.s))}</span><div class="bar-fill" style="height:${fp}px"></div></div>`; }).join('')}</div>`
           : `<div class="bars-empty">No listening yet — press play to start tracking.</div>`}
-       ${authorRows.length ? `
-         <div class="sec-label">By author</div>
-         <div class="atable">
-           <div class="ath"><span>Author</span><span>Min read</span><span>Started</span><span>Read</span></div>
-           ${authorRows.map(([a, v]) => `<div class="arow"><span class="aname">${esc(a)}</span><span>${v.mins > 0 ? v.mins.toLocaleString() : '—'}</span><span>${v.started || '—'}</span><span>${v.read || '—'}</span></div>`).join('')}
-         </div>` : ''}
+       ${books.length ? `
+         <div class="sec-label">Breakdown
+           <select class="set-select" onchange="StatsPage.setGroup(this.value)" aria-label="Group breakdown by">
+             <option value="author"${this._group === 'author' ? ' selected' : ''}>By author</option>
+             <option value="book"${this._group === 'book' ? ' selected' : ''}>By book</option>
+             <option value="length"${this._group === 'length' ? ' selected' : ''}>By book length</option>
+           </select>
+         </div>
+         <div class="atable">${this._breakdown(this._group, books, bookSecs, prog)}</div>` : ''}
        <button class="stats-reset-btn" onclick="StatsPage.resetConfirm()">Reset listening data</button>`;
+  },
+  // Breakdown table for the selected grouping (author / book / length buckets).
+  _breakdown(g, books, bookSecs, prog) {
+    const mins = id => Math.round((bookSecs[id] || 0) / 60);
+    const started = id => { const p = prog[id]; return !!(p && p.ts); };
+    const read = id => { const p = prog[id]; return !!(p && (p.pct || 0) >= 95); };
+    const head = (a, b, c, d) => `<div class="ath"><span>${a}</span><span>${b}</span><span>${c}</span><span>${d}</span></div>`;
+    const row = (name, b, c, d, title) => `<div class="arow"${title ? ` title="${esc(title)}"` : ''}><span class="aname">${esc(name)}</span><span>${b}</span><span>${c}</span><span>${d}</span></div>`;
+    const dash = n => (n > 0 ? n.toLocaleString() : '—');
+
+    if (g === 'book') {
+      const rows = books
+        .map(b => ({ name: b.name.replace(/\.epub$/i, ''), m: mins(b.id), pct: Math.round((prog[b.id] && prog[b.id].pct) || 0), rd: read(b.id), st: started(b.id) }))
+        .filter(r => r.m > 0 || r.st)
+        .sort((a, z) => z.m - a.m)
+        .slice(0, 8);
+      if (!rows.length) return this._emptyBreak('book');
+      return head('Book', 'Min read', '%', 'Read') +
+        rows.map(r => row(r.name, dash(r.m), r.pct ? r.pct + '%' : '—', r.rd ? '✓' : '—')).join('');
+    }
+
+    if (g === 'length') {
+      const tiers = [
+        { k: 'Short', lo: 0, hi: 1e6, sub: 'under 1 MB' },
+        { k: 'Medium', lo: 1e6, hi: 3e6, sub: '1–3 MB' },
+        { k: 'Long', lo: 3e6, hi: Infinity, sub: 'over 3 MB' },
+      ];
+      const agg = { Short: { n: 0, m: 0, rd: 0 }, Medium: { n: 0, m: 0, rd: 0 }, Long: { n: 0, m: 0, rd: 0 } };
+      for (const b of books) {
+        const sz = +b.size || 0;
+        const t = tiers.find(x => sz >= x.lo && sz < x.hi) || tiers[0];
+        const a = agg[t.k]; a.n++; a.m += mins(b.id); if (read(b.id)) a.rd++;
+      }
+      const rows = tiers.filter(t => agg[t.k].n > 0);
+      if (!rows.length) return this._emptyBreak('length');
+      return head('Length', 'Books', 'Min read', 'Finished') +
+        rows.map(t => { const a = agg[t.k]; return row(t.k, a.n, dash(a.m), dash(a.rd), `${t.k}: ${t.sub} (by file size)`); }).join('');
+    }
+
+    // default: by author
+    const map = {};
+    for (const b of books) {
+      const meta = Meta.get(b.id); if (!meta || !meta.author) continue;
+      const a = (map[meta.author] || (map[meta.author] = { m: 0, st: 0, rd: 0 }));
+      a.m += mins(b.id); if (started(b.id)) a.st++; if (read(b.id)) a.rd++;
+    }
+    const rows = Object.entries(map)
+      .filter(([, v]) => v.st > 0 || v.rd > 0)
+      .sort((a, z) => (z[1].m - a[1].m) || ((z[1].st + z[1].rd) - (a[1].st + a[1].rd)))
+      .slice(0, 8);
+    if (!rows.length) return this._emptyBreak('author');
+    return head('Author', 'Min read', 'Started', 'Read') +
+      rows.map(([a, v]) => row(a, dash(v.m), dash(v.st), dash(v.rd))).join('');
+  },
+  _emptyBreak(label) {
+    return `<div class="arow"><span class="aname" style="color:var(--text-dim)">No ${label} data yet — press play to start tracking.</span><span></span><span></span><span></span></div>`;
+  },
+  setGroup(v) {
+    this._group = v;
+    try { localStorage.setItem('kba_stats_group', v); } catch (_) {}
+    this.render();
   },
   resetConfirm() {
     if (confirm('Are you sure you want to reset your listening data? This cannot be undone.')) {
@@ -1388,7 +1443,14 @@ const App = {
       Nav.go('home');
       this.loadUser();
       Library.load(); // a stale/revoked token surfaces as a 401 -> silent refresh
+      this._promptFolderIfNeeded();
     }
+  },
+
+  // On first onboarding (no folder chosen yet), prompt the user to pick their
+  // Google Drive books folder rather than assuming one.
+  _promptFolderIfNeeded() {
+    if (!hasChosenFolder()) setTimeout(() => FolderBrowser.open(), 300);
   },
 
   _saveAuth(token, expiresIn) {
@@ -1441,6 +1503,7 @@ const App = {
       Nav.go('home');
       this.loadUser();
       Library.load();
+      this._promptFolderIfNeeded();
     } catch (e) {
       toast('Sign-in failed: ' + e.message);
     }
@@ -1533,7 +1596,7 @@ const Library = {
     try {
       const folder = activeFolder();
       let fid = activeFolderId();
-      if (!fid) fid = await Drive.findFolder(folder);
+      if (!fid && folder) fid = await Drive.findFolder(folder);
       if (!fid) {
         State.books = []; State.ready = true;
         grid.innerHTML = `<div class="empty"><p>Choose the Google Drive folder<br>your epubs live in to get started.</p>${this._pickBtn()}</div>`;
@@ -2040,8 +2103,8 @@ const Reader = {
   applyReadTheme() {
     if (!State.rendition) return;
     const dark = Theme.isDark();
-    const bg = dark ? '#15161e' : '#f3f1ea';   // softly dimmed page (not stark white)
-    const fg = dark ? '#cdd0e0' : '#2b2b2b';
+    const bg = dark ? '#14160F' : '#F3F0E7';   // softly dimmed page (not stark white)
+    const fg = dark ? '#CDD0C4' : '#2b2b2b';
     try {
       // Measure the chrome overlays so content isn't hidden under them.
       // Both are position:absolute over #viewer; absolute elements still have
@@ -2589,4 +2652,3 @@ window.addEventListener('load', () => {
 </script>
 </body>
 </html>
-       
