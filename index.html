@@ -394,6 +394,31 @@
     }
     .modal-title { font-size: 1rem; font-weight: 700; margin-bottom: 1rem; }
 
+    /* Centered confirm dialog */
+    .confirm-backdrop {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.55); z-index: 201;
+      align-items: center; justify-content: center; padding: 1.5rem;
+    }
+    .confirm-backdrop.open { display: flex; }
+    .confirm-box {
+      background: var(--surface); border-radius: 16px;
+      padding: 1.6rem; width: 100%; max-width: 320px;
+      box-shadow: 0 16px 48px rgba(0,0,0,0.4);
+    }
+    .confirm-msg { font-size: 1.05rem; line-height: 1.55; color: var(--text); margin-bottom: 1.5rem; }
+    .confirm-btns { display: flex; gap: 0.75rem; justify-content: flex-end; }
+    .confirm-cancel {
+      padding: 0.6rem 1.1rem; border-radius: 8px;
+      border: 1px solid var(--line); background: transparent;
+      color: var(--text); font-size: 0.9rem; cursor: pointer;
+    }
+    .confirm-ok {
+      padding: 0.6rem 1.1rem; border-radius: 8px; border: none;
+      background: var(--accent); color: #fff;
+      font-size: 0.9rem; font-weight: 600; cursor: pointer;
+    }
+
     /* Voice list */
     .voice-item {
       display: flex; align-items: center; justify-content: space-between;
@@ -848,6 +873,17 @@
     <div class="modal-handle"></div>
     <div class="modal-title">Chapters</div>
     <div id="chapter-list"></div>
+  </div>
+</div>
+
+<!-- ============== CONFIRM DIALOG ============== -->
+<div class="confirm-backdrop" id="confirm-modal" onclick="ConfirmModal.close()">
+  <div class="confirm-box" onclick="event.stopPropagation()">
+    <p class="confirm-msg">Are you sure you want to reset your listening data? This cannot be undone.</p>
+    <div class="confirm-btns">
+      <button class="confirm-cancel" onclick="ConfirmModal.close()">Cancel</button>
+      <button class="confirm-ok" onclick="ConfirmModal._ok()">Reset</button>
+    </div>
   </div>
 </div>
 
@@ -1322,13 +1358,13 @@ const StatsPage = {
 
     if (g === 'book') {
       const rows = books
-        .map(b => ({ name: b.name.replace(/\.epub$/i, ''), m: mins(b.id), pct: Math.round((prog[b.id] && prog[b.id].pct) || 0), rd: read(b.id), st: started(b.id) }))
+        .map(b => ({ name: b.name.replace(/\.epub$/i, ''), m: mins(b.id), pct: prog[b.id] != null ? Math.round(prog[b.id].pct || 0) : null, rd: read(b.id), st: started(b.id) }))
         .filter(r => r.m > 0 || r.st)
         .sort((a, z) => z.m - a.m)
         .slice(0, 8);
       if (!rows.length) return this._emptyBreak('book');
       return head('Book', 'Min read', '%', 'Read') +
-        rows.map(r => row(r.name, dash(r.m), r.pct ? r.pct + '%' : '—', r.rd ? '✓' : '—')).join('');
+        rows.map(r => row(r.name, dash(r.m), r.pct != null ? r.pct + '%' : '—', r.rd ? '✓' : '—')).join('');
     }
 
     if (g === 'genre') {
@@ -1391,12 +1427,12 @@ const StatsPage = {
     this.render();
   },
   resetConfirm() {
-    if (confirm('Are you sure you want to reset your listening data? This cannot be undone.')) {
+    ConfirmModal.show(() => {
       localStorage.removeItem('kba_stats');
       Stats.data = {};
       this.render();
       toast('Listening data reset.');
-    }
+    });
   },
   // Tap a bar (mobile) to reveal its minutes; desktop uses :hover. Tapping a bar
   // hides any other shown value so only one is visible at a time.
@@ -2677,6 +2713,14 @@ const ChapterModal = {
     if (!e || e.target.classList.contains('modal-backdrop'))
       document.getElementById('chapter-modal').classList.remove('open');
   },
+};
+
+// --- Confirm dialog ----------------------------------------
+const ConfirmModal = {
+  _cb: null,
+  show(cb) { this._cb = cb; document.getElementById('confirm-modal').classList.add('open'); },
+  close() { document.getElementById('confirm-modal').classList.remove('open'); this._cb = null; },
+  _ok() { const cb = this._cb; this.close(); if (cb) cb(); },
 };
 
 // --- Boot -------------------------------------------------
