@@ -1430,7 +1430,9 @@ const StatsPage = {
     ConfirmModal.show(() => {
       localStorage.removeItem('kba_stats');
       Stats.data = {};
+      State.progress = {}; State.saveProgress();
       this.render();
+      Home.render();
       toast('Listening data reset.');
     });
   },
