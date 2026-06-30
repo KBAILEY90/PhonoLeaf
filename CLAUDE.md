@@ -184,8 +184,10 @@ Google login); verify by inspection + the owner testing on device.
     500+ pages** using `Meta.get(b.id).pages` from Open Library). Length and
     genre show a "loading in background" placeholder until `Meta.fetchAll`
     has fetched the data. `—` shows for zero values.
-    A **"Reset listening data"** ghost button at the bottom triggers a native
-    `confirm()` dialog and clears `kba_stats` + re-renders on confirm.
+    A **"Reset listening data"** ghost button at the bottom opens a custom
+    `ConfirmModal` dialog (no browser domain row) and on confirm clears `kba_stats`
+    **and** `kba_prog` (so "started" + "finished" tiles also reset to 0), then
+    re-renders Stats and Home.
 - **Epub metadata (`Meta`, `kba_meta`)**: `Meta.capture(id, book)` reads
   `book.packaging.metadata` (author=`creator`, `year` from `pubdate`, publisher,
   language) for free during cover extraction (`Covers._extract`/`fromBook`) and
