@@ -102,9 +102,8 @@
       box-shadow: 0 8px 32px rgba(var(--accent-rgb),0.4);
       overflow: hidden;
     }
-    .home-brand { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.9rem; }
-    .home-brand-name { font-weight: 700; font-size: 0.95rem; color: var(--text); }
-    .home-brand-tag { color: var(--text-dim); font-size: 0.8rem; }
+    .home-brand { display: flex; align-items: center; justify-content: center; gap: 0.6rem; margin-bottom: 1.8rem; }
+    .home-brand-name { font-weight: 700; font-size: 1.4rem; color: var(--text); }
     .app-name { font-size: 2.2rem; font-weight: 800; letter-spacing: -0.5px; }
     .app-tagline { color: var(--text-dim); margin: 0.4rem 0 2.5rem; font-size: 1rem; }
 
@@ -686,9 +685,8 @@
 <div id="home-view" class="view">
   <div class="scrolly">
     <div class="home-brand">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="28" height="28" aria-hidden="true"><rect width="100" height="100" rx="22" fill="#3E8E6B"/><path d="M50 24 C68 38 68 66 50 82 C32 66 32 38 50 24 Z" fill="#F4F1E8"/><path d="M50 82 L50 90" stroke="#F4F1E8" stroke-width="3.2" stroke-linecap="round"/><path d="M35 53 Q40 42 45 53 T55 53 T65 53" fill="none" stroke="#3E8E6B" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="42" height="42" aria-hidden="true"><rect width="100" height="100" rx="22" fill="#3E8E6B"/><path d="M50 24 C68 38 68 66 50 82 C32 66 32 38 50 24 Z" fill="#F4F1E8"/><path d="M50 82 L50 90" stroke="#F4F1E8" stroke-width="3.2" stroke-linecap="round"/><path d="M35 53 Q40 42 45 53 T55 53 T65 53" fill="none" stroke="#3E8E6B" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
       <span class="home-brand-name">PhonoLeaf</span>
-      <span class="home-brand-tag">A voice for every page</span>
     </div>
     <div class="home-title" id="home-title">Home</div>
     <div id="home-continue"></div>
@@ -1306,8 +1304,8 @@ const StatsPage = {
            <select class="set-select" onchange="StatsPage.setGroup(this.value)" aria-label="Group breakdown by">
              <option value="author"${this._group === 'author' ? ' selected' : ''}>By author</option>
              <option value="book"${this._group === 'book' ? ' selected' : ''}>By book</option>
-             <option value="genre"${this._group === 'genre' ? ' selected' : ''}>By genre</option>
              <option value="length"${this._group === 'length' ? ' selected' : ''}>By book length</option>
+             <option value="genre"${this._group === 'genre' ? ' selected' : ''}>By genre</option>
            </select>
          </div>
          <div class="atable">${this._breakdown(this._group, books, bookSecs, prog)}</div>` : ''}
