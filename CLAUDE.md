@@ -385,6 +385,22 @@ Google login); verify by inspection + the owner testing on device.
   one correction per turn (no loops); chapter jumps and scrub seeks don't set
   `_fwd`, so multi-section `display(cfi)` moves are never "corrected". Legit
   chapter changes leave ~0px unseen and pass untouched.
+  **Anti-trap (`_fixedAtCfi`):** the corrector never fires twice from the same
+  start CFI — if detection misfires at some spot (device-specific scroll-state
+  surprises), the first swipe there may bounce back but the second ALWAYS
+  passes through, so the user can never be stuck on a page. The trap spot is
+  cleared on any clean (uncorrected) forward pass so a later genuine overshoot
+  at that CFI corrects again.
+- **On-device diagnostics (`Diag`, `kba_diag`) + build stamp.** Every forward
+  turn logs `{e:'next', sl/sw/cw, skip}` (container scroll state + overshoot
+  verdict) and each forward relocation logs `{e:'rel', i, pi, p, tot}` plus
+  `FIX` / `trap-skip` events into a 30-entry ring buffer in `localStorage`
+  (`kba_diag`). **Settings → Debug log** (a `<details>` under the footer) shows
+  it with a "Copy log" button — ask the owner to paste it when a page-turn bug
+  can't be reproduced locally. The Settings footer also shows the **build**:
+  `const BUILD = '__BUILD__'` is sed-stamped with the commit short-SHA by
+  `deploy.yml` (shows `dev` locally) — use it to confirm the owner's PWA is
+  actually running the latest deploy before debugging further.
 - **Don't re-read stale text on a blank page.** `TTS.loadPageText()` must
   *clear* `chunks` when a page is genuinely blank, or `_speak()` re-reads the
   previous page (a real bug). It tells a true blank page (the iframe's

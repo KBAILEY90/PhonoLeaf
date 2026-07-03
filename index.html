@@ -781,7 +781,12 @@
         <button class="set-link" onclick="Settings.changeFolder()">Change</button>
       </div>
     </div>
-    <div style="text-align:center;color:var(--text-dim);font-size:0.7rem;margin-top:1.4rem">PhonoLeaf &middot; A voice for every page</div>
+    <div style="text-align:center;color:var(--text-dim);font-size:0.7rem;margin-top:1.4rem">PhonoLeaf &middot; A voice for every page &middot; <span id="set-build"></span></div>
+    <details style="margin-top:0.8rem;color:var(--text-dim);font-size:0.7rem">
+      <summary style="cursor:pointer;text-align:center">Debug log</summary>
+      <pre id="diag-pre" style="font-size:0.6rem;line-height:1.5;overflow-x:auto;background:var(--track);border-radius:8px;padding:0.6rem;margin:0.6rem 0;white-space:pre"></pre>
+      <div style="text-align:center"><button class="set-link" onclick="Settings.copyDiag()">Copy log</button></div>
+    </details>
   </div>
 </div>
 
@@ -1274,6 +1279,25 @@ document.addEventListener('change', e => {
   if (e.target.classList && e.target.classList.contains('scrub')) { Scrub._drag = false; Scrub.hide(); Scrub.seek(+e.target.value / 10); }
 });
 
+// --- Diagnostics (page-turn debug log, viewable in Settings) ---------------
+// Stamped by deploy.yml with the commit short-SHA; shows 'dev' locally.
+const BUILD = '__BUILD__';
+const Diag = {
+  MAX: 30,
+  push(ev) {
+    try {
+      const a = JSON.parse(localStorage.getItem('kba_diag') || '[]');
+      a.push(Object.assign({ t: new Date().toISOString().slice(11, 19) }, ev));
+      while (a.length > this.MAX) a.shift();
+      localStorage.setItem('kba_diag', JSON.stringify(a));
+    } catch (_) {}
+  },
+  text() {
+    try { return JSON.parse(localStorage.getItem('kba_diag') || '[]').map(e => JSON.stringify(e)).join('\n'); }
+    catch (_) { return ''; }
+  },
+};
+
 // --- Settings ---------------------------------------------
 const Settings = {
   render() {
@@ -1284,6 +1308,14 @@ const Settings = {
     const wl = document.getElementById('set-wakelock'); if (wl) wl.checked = localStorage.getItem('kba_wakelock') !== 'false';
     const f = document.getElementById('set-folder'); if (f) f.textContent = activeFolder() || 'Not selected';
     const a = document.getElementById('set-account'); if (a) a.textContent = State.userName ? 'Signed in as ' + State.userName : 'Signed in';
+    const b = document.getElementById('set-build'); if (b) b.textContent = BUILD.startsWith('__BU') ? 'dev' : BUILD;
+    const d = document.getElementById('diag-pre'); if (d) d.textContent = Diag.text() || '(empty)';
+  },
+  copyDiag() {
+    const s = `build ${BUILD}\n` + Diag.text();
+    (navigator.clipboard?.writeText(s) || Promise.reject()).then(
+      () => toast('Log copied'),
+      () => toast('Could not copy'));
   },
   changeFolder() { FolderBrowser.open(); },
   setTheme(mode) { Theme.apply(mode); this.render(); },
@@ -2016,13 +2048,25 @@ const Reader = {
     // (no progress save, no TTS resume there).
     const pl = this._prevLoc; this._prevLoc = loc;
     const wasFwd = this._fwd; this._fwd = false;
+    if (wasFwd) Diag.push({ e: 'rel', i: loc.start.index, pi: pl?.start.index ?? -1, p: loc.start.displayed?.page, tot: loc.start.displayed?.total });
     if (wasFwd && !this._fwdFixed && this._fwdSkip && pl &&
         loc.start.index === pl.start.index + 1) {
-      this._fwdFixed = true;
-      if (TTS.active) TTS._awaitingPage = true; // resume on the corrected page
-      State.rendition?.prev();
-      return;
+      // Anti-trap: never correct twice from the same position. If detection is
+      // wrong at some spot (whatever the device-specific reason), the FIRST
+      // swipe there may bounce back, but the second always passes — the user
+      // can never be stuck on a page.
+      if (pl.start.cfi && pl.start.cfi === this._fixedAtCfi) {
+        Diag.push({ e: 'trap-skip' });
+      } else {
+        this._fwdFixed = true;
+        this._fixedAtCfi = pl.start.cfi || null;
+        Diag.push({ e: 'FIX' });
+        if (TTS.active) TTS._awaitingPage = true; // resume on the corrected page
+        State.rendition?.prev();
+        return;
+      }
     }
+    if (wasFwd && !this._fwdFixed) this._fixedAtCfi = null; // clean pass — forget the trap spot
     // Chapter name + page: flatten the full TOC tree (subitems hold the real
     // chapter titles), compare basenames (loc href has a path prefix, TOC hrefs
     // are often bare filenames), fall back to the nearest preceding entry in
@@ -2280,14 +2324,17 @@ const Reader = {
   // rounding bug misreports the page number ON the sliver page (says 1 of 2),
   // which made a legit swipe off it look like an overshoot → stuck in a
   // correction loop. Desktop widths are integers — never trips.
-  _fwd: false,      // a single-page forward turn is in flight
-  _fwdFixed: false, // overshoot already corrected for this turn (no loops)
-  _fwdSkip: false,  // >½ page of this section was still unseen at turn time
-  _prevLoc: null,   // location before the current relocation
+  _fwd: false,        // a single-page forward turn is in flight
+  _fwdFixed: false,   // overshoot already corrected for this turn (no loops)
+  _fwdSkip: false,    // >½ page of this section was still unseen at turn time
+  _prevLoc: null,     // location before the current relocation
+  _fixedAtCfi: null,  // cfi a correction was made FROM — never correct twice
   nextPage() {
     const c = document.querySelector('#viewer .epub-container');
     this._fwdSkip = !!c && (c.scrollWidth - c.scrollLeft - c.clientWidth) > c.clientWidth * 0.5;
     this._fwd = true; this._fwdFixed = false;
+    if (c) Diag.push({ e: 'next', sl: Math.round(c.scrollLeft), sw: c.scrollWidth, cw: c.clientWidth, skip: this._fwdSkip ? 1 : 0 });
+    else Diag.push({ e: 'next', noC: 1 });
     State.rendition?.next();
   },
 
