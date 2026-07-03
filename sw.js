@@ -38,6 +38,9 @@ self.addEventListener('fetch', e => {
   // Never intercept Google auth (accounts.google.com) or the Drive API
   // (www.googleapis.com) — those must always hit the network with a live token.
   if (url.hostname.includes('google.com') || url.hostname.includes('googleapis.com')) return;
+  // Kokoro (Gold tier) model downloads from Hugging Face are huge (~90 MB) and
+  // transformers.js manages its own Cache Storage — stay out of the way.
+  if (url.hostname.includes('huggingface.co') || url.hostname.includes('hf.co') || url.hostname.includes('cdn-lfs')) return;
   if (req.method !== 'GET') return;
 
   // HTML navigations: network-first so new deploys show up immediately,

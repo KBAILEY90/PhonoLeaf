@@ -471,8 +471,43 @@ Google login); verify by inspection + the owner testing on device.
   list) and **sets `u.lang = voice.lang`** — Android ignores `u.voice` unless
   the utterance lang agrees, which made every selected voice sound like the
   system default (accent/gender never changed).
+- **Voice tiers (`Tier`, `kba_tier`: `member`|`gold`|`diamond`, default member).**
+  Three engines behind one chunk state machine: **Member** = device Web Speech
+  (`TTS._speakWeb`, all the gen-guard/starvation logic); **Gold** = Kokoro-82M
+  neural TTS **in the browser** (`_kokoroReady`/`_synthKokoro`: dynamic
+  `import('https://cdn.jsdelivr.net/npm/kokoro-js@1/+esm')`, model from
+  HuggingFace `onnx-community/Kokoro-82M-v1.0-ONNX`, WebGPU `fp32` when
+  `navigator.gpu` else WASM `q8`, ~90 MB one-time download with a progress
+  toast; `sw.js` deliberately passes huggingface/cdn-lfs requests through —
+  transformers.js does its own caching); **Diamond** = Google Cloud TTS Neural2
+  (`_synthGoogle`, direct REST with a key from `kba_gtts_key` — TESTING setup;
+  production must proxy the key, roadmap 5; synthesized at 1.0× + MP3 data-URLs
+  session-cached in `_gcache` keyed voice|text, speed applied via
+  `playbackRate` so the cache survives rate changes). Gold/Diamond play through
+  a shared `<audio>` element (`_playAudio`): `onended` drives the same
+  idx++/post-pause chain as Web Speech `onend`, gen guards apply, the NEXT
+  chunk is **prefetched during playback** (`_preSynth`) to hide synthesis
+  latency, blob URLs are revoked, and any synthesis failure **falls back to
+  `_speakWeb` for that chunk** (except a missing Diamond key → toast + stop).
+  `stop()`/`skipPage()` call `_stopAudio()`; `setRate` on Gold/Diamond just
+  sets `playbackRate` live (no restart). Voice catalogs: `KOKORO_VOICES` /
+  `GOOGLE_VOICES` (`kba_voice_gold` / `kba_voice_diamond`; `VoiceModal` renders
+  the tier's catalog via `selectTier`, Member keeps the system list).
+  **The Settings "Voice tier" dropdown is TESTING ONLY — remove it before
+  commercialisation** (tier must come from the subscription); same for the
+  `prompt()`-based Google-key entry (`Settings.setGKey`).
+- **Better-voices helper (`VoiceHelp`, `kba_voicetip`).** Member-tier blocker
+  reducer: a themed modal with per-platform steps to install higher-quality
+  SYSTEM voices (Android → Google TTS settings + a Play-Store deep link button;
+  iOS/macOS → Enhanced/Premium-Siri voice steps; Windows → add voices + Edge
+  tip). Reachable from Settings ("Better device voices → How") and shown ONCE
+  as onboarding: `App._promptFolderIfNeeded` opens it ~800ms after launch when
+  the folder is already chosen, tier is member, and `kba_voicetip` is unset —
+  never stacked on the folder prompt (first-run users see it next launch).
 - **Web Speech TTS does not play in the background / with the screen locked** on
-  mobile. This is a platform limitation, not a bug — see roadmap.
+  mobile. This is a platform limitation, not a bug — see roadmap. (Gold/Diamond
+  play through `<audio>`, which unlocks MediaSession/background playback later —
+  not wired yet.)
 - Use `100dvh` (not `100vh`) for full-height views so mobile browser chrome
   doesn't hide the bottom controls.
 
@@ -503,6 +538,12 @@ the working plan, not an exploration.
    (2026-07-03) for BOTH open platform limitations: robotic Android system
    voices (Web Speech quality is capped by the device's TTS engine; desktop
    sounds fine, phones don't) and no background/lock-screen playback.
+   **STATUS: v1 three-tier system SHIPPED for testing (2026-07-03)** — see the
+   "Voice tiers" behavior note: Member (Web Speech + better-voices helper),
+   Gold (in-browser Kokoro), Diamond (Google Neural2 via the owner's key /
+   free tier). Still to do for production: key proxy (item 5), MediaSession +
+   lock-screen playback wiring, IndexedDB audio caching, replacing the
+   testing tier-dropdown with subscription-driven tiers.
    Decision notes:
    - Options considered: (a) better on-device system voices (free, modest,
      user-managed — install higher-quality Google TTS voice data on Android);
