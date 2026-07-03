@@ -369,15 +369,22 @@ Google login); verify by inspection + the owner testing on device.
   text the few-px rounding error makes epub.js jump to the next section instead
   of showing the sliver page (desktop widths are integers — never trips). All
   single-page forward turns (swipe/buttons/keyboard AND the TTS auto-advance in
-  `_speak`) route through `Reader.nextPage()`, which flags `_fwd`;
-  `_onRelocated` then checks: left page N of M with N < M yet landed in the
-  NEXT spine section ⇒ overshoot ⇒ `rendition.prev()` back onto the skipped
-  page and `return` (the overshot page is never saved as progress and TTS's
-  `_awaitingPage` is re-armed so speech resumes on the corrected page).
-  `_fwdFixed` limits it to one correction per turn (no loops); chapter jumps
-  and scrub seeks don't set `_fwd`, so multi-section `display(cfi)` moves are
-  never "corrected". Legit chapter changes come from page M of M and pass
-  untouched.
+  `_speak`) route through `Reader.nextPage()`, which flags `_fwd` and measures
+  the raw container scroll state: `_fwdSkip` = more than **half a page** of the
+  section was still unseen to the right (`.epub-container`'s
+  `scrollWidth - scrollLeft - clientWidth > clientWidth/2`). `_onRelocated`
+  then checks: `_fwdSkip` yet landed in the NEXT spine section ⇒ overshoot ⇒
+  `rendition.prev()` back onto the skipped page and `return` (the overshot page
+  is never saved as progress and TTS's `_awaitingPage` is re-armed so speech
+  resumes on the corrected page). **Do NOT use `loc.displayed.page/total` as
+  the signal** — the same rounding bug misreports the page number ON the sliver
+  page (it says 1 of 2), so a page/total-based check made a legit swipe OFF the
+  sliver look like another overshoot and trapped the user there in a
+  correction loop (shipped briefly; fixed by the scroll-state measurement,
+  whose ½-page tolerance is immune to few-px errors). `_fwdFixed` limits it to
+  one correction per turn (no loops); chapter jumps and scrub seeks don't set
+  `_fwd`, so multi-section `display(cfi)` moves are never "corrected". Legit
+  chapter changes leave ~0px unseen and pass untouched.
 - **Don't re-read stale text on a blank page.** `TTS.loadPageText()` must
   *clear* `chunks` when a page is genuinely blank, or `_speak()` re-reads the
   previous page (a real bug). It tells a true blank page (the iframe's
