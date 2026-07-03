@@ -347,6 +347,21 @@ Google login); verify by inspection + the owner testing on device.
   after `_onRelocated` clears `_awaitingPage`). Side effects: pausing mid-sentence
   now resumes at the START of that sentence (the stale `onend` no longer `idx++`s),
   and a speed change can't skip the rest of the current sentence.
+- **Starved-utterance retry (`TTS._retryN`) — the swipe-skips-short-pages cause
+  the gen guards could NOT catch.** On Android, `speak()` soon after an
+  *interrupting* `cancel()` (exactly what a swipe does mid-speech) can be
+  silently eaten by the engine: the fresh, CURRENT-gen utterance fires `onend`
+  instantly with no audio. On a long page that just swallows the first sentence;
+  on a low-word page (one chunk) the instant `onend` looks like "page finished"
+  → legitimate auto-advance → the page visibly skips unread. `_speak()` now
+  timestamps each utterance and, if it "ends" faster than its text could be
+  spoken (`min(250ms, len*25/rate)`), re-speaks the chunk (≤3 tries, 150ms·n
+  backoff) instead of advancing; a current-gen `onerror('interrupted'/'canceled')`
+  retries the same way (our own cancels bump `_gen` first, so a current-gen
+  interruption can only be the engine) rather than stalling. A `done` flag makes
+  onend/onerror act once (some engines fire both). The pre-speak `cancel()` is
+  also now conditional on `speaking || pending` — a gratuitous cancel right
+  before `speak()` is what tends to trigger the starvation.
 - **Don't re-read stale text on a blank page.** `TTS.loadPageText()` must
   *clear* `chunks` when a page is genuinely blank, or `_speak()` re-reads the
   previous page (a real bug). It tells a true blank page (the iframe's

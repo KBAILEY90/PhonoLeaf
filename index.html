@@ -2297,6 +2297,7 @@ const TTS = {
   _skips: 0,
   _dir: 1, // last navigation direction: 1 = forward, -1 = backward
   _gen: 0, // bumped on any cancel/turn/restart; stale onend/gap callbacks check it
+  _retryN: 0, // consecutive re-speaks of a starved (instantly-"ended") utterance
   _gapT: null,  // timer for inter-chunk pauses (chapter/subtitle gaps)
   _preIdx: -1,  // chunk index whose pre-pause has already been applied
 
@@ -2447,6 +2448,7 @@ const TTS = {
     this._gen++;
     this._awaitingPage = false;
     this._skips = 0;
+    this._retryN = 0;
     this._dir = 1; // pressing play always reads forward
     document.getElementById('play-btn').classList.add('playing');
     Stats.startTick();
@@ -2486,6 +2488,7 @@ const TTS = {
     this.active = true;
     this._awaitingPage = true; // Reader._onRelocated resumes once the page lays out
     this._skips = 0;
+    this._retryN = 0;
     document.getElementById('play-btn').classList.add('playing');
     Stats.startTick();
     this._prevText = this._lastText; // remember the page we're leaving (sync guard)
@@ -2561,7 +2564,10 @@ const TTS = {
       this._gapT = setTimeout(() => { if (this.active && gen === this._gen) this._speak(); }, chunk.pre);
       return;
     }
-    window.speechSynthesis.cancel();
+    // Only cancel if something is actually queued/playing — a gratuitous
+    // cancel() right before speak() is what triggers Android's utterance-eating
+    // (see the starved-utterance retry below).
+    if (window.speechSynthesis.speaking || window.speechSynthesis.pending) window.speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(chunk.text);
     u.rate  = this.rate;
     // Always resolve from the live getVoices() list — cached objects can be
@@ -2570,16 +2576,44 @@ const TTS = {
     u.voice = (voiceName && window.speechSynthesis.getVoices().find(v => v.name === voiceName)) || this.voice || null;
     this._skips = 0; // we found real text — reset the blank-page counter
     this._dir = 1;   // reading real content — from here the flow is forward
+    // Starved-utterance detection: on Android, speak() soon after an
+    // interrupting cancel() (i.e. right after a swipe) can be silently eaten by
+    // the engine — the utterance "ends" instantly with no audio. On a one-chunk
+    // (low-word) page that instant onend means "page finished" → auto-advance,
+    // and the page visibly skips unread. So: if the utterance completed faster
+    // than its text could possibly be spoken, re-speak it (up to 3 tries with
+    // backoff) instead of advancing.
+    const t0 = performance.now();
+    const minMs = Math.min(250, (chunk.text.length * 25) / this.rate);
+    const retry = () => {
+      this._retryN++;
+      clearTimeout(this._gapT);
+      this._gapT = setTimeout(() => { if (this.active && gen === this._gen) this._speak(); }, 150 * this._retryN);
+    };
+    let done = false; // some engines fire BOTH onend and onerror — act once
     u.onend   = () => {
       // Void if a turn/stop happened since this utterance started — otherwise a
       // late onend advances idx and can double-turn past a short page.
-      if (!this.active || gen !== this._gen) return;
+      if (done || !this.active || gen !== this._gen) return;
+      done = true;
+      if (performance.now() - t0 < minMs && this._retryN < 3) { retry(); return; }
+      this._retryN = 0;
       this.idx++;
       // Post-pause (2s after a chapter title, 1s after a subtitle).
       if (chunk.post) { clearTimeout(this._gapT); this._gapT = setTimeout(() => { if (this.active && gen === this._gen) this._speak(); }, chunk.post); }
       else this._speak();
     };
-    u.onerror = e => { if (e.error !== 'interrupted') console.warn('TTS:', e.error); };
+    u.onerror = e => {
+      if (done) return;
+      done = true;
+      if (e.error === 'interrupted' || e.error === 'canceled') {
+        // Our own cancels bump _gen first, so a current-gen interruption means
+        // the engine ate this utterance (post-cancel flush) — retry, don't stall.
+        if (this.active && gen === this._gen && this._retryN < 3) retry();
+        return;
+      }
+      console.warn('TTS:', e.error);
+    };
     window.speechSynthesis.speak(u);
 
     // iOS workaround: resume if paused
