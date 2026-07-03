@@ -1369,14 +1369,18 @@ const StatsPage = {
 
     if (g === 'genre') {
       const map = {};
+      let known = 0;
       for (const b of books) {
         const genre = (Meta.get(b.id) || {}).genre || '';
         if (!genre) continue;
+        known++;
+        if (!mins(b.id) && !started(b.id)) continue; // only books with activity
         const a = (map[genre] || (map[genre] = { n: 0, m: 0, rd: 0 }));
         a.n++; a.m += mins(b.id); if (read(b.id)) a.rd++;
       }
+      if (!known) return `<div class="arow"><span class="aname" style="color:var(--text-dim)">Genre data is loading in the background — check back in a moment.</span><span></span><span></span><span></span></div>`;
       const rows = Object.entries(map).sort((a, z) => z[1].m - a[1].m).slice(0, 8);
-      if (!rows.length) return `<div class="arow"><span class="aname" style="color:var(--text-dim)">Genre data is loading in the background — check back in a moment.</span><span></span><span></span><span></span></div>`;
+      if (!rows.length) return this._emptyBreak('genre');
       return head('Genre', 'Books', 'Min read', 'Finished') +
         rows.map(([g2, v]) => row(g2, v.n, dash(v.m), dash(v.rd))).join('');
     }
@@ -1394,11 +1398,13 @@ const StatsPage = {
         const pg = (Meta.get(b.id) || {}).pages || 0;
         if (!pg) continue;
         known++;
+        if (!mins(b.id) && !started(b.id)) continue; // only books with activity
         const t = tiers.find(x => pg >= x.lo && pg < x.hi) || tiers[tiers.length - 1];
         const a = agg[t.k]; a.n++; a.m += mins(b.id); if (read(b.id)) a.rd++;
       }
       if (!known) return `<div class="arow"><span class="aname" style="color:var(--text-dim)">Page counts are loading in the background — check back in a moment.</span><span></span><span></span><span></span></div>`;
       const rows = tiers.filter(t => agg[t.k].n > 0);
+      if (!rows.length) return this._emptyBreak('length');
       return head('Length', 'Books', 'Min read', 'Finished') +
         rows.map(t => { const a = agg[t.k]; return row(t.k, a.n, dash(a.m), dash(a.rd)); }).join('');
     }

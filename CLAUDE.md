@@ -181,9 +181,14 @@ Google login); verify by inspection + the owner testing on device.
     by minutes), *Book* (Min read · % · Read; top 8 by minutes), *Genre*
     (Books · Min read · Finished; top 8 by minutes; genres from Open Library),
     *Length* (Books · Min read · Finished; bucketed **<300 pages / 300–499 pages /
-    500+ pages** using `Meta.get(b.id).pages` from Open Library). Length and
-    genre show a "loading in background" placeholder until `Meta.fetchAll`
-    has fetched the data. `—` shows for zero values.
+    500+ pages** using `Meta.get(b.id).pages` from Open Library). **All four
+    views count only books with activity** (listening minutes or a `kba_prog`
+    started entry) — genre/length must not tally the whole library, or rows
+    survive a stats reset. Length and genre show a "loading in background"
+    placeholder until `Meta.fetchAll` has fetched the data (`known` counts
+    books with metadata regardless of activity, so the placeholder only shows
+    while metadata is genuinely missing); with metadata but no activity they
+    show the `_emptyBreak` "press play" hint. `—` shows for zero values.
     A **"Reset listening data"** ghost button at the bottom opens a custom
     `ConfirmModal` dialog (no browser domain row) and on confirm clears `kba_stats`
     **and** `kba_prog` (so "started" + "finished" tiles also reset to 0), then
