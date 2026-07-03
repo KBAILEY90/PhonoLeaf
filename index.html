@@ -1050,16 +1050,24 @@ const Meta = {
     try {
       const md = (book && book.packaging && book.packaging.metadata) || {};
       const year = (String(md.pubdate || '').match(/\d{4}/) || [])[0] || '';
-      return { author: (md.creator || '').trim(), year, publisher: (md.publisher || '').trim(), language: (md.language || '').trim() };
+      return { title: (md.title || '').trim(), author: (md.creator || '').trim(), year, publisher: (md.publisher || '').trim(), language: (md.language || '').trim() };
     } catch (_) { return null; }
   },
   // Extract + persist metadata from an already-open epub.js Book (free — no
   // extra download; piggybacks on cover extraction and on opening a book).
+  // Merges into an existing entry so fields older captures didn't store
+  // (e.g. title) are backfilled without clobbering fetched genre/pages.
   capture(id, book) {
-    if (!id || this.data[id]) return;
+    if (!id) return;
     const m = this.fromBook(book);
-    if (!m || (!m.author && !m.year && !m.publisher)) return;
-    this.data[id] = m; this._save();
+    if (!m || (!m.title && !m.author && !m.year && !m.publisher)) return;
+    const cur = this.data[id];
+    if (!cur) { this.data[id] = m; this._save(); return; }
+    let changed = false;
+    for (const k of ['title', 'author', 'year', 'publisher', 'language']) {
+      if (!cur[k] && m[k]) { cur[k] = m[k]; changed = true; }
+    }
+    if (changed) this._save();
   },
   // Fetch genre + page count from Open Library (background, 2 concurrent max).
   async fetchAll(books) {
@@ -1068,20 +1076,40 @@ const Meta = {
     const run = async () => {
       while (pending.length) {
         const b = pending.shift();
-        await this._fetchOL(b.id, b.name.replace(/\.epub$/i, ''), (this.data[b.id] || {}).author || '');
+        const m = this.data[b.id] || {};
+        // Prefer the epub's own title (captured from its metadata) — raw Drive
+        // filenames ("Author - Title", dots/underscores, bracketed junk) don't
+        // match Open Library's title index and return nothing or a wrong book.
+        await this._fetchOL(b.id, m.title || this._cleanName(b.name), m.author || '');
       }
     };
     await Promise.all([run(), run()]); // 2 concurrent
     if (Nav.current === 'stats') StatsPage.render();
   },
+  // Best-effort title from a Drive filename: strip the extension, bracketed
+  // junk, dot/underscore separators, and an "Author - " style prefix.
+  _cleanName(name) {
+    let t = name.replace(/\.epub$/i, '');
+    t = /\s/.test(t) ? t.replace(/_+/g, ' ') : t.replace(/[_.]+/g, ' ');
+    t = t.replace(/\s*[\(\[][^)\]]*[\)\]]\s*/g, ' ').replace(/\s+/g, ' ').trim();
+    const parts = t.split(/\s+[-–—]\s+/); // "Author - Title" → keep the last part
+    if (parts.length > 1 && parts[parts.length - 1].length > 2) t = parts[parts.length - 1];
+    return t;
+  },
   async _fetchOL(id, title, author) {
-    try {
-      const q = new URLSearchParams({ title, fields: 'subject,number_of_pages_median', limit: '1' });
-      if (author) q.set('author', author);
+    if (!title) return;
+    const search = async params => {
+      const q = new URLSearchParams(Object.assign({ fields: 'subject,number_of_pages_median', limit: '1' }, params));
       const res = await fetch('https://openlibrary.org/search.json?' + q);
-      if (!res.ok) return;
+      if (!res.ok) return null;
       const { docs } = await res.json();
-      const hit = docs && docs[0];
+      return (docs && docs[0]) || null;
+    };
+    try {
+      let hit = await search(author ? { title, author } : { title });
+      // The epub's author string may not match OL's canonical name — retry on
+      // title alone rather than storing nothing.
+      if (!hit && author) hit = await search({ title });
       if (!hit) return;
       if (!this.data[id]) this.data[id] = {};
       if (hit.number_of_pages_median) this.data[id].pages = hit.number_of_pages_median;
@@ -2657,9 +2685,14 @@ const TTS = {
     const u = new SpeechSynthesisUtterance(chunk.text);
     u.rate  = this.rate;
     // Always resolve from the live getVoices() list — cached objects can be
-    // silently ignored by Chrome/Safari if the voice list has refreshed.
-    const voiceName = this.voice?.name;
+    // silently ignored by Chrome/Safari if the browser's voice list has
+    // refreshed. Prefer the persisted choice: pickDefaultVoice can transiently
+    // clobber this.voice when Android returns a partial voice list.
+    const voiceName = localStorage.getItem('kba_voice') || this.voice?.name;
     u.voice = (voiceName && window.speechSynthesis.getVoices().find(v => v.name === voiceName)) || this.voice || null;
+    // Android ignores u.voice unless u.lang agrees — without this the engine
+    // falls back to the system default and every selection sounds identical.
+    if (u.voice && u.voice.lang) u.lang = u.voice.lang;
     this._skips = 0; // we found real text — reset the blank-page counter
     this._dir = 1;   // reading real content — from here the flow is forward
     // Starved-utterance detection: on Android, speak() soon after an

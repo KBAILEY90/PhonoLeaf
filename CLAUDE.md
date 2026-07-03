@@ -194,16 +194,26 @@ Google login); verify by inspection + the owner testing on device.
     **and** `kba_prog` (so "started" + "finished" tiles also reset to 0), then
     re-renders Stats and Home.
 - **Epub metadata (`Meta`, `kba_meta`)**: `Meta.capture(id, book)` reads
-  `book.packaging.metadata` (author=`creator`, `year` from `pubdate`, publisher,
-  language) for free during cover extraction (`Covers._extract`/`fromBook`) and
-  on open, and caches it in `localStorage`. `Meta.fetchAll(books)` runs in the
-  background after the library loads (2 concurrent requests); for each book not
-  yet in cache it calls `Meta._fetchOL(id, title, author)` → Open Library
-  `search.json` → stores `pages` (number_of_pages_median) and `genre`
-  (`Meta._pickGenre` maps the subject list to a normalized label: Science
-  fiction / Fantasy / Mystery / Romance / Thriller / Horror / Historical fiction /
-  Biography / History / Self-help / Young adult / Children's; falls back to the
-  first subject). After all fetches complete, re-renders the Stats tab if active.
+  `book.packaging.metadata` (**title**, author=`creator`, `year` from `pubdate`,
+  publisher, language) for free during cover extraction
+  (`Covers._extract`/`fromBook`) and on open, and caches it in `localStorage`.
+  `capture` **merges** into an existing entry (backfills fields older captures
+  didn't store — e.g. `title` — without clobbering fetched genre/pages).
+  `Meta.fetchAll(books)` runs in the background after the library loads (2
+  concurrent requests); for each book without genre/pages it calls
+  `Meta._fetchOL(id, title, author)` → Open Library `search.json` → stores
+  `pages` (number_of_pages_median) and `genre` (`Meta._pickGenre` maps the
+  subject list to a normalized label: Science fiction / Fantasy / Mystery /
+  Romance / Thriller / Horror / Historical fiction / Biography / History /
+  Self-help / Young adult / Children's; falls back to the first subject).
+  **The OL title must be a real title**: raw Drive filenames ("Author - Title",
+  dots/underscores, bracketed junk) match nothing or the WRONG book (this made
+  By genre / By book length permanently empty). `fetchAll` prefers the
+  captured epub `title`, else `Meta._cleanName(filename)` (strips extension,
+  `(...)`/`[...]` groups, separator dots/underscores, and keeps the last
+  ` - `-separated part). `_fetchOL` retries once on title-only when
+  title+author found nothing (epub author strings often differ from OL's
+  canonical name). After all fetches complete, re-renders the Stats tab if active.
   Library cards show the author on a fixed-height `.book-meta` line.
 - **Covers/metadata refresh Home as they load.** `Covers` runs in the
   background after the library loads; each finished cover now also re-renders
@@ -452,7 +462,12 @@ Google login); verify by inspection + the owner testing on device.
   name-based (`selectNamed`, `data-vname` attribute) not index-based.
   `_speak()` always resolves the voice from a live `getVoices()` call before
   creating each `SpeechSynthesisUtterance` — cached voice objects are silently
-  ignored by Chrome/Safari if the browser's voice list has refreshed.
+  ignored by Chrome/Safari if the browser's voice list has refreshed. It
+  resolves from the **persisted `kba_voice` name first** (`pickDefaultVoice`
+  can transiently clobber `TTS.voice` when Android returns a partial voice
+  list) and **sets `u.lang = voice.lang`** — Android ignores `u.voice` unless
+  the utterance lang agrees, which made every selected voice sound like the
+  system default (accent/gender never changed).
 - **Web Speech TTS does not play in the background / with the screen locked** on
   mobile. This is a platform limitation, not a bug — see roadmap.
 - Use `100dvh` (not `100vh`) for full-height views so mobile browser chrome
