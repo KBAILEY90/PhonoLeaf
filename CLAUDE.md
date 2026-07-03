@@ -332,6 +332,21 @@ Google login); verify by inspection + the owner testing on device.
   rather than skipping to the next chapter. This fixed "the last page of a chapter
   gets skipped on a forward swipe" — the swipe's `rendition.next()` plus the
   over-eager forward-skip were double-advancing.
+- **Stale TTS callbacks are generation-guarded (`TTS._gen`) — the OTHER
+  "swipe skips the short last page" double-advance.** Two async leftovers from
+  the page being left could each fire `_speak()` after a swipe's `skipPage()`
+  and issue a SECOND `rendition.next()` on top of the swipe's own: (1) the
+  just-finished utterance's queued `onend` (`cancel()` even *fires* `onend` on
+  some Androids) doing `idx++` → `_speak()` → "finished page, going forward" →
+  advance; (2) a pending heading-pause timer (`_gapT`), which `skipPage` never
+  cleared. Fixes: `_gen` is bumped in `start`/`stop`/`skipPage`/`setRate`;
+  `_speak` stamps `const gen = this._gen` into its `onend` and gap timers, which
+  bail if the gen moved on; `skipPage` also `clearTimeout(_gapT)`; and `_speak`'s
+  entry guard is now `!active || _awaitingPage` (nothing may speak or advance
+  while a turn is in flight — only the relocation's `_resumeRead` continues,
+  after `_onRelocated` clears `_awaitingPage`). Side effects: pausing mid-sentence
+  now resumes at the START of that sentence (the stale `onend` no longer `idx++`s),
+  and a speed change can't skip the rest of the current sentence.
 - **Don't re-read stale text on a blank page.** `TTS.loadPageText()` must
   *clear* `chunks` when a page is genuinely blank, or `_speak()` re-reads the
   previous page (a real bug). It tells a true blank page (the iframe's

@@ -2296,6 +2296,7 @@ const TTS = {
   _lastText: '',
   _skips: 0,
   _dir: 1, // last navigation direction: 1 = forward, -1 = backward
+  _gen: 0, // bumped on any cancel/turn/restart; stale onend/gap callbacks check it
   _gapT: null,  // timer for inter-chunk pauses (chapter/subtitle gaps)
   _preIdx: -1,  // chunk index whose pre-pause has already been applied
 
@@ -2443,6 +2444,8 @@ const TTS = {
     this.loadPageText(); // always read the page we're actually on (no stale text)
     if (this.idx >= this.chunks.length) this.idx = 0; // restart the page if it had finished
     this.active = true;
+    this._gen++;
+    this._awaitingPage = false;
     this._skips = 0;
     this._dir = 1; // pressing play always reads forward
     document.getElementById('play-btn').classList.add('playing');
@@ -2458,6 +2461,7 @@ const TTS = {
   stop() {
     this.active = false;
     this._awaitingPage = false;
+    this._gen++;
     clearTimeout(this._gapT);
     window.speechSynthesis?.cancel();
     const btn = document.getElementById('play-btn');
@@ -2473,6 +2477,12 @@ const TTS = {
   skipPage(turn) {
     if (!State.rendition) return;
     window.speechSynthesis?.cancel();
+    // Invalidate every in-flight callback from the page we're leaving: a queued
+    // onend (cancel() fires onend on some Androids) would idx++/_speak() and
+    // issue a SECOND rendition.next() on top of ours — the "swipe skips the
+    // short last page" double-advance. Same for a pending heading-pause timer.
+    this._gen++;
+    clearTimeout(this._gapT);
     this.active = true;
     this._awaitingPage = true; // Reader._onRelocated resumes once the page lays out
     this._skips = 0;
@@ -2504,7 +2514,10 @@ const TTS = {
   },
 
   _speak() {
-    if (!this.active) return;
+    // _awaitingPage: a page turn is in flight (skipPage/auto-advance) — only the
+    // relocation's _resumeRead may speak next, so stale callers must not advance.
+    if (!this.active || this._awaitingPage) return;
+    const gen = this._gen; // stamp callbacks below so a turn/stop voids them
     if (this.idx >= this.chunks.length) {
       // We're here because either we FINISHED reading this page's chunks
       // (chunks.length > 0 → advance to keep reading), or the page produced NO
@@ -2545,7 +2558,7 @@ const TTS = {
       this._preIdx = this.idx;
       window.speechSynthesis.cancel();
       clearTimeout(this._gapT);
-      this._gapT = setTimeout(() => { if (this.active) this._speak(); }, chunk.pre);
+      this._gapT = setTimeout(() => { if (this.active && gen === this._gen) this._speak(); }, chunk.pre);
       return;
     }
     window.speechSynthesis.cancel();
@@ -2558,10 +2571,12 @@ const TTS = {
     this._skips = 0; // we found real text — reset the blank-page counter
     this._dir = 1;   // reading real content — from here the flow is forward
     u.onend   = () => {
+      // Void if a turn/stop happened since this utterance started — otherwise a
+      // late onend advances idx and can double-turn past a short page.
+      if (!this.active || gen !== this._gen) return;
       this.idx++;
-      if (!this.active) return;
       // Post-pause (2s after a chapter title, 1s after a subtitle).
-      if (chunk.post) { clearTimeout(this._gapT); this._gapT = setTimeout(() => { if (this.active) this._speak(); }, chunk.post); }
+      if (chunk.post) { clearTimeout(this._gapT); this._gapT = setTimeout(() => { if (this.active && gen === this._gen) this._speak(); }, chunk.post); }
       else this._speak();
     };
     u.onerror = e => { if (e.error !== 'interrupted') console.warn('TTS:', e.error); };
@@ -2573,7 +2588,9 @@ const TTS = {
 
   setRate(v) {
     this.rate = v;
-    if (this.active) { window.speechSynthesis.cancel(); this._speak(); }
+    // Bump _gen so the canceled utterance's late onend can't idx++ (would skip
+    // the rest of the current sentence — or a page, if it was the last chunk).
+    if (this.active) { this._gen++; window.speechSynthesis.cancel(); this._speak(); }
   },
 
   // Score a voice so the most natural-sounding ones float to the top.
