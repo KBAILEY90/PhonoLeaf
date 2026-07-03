@@ -11,8 +11,11 @@ renders them with epub.js, and reads the text using the browser's Web Speech
 
 - Live: https://kbailey90.github.io/phonoleaf/
 - Repo: https://github.com/KBAILEY90/phonoleaf
-- Status: working personal project; owner is evaluating turning it into a
-  sellable product (see "Productization roadmap" below).
+- Status: **production-bound (decided 2026-07-03)** — no longer a personal-use
+  app; the owner intends to take it to production "very soon". Treat changes
+  accordingly (multi-user assumptions, security, cost awareness), and keep the
+  "Productization roadmap" below current — it is now the active work plan, not
+  an exploration.
 - **Brand vs. infra (post-rename, 2026-06-28):** branded **PhonoLeaf**, and the
   GitHub repo + GitHub Pages path were renamed `koboaudio` → `phonoleaf` (Live is
   now `kbailey90.github.io/phonoleaf`). **No OAuth change was needed:** the
@@ -480,9 +483,11 @@ Google login); verify by inspection + the owner testing on device.
   passing indices to inline handlers over interpolating raw values.
 - Match the existing terse, dependency-free style. No frameworks, no build.
 
-## Productization roadmap (owner is exploring selling this)
+## Productization roadmap (ACTIVE — production-bound as of 2026-07-03)
 
-Pending / discussed, not yet done:
+The owner has decided this will ship as a product "very soon"; this section is
+the working plan, not an exploration.
+
 1. ~~**Rename/rebrand** off "Kobo" (trademark)~~ — **DONE (2026-06-28):
    rebranded to PhonoLeaf**, and the GitHub repo + Pages path renamed
    `koboaudio` → `phonoleaf`. OAuth needed no change — the JS origin is host-only
@@ -494,8 +499,32 @@ Pending / discussed, not yet done:
 2. **Switch `drive.readonly` → `drive.file` + Google Picker** to escape
    restricted-scope verification (avoids a ~$15k+/yr security assessment).
    Free; needs the Picker API enabled + a (public, referrer-restricted) API key.
-3. **Cloud neural TTS + `<audio>` + MediaSession API** for natural voices and
-   background/lock-screen playback. Not free (TTS cost + backend).
+3. **Cloud neural TTS + `<audio>` + MediaSession API** — the chosen fix
+   (2026-07-03) for BOTH open platform limitations: robotic Android system
+   voices (Web Speech quality is capped by the device's TTS engine; desktop
+   sounds fine, phones don't) and no background/lock-screen playback.
+   Decision notes:
+   - Options considered: (a) better on-device system voices (free, modest,
+     user-managed — install higher-quality Google TTS voice data on Android);
+     (b) cloud neural TTS via `<audio>` (chosen); (c) in-browser neural TTS
+     (Kokoro via WASM/WebGPU — free/offline but ~80MB model + phone CPU/battery
+     load; possible future budget tier).
+   - **Cost model (neural tier ≈ $15–16/1M chars: Google Neural2/WaveNet $16,
+     Azure $15, Polly neural $16; OpenAI tts-1 $15; ElevenLabs ~$100+/1M —
+     uneconomical for books; Google/Polly Standard $4/1M but robotic, defeats
+     the purpose).** English ≈ ~6 chars/word incl. spaces; a print page ≈
+     ~1.6–1.8k chars. Rules of thumb: **~$1 per listening hour**, a ~300-page
+     novel (~500–550k chars) ≈ **$8–9 fully synthesized**, 500 pages ≈ ~$14,
+     a 1000+-page epic (~2.2M chars) ≈ ~$35. Free tiers (Google 1M chars/mo,
+     Azure 0.5M/mo) cover dev/testing but are irrelevant at production scale.
+   - **Production architecture: synthesize on-demand per chunk as the user
+     listens (reuse the existing block-segment chunking; emit SSML from it),
+     never pre-synthesize whole books; cache synthesized audio (IndexedDB
+     client-side; optionally server-side keyed by voice+text hash) so re-listens
+     are free. COGS ≈ $1/listening-hour drives subscription pricing (a 30 h/mo
+     user costs ~$30 — price accordingly or tier voices).**
+   - Needs a key-holding proxy (Cloudflare Worker free tier is fine initially —
+     see item 5).
 4. **Privacy policy + ToS** (required for Google verification & stores).
 5. **Backend** for real refresh tokens, payments (Stripe), and a TTS key proxy.
 
