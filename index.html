@@ -2008,6 +2008,21 @@ const Reader = {
   },
 
   _onRelocated(loc, bookId) {
+    // Forward-overshoot corrector (see nextPage above): a forward turn made
+    // from page N of M with N < M must stay inside the same section — if the
+    // relocation instead landed in the NEXT section, epub.js rounded past the
+    // section's short last page. Step back onto it and skip processing the
+    // overshot page (no progress save, no TTS resume there).
+    const pl = this._prevLoc; this._prevLoc = loc;
+    const wasFwd = this._fwd; this._fwd = false;
+    if (wasFwd && !this._fwdFixed && pl &&
+        loc.start.index === pl.start.index + 1 &&
+        pl.start.displayed && pl.start.displayed.page < pl.start.displayed.total) {
+      this._fwdFixed = true;
+      if (TTS.active) TTS._awaitingPage = true; // resume on the corrected page
+      State.rendition?.prev();
+      return;
+    }
     // Chapter name + page: flatten the full TOC tree (subitems hold the real
     // chapter titles), compare basenames (loc href has a path prefix, TOC hrefs
     // are often bare filenames), fall back to the nearest preceding entry in
@@ -2252,7 +2267,20 @@ const Reader = {
     } catch (_) { /* best effort */ }
   },
 
-  next() { TTS._dir = 1;  TTS.skipPage(() => State.rendition?.next()); },
+  // Forward-overshoot corrector state. On phones the viewport width is
+  // fractional, and epub.js's next() boundary check (scrollLeft + width +
+  // delta <= scrollWidth) can round a few px past a section whose LAST page
+  // holds little text — jumping from page 1 straight to the next chapter
+  // (page 1 → 3, skipping the low-text page 2). Every single-page forward
+  // turn goes through nextPage() so _onRelocated can detect the overshoot
+  // (left page N of M with N < M yet arrived in the NEXT section) and step
+  // back onto the skipped page. Desktop widths are integers — never trips.
+  _fwd: false,      // a single-page forward turn is in flight
+  _fwdFixed: false, // overshoot already corrected for this turn (no loops)
+  _prevLoc: null,   // location before the current relocation
+  nextPage() { this._fwd = true; this._fwdFixed = false; State.rendition?.next(); },
+
+  next() { TTS._dir = 1;  TTS.skipPage(() => Reader.nextPage()); },
   prev() { TTS._dir = -1; TTS.skipPage(() => State.rendition?.prev()); },
 
   // Bring the (minimized) reader to full screen — the "expand / full screen".
@@ -2551,7 +2579,7 @@ const TTS = {
       }
       this._awaitingPage = true;
       this._prevText = this._lastText; // sync guard for the resume
-      if (State.rendition) State.rendition.next();
+      if (State.rendition) Reader.nextPage(); // via the overshoot corrector
       else this.stop();
       return;
     }
