@@ -474,12 +474,23 @@ Google login); verify by inspection + the owner testing on device.
 - **Voice tiers (`Tier`, `kba_tier`: `member`|`gold`|`diamond`, default member).**
   Three engines behind one chunk state machine: **Member** = device Web Speech
   (`TTS._speakWeb`, all the gen-guard/starvation logic); **Gold** = Kokoro-82M
-  neural TTS **in the browser** (`_kokoroReady`/`_synthKokoro`: dynamic
-  `import('https://cdn.jsdelivr.net/npm/kokoro-js@1/+esm')`, model from
+  neural TTS **in a Web Worker** (`_kokoroWorkerEl` builds the worker from a
+  Blob; the worker `import()`s `kokoro-js@1/+esm` from jsdelivr and loads
   HuggingFace `onnx-community/Kokoro-82M-v1.0-ONNX`, WebGPU `fp32` when
   `navigator.gpu` else WASM `q8`, ~90 MB one-time download with a progress
   toast; `sw.js` deliberately passes huggingface/cdn-lfs requests through —
-  transformers.js does its own caching); **Diamond** = Google Cloud TTS Neural2
+  transformers.js does its own caching). **The worker is NOT optional** — v1
+  ran inference on the main thread and WASM generation froze the entire page
+  for tens of seconds per sentence on phones (the app looked dead; the owner
+  heard one sentence then silence). Guard rails: each `_synthKokoro` request
+  has a **30s timeout**; any Gold failure falls back to `_speakWeb` for that
+  chunk, and **2 consecutive failures set `_goldDead`** for the session
+  (`_engineNow()` then routes Gold → web) with a toast, so playback degrades
+  to the device voice instead of stalling — re-selecting Gold in the tier
+  dropdown resets the strike-out and re-warms. The model is **pre-warmed** at
+  boot when `kba_tier` is already gold, and on switching to gold. A
+  "Generating audio…" toast appears when a chunk's synthesis is audibly slow
+  (no prefetch ready after ~600ms); **Diamond** = Google Cloud TTS Neural2
   (`_synthGoogle`, direct REST with a key from `kba_gtts_key` — TESTING setup;
   production must proxy the key, roadmap 5; synthesized at 1.0× + MP3 data-URLs
   session-cached in `_gcache` keyed voice|text, speed applied via
@@ -496,14 +507,22 @@ Google login); verify by inspection + the owner testing on device.
   **The Settings "Voice tier" dropdown is TESTING ONLY — remove it before
   commercialisation** (tier must come from the subscription); same for the
   `prompt()`-based Google-key entry (`Settings.setGKey`).
-- **Better-voices helper (`VoiceHelp`, `kba_voicetip`).** Member-tier blocker
-  reducer: a themed modal with per-platform steps to install higher-quality
-  SYSTEM voices (Android → Google TTS settings + a Play-Store deep link button;
-  iOS/macOS → Enhanced/Premium-Siri voice steps; Windows → add voices + Edge
-  tip). Reachable from Settings ("Better device voices → How") and shown ONCE
-  as onboarding: `App._promptFolderIfNeeded` opens it ~800ms after launch when
-  the folder is already chosen, tier is member, and `kba_voicetip` is unset —
-  never stacked on the folder prompt (first-run users see it next launch).
+- **Better-voices helper (`VoiceHelp`, `kba_voicetip`) — MOBILE ONLY.** Member
+  -tier blocker reducer: a themed modal pointing users at higher-quality
+  SYSTEM voices. **Android's button opens the "Install voice data" screen
+  directly** via an `intent:` URI (`android.speech.tts.engine.INSTALL_TTS_DATA`
+  with `S.browser_fallback_url` → the Google TTS Play-Store page when an OEM
+  blocks the intent); it must be launched with `location.href` from the click
+  (top-level navigation — `window.open` gets blocked). iOS gets
+  Enhanced/Premium-Siri steps, no button. **Desktop is excluded everywhere**
+  (`VoiceHelp.available()` gates the Settings row `#vh-row`, `open()`, and the
+  onboarding trigger): the owner correctly observed that desktop voice
+  installs add *variants*, not *quality* — Chrome can't see Edge's Natural
+  voices, so the tip would be misleading there. Shown ONCE as onboarding:
+  `App._promptFolderIfNeeded` opens it ~800ms after launch when the folder is
+  already chosen, tier is member, platform is mobile, and `kba_voicetip` is
+  unset — never stacked on the folder prompt (first-run users see it next
+  launch).
 - **Web Speech TTS does not play in the background / with the screen locked** on
   mobile. This is a platform limitation, not a bug — see roadmap. (Gold/Diamond
   play through `<audio>`, which unlocks MediaSession/background playback later —
