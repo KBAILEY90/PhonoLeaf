@@ -593,19 +593,26 @@ the working plan, not an exploration.
    once listening volumes are real. Trade-offs: Play takes 15% of subs (vs
    ~3% Stripe on web), store review, privacy policy (needed anyway; iOS
    would be a separate wrap).
-   **PIVOT IN EVALUATION (2026-07-04): owner finds Kokoro quality good
-   enough to DROP Diamond entirely** — single Kokoro tier = zero COGS, no
-   key proxy, simpler product — CONTINGENT on native-speed Kokoro working
-   on phones. Free zero-code validation first: sideload sherpa-onnx's
+   **PIVOT VALIDATED (2026-07-04): single Kokoro tier, drop Diamond** —
+   zero COGS, no key proxy, simpler product. Owner sideloaded sherpa-onnx's
    prebuilt **Kokoro "TTS engine" APK** (k2-fsa.github.io/sherpa → TTS →
-   APK engine; Apache 2.0, commercial OK) — it registers as an Android
-   SYSTEM TTS engine, so PhonoLeaf's existing Member tier picks it up via
-   Web Speech at native multi-threaded speed (may need to be set as the
-   default engine + Chrome restart for its voices to list). If validated:
-   Capacitor wrapper (free) + native sherpa-onnx plugin, one codebase,
-   test via USB/emulator for $0; the only publication cost is Play's $25
-   one-time dev fee (Apple $99/yr later). Diamond code stays dormant (not
-   deleted) until the phone test passes.
+   APK engine → kokoro-multi-lang-v1_1, arm64-v8a; Apache 2.0, commercial
+   OK), set it as the Android SYSTEM TTS engine (needs Chrome restart for
+   its voices to list), and played through PhonoLeaf's Member tier:
+   **gaps dropped from 30-45s (browser WASM) to <10s** on ~10-15s
+   sentences ⇒ native Kokoro generates FASTER than realtime (~0.5-0.8×).
+   The remaining gaps exist only because the system-TTS path synthesizes
+   serially with playback (Web Speech can't pre-synthesize); the browser
+   Gold tier's existing prefetch (synthesize next chunk DURING playback,
+   `_playAudio`/`_preSynth`) closes them to zero once we control synthesis
+   directly. **Next step: Capacitor wrapper + native sherpa-onnx plugin**
+   — `index.html` unchanged, plugin exposes synthesize(text, voice) →
+   audio, wired in as a third Gold backend beside the worker; reuses the
+   whole prefetch/fallback pipeline. USB/emulator testing is $0; Play's
+   $25 one-time fee only at publication (Apple $99/yr later). Optional
+   extra headroom: the kokoro-int8-multi-lang-v1_1 APK (quantized, faster,
+   slight quality cost) — untested. Diamond code stays dormant until the
+   hybrid ships, then gets removed with the tier dropdown.
    Decision notes:
    - Options considered: (a) better on-device system voices (free, modest,
      user-managed — install higher-quality Google TTS voice data on Android);
