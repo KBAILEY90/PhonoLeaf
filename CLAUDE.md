@@ -471,72 +471,61 @@ Google login); verify by inspection + the owner testing on device.
   list) and **sets `u.lang = voice.lang`** — Android ignores `u.voice` unless
   the utterance lang agrees, which made every selected voice sound like the
   system default (accent/gender never changed).
-- **Voice tiers (`Tier`, `kba_tier`: `member`|`gold`|`diamond`, default member).**
-  Three engines behind one chunk state machine: **Member** = device Web Speech
-  (`TTS._speakWeb`, all the gen-guard/starvation logic); **Gold** = Kokoro-82M
-  neural TTS **in a Web Worker** (`_kokoroWorkerEl` builds the worker from a
-  Blob; the worker `import()`s `kokoro-js@1/+esm` from jsdelivr and loads
-  HuggingFace `onnx-community/Kokoro-82M-v1.0-ONNX`, WebGPU `fp32` when
-  `navigator.gpu` else WASM `q8`, ~90 MB one-time download with a progress
-  toast; `sw.js` deliberately passes huggingface/cdn-lfs requests through —
-  transformers.js does its own caching). **The worker is NOT optional** — v1
-  ran inference on the main thread and WASM generation froze the entire page
-  for tens of seconds per sentence on phones (the app looked dead; the owner
-  heard one sentence then silence). Guard rails: each `_synthKokoro` request
-  has a **30s timeout**; any Gold failure falls back to `_speakWeb` for that
-  chunk, and **2 consecutive failures set `_goldDead`** for the session
-  (`_engineNow()` then routes Gold → web) with a toast, so playback degrades
-  to the device voice instead of stalling — re-selecting Gold in the tier
-  dropdown resets the strike-out and re-warms. The model is **pre-warmed** at
-  boot when `kba_tier` is already gold, and on switching to gold. A
-  "Generating audio…" toast appears when a chunk's synthesis is audibly slow
-  (no prefetch ready after ~600ms). **Speed probe (`_kokoroBench`,
-  `kba_gold_bench`):** after the model loads, the worker generates a fixed
-  test sentence and reports generation-time ÷ audio-duration; a ratio > 1.25
-  means the device can't sustain continuous playback (the owner's phone
-  measured ~2-3× SLOWER than realtime — 30-45s gaps between sentences;
-  prefetch cannot fix a generator that falls further behind every sentence),
-  so `_goldDead` is set upfront with one clear toast (recommending Diamond on
-  phones) instead of a 30s timeout per chunk. The verdict is cached per
-  backend in `kba_gold_bench` (probe skipped on later launches); re-selecting
-  Gold clears the cache and re-probes. Probe ratios are logged to the Diag
-  debug log (`{e:'bench', be, r}`); **Diamond** = Google Cloud TTS Neural2
-  (`_synthGoogle`, direct REST with a key from `kba_gtts_key` — TESTING setup;
-  production must proxy the key, roadmap 5; synthesized at 1.0× + MP3 data-URLs
-  session-cached in `_gcache` keyed voice|text, speed applied via
-  `playbackRate` so the cache survives rate changes). Gold/Diamond play through
-  a shared `<audio>` element (`_playAudio`): `onended` drives the same
-  idx++/post-pause chain as Web Speech `onend`, gen guards apply, the NEXT
-  chunk is **prefetched during playback** (`_preSynth`) to hide synthesis
-  latency, blob URLs are revoked, and any synthesis failure **falls back to
-  `_speakWeb` for that chunk** (except a missing Diamond key → toast + stop).
-  `stop()`/`skipPage()` call `_stopAudio()`; `setRate` on Gold/Diamond just
-  sets `playbackRate` live (no restart). Voice catalogs: `KOKORO_VOICES` /
-  `GOOGLE_VOICES` (`kba_voice_gold` / `kba_voice_diamond`; `VoiceModal` renders
-  the tier's catalog via `selectTier`, Member keeps the system list).
-  **The Settings "Voice tier" dropdown is TESTING ONLY — remove it before
-  commercialisation** (tier must come from the subscription); same for the
-  `prompt()`-based Google-key entry (`Settings.setGKey`).
-- **Better-voices helper (`VoiceHelp`, `kba_voicetip`) — MOBILE ONLY.** Member
-  -tier blocker reducer: a themed modal pointing users at higher-quality
-  SYSTEM voices. **Android's button opens the "Install voice data" screen
-  directly** via an `intent:` URI (`android.speech.tts.engine.INSTALL_TTS_DATA`
-  with `S.browser_fallback_url` → the Google TTS Play-Store page when an OEM
-  blocks the intent); it must be launched with `location.href` from the click
-  (top-level navigation — `window.open` gets blocked). iOS gets
-  Enhanced/Premium-Siri steps, no button. **Desktop is excluded everywhere**
-  (`VoiceHelp.available()` gates the Settings row `#vh-row`, `open()`, and the
-  onboarding trigger): the owner correctly observed that desktop voice
-  installs add *variants*, not *quality* — Chrome can't see Edge's Natural
-  voices, so the tip would be misleading there. Shown ONCE as onboarding:
-  `App._promptFolderIfNeeded` opens it ~800ms after launch when the folder is
-  already chosen, tier is member, platform is mobile, and `kba_voicetip` is
-  unset — never stacked on the folder prompt (first-run users see it next
-  launch).
+- **Voice engine — Kokoro-only (tiers REMOVED 2026-07-04).** Kokoro-82M is
+  THE product voice; the device's Web Speech engine survives only as an
+  automatic fallback. One chunk state machine, two paths:
+  - **Neural path (`_playAudio`)**: Kokoro-82M **in a Web Worker**
+    (`_kokoroWorkerEl` builds the worker from a Blob; the worker `import()`s
+    `kokoro-js@1/+esm` from jsdelivr and loads HuggingFace
+    `onnx-community/Kokoro-82M-v1.0-ONNX`, WebGPU `fp32` when `navigator.gpu`
+    else WASM `q8`, ~90 MB one-time download with a progress toast; `sw.js`
+    passes huggingface/cdn-lfs requests through — transformers.js does its own
+    caching). **The worker is NOT optional** — v1 ran inference on the main
+    thread and froze the page for tens of seconds per sentence on phones.
+    Playback via a shared `<audio>` element: `onended` drives the same
+    idx++/post-pause chain as Web Speech `onend`, gen guards apply, the NEXT
+    chunk is **prefetched during playback** (`_preSynth`), blob URLs are
+    revoked, `stop()`/`skipPage()` call `_stopAudio()`, `setRate` just sets
+    `playbackRate` live. Model **pre-warmed at every boot** (`_kokoroWarm`);
+    "Generating audio…" toast when synthesis is audibly slow (no prefetch
+    ready after ~600ms). Voice catalog `KOKORO_VOICES`, choice persisted in
+    `kba_voice_gold` (HISTORICAL key name, kept so installs keep their
+    choice; same for the `kba_gold_bench` bench key).
+  - **Fallback path (`_speakWeb`)**: the pre-existing Web Speech code with all
+    the gen-guard/starvation logic. Entered per chunk on any synthesis
+    failure, and for the whole session when `_kokoroDead` is set — by **2
+    consecutive failures** (30s timeout each) or by the **speed probe**
+    (`_kokoroBench`: after model load, the worker generates a fixed test
+    sentence; generation-time ÷ audio-duration > 1.25 ⇒ the device can't
+    sustain continuous playback — the owner's phone measured 2-3× slower than
+    realtime in browser WASM). The probe verdict is cached per backend; at
+    boot a cached slow verdict skips the model download entirely and goes
+    straight to fallback (silently — the toast only fires on a FRESH
+    verdict). Probe ratios are logged to Diag (`{e:'bench', be, r}`).
+    **Settings surfaces fallback mode** (`#fallback-group`: "Natural voice —
+    Unavailable on this device" + **Retry** = `Settings.retryNeural()`, which
+    clears the bench cache + strike-out and re-warms). `VoiceModal` shows the
+    Kokoro catalog normally, the system-voice list in fallback mode.
+  - REMOVED in the tier teardown (don't resurrect): the `Tier` object,
+    `kba_tier`, the Settings tier dropdown, Diamond/Google Cloud TTS
+    (`_synthGoogle`, `_gcache`, `GOOGLE_VOICES`, `kba_voice_diamond`,
+    `kba_gtts_key`, `Settings.setGKey`), and the `VoiceHelp` onboarding
+    popup + `kba_voicetip`. Stale keys may linger in old installs; harmless.
+- **Better-voices helper (`VoiceHelp`) — fallback-mode only, MOBILE ONLY.**
+  Points users at higher-quality SYSTEM voices, relevant only when the app is
+  reading with the device voice: the Settings row `#vh-row` shows only when
+  `TTS._kokoroDead && VoiceHelp.available()`. **Android's button opens the
+  "Install voice data" screen directly** via an `intent:` URI
+  (`android.speech.tts.engine.INSTALL_TTS_DATA` with `S.browser_fallback_url`
+  → the Google TTS Play-Store page when an OEM blocks the intent); it must be
+  launched with `location.href` from the click (top-level navigation —
+  `window.open` gets blocked). iOS gets Enhanced/Premium-Siri steps, no
+  button. Desktop excluded (`VoiceHelp.available()`): desktop voice installs
+  add *variants*, not *quality*.
 - **Web Speech TTS does not play in the background / with the screen locked** on
-  mobile. This is a platform limitation, not a bug — see roadmap. (Gold/Diamond
-  play through `<audio>`, which unlocks MediaSession/background playback later —
-  not wired yet.)
+  mobile. This is a platform limitation, not a bug — see roadmap. (The neural
+  path plays through `<audio>`, which unlocks MediaSession/background playback
+  later — not wired yet.)
 - Use `100dvh` (not `100vh`) for full-height views so mobile browser chrome
   doesn't hide the bottom controls.
 
@@ -563,79 +552,46 @@ the working plan, not an exploration.
 2. **Switch `drive.readonly` → `drive.file` + Google Picker** to escape
    restricted-scope verification (avoids a ~$15k+/yr security assessment).
    Free; needs the Picker API enabled + a (public, referrer-restricted) API key.
-3. **Cloud neural TTS + `<audio>` + MediaSession API** — the chosen fix
-   (2026-07-03) for BOTH open platform limitations: robotic Android system
-   voices (Web Speech quality is capped by the device's TTS engine; desktop
-   sounds fine, phones don't) and no background/lock-screen playback.
-   **STATUS: v1 three-tier system SHIPPED for testing (2026-07-03)** — see the
-   "Voice tiers" behavior note: Member (Web Speech + better-voices helper),
-   Gold (in-browser Kokoro), Diamond (Google Neural2 via the owner's key /
-   free tier). Still to do for production: key proxy (item 5), MediaSession +
-   lock-screen playback wiring, IndexedDB audio caching, replacing the
-   testing tier-dropdown with subscription-driven tiers.
-   **Gold mobile ceiling (measured 2026-07-04):** the owner's phone runs
-   Kokoro at ~2-3× slower than realtime (30-45s/sentence) — in-browser
-   Kokoro is NOT viable for continuous playback on mid-range phones; a speed
-   probe now auto-degrades such devices to standard voices (see "Voice
-   tiers" note). Product options if Gold-on-mobile matters: (a) position
-   Gold as the desktop/capable-device tier and Diamond as THE mobile
-   upgrade; (b) evaluate a faster/smaller in-browser engine for phones
-   (e.g. Piper/VITS-class, ~realtime on phone WASM but lower quality than
-   Kokoro); (c) **native-app route (analyzed 2026-07-04):** a plain TWA
-   wrapper (Bubblewrap) gives Play-Store distribution + Play Billing but
-   ZERO speedup (it's the same Chrome engine — browser WASM is stuck
-   single-threaded because cross-origin isolation would break Google
-   sign-in); a HYBRID (web UI + native inference module, e.g. sherpa-onnx
-   running the same Kokoro model) gets multi-threaded fp16 + GPU/NPU,
-   ≈2-5× over browser WASM — likely realtime on the owner's phone — while
-   keeping one codebase. Strategic driver: on-device Kokoro is zero-COGS
-   vs Diamond's ~$1/listening-hour, so hybrid-native is the margin play
-   once listening volumes are real. Trade-offs: Play takes 15% of subs (vs
-   ~3% Stripe on web), store review, privacy policy (needed anyway; iOS
-   would be a separate wrap).
-   **PIVOT VALIDATED (2026-07-04): single Kokoro tier, drop Diamond** —
-   zero COGS, no key proxy, simpler product. Owner sideloaded sherpa-onnx's
-   prebuilt **Kokoro "TTS engine" APK** (k2-fsa.github.io/sherpa → TTS →
-   APK engine → kokoro-multi-lang-v1_1, arm64-v8a; Apache 2.0, commercial
-   OK), set it as the Android SYSTEM TTS engine (needs Chrome restart for
-   its voices to list), and played through PhonoLeaf's Member tier:
-   **gaps dropped from 30-45s (browser WASM) to <10s** on ~10-15s
-   sentences ⇒ native Kokoro generates FASTER than realtime (~0.5-0.8×).
-   The remaining gaps exist only because the system-TTS path synthesizes
-   serially with playback (Web Speech can't pre-synthesize); the browser
-   Gold tier's existing prefetch (synthesize next chunk DURING playback,
-   `_playAudio`/`_preSynth`) closes them to zero once we control synthesis
-   directly. **Next step: Capacitor wrapper + native sherpa-onnx plugin**
-   — `index.html` unchanged, plugin exposes synthesize(text, voice) →
-   audio, wired in as a third Gold backend beside the worker; reuses the
-   whole prefetch/fallback pipeline. USB/emulator testing is $0; Play's
-   $25 one-time fee only at publication (Apple $99/yr later). Optional
-   extra headroom: the kokoro-int8-multi-lang-v1_1 APK (quantized, faster,
-   slight quality cost) — untested. Diamond code stays dormant until the
-   hybrid ships, then gets removed with the tier dropdown.
-   Decision notes:
-   - Options considered: (a) better on-device system voices (free, modest,
-     user-managed — install higher-quality Google TTS voice data on Android);
-     (b) cloud neural TTS via `<audio>` (chosen); (c) in-browser neural TTS
-     (Kokoro via WASM/WebGPU — free/offline but ~80MB model + phone CPU/battery
-     load; possible future budget tier).
-   - **Cost model (neural tier ≈ $15–16/1M chars: Google Neural2/WaveNet $16,
-     Azure $15, Polly neural $16; OpenAI tts-1 $15; ElevenLabs ~$100+/1M —
-     uneconomical for books; Google/Polly Standard $4/1M but robotic, defeats
-     the purpose).** English ≈ ~6 chars/word incl. spaces; a print page ≈
-     ~1.6–1.8k chars. Rules of thumb: **~$1 per listening hour**, a ~300-page
-     novel (~500–550k chars) ≈ **$8–9 fully synthesized**, 500 pages ≈ ~$14,
-     a 1000+-page epic (~2.2M chars) ≈ ~$35. Free tiers (Google 1M chars/mo,
-     Azure 0.5M/mo) cover dev/testing but are irrelevant at production scale.
-   - **Production architecture: synthesize on-demand per chunk as the user
-     listens (reuse the existing block-segment chunking; emit SSML from it),
-     never pre-synthesize whole books; cache synthesized audio (IndexedDB
-     client-side; optionally server-side keyed by voice+text hash) so re-listens
-     are free. COGS ≈ $1/listening-hour drives subscription pricing (a 30 h/mo
-     user costs ~$30 — price accordingly or tier voices).**
-   - Needs a key-holding proxy (Cloudflare Worker free tier is fine initially —
-     see item 5).
+3. **Voice: single Kokoro engine, shipped natively — DECIDED 2026-07-04**
+   (supersedes the three-tier system, which shipped 2026-07-03 and was torn
+   out the next day; Diamond/Google Cloud TTS and the testing tier-dropdown
+   are REMOVED — see the "Voice engine" behavior note).
+   - **Why:** owner rates Kokoro quality as the product voice; on-device =
+     zero COGS (vs ~$1/listening-hour for cloud neural — a 30 h/mo user
+     would have cost ~$30/mo), no key proxy, one tier = simpler product.
+   - **Validated on device (2026-07-04):** browser WASM Kokoro on the
+     owner's phone = 2-3× slower than realtime (unusable, 30-45s gaps);
+     sherpa-onnx's native Kokoro APK as system TTS engine = faster than
+     realtime (<10s gaps, and those only because the system-TTS path can't
+     pre-synthesize). Conclusion: native inference + our existing prefetch
+     (`_playAudio`/`_preSynth`, synthesize next chunk during playback) =
+     gapless.
+   - **Distribution: Play Store first, App Store later.** Owner wants
+     everything testable before any store push — see `TESTING.md` (novice
+     -friendly guide: web testing now, Android Studio + USB setup, the
+     Stage-2 run loop, regression checklist, publishing refs).
+   - **Native build plan (staged):**
+     - Stage 1 — DONE (2026-07-04): web app refactored to Kokoro-only with
+       automatic device-voice fallback; production logic, no test switches.
+     - Stage 2 — Capacitor wrapper + native TTS plugin: `index.html`
+       unchanged as the web layer; a Kotlin plugin bundling sherpa-onnx +
+       Kokoro exposes synthesize(text, voice) → audio, wired in as a native
+       backend beside the Web Worker (detect plugin → prefer native).
+       Testing loop: Android Studio Run ▶ on the owner's phone via USB.
+     - Stage 3 — **auth rework (BLOCKER for a usable native app):** Google
+       blocks OAuth in embedded WebViews (`disallowed_useragent`), so the
+       current GIS implicit flow cannot work inside Capacitor. Fix: system
+       -browser flow (Chrome Custom Tabs) with authorization-code + PKCE,
+       which also finally yields refresh tokens. Until then, native builds
+       are for testing the voice engine, not the Drive flow.
+     - Stage 4 — MediaSession + lock-screen/background playback (native
+       `<audio>` path makes this straightforward), IndexedDB audio caching.
+     - Stage 5 — Play Console ($25 one-time), internal testing track, store
+       listing + privacy policy (item 4), then production rollout. iOS
+       (Apple $99/yr) after Android is proven.
 4. **Privacy policy + ToS** (required for Google verification & stores).
-5. **Backend** for real refresh tokens, payments (Stripe), and a TTS key proxy.
+5. **Backend** for real refresh tokens and payments (Stripe on web; Play
+   Billing in-app — note Play takes 15% vs ~3% Stripe). The TTS key proxy is
+   no longer needed (no cloud TTS).
 
 Already hardened for multi-user: XSS escaping of dynamic content.

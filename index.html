@@ -771,24 +771,16 @@
         <label class="tog"><input type="checkbox" id="set-wakelock" onchange="Settings.setWakeLock(this.checked)"><span class="tog-track"></span></label>
       </div>
     </div>
-    <div class="set-group">
-      <!-- TESTING ONLY: tier switch for development — REMOVE before commercialisation
-           (tiers will be driven by the user's subscription, not a dropdown). -->
-      <div class="set-row">
-        <div><div class="sr-k">Voice tier <span style="color:var(--accent2)">(testing)</span></div><div class="sr-sub">Member &middot; Gold &middot; Diamond</div></div>
-        <select class="set-select" id="set-tier" onchange="Settings.setTier(this.value)" aria-label="Voice tier">
-          <option value="member">Member</option>
-          <option value="gold">Gold</option>
-          <option value="diamond">Diamond</option>
-        </select>
+    <div class="set-group" id="fallback-group" style="display:none">
+      <!-- Shown only when this device can't run the neural voice in real time
+           (TTS._kokoroDead) — the app is then reading with the device voice. -->
+      <div class="set-row" id="neural-row">
+        <div><div class="sr-k">Natural voice</div><div class="sr-sub">Unavailable on this device &mdash; using the standard voice</div></div>
+        <button class="set-link" onclick="Settings.retryNeural()">Retry</button>
       </div>
       <div class="set-row" id="vh-row" style="display:none">
         <div><div class="sr-k">Better device voices</div><div class="sr-sub">Install free natural voices</div></div>
         <button class="set-link" onclick="VoiceHelp.open()">How</button>
-      </div>
-      <div class="set-row" id="gkey-row" style="display:none">
-        <div><div class="sr-k">Google TTS key</div><div class="sr-sub" id="gkey-sub">Not set</div></div>
-        <button class="set-link" onclick="Settings.setGKey()">Set</button>
       </div>
     </div>
     <div class="set-group">
@@ -1358,29 +1350,7 @@ const Diag = {
   },
 };
 
-// --- Voice tiers ------------------------------------------
-// member = device Web Speech voices · gold = Kokoro (in-browser neural) ·
-// diamond = Google Cloud TTS neural. The Settings dropdown that drives this
-// is TESTING ONLY — in production the tier comes from the subscription.
-const Tier = {
-  get() { try { return localStorage.getItem('kba_tier') || 'member'; } catch (_) { return 'member'; } },
-  engine() { return { member: 'web', gold: 'kokoro', diamond: 'gcloud' }[this.get()] || 'web'; },
-  set(t) {
-    localStorage.setItem('kba_tier', t);
-    TTS.stop(); // don't switch engines mid-utterance
-    if (t === 'gold') { // fresh chance on re-select: reset strike-out + re-probe speed
-      TTS._goldDead = false; TTS._kstrikes = 0;
-      try { localStorage.removeItem('kba_gold_bench'); } catch (_) {}
-      TTS._kokoroWarm();
-    }
-    if (t === 'diamond' && !localStorage.getItem('kba_gtts_key')) Settings.setGKey();
-    TTS.updateVoiceLabel();
-    Settings.render();
-    toast('Voice tier: ' + t[0].toUpperCase() + t.slice(1));
-  },
-};
-
-// --- Better-voices helper (Member tier: point users at their device's own
+// --- Better-voices helper (fallback mode: point users at their device's own
 // higher-quality system voices — reduce the "robotic voice" blocker for free).
 // MOBILE ONLY: on desktop the tip is misleading — Windows/macOS voice installs
 // add variants, not quality (Chrome can't see Edge's Natural voices), so the
@@ -1429,10 +1399,9 @@ const Settings = {
     document.querySelectorAll('#theme-seg button').forEach(b => b.classList.toggle('on', b.dataset.mode === m));
     const sel = document.getElementById('set-speed'); if (sel) sel.value = localStorage.getItem('kba_speed') || '1';
     const vs = document.getElementById('set-voice-sub'); if (vs) vs.textContent = TTS.activeVoiceLabel();
-    const tr = document.getElementById('set-tier'); if (tr) tr.value = Tier.get();
-    const vh = document.getElementById('vh-row'); if (vh) vh.style.display = VoiceHelp.available() ? '' : 'none';
-    const gr = document.getElementById('gkey-row'); if (gr) gr.style.display = Tier.get() === 'diamond' ? '' : 'none';
-    const gs = document.getElementById('gkey-sub'); if (gs) gs.textContent = localStorage.getItem('kba_gtts_key') ? 'Key set' : 'Not set';
+    // Fallback-mode rows: only shown when the neural voice is unavailable here.
+    const fg = document.getElementById('fallback-group'); if (fg) fg.style.display = TTS._kokoroDead ? '' : 'none';
+    const vh = document.getElementById('vh-row'); if (vh) vh.style.display = (TTS._kokoroDead && VoiceHelp.available()) ? '' : 'none';
     const wl = document.getElementById('set-wakelock'); if (wl) wl.checked = localStorage.getItem('kba_wakelock') !== 'false';
     const f = document.getElementById('set-folder'); if (f) f.textContent = activeFolder() || 'Not selected';
     const a = document.getElementById('set-account'); if (a) a.textContent = State.userName ? 'Signed in as ' + State.userName : 'Signed in';
@@ -1446,15 +1415,14 @@ const Settings = {
       () => toast('Could not copy'));
   },
   changeFolder() { FolderBrowser.open(); },
-  setTier(v) { Tier.set(v); },
-  // TESTING ONLY (like the tier dropdown): key entry via prompt(), stored only
-  // on this device. Production moves the key behind a server-side proxy.
-  setGKey() {
-    const cur = localStorage.getItem('kba_gtts_key') || '';
-    const k = prompt('Google Cloud TTS API key (stored only on this device — testing):', cur);
-    if (k === null) return;
-    if (k.trim()) localStorage.setItem('kba_gtts_key', k.trim());
-    else localStorage.removeItem('kba_gtts_key');
+  // Give the neural voice a fresh chance on this device: clear the cached speed
+  // verdict, reset the strike-out, and re-warm (the probe reruns after load).
+  retryNeural() {
+    TTS._kokoroDead = false; TTS._kstrikes = 0;
+    try { localStorage.removeItem('kba_gold_bench'); } catch (_) {}
+    TTS.stop();
+    TTS._kokoroWarm();
+    TTS.updateVoiceLabel();
     this.render();
   },
   setTheme(mode) { Theme.apply(mode); this.render(); },
@@ -1735,15 +1703,9 @@ const App = {
   },
 
   // On first onboarding (no folder chosen yet), prompt the user to pick their
-  // Google Drive books folder rather than assuming one. Once the folder exists,
-  // show the one-time "get better device voices" tip (Member tier onboarding —
-  // never stacked on top of the folder prompt; it shows on the next launch).
+  // Google Drive books folder rather than assuming one.
   _promptFolderIfNeeded() {
-    if (!hasChosenFolder()) { setTimeout(() => FolderBrowser.open(), 300); return; }
-    if (VoiceHelp.available() && Tier.get() === 'member' && !localStorage.getItem('kba_voicetip')) {
-      localStorage.setItem('kba_voicetip', '1');
-      setTimeout(() => VoiceHelp.open(true), 800);
-    }
+    if (!hasChosenFolder()) setTimeout(() => FolderBrowser.open(), 300);
   },
 
   _saveAuth(token, expiresIn) {
@@ -2529,14 +2491,13 @@ const TTS = {
   _dir: 1, // last navigation direction: 1 = forward, -1 = backward
   _gen: 0, // bumped on any cancel/turn/restart; stale onend/gap callbacks check it
   _retryN: 0, // consecutive re-speaks of a starved (instantly-"ended") utterance
-  _audio: null,     // shared <audio> element for Gold/Diamond playback
+  _audio: null,     // shared <audio> element for neural-voice playback
   _preSynth: null,  // prefetched next-chunk audio { key: 'gen:idx', p: Promise<url> }
-  _gcache: null,    // session cache of Google TTS chunks (voice|text → data URL)
   _kworker: null,   // Kokoro Web Worker (model lives there — keeps the UI thread free)
   _kpend: null,     // pending worker requests: id → {res, rej}
   _kid: 0,          // worker request id counter
-  _kstrikes: 0,     // consecutive Gold synthesis failures
-  _goldDead: false, // 2 strikes → Gold disabled for the session (fall back to web)
+  _kstrikes: 0,     // consecutive neural synthesis failures
+  _kokoroDead: false, // 2 strikes or a slow speed-probe → device voice for the session
   _gapT: null,  // timer for inter-chunk pauses (chapter/subtitle gaps)
   _preIdx: -1,  // chunk index whose pre-pause has already been applied
 
@@ -2805,21 +2766,20 @@ const TTS = {
       this._gapT = setTimeout(() => { if (this.active && gen === this._gen) this._speak(); }, chunk.pre);
       return;
     }
-    // Gold/Diamond tiers speak via synthesized audio in an <audio> element;
-    // Member uses the device's Web Speech engine below.
+    // The neural voice (Kokoro) speaks via synthesized audio in an <audio>
+    // element; devices that can't run it use the device's Web Speech engine.
     if (this._engineNow() !== 'web') { this._playAudio(chunk, gen); return; }
     this._speakWeb(chunk, gen);
   },
 
-  // Effective engine: Gold that has failed twice this session reads with the
-  // device voice instead of stalling on every chunk.
+  // Effective engine: Kokoro is THE voice; a device that failed the speed
+  // probe or struck out twice reads with the device voice instead of stalling.
   _engineNow() {
-    const e = Tier.engine();
-    return (e === 'kokoro' && this._goldDead) ? 'web' : e;
+    return this._kokoroDead ? 'web' : 'kokoro';
   },
 
   // Speak one chunk via the device Web Speech engine (Member tier — also the
-  // per-chunk fallback when Gold/Diamond synthesis fails).
+  // per-chunk fallback when neural synthesis fails).
   _speakWeb(chunk, gen) {
     // Only cancel if something is actually queued/playing — a gratuitous
     // cancel() right before speak() is what triggers Android's utterance-eating
@@ -2882,7 +2842,7 @@ const TTS = {
     if (window.speechSynthesis.paused) window.speechSynthesis.resume();
   },
 
-  // ---- Gold / Diamond: synthesized-audio playback --------------------------
+  // ---- Neural voice (Kokoro): synthesized-audio playback -------------------
   _audioEl() {
     if (!this._audio) { this._audio = new Audio(); this._audio.preload = 'auto'; }
     return this._audio;
@@ -2896,7 +2856,7 @@ const TTS = {
     }
   },
   _synth(text) {
-    return Tier.engine() === 'kokoro' ? this._synthKokoro(text) : this._synthGoogle(text);
+    return this._synthKokoro(text);
   },
   async _playAudio(chunk, gen) {
     try {
@@ -2905,7 +2865,7 @@ const TTS = {
       if (this._preSynth && this._preSynth.key === key) { url = await this._preSynth.p; this._preSynth = null; }
       if (!url) {
         // No prefetch ready — synthesis is audible latency now; surface it so a
-        // slow Gold generation doesn't look like the app died.
+        // slow generation doesn't look like the app died.
         const genT = setTimeout(() => { if (this.active && gen === this._gen) toast('Generating audio…', 0); }, 600);
         try { url = await this._synth(chunk.text); } finally { clearTimeout(genT); hideToast(); }
       }
@@ -2932,27 +2892,25 @@ const TTS = {
       if (n) this._preSynth = { key: gen + ':' + (this.idx + 1), p: this._synth(n.text).catch(() => null) };
     } catch (e) {
       if (!this.active || gen !== this._gen) return;
-      if (e && e.message === 'no-key') { toast('Diamond tier needs a Google TTS key — set it in Settings'); this.stop(); return; }
-      // Gold strike-out: two consecutive failures (timeout, worker error, OOM)
+      // Strike-out: two consecutive failures (timeout, worker error, OOM)
       // disable Kokoro for the session so every chunk doesn't wait 30s.
-      if (Tier.engine() === 'kokoro' && !this._goldDead) {
-        if (++this._kstrikes >= 2) {
-          this._goldDead = true;
-          toast('Gold voices are struggling on this device — using standard voices for now');
-        }
+      if (!this._kokoroDead && ++this._kstrikes >= 2) {
+        this._kokoroDead = true;
+        toast('The natural voice is struggling on this device — using the standard voice for now');
+        Settings.render(); // surface the fallback row + Retry
       }
-      // Synthesis failed (offline, model not ready, quota…) — read this chunk
-      // with the standard device voice rather than stalling playback.
+      // Synthesis failed (offline, model not ready…) — read this chunk with
+      // the standard device voice rather than stalling playback.
       this._speakWeb(chunk, gen);
     }
   },
-  // Gold: Kokoro-82M running in a WEB WORKER (WebGPU fp32 where available,
+  // Kokoro-82M running in a WEB WORKER (WebGPU fp32 where available,
   // else WASM q8). ~90 MB one-time model download, cached by the browser.
   // The worker is essential: on-thread WASM inference froze the whole page for
   // the duration of each sentence (tens of seconds on phones — the app looked
   // dead). Each generation has a 30s timeout; failures fall back to the device
-  // voice per chunk, and 2 consecutive failures mark Gold dead for the session
-  // (_goldDead) so playback continues in the standard voice instead of dying.
+  // voice per chunk, and 2 consecutive failures mark Kokoro dead for the session
+  // (_kokoroDead) so playback continues in the standard voice instead of dying.
   _kokoroOpts() {
     const gpu = !!navigator.gpu;
     return { device: gpu ? 'webgpu' : 'wasm', dtype: gpu ? 'fp32' : 'q8' }; // q8 is unreliable on WebGPU
@@ -2996,8 +2954,8 @@ const TTS = {
     this._kpend = new Map();
     w.onmessage = e => {
       const m = e.data;
-      if (m.t === 'prog') { toast('Downloading Gold voice model… ' + m.p + '%', 0); return; }
-      if (m.t === 'ready') { hideToast(); toast('Gold voices ready'); this._kokoroBench(); return; }
+      if (m.t === 'prog') { toast('Downloading the voice model… ' + m.p + '%', 0); return; }
+      if (m.t === 'ready') { hideToast(); toast('Natural voice ready'); this._kokoroBench(); return; }
       const p = this._kpend.get(m.id);
       if (!p) return;
       this._kpend.delete(m.id);
@@ -3010,53 +2968,66 @@ const TTS = {
     this._kworker = w;
     return w;
   },
-  _kokoroWarm() { // start the model download/init early (tier switch + boot)
-    if (this._goldDead) return;
+  _kokoroWarm() { // start the model download/init early (boot + Retry)
+    if (this._kokoroDead) return;
+    // If this device already failed the speed probe, don't re-download/init —
+    // go straight to fallback mode (silently: this runs at every boot).
+    const cached = this._benchCached();
+    if (cached && cached.ratio > 1.25) { this._kokoroDead = true; Settings.render(); return; }
     try {
-      toast('Preparing Gold voices — first time downloads ~90 MB…', 0);
+      toast('Preparing the natural voice — first time downloads ~90 MB…', 0);
       this._kokoroWorkerEl().postMessage(Object.assign({ t: 'load' }, this._kokoroOpts()));
     } catch (_) { hideToast(); }
+  },
+  _benchCached() {
+    try {
+      const b = JSON.parse(localStorage.getItem('kba_gold_bench') || 'null'); // key name is historical
+      return (b && b.backend === this._kokoroOpts().device) ? b : null;
+    } catch (_) { return null; }
   },
   // Speed probe: generation must be comfortably faster than playback or
   // continuous reading is impossible (a device 2-3× slower than realtime falls
   // further behind every sentence — prefetch can't fix that). Runs once after
-  // the model is ready, cached per backend in kba_gold_bench; a slow verdict
-  // sets _goldDead immediately so the user gets one clear message instead of a
-  // 30s timeout on every chunk. Re-selecting Gold clears the cache (re-probe).
-  _kokoroBench(force) {
+  // the model is ready, cached per backend; a slow verdict sets _kokoroDead
+  // with one clear message instead of a 30s timeout on every chunk.
+  // Settings → Retry clears the cache and re-probes.
+  _kokoroBench() {
     const backend = this._kokoroOpts().device;
-    let b = null;
-    try { b = JSON.parse(localStorage.getItem('kba_gold_bench') || 'null'); } catch (_) {}
-    if (!force && b && b.backend === backend) { this._applyBench(b); return; }
+    const cached = this._benchCached();
+    if (cached) { this._applyBench(cached, false); return; }
     const id = ++this._kid;
     this._kpend.set(id, {
       res: m => {
         const bench = { backend, ratio: +(m.genMs / (m.audioMs || 1)).toFixed(2), t: Date.now() };
         try { localStorage.setItem('kba_gold_bench', JSON.stringify(bench)); } catch (_) {}
         Diag.push({ e: 'bench', be: backend, r: bench.ratio });
-        this._applyBench(bench);
+        this._applyBench(bench, true);
       },
       rej: () => {},
     });
     this._kokoroWorkerEl().postMessage(Object.assign({ t: 'bench', id }, this._kokoroOpts()));
   },
-  _applyBench(b) {
-    if (b.ratio > 1.25 && Tier.get() === 'gold' && !this._goldDead) {
-      this._goldDead = true;
-      toast('This device can’t run Gold voices in real time — using standard voices. Diamond voices run smoothly on phones.');
+  _applyBench(b, fresh) {
+    if (b.ratio > 1.25 && !this._kokoroDead) {
+      this._kokoroDead = true;
+      // Only toast on a fresh verdict — a cached one re-applies silently at boot.
+      if (fresh) toast('This device can’t run the natural voice in real time — using the standard voice.');
+      Settings.render();
     }
   },
   _synthKokoro(text) {
-    if (this._goldDead) return Promise.reject(new Error('gold-dead'));
+    if (this._kokoroDead) return Promise.reject(new Error('kokoro-dead'));
     const w = this._kokoroWorkerEl();
     const id = ++this._kid;
     return new Promise((res, rej) => {
-      const to = setTimeout(() => { this._kpend.delete(id); rej(new Error('gold-timeout')); }, 30000);
+      const to = setTimeout(() => { this._kpend.delete(id); rej(new Error('kokoro-timeout')); }, 30000);
       this._kpend.set(id, {
         res: m => { clearTimeout(to); this._kstrikes = 0; res(URL.createObjectURL(this._wavBlob(m.pcm, m.rate))); },
         rej: err => { clearTimeout(to); rej(err); },
       });
-      w.postMessage({ t: 'gen', id, text, voice: localStorage.getItem('kba_voice_gold') || 'af_heart' , ...this._kokoroOpts() });
+      // kba_voice_gold: key name kept from the old tier system so existing
+      // installs keep their chosen voice.
+      w.postMessage({ t: 'gen', id, text, voice: localStorage.getItem('kba_voice_gold') || 'af_heart', ...this._kokoroOpts() });
     });
   },
   _wavBlob(f32, rate) { // mono 16-bit PCM WAV from a Float32Array
@@ -3069,38 +3040,9 @@ const TTS = {
     for (let i = 0; i < n; i++) { const s = Math.max(-1, Math.min(1, f32[i])); v.setInt16(44 + i * 2, s < 0 ? s * 0x8000 : s * 0x7FFF, true); }
     return new Blob([buf], { type: 'audio/wav' });
   },
-  // Diamond: Google Cloud TTS neural voices. TESTING setup — the API key lives
-  // in localStorage (kba_gtts_key) and calls go direct from the browser;
-  // production must move the key behind a proxy (roadmap item 5). Audio is
-  // synthesized at 1.0× and speed is applied via playbackRate, so the session
-  // cache stays valid across speed changes.
-  async _synthGoogle(text) {
-    const key = localStorage.getItem('kba_gtts_key');
-    if (!key) throw new Error('no-key');
-    const vname = localStorage.getItem('kba_voice_diamond') || 'en-US-Neural2-F';
-    const ck = vname + '|' + text;
-    if (!this._gcache) this._gcache = new Map();
-    if (this._gcache.has(ck)) return this._gcache.get(ck);
-    const res = await fetch('https://texttospeech.googleapis.com/v1/text:synthesize?key=' + encodeURIComponent(key), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        input: { text },
-        voice: { languageCode: vname.split('-').slice(0, 2).join('-'), name: vname },
-        audioConfig: { audioEncoding: 'MP3' },
-      }),
-    });
-    if (!res.ok) throw new Error('gtts-' + res.status);
-    const { audioContent } = await res.json();
-    const url = 'data:audio/mp3;base64,' + audioContent;
-    this._gcache.set(ck, url);
-    if (this._gcache.size > 300) this._gcache.delete(this._gcache.keys().next().value); // cap memory
-    return url;
-  },
-
   setRate(v) {
     this.rate = v;
-    // Gold/Diamond play through <audio>: adjust live, no restart or re-synthesis.
+    // The neural voice plays through <audio>: adjust live, no restart or re-synthesis.
     if (this._engineNow() !== 'web') { const a = this._audio; if (a && a.src) a.playbackRate = v; return; }
     // Bump _gen so the canceled utterance's late onend can't idx++ (would skip
     // the rest of the current sentence — or a page, if it was the last chunk).
@@ -3135,25 +3077,20 @@ const TTS = {
     return n || v.name;
   },
 
-  // Active voice display string for the current tier (Settings + reader pill).
+  // Active voice display string (Settings + reader pill). Kokoro when the
+  // neural engine is running; the system voice in fallback mode.
   activeVoiceLabel() {
-    const t = Tier.get();
-    if (t === 'gold') {
+    if (this._engineNow() === 'kokoro') {
       const id = localStorage.getItem('kba_voice_gold') || 'af_heart';
       const v = KOKORO_VOICES.find(x => x[0] === id);
-      return (v ? v[1] : id) + ' · Gold';
-    }
-    if (t === 'diamond') {
-      const id = localStorage.getItem('kba_voice_diamond') || 'en-US-Neural2-F';
-      const v = GOOGLE_VOICES.find(x => x[0] === id);
-      return (v ? v[1] : id) + ' · Diamond';
+      return v ? v[1] : id;
     }
     return this.voice?.name || 'System default';
   },
   // Show the active voice's name on the reader's voice button.
   updateVoiceLabel() {
     const btn = document.getElementById('voice-btn');
-    if (btn) btn.textContent = Tier.get() === 'member'
+    if (btn) btn.textContent = this._engineNow() === 'web'
       ? this._shortVoiceName(this.voice)
       : this.activeVoiceLabel().split(' · ')[0];
     const sub = document.getElementById('set-voice-sub');
@@ -3182,7 +3119,7 @@ const TTS = {
 // as soon as the list is available, and again whenever it changes.
 window.speechSynthesis?.addEventListener('voiceschanged', () => TTS.pickDefaultVoice());
 
-// Gold (Kokoro) and Diamond (Google Cloud TTS) voice catalogs: [id, label].
+// Kokoro voice catalog: [id, label].
 const KOKORO_VOICES = [
   ['af_heart',    'Heart · US female'],
   ['af_bella',    'Bella · US female'],
@@ -3195,31 +3132,18 @@ const KOKORO_VOICES = [
   ['bm_george',   'George · UK male'],
   ['bm_fable',    'Fable · UK male'],
 ];
-const GOOGLE_VOICES = [
-  ['en-US-Neural2-F', 'US female'],
-  ['en-US-Neural2-C', 'US female (warm)'],
-  ['en-US-Neural2-D', 'US male'],
-  ['en-US-Neural2-A', 'US male (deep)'],
-  ['en-GB-Neural2-A', 'UK female'],
-  ['en-GB-Neural2-B', 'UK male'],
-  ['en-AU-Neural2-A', 'AU female'],
-  ['en-AU-Neural2-B', 'AU male'],
-];
-
 // --- Voice Modal ------------------------------------------
 const VoiceModal = {
   _list: [],
 
   open() {
-    // Gold/Diamond: fixed catalogs with their own persisted selection.
-    const t = Tier.get();
-    if (t !== 'member') {
-      const list = t === 'gold' ? KOKORO_VOICES : GOOGLE_VOICES;
-      const cur = localStorage.getItem(t === 'gold' ? 'kba_voice_gold' : 'kba_voice_diamond') || list[0][0];
-      document.getElementById('voice-list').innerHTML = list.map(([id, label]) => `
-        <div class="voice-item ${cur === id ? 'active' : ''}" onclick="VoiceModal.selectTier(this.dataset.vname)" data-vname="${esc(id)}">
+    // Neural engine running: the Kokoro catalog. Fallback mode: system voices.
+    if (TTS._engineNow() === 'kokoro') {
+      const cur = localStorage.getItem('kba_voice_gold') || KOKORO_VOICES[0][0];
+      document.getElementById('voice-list').innerHTML = KOKORO_VOICES.map(([id, label]) => `
+        <div class="voice-item ${cur === id ? 'active' : ''}" onclick="VoiceModal.selectKokoro(this.dataset.vname)" data-vname="${esc(id)}">
           <div>
-            <div class="voice-name">${esc(label)} <span class="voice-badge">&#10024; ${t === 'gold' ? 'Gold' : 'Diamond'}</span></div>
+            <div class="voice-name">${esc(label)} <span class="voice-badge">&#10024; Natural</span></div>
             <div class="voice-lang">${esc(id)}</div>
           </div>
           ${cur === id ? '<span class="voice-check">&#10003;</span>' : ''}
@@ -3240,11 +3164,11 @@ const VoiceModal = {
     document.getElementById('voice-modal').classList.add('open');
   },
 
-  // Gold/Diamond selection: persist per-tier; restart the current chunk so the
-  // new voice is heard immediately.
-  selectTier(id) {
-    const t = Tier.get();
-    localStorage.setItem(t === 'gold' ? 'kba_voice_gold' : 'kba_voice_diamond', id);
+  // Kokoro voice selection; restart the current chunk so the new voice is
+  // heard immediately. (kba_voice_gold: historical key name, kept so existing
+  // installs keep their choice.)
+  selectKokoro(id) {
+    localStorage.setItem('kba_voice_gold', id);
     TTS.updateVoiceLabel();
     toast('Voice: ' + id);
     this.close();
@@ -3335,7 +3259,7 @@ const ConfirmModal = {
 window.addEventListener('load', () => {
   App.init();
   TTS.pickDefaultVoice(); // voices may already be loaded; voiceschanged refines later
-  if (Tier.get() === 'gold') TTS._kokoroWarm(); // start model init before first play
+  TTS._kokoroWarm(); // Kokoro is THE voice — start model init before first play
 
   // Restore the saved default playback speed.
   const sp = parseFloat(localStorage.getItem('kba_speed'));
