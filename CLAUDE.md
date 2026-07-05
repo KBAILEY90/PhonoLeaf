@@ -592,9 +592,20 @@ the working plan, not an exploration.
    vs Diamond's ~$1/listening-hour, so hybrid-native is the margin play
    once listening volumes are real. Trade-offs: Play takes 15% of subs (vs
    ~3% Stripe on web), store review, privacy policy (needed anyway; iOS
-   would be a separate wrap). Current recommendation: stay PWA for launch
-   (Member + Diamond cover mobile), TWA near launch for distribution,
-   hybrid native inference later as a cost optimization. Decision pending.
+   would be a separate wrap).
+   **PIVOT IN EVALUATION (2026-07-04): owner finds Kokoro quality good
+   enough to DROP Diamond entirely** — single Kokoro tier = zero COGS, no
+   key proxy, simpler product — CONTINGENT on native-speed Kokoro working
+   on phones. Free zero-code validation first: sideload sherpa-onnx's
+   prebuilt **Kokoro "TTS engine" APK** (k2-fsa.github.io/sherpa → TTS →
+   APK engine; Apache 2.0, commercial OK) — it registers as an Android
+   SYSTEM TTS engine, so PhonoLeaf's existing Member tier picks it up via
+   Web Speech at native multi-threaded speed (may need to be set as the
+   default engine + Chrome restart for its voices to list). If validated:
+   Capacitor wrapper (free) + native sherpa-onnx plugin, one codebase,
+   test via USB/emulator for $0; the only publication cost is Play's $25
+   one-time dev fee (Apple $99/yr later). Diamond code stays dormant (not
+   deleted) until the phone test passes.
    Decision notes:
    - Options considered: (a) better on-device system voices (free, modest,
      user-managed — install higher-quality Google TTS voice data on Android);
