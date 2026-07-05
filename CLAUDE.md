@@ -581,7 +581,20 @@ the working plan, not an exploration.
    Gold as the desktop/capable-device tier and Diamond as THE mobile
    upgrade; (b) evaluate a faster/smaller in-browser engine for phones
    (e.g. Piper/VITS-class, ~realtime on phone WASM but lower quality than
-   Kokoro). Decision pending.
+   Kokoro); (c) **native-app route (analyzed 2026-07-04):** a plain TWA
+   wrapper (Bubblewrap) gives Play-Store distribution + Play Billing but
+   ZERO speedup (it's the same Chrome engine — browser WASM is stuck
+   single-threaded because cross-origin isolation would break Google
+   sign-in); a HYBRID (web UI + native inference module, e.g. sherpa-onnx
+   running the same Kokoro model) gets multi-threaded fp16 + GPU/NPU,
+   ≈2-5× over browser WASM — likely realtime on the owner's phone — while
+   keeping one codebase. Strategic driver: on-device Kokoro is zero-COGS
+   vs Diamond's ~$1/listening-hour, so hybrid-native is the margin play
+   once listening volumes are real. Trade-offs: Play takes 15% of subs (vs
+   ~3% Stripe on web), store review, privacy policy (needed anyway; iOS
+   would be a separate wrap). Current recommendation: stay PWA for launch
+   (Member + Diamond cover mobile), TWA near launch for distribution,
+   hybrid native inference later as a cost optimization. Decision pending.
    Decision notes:
    - Options considered: (a) better on-device system voices (free, modest,
      user-managed — install higher-quality Google TTS voice data on Android);
