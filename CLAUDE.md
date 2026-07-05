@@ -490,7 +490,17 @@ Google login); verify by inspection + the owner testing on device.
   dropdown resets the strike-out and re-warms. The model is **pre-warmed** at
   boot when `kba_tier` is already gold, and on switching to gold. A
   "Generating audio…" toast appears when a chunk's synthesis is audibly slow
-  (no prefetch ready after ~600ms); **Diamond** = Google Cloud TTS Neural2
+  (no prefetch ready after ~600ms). **Speed probe (`_kokoroBench`,
+  `kba_gold_bench`):** after the model loads, the worker generates a fixed
+  test sentence and reports generation-time ÷ audio-duration; a ratio > 1.25
+  means the device can't sustain continuous playback (the owner's phone
+  measured ~2-3× SLOWER than realtime — 30-45s gaps between sentences;
+  prefetch cannot fix a generator that falls further behind every sentence),
+  so `_goldDead` is set upfront with one clear toast (recommending Diamond on
+  phones) instead of a 30s timeout per chunk. The verdict is cached per
+  backend in `kba_gold_bench` (probe skipped on later launches); re-selecting
+  Gold clears the cache and re-probes. Probe ratios are logged to the Diag
+  debug log (`{e:'bench', be, r}`); **Diamond** = Google Cloud TTS Neural2
   (`_synthGoogle`, direct REST with a key from `kba_gtts_key` — TESTING setup;
   production must proxy the key, roadmap 5; synthesized at 1.0× + MP3 data-URLs
   session-cached in `_gcache` keyed voice|text, speed applied via
@@ -563,6 +573,15 @@ the working plan, not an exploration.
    free tier). Still to do for production: key proxy (item 5), MediaSession +
    lock-screen playback wiring, IndexedDB audio caching, replacing the
    testing tier-dropdown with subscription-driven tiers.
+   **Gold mobile ceiling (measured 2026-07-04):** the owner's phone runs
+   Kokoro at ~2-3× slower than realtime (30-45s/sentence) — in-browser
+   Kokoro is NOT viable for continuous playback on mid-range phones; a speed
+   probe now auto-degrades such devices to standard voices (see "Voice
+   tiers" note). Product options if Gold-on-mobile matters: (a) position
+   Gold as the desktop/capable-device tier and Diamond as THE mobile
+   upgrade; (b) evaluate a faster/smaller in-browser engine for phones
+   (e.g. Piper/VITS-class, ~realtime on phone WASM but lower quality than
+   Kokoro). Decision pending.
    Decision notes:
    - Options considered: (a) better on-device system voices (free, modest,
      user-managed — install higher-quality Google TTS voice data on Android);

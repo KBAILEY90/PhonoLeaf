@@ -1368,7 +1368,11 @@ const Tier = {
   set(t) {
     localStorage.setItem('kba_tier', t);
     TTS.stop(); // don't switch engines mid-utterance
-    if (t === 'gold') { TTS._goldDead = false; TTS._kstrikes = 0; TTS._kokoroWarm(); } // fresh chance on re-select
+    if (t === 'gold') { // fresh chance on re-select: reset strike-out + re-probe speed
+      TTS._goldDead = false; TTS._kstrikes = 0;
+      try { localStorage.removeItem('kba_gold_bench'); } catch (_) {}
+      TTS._kokoroWarm();
+    }
     if (t === 'diamond' && !localStorage.getItem('kba_gtts_key')) Settings.setGKey();
     TTS.updateVoiceLabel();
     Settings.render();
@@ -2980,6 +2984,12 @@ const TTS = {
             const pcm = audio.audio;
             postMessage({ t: 'audio', id: m.id, rate: audio.sampling_rate, pcm }, [pcm.buffer]);
           }
+          else if (m.t === 'bench') {
+            const k = await ready(m);
+            const t0 = performance.now();
+            const audio = await k.generate('The quick brown fox jumps over the lazy dog near the quiet river bank.', { voice: 'af_heart' });
+            postMessage({ t: 'bench', id: m.id, genMs: performance.now() - t0, audioMs: (audio.audio.length / audio.sampling_rate) * 1000 });
+          }
         } catch (err) { postMessage({ t: 'err', id: m.id, msg: String((err && err.message) || err) }); }
       };`;
     const w = new Worker(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })), { type: 'module' });
@@ -2987,11 +2997,11 @@ const TTS = {
     w.onmessage = e => {
       const m = e.data;
       if (m.t === 'prog') { toast('Downloading Gold voice model… ' + m.p + '%', 0); return; }
-      if (m.t === 'ready') { hideToast(); toast('Gold voices ready'); return; }
+      if (m.t === 'ready') { hideToast(); toast('Gold voices ready'); this._kokoroBench(); return; }
       const p = this._kpend.get(m.id);
       if (!p) return;
       this._kpend.delete(m.id);
-      if (m.t === 'audio') p.res(m); else p.rej(new Error(m.msg || 'kokoro'));
+      if (m.t === 'audio' || m.t === 'bench') p.res(m); else p.rej(new Error(m.msg || 'kokoro'));
     };
     w.onerror = () => {
       for (const [, p] of this._kpend) p.rej(new Error('kokoro-worker'));
@@ -3006,6 +3016,35 @@ const TTS = {
       toast('Preparing Gold voices — first time downloads ~90 MB…', 0);
       this._kokoroWorkerEl().postMessage(Object.assign({ t: 'load' }, this._kokoroOpts()));
     } catch (_) { hideToast(); }
+  },
+  // Speed probe: generation must be comfortably faster than playback or
+  // continuous reading is impossible (a device 2-3× slower than realtime falls
+  // further behind every sentence — prefetch can't fix that). Runs once after
+  // the model is ready, cached per backend in kba_gold_bench; a slow verdict
+  // sets _goldDead immediately so the user gets one clear message instead of a
+  // 30s timeout on every chunk. Re-selecting Gold clears the cache (re-probe).
+  _kokoroBench(force) {
+    const backend = this._kokoroOpts().device;
+    let b = null;
+    try { b = JSON.parse(localStorage.getItem('kba_gold_bench') || 'null'); } catch (_) {}
+    if (!force && b && b.backend === backend) { this._applyBench(b); return; }
+    const id = ++this._kid;
+    this._kpend.set(id, {
+      res: m => {
+        const bench = { backend, ratio: +(m.genMs / (m.audioMs || 1)).toFixed(2), t: Date.now() };
+        try { localStorage.setItem('kba_gold_bench', JSON.stringify(bench)); } catch (_) {}
+        Diag.push({ e: 'bench', be: backend, r: bench.ratio });
+        this._applyBench(bench);
+      },
+      rej: () => {},
+    });
+    this._kokoroWorkerEl().postMessage(Object.assign({ t: 'bench', id }, this._kokoroOpts()));
+  },
+  _applyBench(b) {
+    if (b.ratio > 1.25 && Tier.get() === 'gold' && !this._goldDead) {
+      this._goldDead = true;
+      toast('This device can’t run Gold voices in real time — using standard voices. Diamond voices run smoothly on phones.');
+    }
   },
   _synthKokoro(text) {
     if (this._goldDead) return Promise.reject(new Error('gold-dead'));
