@@ -669,11 +669,35 @@
     .fb-use { width: 100%; background: var(--accent); color: #fff; border: none; border-radius: 10px; padding: 0.75rem; font: 500 0.9rem var(--font-ui); cursor: pointer; }
   </style>
   <script>
+    /* One-time key migration (2026-07-06 rebrand): kba_* -> pl_* so nothing
+       KoboAudio-era remains, without losing any device's data. Runs before
+       ANY storage read (several modules read keys at parse time; the theme
+       is read pre-paint below). Gold-era names map to their kokoro names;
+       obsolete keys from removed features are dropped outright. */
+    (function () {
+      try {
+        if (localStorage.getItem('pl_mig')) return;
+        var drop = { kba_tier: 1, kba_gtts_key: 1, kba_voicetip: 1, kba_voice_diamond: 1 };
+        var ren = { kba_voice_gold: 'pl_voice_kokoro', kba_gold_bench: 'pl_kokoro_bench' };
+        var keys = [];
+        for (var i = 0; i < localStorage.length; i++) keys.push(localStorage.key(i));
+        for (var j = 0; j < keys.length; j++) {
+          var k = keys[j];
+          if (k.indexOf('kba_') !== 0) continue;
+          if (!drop[k]) {
+            var nk = ren[k] || ('pl_' + k.slice(4));
+            if (localStorage.getItem(nk) === null) localStorage.setItem(nk, localStorage.getItem(k));
+          }
+          localStorage.removeItem(k);
+        }
+        localStorage.setItem('pl_mig', '1');
+      } catch (e) {}
+    })();
     /* Apply the saved theme before paint to avoid a flash. 'auto' (default)
        leaves it to prefers-color-scheme; 'light'/'dark' force a mode. */
     (function () {
       try {
-        var t = localStorage.getItem('kba_theme');
+        var t = localStorage.getItem('pl_theme');
         if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
       } catch (e) {}
     })();
@@ -970,20 +994,20 @@ const State = {
   rendition:   null,
   epubBook:    null,
   toc:         [],
-  userName:    (() => { try { return localStorage.getItem('kba_user') || ''; } catch (_) { return ''; } })(),
+  userName:    (() => { try { return localStorage.getItem('pl_user') || ''; } catch (_) { return ''; } })(),
   ready:       false, // true once a library load attempt has finished
-  progress:    JSON.parse(localStorage.getItem('kba_prog') || '{}'),
-  saveProgress() { localStorage.setItem('kba_prog', JSON.stringify(this.progress)); },
+  progress:    JSON.parse(localStorage.getItem('pl_prog') || '{}'),
+  saveProgress() { localStorage.setItem('pl_prog', JSON.stringify(this.progress)); },
 };
 
 // The Google Drive folder to read books from — chosen by the user at onboarding
 // (no hardcoded default), overridable in Settings.
 function activeFolder() {
-  try { return localStorage.getItem('kba_folder') || ''; } catch (_) { return ''; }
+  try { return localStorage.getItem('pl_folder') || ''; } catch (_) { return ''; }
 }
 // A specific folder id (set when picked via the folder browser); takes priority.
 function activeFolderId() {
-  try { return localStorage.getItem('kba_folder_id') || ''; } catch (_) { return ''; }
+  try { return localStorage.getItem('pl_folder_id') || ''; } catch (_) { return ''; }
 }
 // Has the user chosen a books folder yet? Gates the onboarding folder prompt.
 function hasChosenFolder() {
@@ -1021,11 +1045,11 @@ function esc(s) {
 
 // --- Theme ------------------------------------------------
 const Theme = {
-  mode() { try { return localStorage.getItem('kba_theme') || 'auto'; } catch (_) { return 'auto'; } },
+  mode() { try { return localStorage.getItem('pl_theme') || 'auto'; } catch (_) { return 'auto'; } },
   apply(mode) {
     try {
-      if (mode === 'auto') { localStorage.removeItem('kba_theme'); delete document.documentElement.dataset.theme; }
-      else { localStorage.setItem('kba_theme', mode); document.documentElement.dataset.theme = mode; }
+      if (mode === 'auto') { localStorage.removeItem('pl_theme'); delete document.documentElement.dataset.theme; }
+      else { localStorage.setItem('pl_theme', mode); document.documentElement.dataset.theme = mode; }
     } catch (_) {}
     if (State.rendition) Reader.applyReadTheme();
   },
@@ -1039,10 +1063,10 @@ const Theme = {
 
 // --- Listening stats (time this week + day streak) --------
 const Stats = {
-  data: JSON.parse(localStorage.getItem('kba_stats') || '{}'),
+  data: JSON.parse(localStorage.getItem('pl_stats') || '{}'),
   _iv: null,
   _key(o) { return o.toISOString().slice(0, 10); },
-  _save() { try { localStorage.setItem('kba_stats', JSON.stringify(this.data)); } catch (_) {} },
+  _save() { try { localStorage.setItem('pl_stats', JSON.stringify(this.data)); } catch (_) {} },
   add(sec) {
     this.data.days = this.data.days || {};
     const d = this._key(new Date());
@@ -1067,8 +1091,8 @@ const Stats = {
 
 // --- Epub metadata cache (author / year / publisher / language) ---
 const Meta = {
-  data: JSON.parse(localStorage.getItem('kba_meta') || '{}'),
-  _save() { try { localStorage.setItem('kba_meta', JSON.stringify(this.data)); } catch (_) {} },
+  data: JSON.parse(localStorage.getItem('pl_meta') || '{}'),
+  _save() { try { localStorage.setItem('pl_meta', JSON.stringify(this.data)); } catch (_) {} },
   get(id) { return this.data[id]; },
   fromBook(book) {
     try {
@@ -1338,14 +1362,14 @@ const Diag = {
   MAX: 30,
   push(ev) {
     try {
-      const a = JSON.parse(localStorage.getItem('kba_diag') || '[]');
+      const a = JSON.parse(localStorage.getItem('pl_diag') || '[]');
       a.push(Object.assign({ t: new Date().toISOString().slice(11, 19) }, ev));
       while (a.length > this.MAX) a.shift();
-      localStorage.setItem('kba_diag', JSON.stringify(a));
+      localStorage.setItem('pl_diag', JSON.stringify(a));
     } catch (_) {}
   },
   text() {
-    try { return JSON.parse(localStorage.getItem('kba_diag') || '[]').map(e => JSON.stringify(e)).join('\n'); }
+    try { return JSON.parse(localStorage.getItem('pl_diag') || '[]').map(e => JSON.stringify(e)).join('\n'); }
     catch (_) { return ''; }
   },
 };
@@ -1397,12 +1421,12 @@ const Settings = {
   render() {
     const m = Theme.mode();
     document.querySelectorAll('#theme-seg button').forEach(b => b.classList.toggle('on', b.dataset.mode === m));
-    const sel = document.getElementById('set-speed'); if (sel) sel.value = localStorage.getItem('kba_speed') || '1';
+    const sel = document.getElementById('set-speed'); if (sel) sel.value = localStorage.getItem('pl_speed') || '1';
     const vs = document.getElementById('set-voice-sub'); if (vs) vs.textContent = TTS.activeVoiceLabel();
     // Fallback-mode rows: only shown when the neural voice is unavailable here.
     const fg = document.getElementById('fallback-group'); if (fg) fg.style.display = TTS._kokoroDead ? '' : 'none';
     const vh = document.getElementById('vh-row'); if (vh) vh.style.display = (TTS._kokoroDead && VoiceHelp.available()) ? '' : 'none';
-    const wl = document.getElementById('set-wakelock'); if (wl) wl.checked = localStorage.getItem('kba_wakelock') !== 'false';
+    const wl = document.getElementById('set-wakelock'); if (wl) wl.checked = localStorage.getItem('pl_wakelock') !== 'false';
     const f = document.getElementById('set-folder'); if (f) f.textContent = activeFolder() || 'Not selected';
     const a = document.getElementById('set-account'); if (a) a.textContent = State.userName ? 'Signed in as ' + State.userName : 'Signed in';
     const b = document.getElementById('set-build'); if (b) b.textContent = BUILD.startsWith('__BU') ? 'dev' : BUILD;
@@ -1419,16 +1443,16 @@ const Settings = {
   // verdict, reset the strike-out, and re-warm (the probe reruns after load).
   retryNeural() {
     TTS._kokoroDead = false; TTS._kstrikes = 0;
-    try { localStorage.removeItem('kba_gold_bench'); } catch (_) {}
+    try { localStorage.removeItem('pl_kokoro_bench'); } catch (_) {}
     TTS.stop();
     TTS._kokoroWarm();
     TTS.updateVoiceLabel();
     this.render();
   },
   setTheme(mode) { Theme.apply(mode); this.render(); },
-  setSpeed(v) { try { localStorage.setItem('kba_speed', v); } catch (_) {} TTS.setRate(v); const r = document.getElementById('speed-select'); if (r) r.value = v; },
+  setSpeed(v) { try { localStorage.setItem('pl_speed', v); } catch (_) {} TTS.setRate(v); const r = document.getElementById('speed-select'); if (r) r.value = v; },
   setWakeLock(on) {
-    try { localStorage.setItem('kba_wakelock', on ? 'true' : 'false'); } catch (_) {}
+    try { localStorage.setItem('pl_wakelock', on ? 'true' : 'false'); } catch (_) {}
     if (!on) TTS._releaseWakeLock();
     else if (TTS.active) TTS._acquireWakeLock();
   },
@@ -1436,7 +1460,7 @@ const Settings = {
 
 // --- Stats page (from listening data + cached epub metadata) ---
 const StatsPage = {
-  _group: (() => { try { return localStorage.getItem('kba_stats_group') || 'author'; } catch (_) { return 'author'; } })(),
+  _group: (() => { try { return localStorage.getItem('pl_stats_group') || 'author'; } catch (_) { return 'author'; } })(),
   render() {
     const days = (Stats.data && Stats.data.days) || {}, prog = State.progress || {}, books = State.books || [];
     const key = o => o.toISOString().slice(0, 10);
@@ -1568,12 +1592,12 @@ const StatsPage = {
   },
   setGroup(v) {
     this._group = v;
-    try { localStorage.setItem('kba_stats_group', v); } catch (_) {}
+    try { localStorage.setItem('pl_stats_group', v); } catch (_) {}
     this.render();
   },
   resetConfirm() {
     ConfirmModal.show(() => {
-      localStorage.removeItem('kba_stats');
+      localStorage.removeItem('pl_stats');
       Stats.data = {};
       State.progress = {}; State.saveProgress();
       this.render();
@@ -1595,8 +1619,8 @@ const StatsPage = {
 // and reload the library.
 function setFolder(id, name) {
   try {
-    if (id) localStorage.setItem('kba_folder_id', id); else localStorage.removeItem('kba_folder_id');
-    if (name) localStorage.setItem('kba_folder', name);
+    if (id) localStorage.setItem('pl_folder_id', id); else localStorage.removeItem('pl_folder_id');
+    if (name) localStorage.setItem('pl_folder', name);
   } catch (_) {}
   Settings.render();
   toast(`Loading "${name || 'folder'}"…`);
@@ -1710,10 +1734,10 @@ const App = {
 
   _saveAuth(token, expiresIn) {
     const exp = Date.now() + ((+expiresIn || 3600) * 1000);
-    try { localStorage.setItem('kba_auth', JSON.stringify({ token, exp })); } catch (_) {}
+    try { localStorage.setItem('pl_auth', JSON.stringify({ token, exp })); } catch (_) {}
   },
   _loadAuth() {
-    try { return JSON.parse(localStorage.getItem('kba_auth') || 'null'); } catch (_) { return null; }
+    try { return JSON.parse(localStorage.getItem('pl_auth') || 'null'); } catch (_) { return null; }
   },
 
   // Set up in-app history once we're past sign-in, so the Back/swipe buffer
@@ -1731,7 +1755,7 @@ const App = {
       const d = await Drive.get('about', { fields: 'user(displayName)' });
       const dn = ((d && d.user && d.user.displayName) || '').trim();
       State.userName = dn ? dn.split(/\s+/)[0] : '';
-      try { localStorage.setItem('kba_user', State.userName); } catch (_) {}
+      try { localStorage.setItem('pl_user', State.userName); } catch (_) {}
       Home.render();
     } catch (_) { /* name is optional */ }
   },
@@ -1780,7 +1804,7 @@ const App = {
   signOut() {
     if (State.token) google.accounts.oauth2.revoke(State.token, () => {});
     State.token = null;
-    try { localStorage.removeItem('kba_auth'); } catch (_) {}
+    try { localStorage.removeItem('pl_auth'); } catch (_) {}
     TTS.stop();
     Nav.hideBar();
     showView('signin');
@@ -1936,14 +1960,14 @@ const CoverCache = {
   // One-time rebrand migration (2026-07-06): copy covers from the legacy
   // 'koboaudio' DB into 'phonoleaf', then delete the old DB — existing
   // installs keep their cached covers without re-downloading every book.
-  // kba_dbmig guards it to a single run; indexedDB.databases() (where
+  // pl_dbmig guards it to a single run; indexedDB.databases() (where
   // available) avoids re-creating the old DB just to look inside it.
   async migrate() {
     try {
-      if (localStorage.getItem('kba_dbmig')) return;
+      if (localStorage.getItem('pl_dbmig')) return;
       if (indexedDB.databases) {
         const names = (await indexedDB.databases()).map(d => d.name);
-        if (!names.includes('koboaudio')) { localStorage.setItem('kba_dbmig', '1'); return; }
+        if (!names.includes('koboaudio')) { localStorage.setItem('pl_dbmig', '1'); return; }
       }
       const old = await new Promise((resolve, reject) => {
         const r = indexedDB.open('koboaudio', 1);
@@ -1971,7 +1995,7 @@ const CoverCache = {
       }
       old.close();
       indexedDB.deleteDatabase('koboaudio');
-      localStorage.setItem('kba_dbmig', '1');
+      localStorage.setItem('pl_dbmig', '1');
     } catch (_) { /* if migration fails, covers simply rebuild over time */ }
   },
   async get(key) {
@@ -2674,7 +2698,7 @@ const TTS = {
   _wakeLock: null,
   async _acquireWakeLock() {
     if (!('wakeLock' in navigator)) return;
-    if (localStorage.getItem('kba_wakelock') === 'false') return;
+    if (localStorage.getItem('pl_wakelock') === 'false') return;
     try { this._wakeLock = await navigator.wakeLock.request('screen'); } catch (_) {}
   },
   _releaseWakeLock() {
@@ -2832,7 +2856,7 @@ const TTS = {
     // silently ignored by Chrome/Safari if the browser's voice list has
     // refreshed. Prefer the persisted choice: pickDefaultVoice can transiently
     // clobber this.voice when Android returns a partial voice list.
-    const voiceName = localStorage.getItem('kba_voice') || this.voice?.name;
+    const voiceName = localStorage.getItem('pl_voice') || this.voice?.name;
     u.voice = (voiceName && window.speechSynthesis.getVoices().find(v => v.name === voiceName)) || this.voice || null;
     // Android ignores u.voice unless u.lang agrees — without this the engine
     // falls back to the system default and every selection sounds identical.
@@ -3022,7 +3046,7 @@ const TTS = {
   },
   _benchCached() {
     try {
-      const b = JSON.parse(localStorage.getItem('kba_gold_bench') || 'null'); // key name is historical
+      const b = JSON.parse(localStorage.getItem('pl_kokoro_bench') || 'null'); // key name is historical
       return (b && b.backend === this._kokoroOpts().device) ? b : null;
     } catch (_) { return null; }
   },
@@ -3040,7 +3064,7 @@ const TTS = {
     this._kpend.set(id, {
       res: m => {
         const bench = { backend, ratio: +(m.genMs / (m.audioMs || 1)).toFixed(2), t: Date.now() };
-        try { localStorage.setItem('kba_gold_bench', JSON.stringify(bench)); } catch (_) {}
+        try { localStorage.setItem('pl_kokoro_bench', JSON.stringify(bench)); } catch (_) {}
         Diag.push({ e: 'bench', be: backend, r: bench.ratio });
         this._applyBench(bench, true);
       },
@@ -3066,9 +3090,9 @@ const TTS = {
         res: m => { clearTimeout(to); this._kstrikes = 0; res(URL.createObjectURL(this._wavBlob(m.pcm, m.rate))); },
         rej: err => { clearTimeout(to); rej(err); },
       });
-      // kba_voice_gold: key name kept from the old tier system so existing
+      // pl_voice_kokoro: key name kept from the old tier system so existing
       // installs keep their chosen voice.
-      w.postMessage({ t: 'gen', id, text, voice: localStorage.getItem('kba_voice_gold') || 'af_heart', ...this._kokoroOpts() });
+      w.postMessage({ t: 'gen', id, text, voice: localStorage.getItem('pl_voice_kokoro') || 'af_heart', ...this._kokoroOpts() });
     });
   },
   _wavBlob(f32, rate) { // mono 16-bit PCM WAV from a Float32Array
@@ -3122,7 +3146,7 @@ const TTS = {
   // neural engine is running; the system voice in fallback mode.
   activeVoiceLabel() {
     if (this._engineNow() === 'kokoro') {
-      const id = localStorage.getItem('kba_voice_gold') || 'af_heart';
+      const id = localStorage.getItem('pl_voice_kokoro') || 'af_heart';
       const v = KOKORO_VOICES.find(x => x[0] === id);
       return v ? v[1] : id;
     }
@@ -3149,7 +3173,7 @@ const TTS = {
   pickDefaultVoice() {
     const voices = this.allVoices();
     if (!voices.length) return;
-    const savedName = localStorage.getItem('kba_voice');
+    const savedName = localStorage.getItem('pl_voice');
     const saved = savedName && voices.find(v => v.name === savedName);
     this.voice = saved || voices[0];
     this.updateVoiceLabel();
@@ -3180,7 +3204,7 @@ const VoiceModal = {
   open() {
     // Neural engine running: the Kokoro catalog. Fallback mode: system voices.
     if (TTS._engineNow() === 'kokoro') {
-      const cur = localStorage.getItem('kba_voice_gold') || KOKORO_VOICES[0][0];
+      const cur = localStorage.getItem('pl_voice_kokoro') || KOKORO_VOICES[0][0];
       document.getElementById('voice-list').innerHTML = KOKORO_VOICES.map(([id, label]) => `
         <div class="voice-item ${cur === id ? 'active' : ''}" onclick="VoiceModal.selectKokoro(this.dataset.vname)" data-vname="${esc(id)}">
           <div>
@@ -3206,10 +3230,10 @@ const VoiceModal = {
   },
 
   // Kokoro voice selection; restart the current chunk so the new voice is
-  // heard immediately. (kba_voice_gold: historical key name, kept so existing
+  // heard immediately. (pl_voice_kokoro: historical key name, kept so existing
   // installs keep their choice.)
   selectKokoro(id) {
-    localStorage.setItem('kba_voice_gold', id);
+    localStorage.setItem('pl_voice_kokoro', id);
     TTS.updateVoiceLabel();
     toast('Voice: ' + id);
     this.close();
@@ -3223,7 +3247,7 @@ const VoiceModal = {
     const v = live.find(x => x.name === name) || this._list.find(x => x.name === name);
     if (!v) return;
     TTS.voice = v;
-    localStorage.setItem('kba_voice', v.name);
+    localStorage.setItem('pl_voice', v.name);
     TTS.updateVoiceLabel();
     toast('Voice: ' + v.name);
     this.close();
@@ -3304,7 +3328,7 @@ window.addEventListener('load', () => {
   TTS._kokoroWarm(); // Kokoro is THE voice — start model init before first play
 
   // Restore the saved default playback speed.
-  const sp = parseFloat(localStorage.getItem('kba_speed'));
+  const sp = parseFloat(localStorage.getItem('pl_speed'));
   if (sp) { TTS.rate = sp; const r = document.getElementById('speed-select'); if (r) r.value = sp; }
 
   // When following the system theme, re-skin an open book if the OS flips mode.

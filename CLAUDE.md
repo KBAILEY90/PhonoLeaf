@@ -21,8 +21,9 @@ renders them with epub.js, and reads the text using the browser's Web Speech
   now `kbailey90.github.io/phonoleaf`). **No OAuth change was needed:** the
   authorized JavaScript origin is host-only (`https://kbailey90.github.io`) — the
   same for the old and new path — so Google sign-in keeps working. Browser storage
-  is per-origin (host, not path), so existing users keep their token (`kba_auth`),
-  progress (`kba_prog`), and cached covers across the rename. Only a future custom
+  is per-origin (host, not path), so existing users kept their data across the
+  rename (keys were still `kba_*` then; renamed to `pl_*` 2026-07-06 — see the
+  Naming policy note). Only a future custom
   domain (e.g. `phonoleaf.com`) would require adding a NEW authorized origin in
   Google Cloud Console. (The Drive folder is no longer hardcoded — see "Folder
   onboarding" below.)
@@ -30,13 +31,18 @@ renders them with epub.js, and reads the text using the browser's Web Speech
   `koboaudio` anywhere** — the old name appears only in historical notes like
   this section. Status of the last holdouts:
   - IndexedDB: renamed `koboaudio` → `phonoleaf` with a one-time migration
-    (`CoverCache.migrate()`, ran at boot, guarded by `kba_dbmig`): copies the
+    (`CoverCache.migrate()`, ran at boot, guarded by `pl_dbmig`): copies the
     `covers` store into the new DB and deletes the old one, so installs keep
     their cached covers without re-downloading every book.
-  - The `kba_*` localStorage prefix STAYS (it's a KoboAudio-era abbreviation,
-    but it doesn't spell the old name): renaming every key would wipe
-    progress/stats/settings on existing devices — revisit only with a full
-    key-migration if the owner asks.
+  - The `kba_*` localStorage prefix (KoboAudio-era) was RENAMED to `pl_*`
+    on 2026-07-06 via a one-time migration at the TOP of the `<head>` script
+    (guarded by `pl_mig`; must stay before any storage read — several
+    modules read keys at parse time and the theme is read pre-paint).
+    Mapping: `kba_X` → `pl_X`, except gold-era names (`kba_voice_gold` →
+    `pl_voice_kokoro`, `kba_gold_bench` → `pl_kokoro_bench`) and obsolete
+    keys (`kba_tier`, `kba_gtts_key`, `kba_voicetip`, `kba_voice_diamond`)
+    which are deleted. No device loses data. The migration block is the ONLY
+    place `kba_` may appear in code.
   - The owner's local clone folder (`C:\Repo\koboaudio`) must be renamed to
     `C:\Repo\phonoleaf` manually (documented in TESTING.md §3) — note that
     renaming it detaches this project's Claude session history/memory, which
@@ -112,7 +118,7 @@ Google login); verify by inspection + the owner testing on device.
 ## Behavior notes / gotchas
 
 - **OAuth scope is `drive.readonly`** (a *restricted* scope). Tokens last ~1h.
-  `App` persists the token in `localStorage` (`kba_auth`) and resumes the
+  `App` persists the token in `localStorage` (`pl_auth`) and resumes the
   session on load ("keep me logged in"); `Drive._fetch` silently re-auths once
   on a 401. There is no refresh token (browser-only implicit flow).
 - **Theming is CSS-variable driven (Daylight light / Midnight dark).** `:root`
@@ -120,10 +126,10 @@ Google login); verify by inspection + the owner testing on device.
   `@media (prefers-color-scheme: dark)` block supplies **Midnight** (dark)
   automatically, and `[data-theme="light"]`/`[data-theme="dark"]` blocks (placed
   after the media query so they win) force a mode. An early inline `<script>` in
-  `<head>` reads `localStorage.kba_theme` (`auto`|`light`|`dark`; default `auto`)
+  `<head>` reads `localStorage.pl_theme` (`auto`|`light`|`dark`; default `auto`)
   and sets `document.documentElement.dataset.theme` before paint (no flash).
   **Settings → Theme** (Light/Dark/Auto segmented control) drives it via
-  `Theme.apply()` (writes `kba_theme`, sets/clears `data-theme`, re-skins an open
+  `Theme.apply()` (writes `pl_theme`, sets/clears `data-theme`, re-skins an open
   book); `Theme.isDark()` resolves the effective mode. Both themes share fonts
   (Manrope UI + Literata reading); switching only flips colors. Use the tokens — `--bg`,
   `--surface`, `--card`, `--accent`/`--accent-rgb`, `--text`, `--text-dim`,
@@ -183,11 +189,11 @@ Google login); verify by inspection + the owner testing on device.
   bar, and re-renders Home/Stats/Settings. The bar is hidden on sign-in and in the
   reader (`Nav.hideBar()`); `Reader.close()` returns via `Nav.go`. Auth success
   lands on **Home**.
-- **Home (`Home.render`)** = "Continue" hero (most recent `kba_prog` entry, which
+- **Home (`Home.render`)** = "Continue" hero (most recent `pl_prog` entry, which
   now stores `{cfi,pct,chapter,ts}`), three stat tiles (`Stats.summary()`; tapping
   them opens the Stats tab), and a "Jump back in" cover row. **Library** keeps the
   grid + a search field (`Library.filter`, index-preserving). **Settings**
-  (`Settings`) holds the theme switcher, default speed (`kba_speed`), voice picker,
+  (`Settings`) holds the theme switcher, default speed (`pl_speed`), voice picker,
   account/sign-out + folder. The Home title shows the greeting + user name.
 - **Stats tab (`StatsPage.render` → `#stats-view`)** layout:
   - **Row 1 tiles**: all-time hours · this-week hours · day streak.
@@ -200,7 +206,7 @@ Google login); verify by inspection + the owner testing on device.
     Empty state shows a `.bars-empty` hint. (Publication-year range and languages
     were intentionally removed.)
   - **Breakdown table with a grouping dropdown** (`.atable`): a `.set-select`
-    (persisted to `kba_stats_group`, default `author`) switches `StatsPage._group`
+    (persisted to `pl_stats_group`, default `author`) switches `StatsPage._group`
     between **By author**, **By book**, **By genre**, and **By book length**;
     `setGroup()` saves the choice + re-renders, and
     `StatsPage._breakdown(g, books, bookSecs, prog)` builds the rows.
@@ -209,7 +215,7 @@ Google login); verify by inspection + the owner testing on device.
     (Books · Min read · Finished; top 8 by minutes; genres from Open Library),
     *Length* (Books · Min read · Finished; bucketed **<300 pages / 300–499 pages /
     500+ pages** using `Meta.get(b.id).pages` from Open Library). **All four
-    views count only books with activity** (listening minutes or a `kba_prog`
+    views count only books with activity** (listening minutes or a `pl_prog`
     started entry) — genre/length must not tally the whole library, or rows
     survive a stats reset. Length and genre show a "loading in background"
     placeholder until `Meta.fetchAll` has fetched the data (`known` counts
@@ -217,10 +223,10 @@ Google login); verify by inspection + the owner testing on device.
     while metadata is genuinely missing); with metadata but no activity they
     show the `_emptyBreak` "press play" hint. `—` shows for zero values.
     A **"Reset listening data"** ghost button at the bottom opens a custom
-    `ConfirmModal` dialog (no browser domain row) and on confirm clears `kba_stats`
-    **and** `kba_prog` (so "started" + "finished" tiles also reset to 0), then
+    `ConfirmModal` dialog (no browser domain row) and on confirm clears `pl_stats`
+    **and** `pl_prog` (so "started" + "finished" tiles also reset to 0), then
     re-renders Stats and Home.
-- **Epub metadata (`Meta`, `kba_meta`)**: `Meta.capture(id, book)` reads
+- **Epub metadata (`Meta`, `pl_meta`)**: `Meta.capture(id, book)` reads
   `book.packaging.metadata` (**title**, author=`creator`, `year` from `pubdate`,
   publisher, language) for free during cover extraction
   (`Covers._extract`/`fromBook`) and on open, and caches it in `localStorage`.
@@ -246,7 +252,7 @@ Google login); verify by inspection + the owner testing on device.
   background after the library loads; each finished cover now also re-renders
   Home (when it's the active tab) so the dashboard's covers/authors fill in
   without first visiting Library.
-- **Listening stats (`Stats`, `kba_stats`)**: a 5-second interval started in
+- **Listening stats (`Stats`, `pl_stats`)**: a 5-second interval started in
   `TTS.start`/`skipPage` and cleared in `TTS.stop` accumulates seconds both
   per day (`data.days[YYYY-MM-DD]`) **and** per book (`data.books[driveFileId]`)
   via `State.currentBook.id`. Per-book tracking was added mid-project — earlier
@@ -292,7 +298,7 @@ Google login); verify by inspection + the owner testing on device.
   they're ready the popup shows only a %.
 - **Home greeting uses the user's name.** `App.loadUser()` reads Drive
   `about → user.displayName` (works under `drive.readonly`), caches the first
-  name in `kba_user`/`State.userName`, and the Home title shows
+  name in `pl_user`/`State.userName`, and the Home title shows
   "Good {morning/afternoon/evening}, {name}".
 - **Drive folder selector is a custom themed browser (`FolderBrowser`), not the
   Google Picker.** The Picker couldn't be themed or name-sorted (and looked
@@ -301,14 +307,14 @@ Google login); verify by inspection + the owner testing on device.
   API (`'<id>' in parents and mimeType=folder`, `orderBy:'name'` → **name asc**),
   with a clickable breadcrumb (`_stack`), tap-a-row to navigate in, and "Use this
   folder" to pick the current one. Starts at the current folder (re-selecting) or
-  `root` = My Drive. `setFolder(id,name)` persists `kba_folder_id` (id wins) /
-  `kba_folder` and reloads; `Library.load` uses `activeFolderId()` then, only if
+  `root` = My Drive. `setFolder(id,name)` persists `pl_folder_id` (id wins) /
+  `pl_folder` and reloads; `Library.load` uses `activeFolderId()` then, only if
   a folder name is set, `findFolder(activeFolder())`. (`FolderModal` typed-entry
   remains only as a not-signed-in fallback; `CONFIG.API_KEY` is now unused.)
 - **Folder onboarding — no hardcoded default.** `activeFolder()` returns `''`
   when nothing is chosen (the old `CONFIG.FOLDER_NAME = 'Rakuten Kobo'` default
-  was removed), and `hasChosenFolder()` reports whether `kba_folder_id` /
-  `kba_folder` is set. After auth, `App._promptFolderIfNeeded()` (called from both
+  was removed), and `hasChosenFolder()` reports whether `pl_folder_id` /
+  `pl_folder` is set. After auth, `App._promptFolderIfNeeded()` (called from both
   `signIn` and `tryResume`) auto-opens `FolderBrowser` ~300ms later when no folder
   is chosen, so first-run users are prompted to pick their Drive books folder.
   When no folder is chosen / no books, the Library and Home empty states also show
@@ -316,7 +322,7 @@ Google login); verify by inspection + the owner testing on device.
   `State.ready` (set when a load attempt finishes) gates the Home prompt so it
   shows "Loading your library…" first rather than flashing onboarding for users
   who do have books.
-- **Home "jump back in"** shows only *started* books (a `kba_prog` entry with a
+- **Home "jump back in"** shows only *started* books (a `pl_prog` entry with a
   `ts`) opened in the **last 30 days**, newest (left) → oldest; clamped to the
   cover width (`.cr-item { min-width:0; overflow:hidden }`) so a long title can't
   space the covers apart (flex `min-width:auto` guard).
@@ -428,11 +434,11 @@ Google login); verify by inspection + the owner testing on device.
   passes through, so the user can never be stuck on a page. The trap spot is
   cleared on any clean (uncorrected) forward pass so a later genuine overshoot
   at that CFI corrects again.
-- **On-device diagnostics (`Diag`, `kba_diag`) + build stamp.** Every forward
+- **On-device diagnostics (`Diag`, `pl_diag`) + build stamp.** Every forward
   turn logs `{e:'next', sl/sw/cw, skip}` (container scroll state + overshoot
   verdict) and each forward relocation logs `{e:'rel', i, pi, p, tot}` plus
   `FIX` / `trap-skip` events into a 30-entry ring buffer in `localStorage`
-  (`kba_diag`). **Settings → Debug log** (a `<details>` under the footer) shows
+  (`pl_diag`). **Settings → Debug log** (a `<details>` under the footer) shows
   it with a "Copy log" button — ask the owner to paste it when a page-turn bug
   can't be reproduced locally. The Settings footer also shows the **build**:
   `const BUILD = '__BUILD__'` is sed-stamped with the commit short-SHA by
@@ -454,7 +460,7 @@ Google login); verify by inspection + the owner testing on device.
   auto-start-on-open since the async Drive download breaks the tap's gesture
   chain; skip/jump fire off the gesture so they're fine.)
 - **Resume where you left off.** Progress (`{cfi, pct}`) is saved per page turn
-  to `localStorage` (`kba_prog`); `Reader.open` restores via
+  to `localStorage` (`pl_prog`); `Reader.open` restores via
   `display(saved.cfi)` and shows a "Resuming where you left off" toast.
   `Reader._persistPosition()` also snapshots the current page on
   `visibilitychange`(hidden)/`pagehide`/`Reader.close()` so abrupt PWA exits
@@ -482,7 +488,7 @@ Google login); verify by inspection + the owner testing on device.
   `thumbnailLink` is only a placeholder. Tradeoff: first view downloads each book
   once to grab its cover — heavy on a large library (revisit for the product).
 - **Voices**: `TTS` ranks system voices (Natural/Neural/Siri/Google/Online float
-  to top), auto-selects the best, persists the choice (`kba_voice`), and shows
+  to top), auto-selects the best, persists the choice (`pl_voice`), and shows
   the active voice on the reader's `#voice-btn`. **`VoiceModal`** caches the
   voice list at `open()` time into `_list` (fixes an index-mismatch bug where
   `allVoices()` could re-sort between render and select). Selection is
@@ -490,7 +496,7 @@ Google login); verify by inspection + the owner testing on device.
   `_speak()` always resolves the voice from a live `getVoices()` call before
   creating each `SpeechSynthesisUtterance` — cached voice objects are silently
   ignored by Chrome/Safari if the browser's voice list has refreshed. It
-  resolves from the **persisted `kba_voice` name first** (`pickDefaultVoice`
+  resolves from the **persisted `pl_voice` name first** (`pickDefaultVoice`
   can transiently clobber `TTS.voice` when Android returns a partial voice
   list) and **sets `u.lang = voice.lang`** — Android ignores `u.voice` unless
   the utterance lang agrees, which made every selected voice sound like the
@@ -513,8 +519,8 @@ Google login); verify by inspection + the owner testing on device.
     `playbackRate` live. Model **pre-warmed at every boot** (`_kokoroWarm`);
     "Generating audio…" toast when synthesis is audibly slow (no prefetch
     ready after ~600ms). Voice catalog `KOKORO_VOICES`, choice persisted in
-    `kba_voice_gold` (HISTORICAL key name, kept so installs keep their
-    choice; same for the `kba_gold_bench` bench key).
+    `pl_voice_kokoro` (migrated from the tier-era `kba_voice_gold`; same
+    for the `pl_kokoro_bench` bench key).
   - **Fallback path (`_speakWeb`)**: the pre-existing Web Speech code with all
     the gen-guard/starvation logic. Entered per chunk on any synthesis
     failure, and for the whole session when `_kokoroDead` is set — by **2
@@ -531,10 +537,10 @@ Google login); verify by inspection + the owner testing on device.
     clears the bench cache + strike-out and re-warms). `VoiceModal` shows the
     Kokoro catalog normally, the system-voice list in fallback mode.
   - REMOVED in the tier teardown (don't resurrect): the `Tier` object,
-    `kba_tier`, the Settings tier dropdown, Diamond/Google Cloud TTS
-    (`_synthGoogle`, `_gcache`, `GOOGLE_VOICES`, `kba_voice_diamond`,
-    `kba_gtts_key`, `Settings.setGKey`), and the `VoiceHelp` onboarding
-    popup + `kba_voicetip`. Stale keys may linger in old installs; harmless.
+    `pl_tier`, the Settings tier dropdown, Diamond/Google Cloud TTS
+    (`_synthGoogle`, `_gcache`, `GOOGLE_VOICES`, `pl_voice_diamond`,
+    `pl_gtts_key`, `Settings.setGKey`), and the `VoiceHelp` onboarding
+    popup + `pl_voicetip`. Stale keys may linger in old installs; harmless.
 - **Better-voices helper (`VoiceHelp`) — fallback-mode only, MOBILE ONLY.**
   Points users at higher-quality SYSTEM voices, relevant only when the app is
   reading with the device voice: the Settings row `#vh-row` shows only when
@@ -570,8 +576,8 @@ the working plan, not an exploration.
    `koboaudio` → `phonoleaf`. OAuth needed no change — the JS origin is host-only
    (`https://kbailey90.github.io`), the same for both paths — and because storage
    is per-origin, user data carried over. (2026-07-06: the IndexedDB was also
-   renamed to `phonoleaf` with a covers migration; `kba_*` keys stay — see the
-   "Naming policy" note.) Domains `phonoleaf.com/.ca/.app/.io` were all available and
+   renamed to `phonoleaf` with a covers migration, and all `kba_*` keys were
+   migrated to `pl_*` — see the "Naming policy" note.) Domains `phonoleaf.com/.ca/.app/.io` were all available and
    no conflicting trademark was found (formal CIPO/USPTO clearance still
    recommended before filing).
 2. **Switch `drive.readonly` → `drive.file` + Google Picker** to escape
