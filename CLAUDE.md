@@ -22,12 +22,25 @@ renders them with epub.js, and reads the text using the browser's Web Speech
   authorized JavaScript origin is host-only (`https://kbailey90.github.io`) — the
   same for the old and new path — so Google sign-in keeps working. Browser storage
   is per-origin (host, not path), so existing users keep their token (`kba_auth`),
-  progress (`kba_prog`), and cached covers across the rename. Deliberately left
-  unchanged (all origin-scoped, not URL-scoped): the OAuth client ID, the `kba_*`
-  localStorage keys, and the IndexedDB name (`koboaudio`). Only a future custom
+  progress (`kba_prog`), and cached covers across the rename. Only a future custom
   domain (e.g. `phonoleaf.com`) would require adding a NEW authorized origin in
   Google Cloud Console. (The Drive folder is no longer hardcoded — see "Folder
   onboarding" below.)
+- **Naming policy (owner directive, 2026-07-06): nothing may be NAMED
+  `koboaudio` anywhere** — the old name appears only in historical notes like
+  this section. Status of the last holdouts:
+  - IndexedDB: renamed `koboaudio` → `phonoleaf` with a one-time migration
+    (`CoverCache.migrate()`, ran at boot, guarded by `kba_dbmig`): copies the
+    `covers` store into the new DB and deletes the old one, so installs keep
+    their cached covers without re-downloading every book.
+  - The `kba_*` localStorage prefix STAYS (it's a KoboAudio-era abbreviation,
+    but it doesn't spell the old name): renaming every key would wipe
+    progress/stats/settings on existing devices — revisit only with a full
+    key-migration if the owner asks.
+  - The owner's local clone folder (`C:\Repo\koboaudio`) must be renamed to
+    `C:\Repo\phonoleaf` manually (documented in TESTING.md §3) — note that
+    renaming it detaches this project's Claude session history/memory, which
+    is keyed to the folder path.
 
 ## Tech stack & structure
 
@@ -556,8 +569,9 @@ the working plan, not an exploration.
    rebranded to PhonoLeaf**, and the GitHub repo + Pages path renamed
    `koboaudio` → `phonoleaf`. OAuth needed no change — the JS origin is host-only
    (`https://kbailey90.github.io`), the same for both paths — and because storage
-   is per-origin, the `kba_*` keys and `koboaudio` IndexedDB name stay and user
-   data carries over. Domains `phonoleaf.com/.ca/.app/.io` were all available and
+   is per-origin, user data carried over. (2026-07-06: the IndexedDB was also
+   renamed to `phonoleaf` with a covers migration; `kba_*` keys stay — see the
+   "Naming policy" note.) Domains `phonoleaf.com/.ca/.app/.io` were all available and
    no conflicting trademark was found (formal CIPO/USPTO clearance still
    recommended before filing).
 2. **Switch `drive.readonly` → `drive.file` + Google Picker** to escape

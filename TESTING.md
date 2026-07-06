@@ -82,18 +82,22 @@ real device only.
 > project folder (the one containing `package.json`). Always start with:
 >
 > ```
-> cd C:\Repo\koboaudio
+> cd C:\Repo\phonoleaf
 > ```
 >
 > Running `npm install` anywhere else (e.g. `C:\Users\kevin`) gives
 > `ENOENT: Could not read package.json` — npm is telling you there's no
 > project in that folder.
+>
+> (If the folder on your PC is still called `C:\Repo\koboaudio`, rename it
+> to `C:\Repo\phonoleaf` first — close any terminal/editor/Claude session
+> using it, then rename in File Explorer. Git doesn't mind.)
 
 ### 3.1 One-time project setup
 Open **Command Prompt** (or PowerShell) and run:
 
 ```
-cd C:\Repo\koboaudio
+cd C:\Repo\phonoleaf
 npm install
 ```
 
@@ -103,7 +107,7 @@ takes a few seconds.
 ### 3.2 The test loop (every time)
 
 ```
-cd C:\Repo\koboaudio
+cd C:\Repo\phonoleaf
 npm run sync
 npm run open
 ```

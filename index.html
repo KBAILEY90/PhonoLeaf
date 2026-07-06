@@ -1926,12 +1926,53 @@ const CoverCache = {
   _open() {
     if (this._db) return this._db;
     this._db = new Promise((resolve, reject) => {
-      const r = indexedDB.open('koboaudio', 1);
+      const r = indexedDB.open('phonoleaf', 1);
       r.onupgradeneeded = () => r.result.createObjectStore('covers');
       r.onsuccess = () => resolve(r.result);
       r.onerror  = () => reject(r.error);
     });
     return this._db;
+  },
+  // One-time rebrand migration (2026-07-06): copy covers from the legacy
+  // 'koboaudio' DB into 'phonoleaf', then delete the old DB — existing
+  // installs keep their cached covers without re-downloading every book.
+  // kba_dbmig guards it to a single run; indexedDB.databases() (where
+  // available) avoids re-creating the old DB just to look inside it.
+  async migrate() {
+    try {
+      if (localStorage.getItem('kba_dbmig')) return;
+      if (indexedDB.databases) {
+        const names = (await indexedDB.databases()).map(d => d.name);
+        if (!names.includes('koboaudio')) { localStorage.setItem('kba_dbmig', '1'); return; }
+      }
+      const old = await new Promise((resolve, reject) => {
+        const r = indexedDB.open('koboaudio', 1);
+        r.onupgradeneeded = () => r.result.createObjectStore('covers'); // fresh DB ⇒ nothing to copy
+        r.onsuccess = () => resolve(r.result);
+        r.onerror = () => reject(r.error);
+      });
+      if (old.objectStoreNames.contains('covers')) {
+        const rows = await new Promise((resolve, reject) => {
+          const out = [];
+          const cur = old.transaction('covers', 'readonly').objectStore('covers').openCursor();
+          cur.onsuccess = e => { const c = e.target.result; if (c) { out.push([c.key, c.value]); c.continue(); } else resolve(out); };
+          cur.onerror = () => reject(cur.error);
+        });
+        if (rows.length) {
+          const db = await this._open();
+          await new Promise((resolve, reject) => {
+            const tx = db.transaction('covers', 'readwrite');
+            const st = tx.objectStore('covers');
+            for (const [k, v] of rows) st.put(v, k);
+            tx.oncomplete = resolve;
+            tx.onerror = () => reject(tx.error);
+          });
+        }
+      }
+      old.close();
+      indexedDB.deleteDatabase('koboaudio');
+      localStorage.setItem('kba_dbmig', '1');
+    } catch (_) { /* if migration fails, covers simply rebuild over time */ }
   },
   async get(key) {
     try {
@@ -3257,6 +3298,7 @@ const ConfirmModal = {
 
 // --- Boot -------------------------------------------------
 window.addEventListener('load', () => {
+  CoverCache.migrate(); // one-time koboaudio → phonoleaf DB rename (fire & forget)
   App.init();
   TTS.pickDefaultVoice(); // voices may already be loaded; voiceschanged refines later
   TTS._kokoroWarm(); // Kokoro is THE voice — start model init before first play
