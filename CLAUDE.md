@@ -31,10 +31,21 @@ renders them with epub.js, and reads the text using the browser's Web Speech
 
 ## Tech stack & structure
 
-- **Pure HTML/CSS/JS, no build step.** Almost everything lives in a single
-  file: `index.html` (markup + styles + inline `<script>`).
+- **Pure HTML/CSS/JS, no build step** for the web app itself. Almost
+  everything lives in a single file: `index.html` (markup + styles + inline
+  `<script>`).
 - `sw.js` — service worker (offline app shell).
 - `manifest.json` — PWA manifest.
+- **Native shell (Stage 2a, added 2026-07-06):** Capacitor 8 wraps the SAME
+  web app for the Play Store build. `package.json` (scripts only — the web
+  app still has no build), `capacitor.config.json` (`com.phonoleaf.app`,
+  webDir `www`), `scripts/stage-www.js` (copies index.html/manifest/sw/fonts
+  into `www/` — `www/` and `node_modules/` are gitignored, generated),
+  `android/` (committed Capacitor Android project; its build outputs are
+  gitignored). Loop: `npm run sync` (stage + copy into android) →
+  `npm run open` (Android Studio) → Run ▶ on device — see TESTING.md §3.
+  NB: GitHub Pages still deploys the repo root exactly as before — the web
+  app is unaffected by the native shell.
 - `fonts/` — self-hosted variable woff2 (`manrope.woff2` UI, `literata.woff2`
   reading), latin subset; precached by `sw.js`. No Google Fonts hotlink.
 - `.github/workflows/deploy.yml` — deploys to GitHub Pages on push to `main`.
@@ -573,11 +584,13 @@ the working plan, not an exploration.
    - **Native build plan (staged):**
      - Stage 1 — DONE (2026-07-04): web app refactored to Kokoro-only with
        automatic device-voice fallback; production logic, no test switches.
-     - Stage 2 — Capacitor wrapper + native TTS plugin: `index.html`
-       unchanged as the web layer; a Kotlin plugin bundling sherpa-onnx +
+     - Stage 2a — DONE (2026-07-06): Capacitor 8 shell scaffolded (see
+       "Native shell" note in Tech stack). Builds/installs via Android
+       Studio; shows the sign-in screen (which can't proceed until Stage 3).
+     - Stage 2b — native TTS plugin: a Kotlin plugin bundling sherpa-onnx +
        Kokoro exposes synthesize(text, voice) → audio, wired in as a native
-       backend beside the Web Worker (detect plugin → prefer native).
-       Testing loop: Android Studio Run ▶ on the owner's phone via USB.
+       backend beside the Web Worker (detect plugin → prefer native), plus
+       a sign-in-free way to demo the voice engine on device.
      - Stage 3 — **auth rework (BLOCKER for a usable native app):** Google
        blocks OAuth in embedded WebViews (`disallowed_useragent`), so the
        current GIS implicit flow cannot work inside Capacitor. Fix: system

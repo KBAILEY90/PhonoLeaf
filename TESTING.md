@@ -76,24 +76,63 @@ real device only.
 
 ---
 
-## 3. How native testing will work (Stage 2 — once the Capacitor app exists)
+## 3. Native testing (Stage 2 — the Capacitor project is in the repo)
 
-For orientation — these steps become relevant when the `android/` project
-lands in the repo:
+> **Golden rule for every command below:** npm commands only work inside the
+> project folder (the one containing `package.json`). Always start with:
+>
+> ```
+> cd C:\Repo\koboaudio
+> ```
+>
+> Running `npm install` anywhere else (e.g. `C:\Users\kevin`) gives
+> `ENOENT: Could not read package.json` — npm is telling you there's no
+> project in that folder.
 
-1. `npm install` then `npx cap open android` in the repo → Android Studio
-   opens the project.
-2. Select your phone in the toolbar device dropdown, press the green **Run ▶**
-   button. The app builds, installs, and launches on your phone
-   automatically. That's the entire loop: edit → Run ▶ → test on device.
-3. Debugging the web layer inside the app: open `chrome://inspect#devices` in
-   desktop Chrome while the app runs — your phone's WebView appears, click
-   **inspect** for the full DevTools (console, network) of the running app.
-   Guide: https://developer.chrome.com/docs/devtools/remote-debugging/
-4. Known Stage-2 caveat: **Google sign-in will NOT work in the first native
-   builds.** Google blocks OAuth inside embedded WebViews; the fix (Stage 3)
-   is a system-browser sign-in flow (Custom Tabs + PKCE). Early native builds
-   are for testing the voice engine, not the Drive flow.
+### 3.1 One-time project setup
+Open **Command Prompt** (or PowerShell) and run:
+
+```
+cd C:\Repo\koboaudio
+npm install
+```
+
+This installs Capacitor (the native shell tooling) into `node_modules/` —
+takes a few seconds.
+
+### 3.2 The test loop (every time)
+
+```
+cd C:\Repo\koboaudio
+npm run sync
+npm run open
+```
+
+- `npm run sync` copies the current web app (`index.html` etc.) into the
+  native project — run it after ANY web-app change so the app sees it.
+- `npm run open` opens the project in Android Studio.
+- **First open only:** Android Studio runs a "Gradle sync" (progress bar at
+  the bottom, downloads build tools — several minutes; needs internet). Let
+  it finish before doing anything.
+- Plug in your phone → pick it in the device dropdown (top toolbar) → press
+  the green **Run ▶** button. The app builds, installs, and launches on the
+  phone. That's the whole loop: change → `npm run sync` → Run ▶.
+
+### 3.3 Debugging the app on the phone
+With the app running, open `chrome://inspect#devices` in desktop Chrome —
+your phone's WebView appears; click **inspect** for full DevTools (console,
+network) of the live app.
+Guide: https://developer.chrome.com/docs/devtools/remote-debugging/
+
+### 3.4 What works at each stage
+- **Stage 2a (now — plain wrapper):** the app installs and launches to the
+  sign-in screen. That proves your whole toolchain. **Google sign-in does NOT
+  work yet** — Google blocks OAuth inside embedded WebViews; Stage 3 replaces
+  it with a system-browser sign-in (Custom Tabs + PKCE). So for now the
+  native build can't reach the library/reader.
+- **Stage 2b (next):** the native Kokoro plugin (sherpa-onnx) + a way to hear
+  the voice engine without signing in — the gapless-voice proof.
+- **Stage 3:** native sign-in → the full Drive flow works in-app.
 
 ---
 

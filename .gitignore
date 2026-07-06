@@ -1,0 +1,11 @@
+# Node / Capacitor
+node_modules/
+www/
+
+# Android build outputs (the android/ project itself IS committed)
+android/.gradle/
+android/.idea/
+android/build/
+android/app/build/
+android/local.properties
+android/app/release/
