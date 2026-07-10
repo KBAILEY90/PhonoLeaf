@@ -22,6 +22,17 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
+            <!-- OAuth return deep link (system-browser sign-in). The scheme is
+                 the REVERSED Android OAuth client id: replace the placeholder
+                 with com.googleusercontent.apps.<id-part-before-.apps...>
+                 once the Android client exists in Google Cloud Console. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="com.googleusercontent.apps.REPLACE-WITH-ANDROID-CLIENT-ID" />
+            </intent-filter>
+
         </activity>
 
         <provider

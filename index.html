@@ -979,6 +979,10 @@
 // +======================================================+
 const CONFIG = {
   CLIENT_ID:   '871446308528-r12mb3i1r87jrk681ms3bp55msubojt7.apps.googleusercontent.com',
+  // ANDROID-type OAuth client (native app only): used by the system-browser
+  // PKCE flow — Google blocks the web (GIS) flow inside embedded WebViews.
+  // Created in the same Cloud Console project; empty until then.
+  ANDROID_CLIENT_ID: '',
   SCOPE:       'https://www.googleapis.com/auth/drive.readonly',
   // Optional: the Google Picker (browse-Drive folder selector) runs on the
   // login OAuth token alone. A browser API key here is only needed for Picker
@@ -1696,9 +1700,24 @@ const App = {
   _client:  null,
   _pending: null,   // resolver for an in-flight token request
 
+  // Native app (Capacitor)? Google blocks OAuth inside embedded WebViews
+  // (disallowed_useragent — GIS won't even initialize), so the native app
+  // signs in through the SYSTEM browser (Chrome Custom Tab) with the
+  // authorization-code + PKCE flow against an ANDROID-type OAuth client
+  // (no client secret), returning via a reverse-client-id deep link. That
+  // flow also yields a REFRESH TOKEN, so the native app stays signed in
+  // permanently — unlike the web implicit flow's 1-hour tokens.
+  isNative() { return !!(window.Capacitor && Capacitor.isNativePlatform && Capacitor.isNativePlatform()); },
+  _plugin(name) { return (window.Capacitor && Capacitor.Plugins && Capacitor.Plugins[name]) || null; },
+
   init() {
-    // Client ID is pre-configured - no warning needed
-    // Wait for GIS
+    if (this.isNative()) {
+      // The OAuth deep link re-enters the app here (manifest intent-filter).
+      this._plugin('App')?.addListener('appUrlOpen', d => this._onDeepLink(d && d.url));
+      this.tryResume();
+      return;
+    }
+    // Web: wait for GIS to load, then use the implicit token flow as before.
     const poll = setInterval(() => {
       if (window.google?.accounts?.oauth2) {
         clearInterval(poll);
@@ -1712,17 +1731,27 @@ const App = {
     }, 150);
   },
 
+  // Post-auth entry: shared by web sign-in, native sign-in, and resume.
+  _enterApp() {
+    this._initHistory();
+    Nav.go('home');
+    this.loadUser();
+    Library.load(); // a stale/revoked token surfaces as a 401 -> silent refresh
+    this._promptFolderIfNeeded();
+  },
+
   // "Keep me logged in": reuse a saved, unexpired token so reopening the app
-  // doesn't require signing in again.
+  // doesn't require signing in again. Natively, an EXPIRED token is renewed
+  // silently with the refresh token — the user never re-signs-in.
   tryResume() {
     const saved = this._loadAuth();
     if (saved && saved.exp > Date.now() + 30000) {
       State.token = saved.token;
-      this._initHistory();
-      Nav.go('home');
-      this.loadUser();
-      Library.load(); // a stale/revoked token surfaces as a 401 -> silent refresh
-      this._promptFolderIfNeeded();
+      this._enterApp();
+      return;
+    }
+    if (this.isNative() && localStorage.getItem('pl_rtoken')) {
+      this._nativeRefresh().then(() => this._enterApp()).catch(() => {});
     }
   },
 
@@ -1772,20 +1801,116 @@ const App = {
   },
 
   // Silent re-auth used when a Drive call returns 401 (expired token).
-  refreshToken() { return this.getToken(''); },
+  refreshToken() {
+    if (this.isNative()) {
+      return this._nativeRefresh().catch(e => {
+        // Refresh token revoked/expired — force a fresh interactive sign-in.
+        try { localStorage.removeItem('pl_rtoken'); } catch (_) {}
+        throw e;
+      });
+    }
+    return this.getToken('');
+  },
 
   async signIn() {
+    if (this.isNative()) { this._nativeSignIn(); return; }
     if (!this._client) { toast('Auth loading, please wait...'); return; }
     try {
       await this.getToken('');
-      this._initHistory();
-      Nav.go('home');
-      this.loadUser();
-      Library.load();
-      this._promptFolderIfNeeded();
+      this._enterApp();
     } catch (e) {
       toast('Sign-in failed: ' + e.message);
     }
+  },
+
+  // ---- Native (system-browser) OAuth: code + PKCE --------------------------
+  _pkce: null, // { verifier, state } for the in-flight authorization
+  _b64url(bytes) {
+    return btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  },
+  _redirectUri() {
+    // Installed-app custom scheme = the REVERSED Android client id.
+    return 'com.googleusercontent.apps.' +
+      CONFIG.ANDROID_CLIENT_ID.replace('.apps.googleusercontent.com', '') + ':/oauth2redirect';
+  },
+  async _nativeSignIn() {
+    if (!CONFIG.ANDROID_CLIENT_ID) { toast('Sign-in not configured for the app build yet'); return; }
+    try {
+      const rnd = n => { const b = new Uint8Array(n); crypto.getRandomValues(b); return this._b64url(b); };
+      const verifier = rnd(32);
+      const challenge = this._b64url(new Uint8Array(
+        await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier))));
+      const state = rnd(16);
+      this._pkce = { verifier, state };
+      const q = new URLSearchParams({
+        client_id: CONFIG.ANDROID_CLIENT_ID,
+        redirect_uri: this._redirectUri(),
+        response_type: 'code',
+        scope: CONFIG.SCOPE,
+        code_challenge: challenge,
+        code_challenge_method: 'S256',
+        state,
+      });
+      await this._plugin('Browser').open({ url: 'https://accounts.google.com/o/oauth2/v2/auth?' + q });
+    } catch (e) { toast('Sign-in failed: ' + e.message); }
+  },
+  async _onDeepLink(url) {
+    if (!url || url.indexOf(':/oauth2redirect') === -1) return;
+    try { this._plugin('Browser')?.close(); } catch (_) {}
+    const pk = this._pkce; this._pkce = null;
+    let code = '', state = '', err = '';
+    try {
+      const u = new URL(url);
+      code = u.searchParams.get('code') || '';
+      state = u.searchParams.get('state') || '';
+      err = u.searchParams.get('error') || '';
+    } catch (_) {
+      const m = url.match(/[?&]code=([^&]+)/); code = m ? decodeURIComponent(m[1]) : '';
+      const s = url.match(/[?&]state=([^&]+)/); state = s ? decodeURIComponent(s[1]) : '';
+    }
+    if (err) { toast('Sign-in failed: ' + err); return; }
+    if (!code || !pk || state !== pk.state) { toast('Sign-in failed — please try again'); return; }
+    try {
+      const t = await this._tokenRequest({
+        grant_type: 'authorization_code',
+        code,
+        client_id: CONFIG.ANDROID_CLIENT_ID,
+        redirect_uri: this._redirectUri(),
+        code_verifier: pk.verifier,
+      });
+      if (t.refresh_token) { try { localStorage.setItem('pl_rtoken', t.refresh_token); } catch (_) {} }
+      State.token = t.access_token;
+      this._saveAuth(t.access_token, t.expires_in);
+      this._enterApp();
+    } catch (e) { toast('Sign-in failed: ' + e.message); }
+  },
+  // Google's token endpoint sends no CORS headers, so a WebView fetch would be
+  // blocked — go through Capacitor's NATIVE http bridge instead. Data is
+  // passed as an object: the bridge form-encodes it for this content type.
+  async _tokenRequest(params) {
+    const http = this._plugin('CapacitorHttp');
+    if (!http) throw new Error('native http unavailable');
+    const r = await http.request({
+      url: 'https://oauth2.googleapis.com/token',
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      data: params,
+    });
+    const d = typeof r.data === 'string' ? JSON.parse(r.data) : (r.data || {});
+    if (r.status !== 200) throw new Error(d.error_description || d.error || ('HTTP ' + r.status));
+    return d;
+  },
+  async _nativeRefresh() {
+    const rt = localStorage.getItem('pl_rtoken');
+    if (!rt) throw new Error('no refresh token');
+    const t = await this._tokenRequest({
+      grant_type: 'refresh_token',
+      refresh_token: rt,
+      client_id: CONFIG.ANDROID_CLIENT_ID,
+    });
+    State.token = t.access_token;
+    this._saveAuth(t.access_token, t.expires_in);
+    return t.access_token;
   },
 
   _onToken(r) {
@@ -1802,7 +1927,23 @@ const App = {
   },
 
   signOut() {
-    if (State.token) google.accounts.oauth2.revoke(State.token, () => {});
+    if (this.isNative()) {
+      // Revoking the refresh token invalidates the whole grant (best effort).
+      const rt = localStorage.getItem('pl_rtoken') || State.token;
+      if (rt) {
+        try {
+          this._plugin('CapacitorHttp')?.request({
+            url: 'https://oauth2.googleapis.com/revoke',
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            data: { token: rt },
+          }).catch(() => {});
+        } catch (_) {}
+      }
+      try { localStorage.removeItem('pl_rtoken'); } catch (_) {}
+    } else if (State.token) {
+      google.accounts.oauth2.revoke(State.token, () => {});
+    }
     State.token = null;
     try { localStorage.removeItem('pl_auth'); } catch (_) {}
     TTS.stop();

@@ -9,3 +9,6 @@ android/build/
 android/app/build/
 android/local.properties
 android/app/release/
+
+# IDE state (created when Android Studio opened the repo root by mistake)
+.idea/

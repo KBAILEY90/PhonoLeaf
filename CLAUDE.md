@@ -120,7 +120,31 @@ Google login); verify by inspection + the owner testing on device.
 - **OAuth scope is `drive.readonly`** (a *restricted* scope). Tokens last ~1h.
   `App` persists the token in `localStorage` (`pl_auth`) and resumes the
   session on load ("keep me logged in"); `Drive._fetch` silently re-auths once
-  on a 401. There is no refresh token (browser-only implicit flow).
+  on a 401. On the WEB there is no refresh token (implicit flow).
+- **Native auth (Stage 3, shipped 2026-07-06) — system-browser PKCE flow.**
+  Google blocks OAuth inside embedded WebViews (GIS never initializes — the
+  observed symptom was the "Auth loading" guard toast), so when
+  `App.isNative()` (Capacitor) the whole GIS path is bypassed: `_nativeSignIn`
+  opens a Chrome Custom Tab (`@capacitor/browser`) on
+  `accounts.google.com/o/oauth2/v2/auth` with authorization-code + PKCE
+  (S256, random state) against an **ANDROID-type OAuth client**
+  (`CONFIG.ANDROID_CLIENT_ID`, no client secret); the redirect is the
+  REVERSED-client-id custom scheme
+  (`com.googleusercontent.apps.<id>:/oauth2redirect`), registered as a
+  manifest intent-filter and delivered back via `@capacitor/app`'s
+  `appUrlOpen` → `_onDeepLink` (verifies state, closes the tab). The code
+  exchange and refresh go through `_tokenRequest`, which uses **`CapacitorHttp`
+  (native bridge) because Google's token endpoint sends no CORS headers** — a
+  WebView fetch would be blocked. The response includes a **refresh token**
+  (`pl_rtoken`): `tryResume`/`refreshToken` renew silently (`_nativeRefresh`),
+  so the native app stays signed in permanently; a failed refresh clears
+  `pl_rtoken` and falls back to interactive sign-in; `signOut` revokes the
+  grant via `oauth2.googleapis.com/revoke`. Shared post-auth path for all
+  flows: `App._enterApp()`. STATUS: code + manifest shipped with a
+  PLACEHOLDER — the owner must create the Android OAuth client (package
+  `com.phonoleaf.app` + debug SHA-1, steps in TESTING.md §3.5) and the client
+  id must then be filled into `CONFIG.ANDROID_CLIENT_ID` AND the manifest
+  `<data android:scheme>`.
 - **Theming is CSS-variable driven (Daylight light / Midnight dark).** `:root`
   holds the **Daylight** (light) tokens as the default; a
   `@media (prefers-color-scheme: dark)` block supplies **Midnight** (dark)
@@ -611,12 +635,13 @@ the working plan, not an exploration.
        Kokoro exposes synthesize(text, voice) → audio, wired in as a native
        backend beside the Web Worker (detect plugin → prefer native), plus
        a sign-in-free way to demo the voice engine on device.
-     - Stage 3 — **auth rework (BLOCKER for a usable native app):** Google
-       blocks OAuth in embedded WebViews (`disallowed_useragent`), so the
-       current GIS implicit flow cannot work inside Capacitor. Fix: system
-       -browser flow (Chrome Custom Tabs) with authorization-code + PKCE,
-       which also finally yields refresh tokens. Until then, native builds
-       are for testing the voice engine, not the Drive flow.
+     - Stage 3 — auth rework: **CODE SHIPPED (2026-07-06)** — system-browser
+       (Chrome Custom Tabs) authorization-code + PKCE flow with refresh
+       tokens; see the "Native auth" behavior note. PENDING: the owner
+       creates the Android OAuth client (TESTING.md §3.5; SHA-1 already
+       extracted) and the id gets filled into CONFIG.ANDROID_CLIENT_ID +
+       the manifest scheme placeholder. Plugins added: @capacitor/browser,
+       @capacitor/app.
      - Stage 4 — MediaSession + lock-screen/background playback (native
        `<audio>` path makes this straightforward), IndexedDB audio caching.
      - Stage 5 — Play Console ($25 one-time), internal testing track, store
