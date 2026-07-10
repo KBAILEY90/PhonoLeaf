@@ -131,44 +131,22 @@ Guide: https://developer.chrome.com/docs/devtools/remote-debugging/
 ### 3.4 What works at each stage
 - **Stage 2a (done — plain wrapper):** the app installs and launches to the
   sign-in screen. That proves your whole toolchain.
-- **Stage 3 (code shipped — needs the one-time setup below):** sign-in
-  through your phone's real browser, returning to the app with a permanent
-  session (refresh token — no more hourly re-login).
+- **Stage 3 (done — Android OAuth client created 2026-07-06):** sign-in goes
+  through your phone's real browser and returns to the app with a permanent
+  session (refresh token — no more hourly re-login). `npm run sync` + Run ▶
+  and test it: tap Sign In, pick your account in the browser tab that opens,
+  confirm you land back in PhonoLeaf's library. You may see a "Google hasn't
+  verified this app" warning first (expected pre-launch — the drive.readonly
+  scope needs formal verification eventually; for now click Advanced →
+  Continue).
 - **Stage 2b (next):** the native Kokoro plugin (sherpa-onnx) — the
   gapless-voice proof.
 
-### 3.5 Stage 3 one-time setup: create the Android OAuth client (~5 min)
-
-Google requires a separate OAuth client for native Android apps (it carries
-no secret and is tied to the app's signing key). Steps:
-
-1. Open https://console.cloud.google.com/apis/credentials and make sure the
-   selected project (top bar) is the SAME project as the existing PhonoLeaf
-   web client.
-2. Click **+ Create credentials → OAuth client ID**.
-3. Application type: **Android**.
-4. Name: `PhonoLeaf Android (debug)`.
-5. Package name: `com.phonoleaf.app`
-6. SHA-1 certificate fingerprint (this is your PC's debug signing key —
-   already extracted for you):
-
-   ```
-   A5:6B:7C:BD:10:66:EE:40:BE:2B:EA:45:BE:A9:11:2E:BC:B2:19:08
-   ```
-
-7. Click **Create** and copy the client ID (looks like
-   `NNNNNNNN-xxxxxxxx.apps.googleusercontent.com`).
-8. Give the client ID to Claude — it gets wired into two places
-   (`CONFIG.ANDROID_CLIENT_ID` in index.html and the deep-link scheme in
-   AndroidManifest.xml), then `npm run sync` + Run ▶ and sign-in works.
-
-Notes:
-- When testing sign-in you may see a "Google hasn't verified this app"
-  warning (the drive.readonly scope is restricted and the app isn't verified
-  yet — that's a launch-time task). Click **Continue** / Advanced → proceed.
-- The debug SHA-1 above only covers builds from YOUR PC. The Play Store
-  release build will be signed differently and needs its SHA-1 added to the
-  same client later (Play App Signing shows it in the Play Console).
+Reference: the Android OAuth client is "PhonoLeaf Android (debug)" in
+[Cloud Console → Credentials](https://console.cloud.google.com/apis/credentials),
+package `com.phonoleaf.app`, tied to this PC's debug-keystore SHA-1. A Play
+Store release build is signed differently and will need its own SHA-1 added
+to the same client later (Play App Signing shows it in the Play Console).
 
 ---
 

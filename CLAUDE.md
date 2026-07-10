@@ -143,11 +143,12 @@ Google login); verify by inspection + the owner testing on device.
   so the native app stays signed in permanently; a failed refresh clears
   `pl_rtoken` and falls back to interactive sign-in; `signOut` revokes the
   grant via `oauth2.googleapis.com/revoke`. Shared post-auth path for all
-  flows: `App._enterApp()`. STATUS: code + manifest shipped with a
-  PLACEHOLDER — the owner must create the Android OAuth client (package
-  `com.phonoleaf.app` + debug SHA-1, steps in TESTING.md §3.5) and the client
-  id must then be filled into `CONFIG.ANDROID_CLIENT_ID` AND the manifest
-  `<data android:scheme>`.
+  flows: `App._enterApp()`. STATUS: Android OAuth client created 2026-07-06
+  ("PhonoLeaf Android (debug)", package `com.phonoleaf.app`, debug-keystore
+  SHA-1) and wired into `CONFIG.ANDROID_CLIENT_ID` + the manifest
+  `<data android:scheme>` — ready to test on device (Run ▶, TESTING.md §3).
+  If that client is ever recreated in Cloud Console, both places must be
+  updated together (a mismatch breaks the deep-link return silently).
 - **Theming is CSS-variable driven (Daylight light / Midnight dark).** `:root`
   holds the **Daylight** (light) tokens as the default; a
   `@media (prefers-color-scheme: dark)` block supplies **Midnight** (dark)
@@ -638,13 +639,11 @@ the working plan, not an exploration.
        Kokoro exposes synthesize(text, voice) → audio, wired in as a native
        backend beside the Web Worker (detect plugin → prefer native), plus
        a sign-in-free way to demo the voice engine on device.
-     - Stage 3 — auth rework: **CODE SHIPPED (2026-07-06)** — system-browser
-       (Chrome Custom Tabs) authorization-code + PKCE flow with refresh
-       tokens; see the "Native auth" behavior note. PENDING: the owner
-       creates the Android OAuth client (TESTING.md §3.5; SHA-1 already
-       extracted) and the id gets filled into CONFIG.ANDROID_CLIENT_ID +
-       the manifest scheme placeholder. Plugins added: @capacitor/browser,
-       @capacitor/app.
+     - Stage 3 — auth rework: **DONE (2026-07-06)** — system-browser (Chrome
+       Custom Tabs) authorization-code + PKCE flow with refresh tokens; see
+       the "Native auth" behavior note. Android OAuth client created +
+       wired in; needs on-device Run ▶ verification (TESTING.md §3).
+       Plugins added: @capacitor/browser, @capacitor/app.
      - Stage 4 — MediaSession + lock-screen/background playback (native
        `<audio>` path makes this straightforward), IndexedDB audio caching.
      - Stage 5 — Play Console ($25 one-time), internal testing track, store

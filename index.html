@@ -981,8 +981,10 @@ const CONFIG = {
   CLIENT_ID:   '871446308528-r12mb3i1r87jrk681ms3bp55msubojt7.apps.googleusercontent.com',
   // ANDROID-type OAuth client (native app only): used by the system-browser
   // PKCE flow — Google blocks the web (GIS) flow inside embedded WebViews.
-  // Created in the same Cloud Console project; empty until then.
-  ANDROID_CLIENT_ID: '',
+  // Same Cloud Console project as CLIENT_ID above, "PhonoLeaf Android
+  // (debug)", tied to the debug keystore's SHA-1 — must match the reversed
+  // scheme in AndroidManifest.xml's oauth2redirect intent-filter.
+  ANDROID_CLIENT_ID: '871446308528-am1hi0il8670867uvai80q4d18fduee6.apps.googleusercontent.com',
   SCOPE:       'https://www.googleapis.com/auth/drive.readonly',
   // Optional: the Google Picker (browse-Drive folder selector) runs on the
   // login OAuth token alone. A browser API key here is only needed for Picker

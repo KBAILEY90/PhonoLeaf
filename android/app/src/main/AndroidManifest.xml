@@ -22,15 +22,15 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
-            <!-- OAuth return deep link (system-browser sign-in). The scheme is
-                 the REVERSED Android OAuth client id: replace the placeholder
-                 with com.googleusercontent.apps.<id-part-before-.apps...>
-                 once the Android client exists in Google Cloud Console. -->
+            <!-- OAuth return deep link (system-browser sign-in). Scheme is the
+                 REVERSED Android OAuth client id (Cloud Console > Credentials
+                 > PhonoLeaf Android (debug)). If that client is ever
+                 recreated, update this AND CONFIG.ANDROID_CLIENT_ID together. -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="com.googleusercontent.apps.REPLACE-WITH-ANDROID-CLIENT-ID" />
+                <data android:scheme="com.googleusercontent.apps.871446308528-am1hi0il8670867uvai80q4d18fduee6" />
             </intent-filter>
 
         </activity>
