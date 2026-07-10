@@ -61,7 +61,10 @@ renders them with epub.js, and reads the text using the browser's Web Speech
   webDir `www`), `scripts/stage-www.js` (copies index.html/manifest/sw/fonts
   into `www/` — `www/` and `node_modules/` are gitignored, generated),
   `android/` (committed Capacitor Android project; its build outputs are
-  gitignored). Loop: `npm run sync` (stage + copy into android) →
+  gitignored; Gradle configuration cache is enabled in gradle.properties).
+  Installed Capacitor plugins: `@capacitor/browser` + `@capacitor/app`
+  (native auth — see the "Native auth" behavior note); `CapacitorHttp` is
+  used from core. Loop: `npm run sync` (stage + copy into android) →
   `npm run open` (Android Studio) → Run ▶ on device — see TESTING.md §3.
   NB: GitHub Pages still deploys the repo root exactly as before — the web
   app is unaffected by the native shell.
