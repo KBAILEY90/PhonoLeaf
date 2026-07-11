@@ -70,7 +70,14 @@ renders them with epub.js, and reads the text using the browser's Web Speech
   gitignored; Gradle configuration cache is enabled in gradle.properties).
   Installed Capacitor plugins: `@capacitor/browser` + `@capacitor/app`
   (native auth — see the "Native auth" behavior note); `CapacitorHttp` is
-  used from core. Loop: `npm run sync` (stage + copy into android) →
+  used from core. **Native TTS plugin (Stage 2b):** `PhonoLeafTtsPlugin.kt`
+  (registered in `MainActivity.java`) wraps sherpa-onnx's `OfflineTts`
+  (Kokoro) — see the "Voice engine" note; the prebuilt AAR is committed at
+  `android/app/libs/sherpa-onnx.aar` (no Maven artifact exists — un-ignored
+  in `android/.gitignore`), Kotlin is enabled in `app/build.gradle`, ABIs are
+  limited to arm, and the ~330 MB model is owner-placed in
+  `app/src/main/assets/kokoro/` (gitignored — TESTING.md §3.6). Loop:
+  `npm run sync` (stage + copy into android) →
   `npm run open` (Android Studio) → Run ▶ on device — see TESTING.md §3.
   NB: GitHub Pages still deploys the repo root exactly as before — the web
   app is unaffected by the native shell.
@@ -548,7 +555,20 @@ Google login); verify by inspection + the owner testing on device.
 - **Voice engine — Kokoro-only (tiers REMOVED 2026-07-04).** Kokoro-82M is
   THE product voice; the device's Web Speech engine survives only as an
   automatic fallback. One chunk state machine, two paths:
-  - **Neural path (`_playAudio`)**: Kokoro-82M **in a Web Worker**
+  - **Native path (`_synthNative`, preferred when present)**: on the
+    Capacitor Android build, `TTS._nativeTts()` finds the `PhonoLeafTts`
+    plugin and `_synth` routes to it — sherpa-onnx runs Kokoro natively
+    (multi-threaded, faster than realtime on phones), returning a WAV data
+    URL played through the same `<audio>`/prefetch pipeline, so playback is
+    gapless. `_kokoroWarm` calls the plugin's `prepare()` (no WASM download,
+    no speed probe — native is known-fast); a genuine failure (e.g. model
+    files not placed) strikes out to the device voice per chunk like any
+    synthesis failure. **The voice→speaker-id map lives in JS**
+    (`KOKORO_VOICES` third field = sherpa `sid` for `kokoro-multi-lang-v1_1`;
+    `_voiceSid()`), so a wrong-sounding voice is a one-line JS fix + `npm run
+    sync`, no Gradle rebuild. Speed is applied via `<audio>.playbackRate`
+    (synth always at 1.0) so prefetched/cached chunks survive speed changes.
+  - **Neural path (`_playAudio` → browser-WASM, web + fallback)**: Kokoro-82M **in a Web Worker**
     (`_kokoroWorkerEl` builds the worker from a Blob; the worker `import()`s
     `kokoro-js@1/+esm` from jsdelivr and loads HuggingFace
     `onnx-community/Kokoro-82M-v1.0-ONNX`, WebGPU `fp32` when `navigator.gpu`
@@ -651,10 +671,11 @@ the working plan, not an exploration.
      - Stage 2a — DONE (2026-07-06): Capacitor 8 shell scaffolded (see
        "Native shell" note in Tech stack). Builds/installs via Android
        Studio; shows the sign-in screen (which can't proceed until Stage 3).
-     - Stage 2b — native TTS plugin: a Kotlin plugin bundling sherpa-onnx +
-       Kokoro exposes synthesize(text, voice) → audio, wired in as a native
-       backend beside the Web Worker (detect plugin → prefer native), plus
-       a sign-in-free way to demo the voice engine on device.
+     - Stage 2b — native TTS plugin: **DONE (2026-07-06)** —
+       `PhonoLeafTtsPlugin.kt` (sherpa-onnx `OfflineTts`, Kokoro) exposes
+       synthesize(text, sid, speed) → WAV data URL; `_synth` prefers it over
+       the Web Worker when present. Needs the owner to place the model
+       (TESTING.md §3.6) then Run ▶ to verify gapless on device.
      - Stage 3 — auth rework: **DONE + VERIFIED ON DEVICE (2026-07-06)** —
        system-browser (Chrome Custom Tabs) authorization-code + PKCE flow
        with refresh tokens; see the "Native auth" behavior note. Two

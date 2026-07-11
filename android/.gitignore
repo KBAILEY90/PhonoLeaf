@@ -5,6 +5,13 @@
 *.aar
 *.ap_
 *.aab
+# ...but DO commit the sherpa-onnx native TTS AAR (pinned dependency, no Maven
+# artifact exists — the build needs it present).
+!/app/libs/sherpa-onnx.aar
+
+# Kokoro model files are large (~180 MB) and owner-placed — never committed.
+# See TESTING.md §3.6 for how to download + extract them here.
+/app/src/main/assets/kokoro/
 
 # Files for the ART/Dalvik VM
 *.dex

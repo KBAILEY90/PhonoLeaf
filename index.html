@@ -3063,8 +3063,33 @@ const TTS = {
       p.p.then(u => { if (u && u.startsWith('blob:')) URL.revokeObjectURL(u); }).catch(() => {});
     }
   },
+  // The native Capacitor Kokoro plugin (sherpa-onnx), or null on the web / in a
+  // build without it. When present it's the preferred engine — native
+  // inference is faster than realtime on phones, so playback is gapless.
+  _nativeTts() {
+    try {
+      if (window.Capacitor && Capacitor.isNativePlatform && Capacitor.isNativePlatform()
+          && Capacitor.Plugins && Capacitor.Plugins.PhonoLeafTts) return Capacitor.Plugins.PhonoLeafTts;
+    } catch (_) {}
+    return null;
+  },
+  _voiceSid() {
+    const id = localStorage.getItem('pl_voice_kokoro') || KOKORO_VOICES[0][0];
+    const v = KOKORO_VOICES.find(x => x[0] === id);
+    return (v && v[2] != null) ? v[2] : 0;
+  },
   _synth(text) {
+    const nat = this._nativeTts();
+    if (nat) return this._synthNative(nat, text);
     return this._synthKokoro(text);
+  },
+  // Native synth → WAV data URL. Synthesized at speed 1.0; playback speed is
+  // applied live via <audio>.playbackRate (so a cached/prefetched chunk stays
+  // valid across speed changes), matching the WASM path.
+  async _synthNative(nat, text) {
+    const r = await nat.synthesize({ text, sid: this._voiceSid(), speed: 1.0 });
+    if (!r || !r.audio) throw new Error('native synth empty');
+    return r.audio;
   },
   async _playAudio(chunk, gen) {
     try {
@@ -3176,10 +3201,19 @@ const TTS = {
     this._kworker = w;
     return w;
   },
-  _kokoroWarm() { // start the model download/init early (boot + Retry)
+  _kokoroWarm() { // start the model init early (boot + Retry)
     if (this._kokoroDead) return;
-    // If this device already failed the speed probe, don't re-download/init —
-    // go straight to fallback mode (silently: this runs at every boot).
+    // Native engine: warm the plugin (copies the model to filesDir + loads it
+    // on first run). No speed probe — native is faster than realtime by design;
+    // a genuine failure (e.g. model files not placed) strikes out per-chunk.
+    const nat = this._nativeTts();
+    if (nat) {
+      toast('Preparing the natural voice…', 0);
+      nat.prepare().then(() => hideToast()).catch(() => hideToast());
+      return;
+    }
+    // Browser-WASM engine: a cached slow-probe verdict skips the ~90 MB
+    // download entirely and goes straight to fallback (silently — runs at boot).
     const cached = this._benchCached();
     if (cached && cached.ratio > 1.25) { this._kokoroDead = true; Settings.render(); return; }
     try {
@@ -3328,17 +3362,21 @@ const TTS = {
 window.speechSynthesis?.addEventListener('voiceschanged', () => TTS.pickDefaultVoice());
 
 // Kokoro voice catalog: [id, label].
+// [webId, label, sid] — sid is the sherpa-onnx speaker index for the NATIVE
+// engine (kokoro-multi-lang-v1_1). The browser-WASM engine uses webId. If any
+// native voice sounds wrong, only the sid here needs fixing (no rebuild —
+// `npm run sync` reships this JS).
 const KOKORO_VOICES = [
-  ['af_heart',    'Heart · US female'],
-  ['af_bella',    'Bella · US female'],
-  ['af_nicole',   'Nicole · US female'],
-  ['am_michael',  'Michael · US male'],
-  ['am_fenrir',   'Fenrir · US male'],
-  ['am_puck',     'Puck · US male'],
-  ['bf_emma',     'Emma · UK female'],
-  ['bf_isabella', 'Isabella · UK female'],
-  ['bm_george',   'George · UK male'],
-  ['bm_fable',    'Fable · UK male'],
+  ['af_heart',    'Heart · US female',    3],
+  ['af_bella',    'Bella · US female',    2],
+  ['af_nicole',   'Nicole · US female',   6],
+  ['am_michael',  'Michael · US male',    16],
+  ['am_fenrir',   'Fenrir · US male',     14],
+  ['am_puck',     'Puck · US male',       18],
+  ['bf_emma',     'Emma · UK female',     21],
+  ['bf_isabella', 'Isabella · UK female', 22],
+  ['bm_george',   'George · UK male',     26],
+  ['bm_fable',    'Fable · UK male',      25],
 ];
 // --- Voice Modal ------------------------------------------
 const VoiceModal = {

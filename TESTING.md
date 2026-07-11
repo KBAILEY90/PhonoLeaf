@@ -139,14 +139,74 @@ Guide: https://developer.chrome.com/docs/devtools/remote-debugging/
   verified this app" warning first (expected pre-launch — the drive.readonly
   scope needs formal verification eventually; for now click Advanced →
   Continue).
-- **Stage 2b (next):** the native Kokoro plugin (sherpa-onnx) — the
-  gapless-voice proof.
+- **Stage 2b (done — needs the one-time model placement in §3.6):** the native
+  Kokoro plugin (sherpa-onnx). Once the model files are in place, the app reads
+  with on-device neural Kokoro at native speed — gapless, the whole point of
+  going native. Without the model files it still works, just falling back to
+  the device voice.
 
 Reference: the Android OAuth client is "PhonoLeaf Android (debug)" in
 [Cloud Console → Credentials](https://console.cloud.google.com/apis/credentials),
 package `com.phonoleaf.app`, tied to this PC's debug-keystore SHA-1. A Play
 Store release build is signed differently and will need its own SHA-1 added
 to the same client later (Play App Signing shows it in the Play Console).
+
+### 3.6 Stage 2b one-time setup: place the Kokoro voice model (~10 min)
+
+The neural voice model is ~330 MB — too big to keep in git, so it's not in
+the repo. You download it once and drop it into the app. The sherpa-onnx
+native library (the code that runs it) IS committed, so this is the only
+manual piece.
+
+1. **Download the model** (same one you tested as a system TTS engine):
+   https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/kokoro-multi-lang-v1_1.tar.bz2
+   (Click the link in a browser, or run the curl below.)
+
+2. **Extract it.** Windows 11 has `tar` built in — open a terminal in your
+   Downloads folder and run:
+   ```
+   tar -xf kokoro-multi-lang-v1_1.tar.bz2
+   ```
+   That produces a folder named `kokoro-multi-lang-v1_1`.
+
+3. **Put its CONTENTS into the app's model folder.** Create the folder
+   `C:\Repo\phonoleaf\android\app\src\main\assets\kokoro\` and copy everything
+   from inside `kokoro-multi-lang-v1_1` into it. When done you should have:
+   ```
+   android\app\src\main\assets\kokoro\model.onnx
+   android\app\src\main\assets\kokoro\voices.bin
+   android\app\src\main\assets\kokoro\tokens.txt
+   android\app\src\main\assets\kokoro\lexicon-us-en.txt   (and -gb-en, -zh)
+   android\app\src\main\assets\kokoro\espeak-ng-data\...
+   android\app\src\main\assets\kokoro\dict\...
+   ```
+   **Important:** `model.onnx` must sit directly in `...\assets\kokoro\`, NOT
+   in `...\assets\kokoro\kokoro-multi-lang-v1_1\`. If you see a nested folder,
+   move the files up one level.
+
+   Or do steps 1–3 from a terminal in the repo:
+   ```
+   cd C:\Repo\phonoleaf\android\app\src\main\assets
+   curl -L -o k.tar.bz2 https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/kokoro-multi-lang-v1_1.tar.bz2
+   tar -xf k.tar.bz2
+   ren kokoro-multi-lang-v1_1 kokoro
+   del k.tar.bz2
+   ```
+
+4. **Build and run:** `npm run sync`, then Run ▶ in Android Studio.
+
+5. **Test:** open a book and play. First playback shows "Preparing the natural
+   voice…" while the app copies the model into place (a few seconds, one time),
+   then reads with no gaps between sentences. Try a few voices from the picker.
+
+Notes:
+- This model folder is gitignored — it never gets committed, and each fresh
+  clone re-does this step.
+- The whole model is bundled into the debug APK (big APK, fine for testing).
+  The Play Store build will download it on first run instead (Stage 5) so the
+  store download stays small.
+- If playback still has gaps or falls back to the device voice, grab
+  **Settings → Debug log → Copy log** and send it over.
 
 ---
 
