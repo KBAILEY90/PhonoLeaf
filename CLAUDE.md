@@ -43,6 +43,12 @@ renders them with epub.js, and reads the text using the browser's Web Speech
     keys (`kba_tier`, `kba_gtts_key`, `kba_voicetip`, `kba_voice_diamond`)
     which are deleted. No device loses data. The migration block is the ONLY
     place `kba_` may appear in code.
+  - The Cloud Console **OAuth consent screen App name** still said
+    "KoboAudio" (found 2026-07-06 on the native consent page: "KoboAudio
+    wants to access your Google Account") — it lives in the Google project's
+    branding settings, not in this repo; owner renames it to PhonoLeaf under
+    APIs & Services → OAuth consent screen (a.k.a. Google Auth Platform →
+    Branding).
   - The owner's local clone folder (`C:\Repo\koboaudio`) must be renamed to
     `C:\Repo\phonoleaf` manually (documented in TESTING.md §3) — note that
     renaming it detaches this project's Claude session history/memory, which
@@ -148,7 +154,11 @@ Google login); verify by inspection + the owner testing on device.
   SHA-1) and wired into `CONFIG.ANDROID_CLIENT_ID` + the manifest
   `<data android:scheme>` — ready to test on device (Run ▶, TESTING.md §3).
   If that client is ever recreated in Cloud Console, both places must be
-  updated together (a mismatch breaks the deep-link return silently).
+  updated together (a mismatch breaks the deep-link return silently), and
+  **"Enable custom URI scheme" must be checked under the client's Advanced
+  Settings** — it is OFF by default on new Android clients and sign-in then
+  fails with `Error 400: Custom URI scheme is not enabled` (hit 2026-07-06;
+  takes ~5 min to propagate after saving).
 - **Theming is CSS-variable driven (Daylight light / Midnight dark).** `:root`
   holds the **Daylight** (light) tokens as the default; a
   `@media (prefers-color-scheme: dark)` block supplies **Midnight** (dark)
