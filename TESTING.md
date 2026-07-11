@@ -94,7 +94,7 @@ real device only.
 > using it, then rename in File Explorer. Git doesn't mind.)
 
 ### 3.1 One-time project setup
-Open **Command Prompt** (or PowerShell) and run:
+Open **Command Prompt** (search Start menu for `cmd`) and run:
 
 ```
 cd C:\Repo\phonoleaf
@@ -103,6 +103,16 @@ npm install
 
 This installs Capacitor (the native shell tooling) into `node_modules/` —
 takes a few seconds.
+
+> **Using PowerShell instead of Command Prompt?** You'll likely hit:
+> `npm.ps1 cannot be loaded because running scripts is disabled on this
+> system`. That's PowerShell's script execution policy blocking npm's
+> `.ps1` wrapper — Command Prompt doesn't have this restriction, which is
+> why it's recommended above. To use PowerShell anyway, run this once
+> (no admin rights needed, type `Y` to confirm):
+> ```
+> Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+> ```
 
 ### 3.2 The test loop (every time)
 
