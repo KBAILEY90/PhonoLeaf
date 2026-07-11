@@ -158,7 +158,13 @@ Google login); verify by inspection + the owner testing on device.
   **"Enable custom URI scheme" must be checked under the client's Advanced
   Settings** — it is OFF by default on new Android clients and sign-in then
   fails with `Error 400: Custom URI scheme is not enabled` (hit 2026-07-06;
-  takes ~5 min to propagate after saving).
+  takes ~5 min to propagate after saving). **VERIFIED ON DEVICE 2026-07-06:**
+  full native flow works — sign-in via Custom Tab, deep-link return, Drive,
+  library, reader. NB the WebView origin has its OWN localStorage: the native
+  app starts fresh (no progress/stats carried over from the Chrome PWA), and
+  Kokoro still runs as browser-WASM inside the WebView until Stage 2b — on
+  the owner's phone it reads ~2 sentences then stalls ~10s (generation
+  slightly slower than realtime; prefetch absorbs it only briefly).
 - **Theming is CSS-variable driven (Daylight light / Midnight dark).** `:root`
   holds the **Daylight** (light) tokens as the default; a
   `@media (prefers-color-scheme: dark)` block supplies **Midnight** (dark)
@@ -649,11 +655,15 @@ the working plan, not an exploration.
        Kokoro exposes synthesize(text, voice) → audio, wired in as a native
        backend beside the Web Worker (detect plugin → prefer native), plus
        a sign-in-free way to demo the voice engine on device.
-     - Stage 3 — auth rework: **DONE (2026-07-06)** — system-browser (Chrome
-       Custom Tabs) authorization-code + PKCE flow with refresh tokens; see
-       the "Native auth" behavior note. Android OAuth client created +
-       wired in; needs on-device Run ▶ verification (TESTING.md §3).
-       Plugins added: @capacitor/browser, @capacitor/app.
+     - Stage 3 — auth rework: **DONE + VERIFIED ON DEVICE (2026-07-06)** —
+       system-browser (Chrome Custom Tabs) authorization-code + PKCE flow
+       with refresh tokens; see the "Native auth" behavior note. Two
+       Cloud-Console follow-ups were needed: enable custom URI scheme on
+       the Android client, and rename the consent-screen App name off
+       "KoboAudio". Plugins added: @capacitor/browser, @capacitor/app.
+       Full native flow confirmed working; voice is still WebView-WASM
+       Kokoro (~10s stalls every ~2 sentences on the owner's phone) until
+       Stage 2b ships the native engine.
      - Stage 4 — MediaSession + lock-screen/background playback (native
        `<audio>` path makes this straightforward), IndexedDB audio caching.
      - Stage 5 — Play Console ($25 one-time), internal testing track, store
