@@ -34,6 +34,10 @@ import java.io.File
 class PhonoLeafTtsPlugin : Plugin() {
 
     private val ASSET_DIR = "kokoro"
+    // Bump when the bundled model changes — the copied filesDir/kokoro is cached
+    // behind this marker, so a new asset model won't be picked up otherwise
+    // (was a real gotcha swapping kokoro-multi-lang-v1_1 → kokoro-en-v0_19).
+    private val MODEL_VERSION = "en-v0_19"
     @Volatile private var tts: OfflineTts? = null
     private val lock = Any()
 
@@ -43,12 +47,23 @@ class PhonoLeafTtsPlugin : Plugin() {
             tts?.let { return it }
             val ctx = context
             val dest = File(ctx.filesDir, ASSET_DIR)
-            val marker = File(dest, ".ready")
+            val marker = File(dest, ".ready-$MODEL_VERSION")
             if (!marker.exists()) {
+                dest.deleteRecursively() // clear any older model copy
                 copyAssetDir(ctx.assets, ASSET_DIR, dest)
                 marker.createNewFile()
             }
             val base = dest.absolutePath
+            // Only set optional paths that actually exist — the English-only
+            // model (kokoro-en-v0_19) ships espeak-ng-data but no dict/ or
+            // lexicon files (those are for the Chinese multi-lang models), and
+            // sherpa rejects paths that point at nothing.
+            fun ifExists(rel: String): String {
+                return if (File(dest, rel).exists()) "$base/$rel" else ""
+            }
+            val lexicon = listOf("lexicon-us-en.txt", "lexicon-gb-en.txt", "lexicon-zh.txt")
+                .map { File(dest, it) }.filter { it.exists() }
+                .joinToString(",") { it.absolutePath }
             val cores = Runtime.getRuntime().availableProcessors()
             val cfg = OfflineTtsConfig(
                 model = OfflineTtsModelConfig(
@@ -56,9 +71,9 @@ class PhonoLeafTtsPlugin : Plugin() {
                         model = "$base/model.onnx",
                         voices = "$base/voices.bin",
                         tokens = "$base/tokens.txt",
-                        dataDir = "$base/espeak-ng-data",
-                        dictDir = "$base/dict",
-                        lexicon = "$base/lexicon-us-en.txt,$base/lexicon-gb-en.txt,$base/lexicon-zh.txt",
+                        dataDir = ifExists("espeak-ng-data"),
+                        dictDir = ifExists("dict"),
+                        lexicon = lexicon,
                     ),
                     // Leave one core for the UI/prefetch; never below 2.
                     numThreads = maxOf(2, cores - 1),
@@ -78,7 +93,9 @@ class PhonoLeafTtsPlugin : Plugin() {
             ensureReady()
             call.resolve()
         } catch (e: Throwable) {
-            call.reject(e.message ?: "prepare failed", e)
+            // Catch Throwable (a big model load can OOM = an Error, not an
+            // Exception), but reject() only takes Exception — wrap when needed.
+            call.reject(e.message ?: "prepare failed", e as? Exception ?: RuntimeException(e))
         }
     }
 
@@ -99,7 +116,7 @@ class PhonoLeafTtsPlugin : Plugin() {
             ret.put("audio", "data:audio/wav;base64,$b64")
             call.resolve(ret)
         } catch (e: Throwable) {
-            call.reject(e.message ?: "synth failed", e)
+            call.reject(e.message ?: "synth failed", e as? Exception ?: RuntimeException(e))
         }
     }
 

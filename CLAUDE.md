@@ -75,7 +75,7 @@ renders them with epub.js, and reads the text using the browser's Web Speech
   (Kokoro) — see the "Voice engine" note; the prebuilt AAR is committed at
   `android/app/libs/sherpa-onnx.aar` (no Maven artifact exists — un-ignored
   in `android/.gitignore`), Kotlin is enabled in `app/build.gradle`, ABIs are
-  limited to arm, and the ~330 MB model is owner-placed in
+  limited to arm, and the ~330 MB `kokoro-en-v0_19` model is owner-placed in
   `app/src/main/assets/kokoro/` (gitignored — TESTING.md §3.6).
   **`app/build.gradle`'s `compileOptions`/`kotlinOptions.jvmTarget` MUST
   match `capacitor.build.gradle`'s `compileOptions`** (currently both
@@ -571,11 +571,23 @@ Google login); verify by inspection + the owner testing on device.
     gapless. `_kokoroWarm` calls the plugin's `prepare()` (no WASM download,
     no speed probe — native is known-fast); a genuine failure (e.g. model
     files not placed) strikes out to the device voice per chunk like any
-    synthesis failure. **The voice→speaker-id map lives in JS**
-    (`KOKORO_VOICES` third field = sherpa `sid` for `kokoro-multi-lang-v1_1`;
-    `_voiceSid()`), so a wrong-sounding voice is a one-line JS fix + `npm run
-    sync`, no Gradle rebuild. Speed is applied via `<audio>.playbackRate`
-    (synth always at 1.0) so prefetched/cached chunks survive speed changes.
+    synthesis failure. **The bundled model is `kokoro-en-v0_19`** (English
+    -only, 11 speakers, sids 0-10) — NOT `kokoro-multi-lang-v1_1`, which is a
+    Chinese model with only 3 English voices (af_maple/af_sol/bf_vale); pointing
+    at it made every picker voice land on an unrelated Chinese speaker (fixed
+    2026-07-06). **The voice→speaker-id map lives in JS** (`KOKORO_VOICES`
+    third field = sherpa `sid`; `_voiceSid()`), so a wrong-sounding voice is a
+    one-line JS fix + `npm run sync`, no Gradle rebuild — but the sids are
+    MODEL-SPECIFIC (each Kokoro model orders speakers differently). The Kotlin
+    plugin (`PhonoLeafTtsPlugin.kt`) is model-agnostic: it only sets the
+    optional `dataDir`/`dictDir`/`lexicon` paths that actually exist (the
+    English model has espeak-ng-data but no dict/lexicon), and a
+    `MODEL_VERSION`-stamped `.ready` marker forces the filesDir copy to refresh
+    when the bundled model changes (else the old copy wins). `_synthNative`
+    logs gen-ms / audio-ms / ratio per chunk to Diag (`{e:'nsynth',g,a,r,len}`)
+    so device speed is measurable from the Debug log. Speed is applied via
+    `<audio>.playbackRate` (synth always at 1.0) so prefetched/cached chunks
+    survive speed changes.
   - **Neural path (`_playAudio` → browser-WASM, web + fallback)**: Kokoro-82M **in a Web Worker**
     (`_kokoroWorkerEl` builds the worker from a Blob; the worker `import()`s
     `kokoro-js@1/+esm` from jsdelivr and loads HuggingFace
@@ -679,11 +691,15 @@ the working plan, not an exploration.
      - Stage 2a — DONE (2026-07-06): Capacitor 8 shell scaffolded (see
        "Native shell" note in Tech stack). Builds/installs via Android
        Studio; shows the sign-in screen (which can't proceed until Stage 3).
-     - Stage 2b — native TTS plugin: **DONE (2026-07-06)** —
+     - Stage 2b — native TTS plugin: **DONE, on device (2026-07-06)** —
        `PhonoLeafTtsPlugin.kt` (sherpa-onnx `OfflineTts`, Kokoro) exposes
        synthesize(text, sid, speed) → WAV data URL; `_synth` prefers it over
-       the Web Worker when present. Needs the owner to place the model
-       (TESTING.md §3.6) then Run ▶ to verify gapless on device.
+       the Web Worker when present. Runs natively on the owner's phone. Model
+       corrected multi-lang-v1_1 → **kokoro-en-v0_19** (see Voice-engine note)
+       so picker voices match. OUTSTANDING: still ~5-10s gaps every ~2
+       sentences on the owner's phone — `nsynth` Diag entries (gen vs audio
+       ms) will show whether it's device speed (→ try int8 model) or the
+       prefetch staying only one chunk ahead (→ prefetch 2 ahead).
      - Stage 3 — auth rework: **DONE + VERIFIED ON DEVICE (2026-07-06)** —
        system-browser (Chrome Custom Tabs) authorization-code + PKCE flow
        with refresh tokens; see the "Native auth" behavior note. Two

@@ -3087,8 +3087,24 @@ const TTS = {
   // applied live via <audio>.playbackRate (so a cached/prefetched chunk stays
   // valid across speed changes), matching the WASM path.
   async _synthNative(nat, text) {
+    // Time the native generation and estimate the audio's own duration from the
+    // decoded WAV, then log gen-ms, audio-ms and their ratio to Diag. A ratio
+    // under ~1.0 means generation outpaces playback (prefetch keeps it gapless);
+    // repeated ratios above 1.0 explain gaps and point at a too-slow device or
+    // an oversized model. (Settings → Debug log → Copy log.)
+    const t0 = performance.now();
     const r = await nat.synthesize({ text, sid: this._voiceSid(), speed: 1.0 });
     if (!r || !r.audio) throw new Error('native synth empty');
+    const genMs = Math.round(performance.now() - t0);
+    let audioMs = 0;
+    try { // WAV header: bytes 24..27 = sample rate, 40..43 = data byte length (LE)
+      const b = atob(r.audio.slice(r.audio.indexOf(',') + 1, r.audio.indexOf(',') + 81));
+      const u = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) u[i] = b.charCodeAt(i);
+      const le32 = o => u[o] | (u[o + 1] << 8) | (u[o + 2] << 16) | (u[o + 3] << 24);
+      const rate = le32(24), dataLen = le32(40);
+      if (rate > 0) audioMs = Math.round((dataLen / 2) / rate * 1000); // 16-bit mono
+    } catch (_) {}
+    Diag.push({ e: 'nsynth', g: genMs, a: audioMs, r: audioMs ? +(genMs / audioMs).toFixed(2) : 0, len: text.length });
     return r.audio;
   },
   async _playAudio(chunk, gen) {
@@ -3268,8 +3284,12 @@ const TTS = {
         rej: err => { clearTimeout(to); rej(err); },
       });
       // pl_voice_kokoro: key name kept from the old tier system so existing
-      // installs keep their chosen voice.
-      w.postMessage({ t: 'gen', id, text, voice: localStorage.getItem('pl_voice_kokoro') || 'af_heart', ...this._kokoroOpts() });
+      // installs keep their chosen voice. The WASM fallback loads the Kokoro
+      // v1.0 model, which has every catalog voice EXCEPT bare 'af' — map that
+      // to its default female so the web path always has a valid voice.
+      const sel = localStorage.getItem('pl_voice_kokoro') || 'af';
+      const voice = sel === 'af' ? 'af_heart' : sel;
+      w.postMessage({ t: 'gen', id, text, voice, ...this._kokoroOpts() });
     });
   },
   _wavBlob(f32, rate) { // mono 16-bit PCM WAV from a Float32Array
@@ -3323,9 +3343,9 @@ const TTS = {
   // neural engine is running; the system voice in fallback mode.
   activeVoiceLabel() {
     if (this._engineNow() === 'kokoro') {
-      const id = localStorage.getItem('pl_voice_kokoro') || 'af_heart';
-      const v = KOKORO_VOICES.find(x => x[0] === id);
-      return v ? v[1] : id;
+      const id = localStorage.getItem('pl_voice_kokoro') || KOKORO_VOICES[0][0];
+      const v = KOKORO_VOICES.find(x => x[0] === id) || KOKORO_VOICES[0];
+      return v[1];
     }
     return this.voice?.name || 'System default';
   },
@@ -3366,17 +3386,25 @@ window.speechSynthesis?.addEventListener('voiceschanged', () => TTS.pickDefaultV
 // engine (kokoro-multi-lang-v1_1). The browser-WASM engine uses webId. If any
 // native voice sounds wrong, only the sid here needs fixing (no rebuild —
 // `npm run sync` reships this JS).
+// Voice ids + Kokoro speaker ids (sid) for the bundled model,
+// kokoro-en-v0_19 (English-only, 11 speakers, sids 0-10 — authoritative from
+// sherpa's model page). The THIRD field is the sherpa sid passed to native
+// (_voiceSid); the native plugin picks the voice purely by this integer, so a
+// wrong-sounding voice is a one-line fix here + `npm run sync` (no Gradle
+// rebuild). NB: these ids are model-specific — a different Kokoro model
+// (e.g. multi-lang) has an entirely different speaker ordering.
 const KOKORO_VOICES = [
-  ['af_heart',    'Heart · US female',    3],
-  ['af_bella',    'Bella · US female',    2],
-  ['af_nicole',   'Nicole · US female',   6],
-  ['am_michael',  'Michael · US male',    16],
-  ['am_fenrir',   'Fenrir · US male',     14],
-  ['am_puck',     'Puck · US male',       18],
-  ['bf_emma',     'Emma · UK female',     21],
-  ['bf_isabella', 'Isabella · UK female', 22],
-  ['bm_george',   'George · UK male',     26],
-  ['bm_fable',    'Fable · UK male',      25],
+  ['af',          'Heart · US female',    0],
+  ['af_bella',    'Bella · US female',    1],
+  ['af_nicole',   'Nicole · US female',   2],
+  ['af_sarah',    'Sarah · US female',    3],
+  ['af_sky',      'Sky · US female',      4],
+  ['am_adam',     'Adam · US male',       5],
+  ['am_michael',  'Michael · US male',    6],
+  ['bf_emma',     'Emma · UK female',     7],
+  ['bf_isabella', 'Isabella · UK female', 8],
+  ['bm_george',   'George · UK male',     9],
+  ['bm_lewis',    'Lewis · UK male',      10],
 ];
 // --- Voice Modal ------------------------------------------
 const VoiceModal = {

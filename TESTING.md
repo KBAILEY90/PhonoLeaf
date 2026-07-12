@@ -163,51 +163,51 @@ to the same client later (Play App Signing shows it in the Play Console).
 
 ### 3.6 Stage 2b one-time setup: place the Kokoro voice model (~10 min)
 
-The neural voice model is ~330 MB — too big to keep in git, so it's not in
-the repo. You download it once and drop it into the app. The sherpa-onnx
-native library (the code that runs it) IS committed, so this is the only
-manual piece.
+The neural voice model (~330 MB) is too big for git, so you download it once
+and drop it into the app. The sherpa-onnx native library (the code that runs
+it) IS committed, so this is the only manual piece.
 
-1. **Download the model** (same one you tested as a system TTS engine):
-   https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/kokoro-multi-lang-v1_1.tar.bz2
-   (Click the link in a browser, or run the curl below.)
+> **Use `kokoro-en-v0_19` — the English model.** The earlier
+> `kokoro-multi-lang-v1_1` is a *Chinese* model with only 3 English voices, so
+> the app's voice picker didn't line up with what you heard. This English-only
+> model has the 11 voices in the picker and is the right fit for an English
+> audiobook app. **If you already placed the multi-lang model, delete the old
+> `...\assets\kokoro\` folder first** (step 1 below).
 
-2. **Extract it.** Windows 11 has `tar` built in — open a terminal in your
-   Downloads folder and run:
+1. **Delete any old model folder** if you placed one before:
    ```
-   tar -xf kokoro-multi-lang-v1_1.tar.bz2
+   rmdir /s /q C:\Repo\phonoleaf\android\app\src\main\assets\kokoro
    ```
-   That produces a folder named `kokoro-multi-lang-v1_1`.
+   (The app also caches a copy on the phone, but it re-copies automatically
+   when the model changes — no need to touch the phone.)
 
-3. **Put its CONTENTS into the app's model folder.** Create the folder
-   `C:\Repo\phonoleaf\android\app\src\main\assets\kokoro\` and copy everything
-   from inside `kokoro-multi-lang-v1_1` into it. When done you should have:
+2. **Download + extract into the app's model folder** — from a terminal
+   (Windows 11 has `tar` built in):
+   ```
+   cd C:\Repo\phonoleaf\android\app\src\main\assets
+   curl -L -o k.tar.bz2 https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/kokoro-en-v0_19.tar.bz2
+   tar -xf k.tar.bz2
+   ren kokoro-en-v0_19 kokoro
+   del k.tar.bz2
+   ```
+
+3. **Verify the layout** — `model.onnx` must sit DIRECTLY in the `kokoro`
+   folder, not in a nested subfolder:
    ```
    android\app\src\main\assets\kokoro\model.onnx
    android\app\src\main\assets\kokoro\voices.bin
    android\app\src\main\assets\kokoro\tokens.txt
-   android\app\src\main\assets\kokoro\lexicon-us-en.txt   (and -gb-en, -zh)
    android\app\src\main\assets\kokoro\espeak-ng-data\...
-   android\app\src\main\assets\kokoro\dict\...
    ```
-   **Important:** `model.onnx` must sit directly in `...\assets\kokoro\`, NOT
-   in `...\assets\kokoro\kokoro-multi-lang-v1_1\`. If you see a nested folder,
-   move the files up one level.
-
-   Or do steps 1–3 from a terminal in the repo:
-   ```
-   cd C:\Repo\phonoleaf\android\app\src\main\assets
-   curl -L -o k.tar.bz2 https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/kokoro-multi-lang-v1_1.tar.bz2
-   tar -xf k.tar.bz2
-   ren kokoro-multi-lang-v1_1 kokoro
-   del k.tar.bz2
-   ```
+   (This English model has NO `dict\` or `lexicon-*.txt` files — that's
+   expected; the plugin only uses what's present.)
 
 4. **Build and run:** `npm run sync`, then Run ▶ in Android Studio.
 
 5. **Test:** open a book and play. First playback shows "Preparing the natural
    voice…" while the app copies the model into place (a few seconds, one time),
-   then reads with no gaps between sentences. Try a few voices from the picker.
+   then reads. Try the voices in the picker — they should now match what you
+   hear (US/UK, male/female).
 
 Notes:
 - This model folder is gitignored — it never gets committed, and each fresh
@@ -215,8 +215,13 @@ Notes:
 - The whole model is bundled into the debug APK (big APK, fine for testing).
   The Play Store build will download it on first run instead (Stage 5) so the
   store download stays small.
-- If playback still has gaps or falls back to the device voice, grab
-  **Settings → Debug log → Copy log** and send it over.
+- **If playback still gaps between sentences, grab Settings → Debug log →
+  Copy log and send it.** The `nsynth` entries show generation time (`g`) vs
+  audio length (`a`) in ms and their ratio (`r`) — `r` under ~1.0 means the
+  device generates faster than it plays (should be gapless); repeated `r`
+  above 1.0 means the model is too slow on this device and we'd switch to the
+  smaller int8 model (`kokoro-int8-multi-lang-v1_1`, but note its different
+  voice set).
 
 ---
 
