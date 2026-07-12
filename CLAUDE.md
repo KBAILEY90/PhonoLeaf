@@ -574,7 +574,9 @@ Google login); verify by inspection + the owner testing on device.
     generates on a **single-thread executor** (serialized, off-main) and caps
     sherpa's `numThreads` to `2..4` (cores/2) so ONNX inference can't starve
     the UI/render thread (cores-1 did). WAV files rotate through a small
-    cacheDir ring. `_kokoroWarm` calls the plugin's `prepare()` (no WASM download,
+    cacheDir ring. `_stopAudio()` calls the plugin's `cancel()` (bumps an
+    `epoch`; queued-but-unstarted synths whose stamp is stale are skipped) so
+    leaving the reader doesn't leave seconds of dead inference pegging the CPU. `_kokoroWarm` calls the plugin's `prepare()` (no WASM download,
     no speed probe — native is known-fast); a genuine failure (e.g. model
     files not placed) strikes out to the device voice per chunk like any
     synthesis failure. **The bundled model is `kokoro-en-v0_19`** (English

@@ -59,6 +59,10 @@ class PhonoLeafTtsPlugin : Plugin() {
     private val MODEL_VERSION = "en-v0_19"
     @Volatile private var tts: OfflineTts? = null
     private val lock = Any()
+    // Bumped by cancel() (called when the web layer stops/leaves the reader).
+    // Queued-but-not-yet-started synths whose stamp is stale are skipped, so
+    // leaving the reader doesn't leave 30s of dead inference pegging the CPU.
+    @Volatile private var epoch = 0
 
     private fun ensureReady(): OfflineTts {
         tts?.let { return it }
@@ -120,6 +124,15 @@ class PhonoLeafTtsPlugin : Plugin() {
         }
     }
 
+    /** Skip any queued synths (stop / leaving the reader) so we don't burn CPU
+     *  finishing audio nobody will hear. Can't interrupt an in-flight generate,
+     *  but clears everything still waiting. */
+    @PluginMethod
+    fun cancel(call: PluginCall) {
+        epoch++
+        call.resolve()
+    }
+
     /** synthesize({ text, sid, speed }) -> { path, durationMs } */
     @PluginMethod
     fun synthesize(call: PluginCall) {
@@ -127,10 +140,14 @@ class PhonoLeafTtsPlugin : Plugin() {
         if (text.isNullOrBlank()) { call.reject("no text"); return }
         val sid = call.getInt("sid", 0) ?: 0
         val speed = call.getFloat("speed", 1.0f) ?: 1.0f
+        val stamp = epoch
         // Off the main thread + serialized: the single-thread executor runs one
         // generation at a time, so a prefetch never overlaps the current synth.
         genExecutor.execute {
             try {
+                // A cancel() since this was queued means the page/session moved
+                // on — skip the (potentially multi-second) generation entirely.
+                if (stamp != epoch) { call.reject("cancelled"); return@execute }
                 val engine = ensureReady()
                 val audio = engine.generate(text, sid, speed)
                 val durationMs = (audio.samples.size.toLong() * 1000 /

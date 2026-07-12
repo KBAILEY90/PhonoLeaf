@@ -3062,6 +3062,9 @@ const TTS = {
       const p = this._preSynth; this._preSynth = null;
       p.p.then(u => { if (u && u.startsWith('blob:')) URL.revokeObjectURL(u); }).catch(() => {});
     }
+    // Tell native to drop any queued generation — otherwise leaving the reader
+    // leaves seconds of dead inference pegging the CPU (froze the UI).
+    try { this._nativeTts()?.cancel(); } catch (_) {}
   },
   // The native Capacitor Kokoro plugin (sherpa-onnx), or null on the web / in a
   // build without it. When present it's the preferred engine — native
