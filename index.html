@@ -3087,25 +3087,20 @@ const TTS = {
   // applied live via <audio>.playbackRate (so a cached/prefetched chunk stays
   // valid across speed changes), matching the WASM path.
   async _synthNative(nat, text) {
-    // Time the native generation and estimate the audio's own duration from the
-    // decoded WAV, then log gen-ms, audio-ms and their ratio to Diag. A ratio
-    // under ~1.0 means generation outpaces playback (prefetch keeps it gapless);
-    // repeated ratios above 1.0 explain gaps and point at a too-slow device or
-    // an oversized model. (Settings → Debug log → Copy log.)
+    // The plugin writes a WAV to cacheDir and returns its path + duration — no
+    // base64 (a ~1 MB string per sentence decoded into a data: URL on the main
+    // thread froze the reader UI). We load it via the Capacitor local server
+    // (convertFileSrc → http://localhost/...), which streams off-thread.
+    // Log gen-ms / audio-ms / ratio to Diag: ratio < ~1.0 means generation
+    // outpaces playback (prefetch keeps it gapless); repeated ratios above 1.0
+    // explain gaps and point at a too-slow device or model.
     const t0 = performance.now();
     const r = await nat.synthesize({ text, sid: this._voiceSid(), speed: 1.0 });
-    if (!r || !r.audio) throw new Error('native synth empty');
+    if (!r || !r.path) throw new Error('native synth empty');
     const genMs = Math.round(performance.now() - t0);
-    let audioMs = 0;
-    try { // WAV header: bytes 24..27 = sample rate, 40..43 = data byte length (LE)
-      const b = atob(r.audio.slice(r.audio.indexOf(',') + 1, r.audio.indexOf(',') + 81));
-      const u = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) u[i] = b.charCodeAt(i);
-      const le32 = o => u[o] | (u[o + 1] << 8) | (u[o + 2] << 16) | (u[o + 3] << 24);
-      const rate = le32(24), dataLen = le32(40);
-      if (rate > 0) audioMs = Math.round((dataLen / 2) / rate * 1000); // 16-bit mono
-    } catch (_) {}
+    const audioMs = r.durationMs || 0;
     Diag.push({ e: 'nsynth', g: genMs, a: audioMs, r: audioMs ? +(genMs / audioMs).toFixed(2) : 0, len: text.length });
-    return r.audio;
+    return (window.Capacitor && Capacitor.convertFileSrc) ? Capacitor.convertFileSrc(r.path) : ('file://' + r.path);
   },
   async _playAudio(chunk, gen) {
     try {

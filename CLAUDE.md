@@ -565,10 +565,16 @@ Google login); verify by inspection + the owner testing on device.
   automatic fallback. One chunk state machine, two paths:
   - **Native path (`_synthNative`, preferred when present)**: on the
     Capacitor Android build, `TTS._nativeTts()` finds the `PhonoLeafTts`
-    plugin and `_synth` routes to it — sherpa-onnx runs Kokoro natively
-    (multi-threaded, faster than realtime on phones), returning a WAV data
-    URL played through the same `<audio>`/prefetch pipeline, so playback is
-    gapless. `_kokoroWarm` calls the plugin's `prepare()` (no WASM download,
+    plugin and `_synth` routes to it — sherpa-onnx runs Kokoro natively,
+    returning **a WAV FILE path + durationMs** (NOT base64: a ~1 MB base64
+    string per sentence decoded into a `data:` URL froze the WebView main
+    thread — the reader UI, incl. the back button, stopped responding). JS
+    loads it via `Capacitor.convertFileSrc(path)` (local-server stream, off
+    the main thread) into the same `<audio>`/prefetch pipeline. The plugin
+    generates on a **single-thread executor** (serialized, off-main) and caps
+    sherpa's `numThreads` to `2..4` (cores/2) so ONNX inference can't starve
+    the UI/render thread (cores-1 did). WAV files rotate through a small
+    cacheDir ring. `_kokoroWarm` calls the plugin's `prepare()` (no WASM download,
     no speed probe — native is known-fast); a genuine failure (e.g. model
     files not placed) strikes out to the device voice per chunk like any
     synthesis failure. **The bundled model is `kokoro-en-v0_19`** (English

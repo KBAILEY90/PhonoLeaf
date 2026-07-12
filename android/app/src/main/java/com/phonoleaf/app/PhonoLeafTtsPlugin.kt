@@ -1,7 +1,6 @@
 package com.phonoleaf.app
 
 import android.content.res.AssetManager
-import android.util.Base64
 import com.getcapacitor.JSObject
 import com.getcapacitor.Plugin
 import com.getcapacitor.PluginCall
@@ -11,29 +10,49 @@ import com.k2fsa.sherpa.onnx.OfflineTts
 import com.k2fsa.sherpa.onnx.OfflineTtsConfig
 import com.k2fsa.sherpa.onnx.OfflineTtsKokoroModelConfig
 import com.k2fsa.sherpa.onnx.OfflineTtsModelConfig
-import java.io.ByteArrayOutputStream
+import java.io.BufferedOutputStream
 import java.io.File
+import java.io.FileOutputStream
+import java.io.OutputStream
+import java.util.concurrent.Executors
 
 /**
  * Native neural TTS for PhonoLeaf: Kokoro-82M via sherpa-onnx, exposed to the
- * web layer as synthesize(text, sid, speed) -> WAV data URL.
+ * web layer as synthesize(text, sid, speed) -> { path, durationMs }.
  *
  * The web app (TTS._synthNative) prefers this plugin when present; the same
- * prefetch pipeline that hides latency for the browser-WASM path applies here,
- * and native generation is faster than realtime on phones, so playback is
- * gapless. If the plugin is absent (web build) or a call fails (model not
- * placed yet), the web layer falls back automatically.
+ * prefetch pipeline that hides latency for the browser-WASM path applies here.
+ * If the plugin is absent (web build) or a call fails (model not placed yet),
+ * the web layer falls back automatically.
+ *
+ * Audio is written to a WAV FILE in cacheDir and returned as a path — the web
+ * side loads it via Capacitor.convertFileSrc(). We deliberately do NOT return
+ * base64: a ~1 MB base64 string per sentence crossing the bridge and being
+ * decoded into a data: URL froze the WebView's main thread (the reader UI
+ * stopped responding — even the back button). File + local-server streaming
+ * keeps the main thread free.
+ *
+ * Generation runs on a private single-thread executor (serialized, off the
+ * main thread) and sherpa's internal thread count is capped so ONNX inference
+ * can't starve the UI/render threads.
  *
  * Model files: the owner drops the extracted Kokoro model into
  *   android/app/src/main/assets/kokoro/   (gitignored — see TESTING.md).
- * On first use we copy that folder to filesDir once (espeak-ng-data, dict and
- * the lexicon files must be opened by native code via real filesystem paths,
- * not through the AssetManager), then load from disk.
+ * On first use we copy that folder to filesDir once (espeak-ng-data / dict /
+ * lexicon files must be opened by native code via real filesystem paths, not
+ * through the AssetManager), then load from disk.
  */
 @CapacitorPlugin(name = "PhonoLeafTts")
 class PhonoLeafTtsPlugin : Plugin() {
 
     private val ASSET_DIR = "kokoro"
+    // Serializes generation off the main thread; prefetch + on-demand calls
+    // queue here instead of overlapping (which would spike memory/CPU).
+    private val genExecutor = Executors.newSingleThreadExecutor()
+    // Ring of reused WAV filenames in cacheDir. Prefetch keeps at most ~2 files
+    // live at once; a ring of 8 means a slot is never reused while still playing.
+    private var fileCounter = 0
+    private val RING = 8
     // Bump when the bundled model changes — the copied filesDir/kokoro is cached
     // behind this marker, so a new asset model won't be picked up otherwise
     // (was a real gotcha swapping kokoro-multi-lang-v1_1 → kokoro-en-v0_19).
@@ -75,8 +94,10 @@ class PhonoLeafTtsPlugin : Plugin() {
                         dictDir = ifExists("dict"),
                         lexicon = lexicon,
                     ),
-                    // Leave one core for the UI/prefetch; never below 2.
-                    numThreads = maxOf(2, cores - 1),
+                    // Cap inference threads so ONNX can't saturate every core
+                    // and starve the UI/render thread (cores-1 made the reader
+                    // unresponsive). Half the cores, clamped to 2..4.
+                    numThreads = maxOf(2, minOf(4, cores / 2)),
                     provider = "cpu",
                 ),
             )
@@ -99,24 +120,29 @@ class PhonoLeafTtsPlugin : Plugin() {
         }
     }
 
-    /** synthesize({ text, sid, speed }) -> { audio: "data:audio/wav;base64,..." } */
+    /** synthesize({ text, sid, speed }) -> { path, durationMs } */
     @PluginMethod
     fun synthesize(call: PluginCall) {
         val text = call.getString("text")
         if (text.isNullOrBlank()) { call.reject("no text"); return }
         val sid = call.getInt("sid", 0) ?: 0
         val speed = call.getFloat("speed", 1.0f) ?: 1.0f
-        try {
-            val engine = ensureReady()
-            // Serialize generation — cheap insurance against a prefetch call
-            // overlapping the current one and spiking memory.
-            val audio = synchronized(lock) { engine.generate(text, sid, speed) }
-            val b64 = pcmToWavBase64(audio.samples, audio.sampleRate)
-            val ret = JSObject()
-            ret.put("audio", "data:audio/wav;base64,$b64")
-            call.resolve(ret)
-        } catch (e: Throwable) {
-            call.reject(e.message ?: "synth failed", e as? Exception ?: RuntimeException(e))
+        // Off the main thread + serialized: the single-thread executor runs one
+        // generation at a time, so a prefetch never overlaps the current synth.
+        genExecutor.execute {
+            try {
+                val engine = ensureReady()
+                val audio = engine.generate(text, sid, speed)
+                val durationMs = (audio.samples.size.toLong() * 1000 /
+                    maxOf(1, audio.sampleRate)).toInt()
+                val f = writeWavFile(audio.samples, audio.sampleRate)
+                val ret = JSObject()
+                ret.put("path", f.absolutePath)
+                ret.put("durationMs", durationMs)
+                call.resolve(ret)
+            } catch (e: Throwable) {
+                call.reject(e.message ?: "synth failed", e as? Exception ?: RuntimeException(e))
+            }
         }
     }
 
@@ -133,10 +159,20 @@ class PhonoLeafTtsPlugin : Plugin() {
         for (name in children) copyAssetDir(am, "$src/$name", File(dst, name))
     }
 
-    // Mono 16-bit PCM WAV, base64 (NO_WRAP) — consumed as an <audio> data URL.
-    private fun pcmToWavBase64(samples: FloatArray, sampleRate: Int): String {
+    // Write a mono 16-bit PCM WAV into cacheDir and return the file. Filenames
+    // are reused round-robin (RING slots) so the cache never grows unbounded;
+    // with prefetch only ~2 files are live, so a slot is free long before reuse.
+    private fun writeWavFile(samples: FloatArray, sampleRate: Int): File {
+        val dir = File(context.cacheDir, "tts").apply { mkdirs() }
+        val f = File(dir, "s${fileCounter++ % RING}.wav")
+        BufferedOutputStream(FileOutputStream(f)).use { out ->
+            writeWav(out, samples, sampleRate)
+        }
+        return f
+    }
+
+    private fun writeWav(out: OutputStream, samples: FloatArray, sampleRate: Int) {
         val n = samples.size
-        val out = ByteArrayOutputStream(44 + n * 2)
         fun str(s: String) = out.write(s.toByteArray(Charsets.US_ASCII))
         fun i32(v: Int) { out.write(v and 0xff); out.write((v ushr 8) and 0xff); out.write((v ushr 16) and 0xff); out.write((v ushr 24) and 0xff) }
         fun i16(v: Int) { out.write(v and 0xff); out.write((v ushr 8) and 0xff) }
@@ -147,6 +183,5 @@ class PhonoLeafTtsPlugin : Plugin() {
             val clamped = if (s > 1f) 1f else if (s < -1f) -1f else s
             i16((clamped * 32767f).toInt())
         }
-        return Base64.encodeToString(out.toByteArray(), Base64.NO_WRAP)
     }
 }
