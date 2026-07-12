@@ -85,6 +85,19 @@ class PhonoLeafTtsPlugin : Plugin() {
             fun ifExists(rel: String): String {
                 return if (File(dest, rel).exists()) "$base/$rel" else ""
             }
+            // int8 models name the ONNX file model.int8.onnx (fp32 = model.onnx).
+            // Pointing at a missing file crashes the native loader HARD (the app
+            // just closes — NOT a catchable exception), so resolve the real name:
+            // prefer the exact known names, else any *.onnx present. If none, we
+            // throw a *catchable* error → the web layer falls back to the device
+            // voice instead of the app crashing.
+            val modelFile = when {
+                File(dest, "model.onnx").exists() -> "model.onnx"
+                File(dest, "model.int8.onnx").exists() -> "model.int8.onnx"
+                else -> dest.listFiles { f -> f.name.endsWith(".onnx") }?.firstOrNull()?.name
+                    ?: throw java.io.FileNotFoundException(
+                        "No *.onnx in $base — is the kokoro model placed? (TESTING.md 3.6)")
+            }
             val lexicon = listOf("lexicon-us-en.txt", "lexicon-gb-en.txt", "lexicon-zh.txt")
                 .map { File(dest, it) }.filter { it.exists() }
                 .joinToString(",") { it.absolutePath }
@@ -92,7 +105,7 @@ class PhonoLeafTtsPlugin : Plugin() {
             val cfg = OfflineTtsConfig(
                 model = OfflineTtsModelConfig(
                     kokoro = OfflineTtsKokoroModelConfig(
-                        model = "$base/model.onnx",
+                        model = "$base/$modelFile",
                         voices = "$base/voices.bin",
                         tokens = "$base/tokens.txt",
                         dataDir = ifExists("espeak-ng-data"),

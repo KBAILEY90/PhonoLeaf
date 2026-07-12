@@ -596,7 +596,12 @@ Google login); verify by inspection + the owner testing on device.
     MODEL-SPECIFIC (each Kokoro model orders speakers differently). The Kotlin
     plugin (`PhonoLeafTtsPlugin.kt`) is model-agnostic: it only sets the
     optional `dataDir`/`dictDir`/`lexicon` paths that actually exist (the
-    English model has espeak-ng-data but no dict/lexicon), and a
+    English model has espeak-ng-data but no dict/lexicon), **resolves the ONNX
+    filename at runtime** (`model.onnx` for fp32, `model.int8.onnx` for int8,
+    else any `*.onnx`) — hard-coding `model.onnx` made the int8 model's missing
+    file crash the native loader with no catchable exception (the app just
+    closed); a genuinely absent model now throws a catchable
+    `FileNotFoundException` → device-voice fallback instead of a crash — and a
     `MODEL_VERSION`-stamped `.ready` marker forces the filesDir copy to refresh
     when the bundled model changes (else the old copy wins). `_synthNative`
     logs gen-ms / audio-ms / ratio per chunk to Diag (`{e:'nsynth',g,a,r,len}`)
