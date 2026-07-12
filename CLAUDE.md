@@ -75,7 +75,7 @@ renders them with epub.js, and reads the text using the browser's Web Speech
   (Kokoro) — see the "Voice engine" note; the prebuilt AAR is committed at
   `android/app/libs/sherpa-onnx.aar` (no Maven artifact exists — un-ignored
   in `android/.gitignore`), Kotlin is enabled in `app/build.gradle`, ABIs are
-  limited to arm, and the ~330 MB `kokoro-en-v0_19` model is owner-placed in
+  limited to arm, and the `kokoro-int8-en-v0_19` model is owner-placed in
   `app/src/main/assets/kokoro/` (gitignored — TESTING.md §3.6).
   **`app/build.gradle`'s `compileOptions`/`kotlinOptions.jvmTarget` MUST
   match `capacitor.build.gradle`'s `compileOptions`** (currently both
@@ -571,19 +571,26 @@ Google login); verify by inspection + the owner testing on device.
     thread — the reader UI, incl. the back button, stopped responding). JS
     loads it via `Capacitor.convertFileSrc(path)` (local-server stream, off
     the main thread) into the same `<audio>`/prefetch pipeline. The plugin
-    generates on a **single-thread executor** (serialized, off-main) and caps
-    sherpa's `numThreads` to `2..4` (cores/2) so ONNX inference can't starve
-    the UI/render thread (cores-1 did). WAV files rotate through a small
+    generates on a **single-thread executor** (serialized, off-main). Uses the
+    **int8** model (`kokoro-int8-en-v0_19`) — the fp32 model took 10-30s to
+    generate ONE sentence on the owner's phone, pegging every core for the full
+    window and freezing the reader UI (back button dead); int8 is 2-4× faster
+    (validated: the owner's standalone sherpa APK ran int8 faster than
+    realtime). With int8, `numThreads = cores-1` (pegging is brief and overlaps
+    playback via prefetch, and cancel() bounds the leave-delay to one in-flight
+    synth). WAV files rotate through a small
     cacheDir ring. `_stopAudio()` calls the plugin's `cancel()` (bumps an
     `epoch`; queued-but-unstarted synths whose stamp is stale are skipped) so
     leaving the reader doesn't leave seconds of dead inference pegging the CPU. `_kokoroWarm` calls the plugin's `prepare()` (no WASM download,
     no speed probe — native is known-fast); a genuine failure (e.g. model
     files not placed) strikes out to the device voice per chunk like any
-    synthesis failure. **The bundled model is `kokoro-en-v0_19`** (English
-    -only, 11 speakers, sids 0-10) — NOT `kokoro-multi-lang-v1_1`, which is a
+    synthesis failure. **The bundled model is `kokoro-int8-en-v0_19`**
+    (English-only, 11 speakers, sids 0-10; int8 for speed — same voices/order
+    as the fp32 `kokoro-en-v0_19`) — NOT `kokoro-multi-lang-v1_1`, which is a
     Chinese model with only 3 English voices (af_maple/af_sol/bf_vale); pointing
     at it made every picker voice land on an unrelated Chinese speaker (fixed
-    2026-07-06). **The voice→speaker-id map lives in JS** (`KOKORO_VOICES`
+    2026-07-06). NB: no int8 English model is listed on the sherpa doc PAGE, but
+    `kokoro-int8-en-v0_19.tar.bz2` DOES exist in the GitHub tts-models release. **The voice→speaker-id map lives in JS** (`KOKORO_VOICES`
     third field = sherpa `sid`; `_voiceSid()`), so a wrong-sounding voice is a
     one-line JS fix + `npm run sync`, no Gradle rebuild — but the sids are
     MODEL-SPECIFIC (each Kokoro model orders speakers differently). The Kotlin
@@ -701,13 +708,14 @@ the working plan, not an exploration.
        Studio; shows the sign-in screen (which can't proceed until Stage 3).
      - Stage 2b — native TTS plugin: **DONE, on device (2026-07-06)** —
        `PhonoLeafTtsPlugin.kt` (sherpa-onnx `OfflineTts`, Kokoro) exposes
-       synthesize(text, sid, speed) → WAV data URL; `_synth` prefers it over
-       the Web Worker when present. Runs natively on the owner's phone. Model
-       corrected multi-lang-v1_1 → **kokoro-en-v0_19** (see Voice-engine note)
-       so picker voices match. OUTSTANDING: still ~5-10s gaps every ~2
-       sentences on the owner's phone — `nsynth` Diag entries (gen vs audio
-       ms) will show whether it's device speed (→ try int8 model) or the
-       prefetch staying only one chunk ahead (→ prefetch 2 ahead).
+       synthesize(text, sid, speed) → WAV file path; `_synth` prefers it over
+       the Web Worker when present. Iterations that were needed on device:
+       (1) model multi-lang-v1_1 → en-v0_19 (voices matched but fp32 was
+       10-30s/sentence, froze UI) → **kokoro-int8-en-v0_19** (2-4× faster);
+       (2) return a file path not base64 (base64 on the main thread froze the
+       WebView); (3) `cancel()` on stop so leaving the reader doesn't peg the
+       CPU. See the Voice-engine note. Owner re-tests int8 for gapless +
+       responsive.
      - Stage 3 — auth rework: **DONE + VERIFIED ON DEVICE (2026-07-06)** —
        system-browser (Chrome Custom Tabs) authorization-code + PKCE flow
        with refresh tokens; see the "Native auth" behavior note. Two

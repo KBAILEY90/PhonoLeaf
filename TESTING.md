@@ -163,31 +163,32 @@ to the same client later (Play App Signing shows it in the Play Console).
 
 ### 3.6 Stage 2b one-time setup: place the Kokoro voice model (~10 min)
 
-The neural voice model (~330 MB) is too big for git, so you download it once
-and drop it into the app. The sherpa-onnx native library (the code that runs
-it) IS committed, so this is the only manual piece.
+The neural voice model is too big for git, so you download it once and drop it
+into the app. The sherpa-onnx native library (the code that runs it) IS
+committed, so this is the only manual piece.
 
-> **Use `kokoro-en-v0_19` — the English model.** The earlier
-> `kokoro-multi-lang-v1_1` is a *Chinese* model with only 3 English voices, so
-> the app's voice picker didn't line up with what you heard. This English-only
-> model has the 11 voices in the picker and is the right fit for an English
-> audiobook app. **If you already placed the multi-lang model, delete the old
-> `...\assets\kokoro\` folder first** (step 1 below).
+> **Use `kokoro-int8-en-v0_19` — the int8 English model.** Same 11 English
+> voices as the plain `kokoro-en-v0_19`, but "int8" means it's quantized to run
+> **2-4× faster** on a phone — the fp32 model took 10-30 s to generate ONE
+> sentence (unusably slow, froze the UI); int8 is what your standalone
+> sherpa-onnx test used when it ran faster than realtime. The voices and their
+> order are identical, so nothing in the app changes — just the model file.
+> **Delete the old `...\assets\kokoro\` folder first.**
 
-1. **Delete any old model folder** if you placed one before:
+1. **Delete the old model folder:**
    ```
    rmdir /s /q C:\Repo\phonoleaf\android\app\src\main\assets\kokoro
    ```
-   (The app also caches a copy on the phone, but it re-copies automatically
-   when the model changes — no need to touch the phone.)
+   (The app caches a copy on the phone too, but it re-copies automatically when
+   the model changes — no need to touch the phone.)
 
 2. **Download + extract into the app's model folder** — from a terminal
    (Windows 11 has `tar` built in):
    ```
    cd C:\Repo\phonoleaf\android\app\src\main\assets
-   curl -L -o k.tar.bz2 https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/kokoro-en-v0_19.tar.bz2
+   curl -L -o k.tar.bz2 https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/kokoro-int8-en-v0_19.tar.bz2
    tar -xf k.tar.bz2
-   ren kokoro-en-v0_19 kokoro
+   ren kokoro-int8-en-v0_19 kokoro
    del k.tar.bz2
    ```
 
@@ -206,8 +207,8 @@ it) IS committed, so this is the only manual piece.
 
 5. **Test:** open a book and play. First playback shows "Preparing the natural
    voice…" while the app copies the model into place (a few seconds, one time),
-   then reads. Try the voices in the picker — they should now match what you
-   hear (US/UK, male/female).
+   then reads — now with short/no gaps between sentences, and the UI stays
+   responsive (you can leave the reader). Try the voices in the picker.
 
 Notes:
 - This model folder is gitignored — it never gets committed, and each fresh

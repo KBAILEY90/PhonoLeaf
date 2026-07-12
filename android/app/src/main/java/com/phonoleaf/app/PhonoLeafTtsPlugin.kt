@@ -55,8 +55,9 @@ class PhonoLeafTtsPlugin : Plugin() {
     private val RING = 8
     // Bump when the bundled model changes — the copied filesDir/kokoro is cached
     // behind this marker, so a new asset model won't be picked up otherwise
-    // (was a real gotcha swapping kokoro-multi-lang-v1_1 → kokoro-en-v0_19).
-    private val MODEL_VERSION = "en-v0_19"
+    // (was a real gotcha swapping kokoro-multi-lang-v1_1 → kokoro-en-v0_19 →
+    // kokoro-int8-en-v0_19).
+    private val MODEL_VERSION = "int8-en-v0_19"
     @Volatile private var tts: OfflineTts? = null
     private val lock = Any()
     // Bumped by cancel() (called when the web layer stops/leaves the reader).
@@ -98,10 +99,12 @@ class PhonoLeafTtsPlugin : Plugin() {
                         dictDir = ifExists("dict"),
                         lexicon = lexicon,
                     ),
-                    // Cap inference threads so ONNX can't saturate every core
-                    // and starve the UI/render thread (cores-1 made the reader
-                    // unresponsive). Half the cores, clamped to 2..4.
-                    numThreads = maxOf(2, minOf(4, cores / 2)),
+                    // int8 generation is short enough that pegging cores is
+                    // brief and overlaps playback (prefetch), and cancel() bounds
+                    // the leave-the-reader delay to one in-flight synth — so use
+                    // cores-1 for speed. (With the slow fp32 model, cores-1 froze
+                    // the UI for the full 10-30s generation; int8 fixes that.)
+                    numThreads = maxOf(2, cores - 1),
                     provider = "cpu",
                 ),
             )
