@@ -1,6 +1,7 @@
 package com.phonoleaf.app
 
 import android.content.res.AssetManager
+import android.util.Log
 import com.getcapacitor.JSObject
 import com.getcapacitor.Plugin
 import com.getcapacitor.PluginCall
@@ -165,9 +166,17 @@ class PhonoLeafTtsPlugin : Plugin() {
                 // on — skip the (potentially multi-second) generation entirely.
                 if (stamp != epoch) { call.reject("cancelled"); return@execute }
                 val engine = ensureReady()
+                val t0 = System.currentTimeMillis()
                 val audio = engine.generate(text, sid, speed)
+                val genMs = System.currentTimeMillis() - t0
                 val durationMs = (audio.samples.size.toLong() * 1000 /
                     maxOf(1, audio.sampleRate)).toInt()
+                // Pure native generation timing — readable in Android Studio's
+                // Logcat (filter tag "PhonoLeafTts"). ratio<1 = faster than
+                // realtime (gaps aren't generation speed); ratio>1 = too slow.
+                val ratio = genMs.toFloat() / maxOf(1, durationMs)
+                Log.i("PhonoLeafTts",
+                    "gen=${genMs}ms audio=${durationMs}ms ratio=${"%.2f".format(ratio)} chars=${text.length}")
                 val f = writeWavFile(audio.samples, audio.sampleRate)
                 val ret = JSObject()
                 ret.put("path", f.absolutePath)
