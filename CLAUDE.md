@@ -419,6 +419,12 @@ Google login); verify by inspection + the owner testing on device.
   are flagged and get a forced terminal stop so the voice falls/pauses. If you
   ever move to cloud neural TTS, emit SSML (`<break>`/`<s>`) from these same
   block segments rather than re-flattening.
+- **`_split()` must keep the trailing unpunctuated fragment.** Its regex is
+  `/[^.!?…\n]+(?:[.!?…\n]+|$)/g` — the `|$` is load-bearing: the last sentence
+  on a page is cut by the column break and has NO terminal punctuation, so
+  without `|$` the regex captured nothing for it and the fragment was silently
+  dropped → the page turned without reading its last sentence (fixed 2026-07-06,
+  "skipping the cut last sentence").
 - **Empty pages are skipped — direction-aware.** A page with no extractable
   text (the cover, or any image-only page) used to make `start()` bail with "No
   text found to read". Now blank-page handling depends on travel direction

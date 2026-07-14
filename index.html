@@ -2826,8 +2826,12 @@ const TTS = {
 
   _split(text) {
     if (!text) return [];
-    // Split into sentence-sized chunks <= 220 chars
-    const sentences = text.match(/[^.!?...\n]+[.!?...\n]+/g) || [text];
+    // Split into sentence-sized chunks <= 220 chars. The `(?:…|$)` matters:
+    // without the `|$` the regex only captures runs ENDING in terminal
+    // punctuation, so the last sentence on a page — cut by the column break and
+    // thus lacking a period ("…position that") — matched nothing and was
+    // silently dropped, and the page turned without reading it.
+    const sentences = text.match(/[^.!?...\n]+(?:[.!?...\n]+|$)/g) || [text];
     const out = []; let cur = '';
     for (const s of sentences) {
       if ((cur + s).length > 220 && cur) { out.push(cur.trim()); cur = s; }
