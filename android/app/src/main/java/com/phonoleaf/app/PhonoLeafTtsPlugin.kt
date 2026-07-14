@@ -159,12 +159,16 @@ class PhonoLeafTtsPlugin : Plugin() {
         }
     }
 
-    /** Warm the model (copy + load) ahead of first playback. */
+    /** Warm the model (copy + load) ahead of first playback. Resolves with the
+     *  detected model family so the web picker shows the right voice catalog
+     *  before the first synth. */
     @PluginMethod
     fun prepare(call: PluginCall) {
         try {
             ensureReady()
-            call.resolve()
+            val ret = JSObject()
+            ret.put("modelType", activeModelType)
+            call.resolve(ret)
         } catch (e: Throwable) {
             // Catch Throwable (a big model load can OOM = an Error, not an
             // Exception), but reject() only takes Exception — wrap when needed.

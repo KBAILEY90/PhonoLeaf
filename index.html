@@ -3083,9 +3083,14 @@ const TTS = {
     } catch (_) {}
     return null;
   },
+  // The voice catalog + persisted-choice key depend on the loaded native model
+  // (Kokoro vs Piper) — they have different speakers and speaker-id orderings.
+  _nativeCatalog() { return this._modelType === 'vits' ? PIPER_VOICES : KOKORO_VOICES; },
+  _voiceKey() { return this._modelType === 'vits' ? 'pl_voice_piper' : 'pl_voice_kokoro'; },
   _voiceSid() {
-    const id = localStorage.getItem('pl_voice_kokoro') || KOKORO_VOICES[0][0];
-    const v = KOKORO_VOICES.find(x => x[0] === id);
+    const cat = this._nativeCatalog();
+    const id = localStorage.getItem(this._voiceKey()) || cat[0][0];
+    const v = cat.find(x => x[0] === id) || cat[0];
     return (v && v[2] != null) ? v[2] : 0;
   },
   _synth(text) {
@@ -3110,7 +3115,7 @@ const TTS = {
     const genMs = Math.round(performance.now() - t0);
     const audioMs = r.durationMs || 0;
     if (r.provider) this._lastProvider = r.provider;
-    if (r.modelType) this._lastModelType = r.modelType;
+    if (r.modelType) this._modelType = r.modelType;
     this._lastNsynth = { g: genMs, a: audioMs, r: audioMs ? +(genMs / audioMs).toFixed(2) : 0 };
     Diag.push({ e: 'nsynth', g: genMs, a: audioMs, r: this._lastNsynth.r, len: text.length });
     return (window.Capacitor && Capacitor.convertFileSrc) ? Capacitor.convertFileSrc(r.path) : ('file://' + r.path);
@@ -3123,7 +3128,7 @@ const TTS = {
     if (this._dbgLog.length > 6) this._dbgLog.pop();
     const el = document.getElementById('tts-dbg');
     if (el) el.textContent = 'cores=' + (navigator.hardwareConcurrency || '?')
-      + ' ' + (this._lastModelType || '?') + '/' + (this._lastProvider || '?')
+      + ' ' + (this._modelType || '?') + '/' + (this._lastProvider || '?')
       + '\n' + this._dbgLog.join('\n');
   },
   async _playAudio(chunk, gen) {
@@ -3248,7 +3253,11 @@ const TTS = {
     const nat = this._nativeTts();
     if (nat) {
       toast('Preparing the natural voice…', 0);
-      nat.prepare().then(() => hideToast()).catch(() => hideToast());
+      nat.prepare().then(r => {
+        if (r && r.modelType) this._modelType = r.modelType; // pick the right voice catalog
+        this.updateVoiceLabel();
+        hideToast();
+      }).catch(() => hideToast());
       return;
     }
     // Browser-WASM engine: a cached slow-probe verdict skips the ~90 MB
@@ -3366,8 +3375,9 @@ const TTS = {
   // neural engine is running; the system voice in fallback mode.
   activeVoiceLabel() {
     if (this._engineNow() === 'kokoro') {
-      const id = localStorage.getItem('pl_voice_kokoro') || KOKORO_VOICES[0][0];
-      const v = KOKORO_VOICES.find(x => x[0] === id) || KOKORO_VOICES[0];
+      const cat = this._nativeCatalog();
+      const id = localStorage.getItem(this._voiceKey()) || cat[0][0];
+      const v = cat.find(x => x[0] === id) || cat[0];
       return v[1];
     }
     return this.voice?.name || 'System default';
@@ -3404,18 +3414,14 @@ const TTS = {
 // as soon as the list is available, and again whenever it changes.
 window.speechSynthesis?.addEventListener('voiceschanged', () => TTS.pickDefaultVoice());
 
-// Kokoro voice catalog: [id, label].
-// [webId, label, sid] — sid is the sherpa-onnx speaker index for the NATIVE
-// engine (kokoro-multi-lang-v1_1). The browser-WASM engine uses webId. If any
-// native voice sounds wrong, only the sid here needs fixing (no rebuild —
-// `npm run sync` reships this JS).
-// Voice ids + Kokoro speaker ids (sid) for the bundled model,
-// kokoro-en-v0_19 (English-only, 11 speakers, sids 0-10 — authoritative from
-// sherpa's model page). The THIRD field is the sherpa sid passed to native
-// (_voiceSid); the native plugin picks the voice purely by this integer, so a
-// wrong-sounding voice is a one-line fix here + `npm run sync` (no Gradle
-// rebuild). NB: these ids are model-specific — a different Kokoro model
-// (e.g. multi-lang) has an entirely different speaker ordering.
+// Native voice catalogs: [id, label, sid]. `sid` is the sherpa-onnx speaker
+// index passed to the plugin; a wrong-sounding voice is a one-line sid fix here
+// + `npm run sync` (no Gradle rebuild). Catalog is chosen by the loaded model
+// family (TTS._modelType) — sids are MODEL-SPECIFIC.
+//
+// KOKORO_VOICES: kokoro-en-v0_19 (English-only, 11 speakers, sids 0-10,
+// authoritative from sherpa's model page). Used for the browser-WASM engine and
+// for a native Kokoro model (premium tier, later).
 const KOKORO_VOICES = [
   ['af',          'Heart · US female',    0],
   ['af_bella',    'Bella · US female',    1],
@@ -3429,19 +3435,37 @@ const KOKORO_VOICES = [
   ['bm_george',   'George · UK male',     9],
   ['bm_lewis',    'Lewis · UK male',      10],
 ];
+// PIPER_VOICES: vits-piper-en_US-libritts_r-medium (904 speakers). Their quality
+// and gender vary and aren't documented per-sid, so this is an AUDITION set — a
+// spread across the range with placeholder labels. Listen to each on device
+// (picking one mid-read previews it), then keep the good ones and relabel by
+// real gender/accent. The `spk N` shown in the picker is the sid to report back.
+const PIPER_VOICES = [
+  ['p0',   'Voice 1',  0],
+  ['p16',  'Voice 2',  16],
+  ['p40',  'Voice 3',  40],
+  ['p92',  'Voice 4',  92],
+  ['p160', 'Voice 5',  160],
+  ['p256', 'Voice 6',  256],
+  ['p400', 'Voice 7',  400],
+  ['p600', 'Voice 8',  600],
+  ['p780', 'Voice 9',  780],
+  ['p900', 'Voice 10', 900],
+];
 // --- Voice Modal ------------------------------------------
 const VoiceModal = {
   _list: [],
 
   open() {
-    // Neural engine running: the Kokoro catalog. Fallback mode: system voices.
+    // Neural engine running: the active model's catalog. Fallback: system voices.
     if (TTS._engineNow() === 'kokoro') {
-      const cur = localStorage.getItem('pl_voice_kokoro') || KOKORO_VOICES[0][0];
-      document.getElementById('voice-list').innerHTML = KOKORO_VOICES.map(([id, label]) => `
-        <div class="voice-item ${cur === id ? 'active' : ''}" onclick="VoiceModal.selectKokoro(this.dataset.vname)" data-vname="${esc(id)}">
+      const cat = TTS._nativeCatalog();
+      const cur = localStorage.getItem(TTS._voiceKey()) || cat[0][0];
+      document.getElementById('voice-list').innerHTML = cat.map(([id, label, sid]) => `
+        <div class="voice-item ${cur === id ? 'active' : ''}" onclick="VoiceModal.selectNative(this.dataset.vname)" data-vname="${esc(id)}">
           <div>
             <div class="voice-name">${esc(label)} <span class="voice-badge">&#10024; Natural</span></div>
-            <div class="voice-lang">${esc(id)}</div>
+            <div class="voice-lang">speaker ${sid}</div>
           </div>
           ${cur === id ? '<span class="voice-check">&#10003;</span>' : ''}
         </div>`).join('');
@@ -3461,13 +3485,13 @@ const VoiceModal = {
     document.getElementById('voice-modal').classList.add('open');
   },
 
-  // Kokoro voice selection; restart the current chunk so the new voice is
-  // heard immediately. (pl_voice_kokoro: historical key name, kept so existing
-  // installs keep their choice.)
-  selectKokoro(id) {
-    localStorage.setItem('pl_voice_kokoro', id);
+  // Native voice selection (Kokoro or Piper — key + catalog per model type);
+  // restart the current chunk so the new voice is heard immediately.
+  selectNative(id) {
+    localStorage.setItem(TTS._voiceKey(), id);
     TTS.updateVoiceLabel();
-    toast('Voice: ' + id);
+    const v = TTS._nativeCatalog().find(x => x[0] === id);
+    toast('Voice: ' + (v ? v[1] : id));
     this.close();
     if (TTS.active) { TTS._gen++; TTS._stopAudio(); window.speechSynthesis?.cancel(); TTS._speak(); }
   },

@@ -610,13 +610,19 @@ Google login); verify by inspection + the owner testing on device.
     voice per chunk like any synthesis failure. `_synthNative` returns
     `{path, durationMs, provider, modelType}`; the last two show in the on
     -screen debug readout (`#tts-dbg`, e.g. `vits/cpu`). **The voice→speaker
-    -id map lives in JS** (`KOKORO_VOICES` third field = sherpa `sid`;
-    `_voiceSid()`), so a wrong-sounding voice is a one-line JS fix + `npm run
-    sync`, no Gradle rebuild — but the sids are MODEL-SPECIFIC. (TEMP during
-    the Piper test: the picker still shows the KOKORO_VOICES labels, whose
-    sids 0-10 happen to be valid Piper speakers, so voices are mislabeled but
-    functional — a proper Piper voice catalog comes after quality is
-    confirmed.) The Kotlin plugin (`PhonoLeafTtsPlugin.kt`) is model-agnostic:
+    -id map lives in JS** (catalog `[id,label,sid]`, third field = sherpa
+    `sid`; `_voiceSid()`), so a wrong-sounding voice is a one-line JS fix +
+    `npm run sync`, no Gradle rebuild — but the sids are MODEL-SPECIFIC.
+    **Per-model catalogs (`TTS._modelType`, set from `prepare()`/`_synthNative`):**
+    `_nativeCatalog()` returns `PIPER_VOICES` when a Piper/vits model is loaded,
+    else `KOKORO_VOICES`; `_voiceKey()` persists the choice separately
+    (`pl_voice_piper` vs `pl_voice_kokoro`), so switching models keeps each
+    one's voice. `VoiceModal.selectNative` + `_voiceSid` + `activeVoiceLabel`
+    all go through these. `PIPER_VOICES` is currently an **audition set** — 10
+    speaker ids spread across libritts_r's 904 (labels "Voice 1..10", picker
+    shows `speaker N`); the owner listens on device and reports the good
+    sids+genders, then it gets curated + relabelled. The Kotlin plugin
+    (`PhonoLeafTtsPlugin.kt`) is model-agnostic:
     it only sets the optional `dataDir`/`dictDir`/`lexicon` paths that actually
     exist (the
     English model has espeak-ng-data but no dict/lexicon), **resolves the ONNX
