@@ -65,6 +65,9 @@ class PhonoLeafTtsPlugin : Plugin() {
     // Queued-but-not-yet-started synths whose stamp is stale are skipped, so
     // leaving the reader doesn't leave 30s of dead inference pegging the CPU.
     @Volatile private var epoch = 0
+    // Which onnxruntime execution provider actually loaded ("nnapi" or "cpu").
+    // Surfaced in the synthesize response so the on-screen readout shows it.
+    @Volatile private var activeProvider = "?"
 
     private fun ensureReady(): OfflineTts {
         tts?.let { return it }
@@ -112,8 +115,7 @@ class PhonoLeafTtsPlugin : Plugin() {
             // threads, aiming for ratio < 1 (gapless). Capped at 4 so bigger
             // phones don't start using little cores.
             val threads = maxOf(2, minOf(4, cores - 4))
-            Log.i("PhonoLeafTts", "init cores=$cores threads=$threads model=$modelFile")
-            val cfg = OfflineTtsConfig(
+            fun cfgFor(provider: String) = OfflineTtsConfig(
                 model = OfflineTtsModelConfig(
                     kokoro = OfflineTtsKokoroModelConfig(
                         model = "$base/$modelFile",
@@ -124,10 +126,26 @@ class PhonoLeafTtsPlugin : Plugin() {
                         lexicon = lexicon,
                     ),
                     numThreads = threads,
-                    provider = "cpu",
+                    provider = provider,
                 ),
             )
-            val t = OfflineTts(assetManager = null, config = cfg)
+            // Try NNAPI first (offloads to the phone's NPU/GPU — on Tensor/Pixel
+            // that's the chip's real ML muscle, vs the mid-tier CPU). NNAPI+TTS
+            // is known to be hit-or-miss in sherpa (may not accelerate, may
+            // fail), so PROBE it with a tiny generate and fall back to CPU on
+            // any catchable error. activeProvider is surfaced to the readout.
+            val t = try {
+                val nn = OfflineTts(assetManager = null, config = cfgFor("nnapi"))
+                nn.generate("Warm up.", 0, 1.0f) // force NNAPI to actually run
+                activeProvider = "nnapi"
+                Log.i("PhonoLeafTts", "init cores=$cores threads=$threads model=$modelFile provider=nnapi")
+                nn
+            } catch (e: Throwable) {
+                Log.i("PhonoLeafTts", "NNAPI unavailable (${e.message}); using CPU")
+                activeProvider = "cpu"
+                Log.i("PhonoLeafTts", "init cores=$cores threads=$threads model=$modelFile provider=cpu")
+                OfflineTts(assetManager = null, config = cfgFor("cpu"))
+            }
             tts = t
             return t
         }
@@ -186,6 +204,7 @@ class PhonoLeafTtsPlugin : Plugin() {
                 val ret = JSObject()
                 ret.put("path", f.absolutePath)
                 ret.put("durationMs", durationMs)
+                ret.put("provider", activeProvider)
                 call.resolve(ret)
             } catch (e: Throwable) {
                 call.reject(e.message ?: "synth failed", e as? Exception ?: RuntimeException(e))
