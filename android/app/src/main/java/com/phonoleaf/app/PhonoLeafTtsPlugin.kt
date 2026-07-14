@@ -103,6 +103,15 @@ class PhonoLeafTtsPlugin : Plugin() {
                 .map { File(dest, it) }.filter { it.exists() }
                 .joinToString(",") { it.absolutePath }
             val cores = Runtime.getRuntime().availableProcessors()
+            // Measured on the owner's phone: cores-1 threads gave ~2x-realtime
+            // generation (20s to make 10s of audio) — much slower than the
+            // standalone sherpa APK on the SAME phone. Cause: on big.LITTLE
+            // phones, spreading inference across all cores drags on the slow
+            // little cores + thread-sync overhead; 2 threads on the fast cores
+            // is faster. sherpa's own examples default to 2. Logged so the
+            // ratio can be compared against the core count.
+            val threads = 2
+            Log.i("PhonoLeafTts", "init cores=$cores threads=$threads model=$modelFile")
             val cfg = OfflineTtsConfig(
                 model = OfflineTtsModelConfig(
                     kokoro = OfflineTtsKokoroModelConfig(
@@ -113,12 +122,7 @@ class PhonoLeafTtsPlugin : Plugin() {
                         dictDir = ifExists("dict"),
                         lexicon = lexicon,
                     ),
-                    // int8 generation is short enough that pegging cores is
-                    // brief and overlaps playback (prefetch), and cancel() bounds
-                    // the leave-the-reader delay to one in-flight synth — so use
-                    // cores-1 for speed. (With the slow fp32 model, cores-1 froze
-                    // the UI for the full 10-30s generation; int8 fixes that.)
-                    numThreads = maxOf(2, cores - 1),
+                    numThreads = threads,
                     provider = "cpu",
                 ),
             )

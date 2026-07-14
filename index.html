@@ -3109,13 +3109,14 @@ const TTS = {
     Diag.push({ e: 'nsynth', g: genMs, a: audioMs, r: this._lastNsynth.r, len: text.length });
     return (window.Capacitor && Capacitor.convertFileSrc) ? Capacitor.convertFileSrc(r.path) : ('file://' + r.path);
   },
-  // TEMP on-screen debug readout (see #tts-dbg) — rolling last ~6 lines.
+  // TEMP on-screen debug readout (see #tts-dbg) — rolling last ~6 lines,
+  // with a header showing this device's core count.
   _dbgLog: [],
   _dbg(line) {
     this._dbgLog.unshift(line);
     if (this._dbgLog.length > 6) this._dbgLog.pop();
     const el = document.getElementById('tts-dbg');
-    if (el) el.textContent = this._dbgLog.join('\n');
+    if (el) el.textContent = 'cores=' + (navigator.hardwareConcurrency || '?') + '\n' + this._dbgLog.join('\n');
   },
   async _playAudio(chunk, gen) {
     try {
