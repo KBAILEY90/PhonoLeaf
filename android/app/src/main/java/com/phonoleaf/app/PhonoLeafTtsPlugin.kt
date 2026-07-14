@@ -103,14 +103,15 @@ class PhonoLeafTtsPlugin : Plugin() {
                 .map { File(dest, it) }.filter { it.exists() }
                 .joinToString(",") { it.absolutePath }
             val cores = Runtime.getRuntime().availableProcessors()
-            // Measured on the owner's phone: cores-1 threads gave ~2x-realtime
-            // generation (20s to make 10s of audio) — much slower than the
-            // standalone sherpa APK on the SAME phone. Cause: on big.LITTLE
-            // phones, spreading inference across all cores drags on the slow
-            // little cores + thread-sync overhead; 2 threads on the fast cores
-            // is faster. sherpa's own examples default to 2. Logged so the
-            // ratio can be compared against the core count.
-            val threads = 2
+            // big.LITTLE tuning (measured on the owner's 8-core phone):
+            //   cores-1 (7 threads) → ratio ~2.4x realtime (little cores drag)
+            //   2 threads           → ratio ~1.6x
+            // Modern 8-core phones have ~4 fast cores (prime+performance) + ~4
+            // efficiency cores. Use up to 4 threads to fill the fast cores
+            // WITHOUT spilling onto the slow ones — ~2x the compute of 2
+            // threads, aiming for ratio < 1 (gapless). Capped at 4 so bigger
+            // phones don't start using little cores.
+            val threads = maxOf(2, minOf(4, cores - 4))
             Log.i("PhonoLeafTts", "init cores=$cores threads=$threads model=$modelFile")
             val cfg = OfflineTtsConfig(
                 model = OfflineTtsModelConfig(
