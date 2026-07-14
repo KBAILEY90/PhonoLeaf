@@ -11,6 +11,7 @@ import com.k2fsa.sherpa.onnx.OfflineTts
 import com.k2fsa.sherpa.onnx.OfflineTtsConfig
 import com.k2fsa.sherpa.onnx.OfflineTtsKokoroModelConfig
 import com.k2fsa.sherpa.onnx.OfflineTtsModelConfig
+import com.k2fsa.sherpa.onnx.OfflineTtsVitsModelConfig
 import java.io.BufferedOutputStream
 import java.io.File
 import java.io.FileOutputStream
@@ -58,16 +59,18 @@ class PhonoLeafTtsPlugin : Plugin() {
     // behind this marker, so a new asset model won't be picked up otherwise
     // (was a real gotcha swapping kokoro-multi-lang-v1_1 → kokoro-en-v0_19 →
     // kokoro-int8-en-v0_19).
-    private val MODEL_VERSION = "int8-en-v0_19"
+    private val MODEL_VERSION = "piper-libritts-r-medium"
     @Volatile private var tts: OfflineTts? = null
     private val lock = Any()
     // Bumped by cancel() (called when the web layer stops/leaves the reader).
     // Queued-but-not-yet-started synths whose stamp is stale are skipped, so
     // leaving the reader doesn't leave 30s of dead inference pegging the CPU.
     @Volatile private var epoch = 0
-    // Which onnxruntime execution provider actually loaded ("nnapi" or "cpu").
-    // Surfaced in the synthesize response so the on-screen readout shows it.
+    // Which onnxruntime execution provider actually loaded (currently "cpu").
     @Volatile private var activeProvider = "?"
+    // Model family in use ("kokoro" or "vits"/Piper), auto-detected from the
+    // placed files. Surfaced to the readout so we can confirm which engine ran.
+    @Volatile private var activeModelType = "?"
 
     private fun ensureReady(): OfflineTts {
         tts?.let { return it }
@@ -115,8 +118,18 @@ class PhonoLeafTtsPlugin : Plugin() {
             // threads, aiming for ratio < 1 (gapless). Capped at 4 so bigger
             // phones don't start using little cores.
             val threads = maxOf(2, minOf(4, cores - 4))
-            fun cfgFor(provider: String) = OfflineTtsConfig(
-                model = OfflineTtsModelConfig(
+            // Auto-detect the model FAMILY from the files present, so the same
+            // plugin runs either engine (Piper baseline now; Kokoro later as a
+            // premium voice on capable devices — just swap the model files):
+            //   voices.bin present → Kokoro (separate speaker-embedding file)
+            //   otherwise          → VITS / Piper (espeak-based, no voices.bin)
+            // NNAPI was dropped: it engaged on the Pixel but didn't accelerate
+            // the TTS model (~1.45x, no better than CPU) — CPU only now.
+            val hasVoices = File(dest, "voices.bin").exists()
+            activeModelType = if (hasVoices) "kokoro" else "vits"
+            activeProvider = "cpu"
+            val modelCfg = if (hasVoices) {
+                OfflineTtsModelConfig(
                     kokoro = OfflineTtsKokoroModelConfig(
                         model = "$base/$modelFile",
                         voices = "$base/voices.bin",
@@ -126,26 +139,21 @@ class PhonoLeafTtsPlugin : Plugin() {
                         lexicon = lexicon,
                     ),
                     numThreads = threads,
-                    provider = provider,
-                ),
-            )
-            // Try NNAPI first (offloads to the phone's NPU/GPU — on Tensor/Pixel
-            // that's the chip's real ML muscle, vs the mid-tier CPU). NNAPI+TTS
-            // is known to be hit-or-miss in sherpa (may not accelerate, may
-            // fail), so PROBE it with a tiny generate and fall back to CPU on
-            // any catchable error. activeProvider is surfaced to the readout.
-            val t = try {
-                val nn = OfflineTts(assetManager = null, config = cfgFor("nnapi"))
-                nn.generate("Warm up.", 0, 1.0f) // force NNAPI to actually run
-                activeProvider = "nnapi"
-                Log.i("PhonoLeafTts", "init cores=$cores threads=$threads model=$modelFile provider=nnapi")
-                nn
-            } catch (e: Throwable) {
-                Log.i("PhonoLeafTts", "NNAPI unavailable (${e.message}); using CPU")
-                activeProvider = "cpu"
-                Log.i("PhonoLeafTts", "init cores=$cores threads=$threads model=$modelFile provider=cpu")
-                OfflineTts(assetManager = null, config = cfgFor("cpu"))
+                    provider = "cpu",
+                )
+            } else {
+                OfflineTtsModelConfig(
+                    vits = OfflineTtsVitsModelConfig(
+                        model = "$base/$modelFile",
+                        tokens = "$base/tokens.txt",
+                        dataDir = ifExists("espeak-ng-data"), // Piper is espeak-based
+                    ),
+                    numThreads = threads,
+                    provider = "cpu",
+                )
             }
+            Log.i("PhonoLeafTts", "init cores=$cores threads=$threads model=$modelFile type=$activeModelType")
+            val t = OfflineTts(assetManager = null, config = OfflineTtsConfig(model = modelCfg))
             tts = t
             return t
         }
@@ -205,6 +213,7 @@ class PhonoLeafTtsPlugin : Plugin() {
                 ret.put("path", f.absolutePath)
                 ret.put("durationMs", durationMs)
                 ret.put("provider", activeProvider)
+                ret.put("modelType", activeModelType)
                 call.resolve(ret)
             } catch (e: Throwable) {
                 call.reject(e.message ?: "synth failed", e as? Exception ?: RuntimeException(e))

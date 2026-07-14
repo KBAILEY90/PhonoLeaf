@@ -3106,6 +3106,7 @@ const TTS = {
     const genMs = Math.round(performance.now() - t0);
     const audioMs = r.durationMs || 0;
     if (r.provider) this._lastProvider = r.provider;
+    if (r.modelType) this._lastModelType = r.modelType;
     this._lastNsynth = { g: genMs, a: audioMs, r: audioMs ? +(genMs / audioMs).toFixed(2) : 0 };
     Diag.push({ e: 'nsynth', g: genMs, a: audioMs, r: this._lastNsynth.r, len: text.length });
     return (window.Capacitor && Capacitor.convertFileSrc) ? Capacitor.convertFileSrc(r.path) : ('file://' + r.path);
@@ -3118,7 +3119,8 @@ const TTS = {
     if (this._dbgLog.length > 6) this._dbgLog.pop();
     const el = document.getElementById('tts-dbg');
     if (el) el.textContent = 'cores=' + (navigator.hardwareConcurrency || '?')
-      + ' prov=' + (this._lastProvider || '?') + '\n' + this._dbgLog.join('\n');
+      + ' ' + (this._lastModelType || '?') + '/' + (this._lastProvider || '?')
+      + '\n' + this._dbgLog.join('\n');
   },
   async _playAudio(chunk, gen) {
     try {

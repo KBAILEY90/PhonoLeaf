@@ -161,19 +161,21 @@ package `com.phonoleaf.app`, tied to this PC's debug-keystore SHA-1. A Play
 Store release build is signed differently and will need its own SHA-1 added
 to the same client later (Play App Signing shows it in the Play Console).
 
-### 3.6 Stage 2b one-time setup: place the Kokoro voice model (~10 min)
+### 3.6 Stage 2b one-time setup: place the voice model (~10 min)
 
 The neural voice model is too big for git, so you download it once and drop it
 into the app. The sherpa-onnx native library (the code that runs it) IS
-committed, so this is the only manual piece.
+committed, so this is the only manual piece. The app **auto-detects** which
+model you place (Kokoro vs Piper), so switching is just a file swap.
 
-> **Use `kokoro-int8-en-v0_19` — the int8 English model.** Same 11 English
-> voices as the plain `kokoro-en-v0_19`, but "int8" means it's quantized to run
-> **2-4× faster** on a phone — the fp32 model took 10-30 s to generate ONE
-> sentence (unusably slow, froze the UI); int8 is what your standalone
-> sherpa-onnx test used when it ran faster than realtime. The voices and their
-> order are identical, so nothing in the app changes — just the model file.
-> **Delete the old `...\assets\kokoro\` folder first.**
+> **Now using `vits-piper-en_US-libritts_r-medium` — a Piper model.** Kokoro-82M
+> proved too heavy for the Pixel 7 (1.36× realtime even tuned — not gapless).
+> Piper is a lighter neural model that runs *well* under realtime on phones, so
+> it should be genuinely gapless. Quality is a step below Kokoro but clearly
+> natural (far above robotic system voices). **Delete the old
+> `...\assets\kokoro\` folder first** (the folder name stays `kokoro` even
+> though it now holds a Piper model — the plugin detects the type from the
+> files, not the folder name).
 
 1. **Delete the old model folder:**
    ```
@@ -186,43 +188,42 @@ committed, so this is the only manual piece.
    (Windows 11 has `tar` built in):
    ```
    cd C:\Repo\phonoleaf\android\app\src\main\assets
-   curl -L -o k.tar.bz2 https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/kokoro-int8-en-v0_19.tar.bz2
+   curl -L -o k.tar.bz2 https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-en_US-libritts_r-medium.tar.bz2
    tar -xf k.tar.bz2
-   ren kokoro-int8-en-v0_19 kokoro
+   ren vits-piper-en_US-libritts_r-medium kokoro
    del k.tar.bz2
    ```
 
-3. **Verify the layout** — `model.onnx` must sit DIRECTLY in the `kokoro`
+3. **Verify the layout** — the `.onnx` file must sit DIRECTLY in the `kokoro`
    folder, not in a nested subfolder:
    ```
-   android\app\src\main\assets\kokoro\model.onnx
-   android\app\src\main\assets\kokoro\voices.bin
+   android\app\src\main\assets\kokoro\en_US-libritts_r-medium.onnx
    android\app\src\main\assets\kokoro\tokens.txt
    android\app\src\main\assets\kokoro\espeak-ng-data\...
    ```
-   (This English model has NO `dict\` or `lexicon-*.txt` files — that's
-   expected; the plugin only uses what's present.)
+   (Piper has NO `voices.bin` — that's exactly how the plugin knows it's a Piper
+   model rather than Kokoro.)
 
-4. **Build and run:** `npm run sync`, then Run ▶ in Android Studio.
+4. **Bump the model marker** so the phone re-copies the new model: in
+   `android/app/src/main/java/com/phonoleaf/app/PhonoLeafTtsPlugin.kt`, this is
+   already set to a Piper-specific `MODEL_VERSION` — no action needed, just
+   noting it's handled.
 
-5. **Test:** open a book and play. First playback shows "Preparing the natural
-   voice…" while the app copies the model into place (a few seconds, one time),
-   then reads — now with short/no gaps between sentences, and the UI stays
-   responsive (you can leave the reader). Try the voices in the picker.
+5. **Build and run:** `npm run sync`, then Run ▶ in Android Studio.
+
+6. **Test:** open a book and play. The green readout should show `vits/cpu` and
+   the `r` (ratio) values should be **well under 1.0** — gapless. **Note: the
+   voice-picker names are still the old Kokoro labels for now** (they map to
+   Piper speaker numbers 0-10 temporarily); judge the *quality and smoothness*,
+   not the names. If Piper sounds good, I'll build the proper Piper voice list.
 
 Notes:
 - This model folder is gitignored — it never gets committed, and each fresh
   clone re-does this step.
-- The whole model is bundled into the debug APK (big APK, fine for testing).
-  The Play Store build will download it on first run instead (Stage 5) so the
-  store download stays small.
-- **If playback still gaps between sentences, grab Settings → Debug log →
-  Copy log and send it.** The `nsynth` entries show generation time (`g`) vs
-  audio length (`a`) in ms and their ratio (`r`) — `r` under ~1.0 means the
-  device generates faster than it plays (should be gapless); repeated `r`
-  above 1.0 means the model is too slow on this device and we'd switch to the
-  smaller int8 model (`kokoro-int8-multi-lang-v1_1`, but note its different
-  voice set).
+- The whole model is bundled into the debug APK. The Play Store build will
+  download it on first run instead (Stage 5) so the store download stays small.
+- The readout header shows `cores=N type/provider` (e.g. `vits/cpu`) and each
+  line is `gGEN aAUDIO rRATIO`. `r` under 1.0 = faster than realtime = gapless.
 
 ---
 
