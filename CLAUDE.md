@@ -576,9 +576,17 @@ Google login); verify by inspection + the owner testing on device.
     generate ONE sentence on the owner's phone, pegging every core for the full
     window and freezing the reader UI (back button dead); int8 is 2-4× faster
     (validated: the owner's standalone sherpa APK ran int8 faster than
-    realtime). With int8, `numThreads = cores-1` (pegging is brief and overlaps
-    playback via prefetch, and cancel() bounds the leave-delay to one in-flight
-    synth). WAV files rotate through a small
+    realtime). **big.LITTLE thread tuning (measured on the owner's 8-core
+    phone, 2026-07-06):** `numThreads` matters a LOT — 7 threads → ratio 2.4×
+    realtime (little cores drag + sync overhead), 2 threads → 1.6×, 4 threads →
+    **~1.36×** (best; 4 = the phone's fast-core count, 5+ regresses onto slow
+    cores). Set to `maxOf(2, minOf(4, cores-4))`. **CEILING FINDING: even
+    optimally tuned this phone runs Kokoro-int8 at ~1.36× realtime → NOT
+    gapless (generation can't outpace playback, so no buffering fixes it).
+    Decision pending: switch native voice to a lighter model (Piper/VITS,
+    typically <1× on phones, quality a notch below Kokoro) vs keep Kokoro for
+    capable devices only.** cancel() bounds the leave-delay to one in-flight
+    synth. WAV files rotate through a small
     cacheDir ring. `_stopAudio()` calls the plugin's `cancel()` (bumps an
     `epoch`; queued-but-unstarted synths whose stamp is stale are skipped) so
     leaving the reader doesn't leave seconds of dead inference pegging the CPU. `_kokoroWarm` calls the plugin's `prepare()` (no WASM download,
