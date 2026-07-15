@@ -9,9 +9,11 @@
 # artifact exists — the build needs it present).
 !/app/libs/sherpa-onnx.aar
 
-# Kokoro model files are large (~180 MB) and owner-placed — never committed.
+# Voice model files are large and owner-placed — never committed.
 # See TESTING.md §3.6 for how to download + extract them here.
+# kokoro/ = primary (US) model, kokoro-gb/ = British model.
 /app/src/main/assets/kokoro/
+/app/src/main/assets/kokoro-gb/
 
 # Files for the ART/Dalvik VM
 *.dex

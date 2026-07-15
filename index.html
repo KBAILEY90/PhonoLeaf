@@ -3090,6 +3090,14 @@ const TTS = {
     const v = cat.find(x => x[0] === id) || cat[0];
     return (v && v[2] != null) ? v[2] : 0;
   },
+  // The model key ("us"/"gb") of the selected voice — different accents live in
+  // separate native model folders. KOKORO_VOICES have no 4th field → "us".
+  _voiceModel() {
+    const cat = this._nativeCatalog();
+    const id = localStorage.getItem(this._voiceKey()) || cat[0][0];
+    const v = cat.find(x => x[0] === id) || cat[0];
+    return (v && v[3]) ? v[3] : 'us';
+  },
   _synth(text) {
     const nat = this._nativeTts();
     if (nat) return this._synthNative(nat, text);
@@ -3107,7 +3115,7 @@ const TTS = {
     // outpaces playback (prefetch keeps it gapless); repeated ratios above 1.0
     // explain gaps and point at a too-slow device or model.
     const t0 = performance.now();
-    const r = await nat.synthesize({ text, sid: this._voiceSid(), speed: 1.0 });
+    const r = await nat.synthesize({ text, sid: this._voiceSid(), speed: 1.0, model: this._voiceModel() });
     if (!r || !r.path) throw new Error('native synth empty');
     const genMs = Math.round(performance.now() - t0);
     const audioMs = r.durationMs || 0;
@@ -3422,19 +3430,25 @@ const KOKORO_VOICES = [
 // spread across the range with placeholder labels. Listen to each on device
 // (picking one mid-read previews it), then keep the good ones and relabel by
 // real gender/accent. The `spk N` shown in the picker is the sid to report back.
+// [id, label, sid, model] — `model` picks the native model folder ("us" =
+// libritts_r American; "gb" = vctk British). Switching accents reloads the
+// native model (~1s), so keep each engine's voices grouped by model.
 const PIPER_VOICES = [
-  ['p40',  'Ava',    40],   // default (owner liked); first entry = default voice
-  ['p16',  'Ben',    16],
-  ['p92',  'Clara',  92],
-  ['p160', 'Daniel', 160],
-  ['p600', 'Ella',   600],
-  ['p780', 'Felix',  780],
-  ['p900', 'Grace',  900],
-  // fresh audition candidates replacing the ones the owner flagged bad (0/256/400)
-  ['p60',  'Henry',  60],
-  ['p340', 'Iris',   340],
-  ['p520', 'Jack',   520],
-  ['p840', 'Kate',   840],
+  // US (libritts_r) — finalized from audition round 1 (genders corrected).
+  // 92 & 600 were also good US males if you'd rather swap those in.
+  ['us40',  'Ava · US female',  40,  'us'],
+  ['us160', 'Nora · US female', 160, 'us'],
+  ['us16',  'Ben · US male',    16,  'us'],
+  ['us520', 'Jack · US male',   520, 'us'],
+  // UK (vctk) — AUDITION candidates (placeholder names, gender unknown). Listen
+  // and report the good speaker numbers + genders, then this gets curated to
+  // 2 male + 2 female like the US set.
+  ['gb0',  'Oliver · UK',  0,  'gb'],
+  ['gb10', 'Poppy · UK',   10, 'gb'],
+  ['gb30', 'Quinn · UK',   30, 'gb'],
+  ['gb50', 'Rosie · UK',   50, 'gb'],
+  ['gb70', 'Sam · UK',     70, 'gb'],
+  ['gb92', 'Tessa · UK',   92, 'gb'],
 ];
 // --- Voice Modal ------------------------------------------
 const VoiceModal = {

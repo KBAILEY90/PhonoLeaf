@@ -204,18 +204,28 @@ model you place (Kokoro vs Piper), so switching is just a file swap.
    (Piper has NO `voices.bin` — that's exactly how the plugin knows it's a Piper
    model rather than Kokoro.)
 
-4. **Bump the model marker** so the phone re-copies the new model: in
-   `android/app/src/main/java/com/phonoleaf/app/PhonoLeafTtsPlugin.kt`, this is
-   already set to a Piper-specific `MODEL_VERSION` — no action needed, just
-   noting it's handled.
+4. **Also place the British model** (for the UK voices) into a SECOND folder
+   `kokoro-gb`, same way:
+   ```
+   cd C:\Repo\phonoleaf\android\app\src\main\assets
+   curl -L -o g.tar.bz2 https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-en_GB-vctk-medium.tar.bz2
+   tar -xf g.tar.bz2
+   ren vits-piper-en_GB-vctk-medium kokoro-gb
+   del g.tar.bz2
+   ```
+   Result: `assets\kokoro\` (US) and `assets\kokoro-gb\` (UK), each with its own
+   `.onnx` + `tokens.txt` + `espeak-ng-data\`. The plugin loads whichever the
+   selected voice needs (US or UK) and switches on demand (~1s the first time
+   you pick the other accent).
 
 5. **Build and run:** `npm run sync`, then Run ▶ in Android Studio.
 
-6. **Test:** open a book and play. The green readout should show `vits/cpu` and
-   the `r` (ratio) values should be **well under 1.0** — gapless. **Note: the
-   voice-picker names are still the old Kokoro labels for now** (they map to
-   Piper speaker numbers 0-10 temporarily); judge the *quality and smoothness*,
-   not the names. If Piper sounds good, I'll build the proper Piper voice list.
+6. **Test:** open a book and play — it should be gapless. Open the voice picker:
+   4 US voices (Ava/Nora/Ben/Jack) + 6 UK audition voices
+   (Oliver/Poppy/Quinn/Rosie/Sam/Tessa), each showing its `speaker N`. Picking a
+   voice previews it mid-read. For the UK ones, note which speaker numbers sound
+   good and their gender — they'll be curated to 2 male + 2 female like the US
+   set.
 
 Notes:
 - This model folder is gitignored — it never gets committed, and each fresh
