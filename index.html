@@ -855,9 +855,6 @@
 
   <div class="reader-touch" id="reader-touch"></div>
   <div id="tap-fb"></div>
-  <!-- TEMP on-screen TTS debug readout (native gen timing). Always visible,
-       ignores taps. Remove once the gap cause is nailed down. -->
-  <div id="tts-dbg" style="position:absolute;left:6px;bottom:2px;z-index:60;font:600 10px/1.3 monospace;color:#0f0;background:rgba(0,0,0,.55);padding:2px 5px;border-radius:4px;pointer-events:none;max-width:70%;white-space:pre-wrap"></div>
   <button class="reader-edge re-left" onclick="Reader.turnPage(-1)" aria-label="Previous page">
     <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
   </button>
@@ -3120,32 +3117,17 @@ const TTS = {
     Diag.push({ e: 'nsynth', g: genMs, a: audioMs, r: this._lastNsynth.r, len: text.length });
     return (window.Capacitor && Capacitor.convertFileSrc) ? Capacitor.convertFileSrc(r.path) : ('file://' + r.path);
   },
-  // TEMP on-screen debug readout (see #tts-dbg) — rolling last ~6 lines,
-  // with a header showing this device's core count.
-  _dbgLog: [],
-  _dbg(line) {
-    this._dbgLog.unshift(line);
-    if (this._dbgLog.length > 6) this._dbgLog.pop();
-    const el = document.getElementById('tts-dbg');
-    if (el) el.textContent = 'cores=' + (navigator.hardwareConcurrency || '?')
-      + ' ' + (this._modelType || '?') + '/' + (this._lastProvider || '?')
-      + '\n' + this._dbgLog.join('\n');
-  },
   async _playAudio(chunk, gen) {
     try {
       const key = gen + ':' + this.idx;
-      let url = null, hit = false;
-      if (this._preSynth && this._preSynth.key === key) { url = await this._preSynth.p; this._preSynth = null; hit = !!url; }
+      let url = null;
+      if (this._preSynth && this._preSynth.key === key) { url = await this._preSynth.p; this._preSynth = null; }
       if (!url) {
         // No prefetch ready — synthesis is audible latency now; surface it so a
         // slow generation doesn't look like the app died.
         const genT = setTimeout(() => { if (this.active && gen === this._gen) toast('Generating audio…', 0); }, 600);
         try { url = await this._synth(chunk.text); } finally { clearTimeout(genT); hideToast(); }
       }
-      // Debug: COLD = generated on demand now (audible gap = its gen time);
-      // hit = prefetch was ready (no gap). g/a in ms, r = gen÷audio ratio.
-      const ns = this._lastNsynth;
-      this._dbg((hit ? 'hit ' : 'COLD') + ' i' + this.idx + (ns ? ` g${ns.g} a${ns.a} r${ns.r}` : ''));
       if (!this.active || gen !== this._gen) {
         if (url && url.startsWith('blob:')) URL.revokeObjectURL(url);
         return;
@@ -3441,16 +3423,18 @@ const KOKORO_VOICES = [
 // (picking one mid-read previews it), then keep the good ones and relabel by
 // real gender/accent. The `spk N` shown in the picker is the sid to report back.
 const PIPER_VOICES = [
-  ['p0',   'Voice 1',  0],
-  ['p16',  'Voice 2',  16],
-  ['p40',  'Voice 3',  40],
-  ['p92',  'Voice 4',  92],
-  ['p160', 'Voice 5',  160],
-  ['p256', 'Voice 6',  256],
-  ['p400', 'Voice 7',  400],
-  ['p600', 'Voice 8',  600],
-  ['p780', 'Voice 9',  780],
-  ['p900', 'Voice 10', 900],
+  ['p40',  'Ava',    40],   // default (owner liked); first entry = default voice
+  ['p16',  'Ben',    16],
+  ['p92',  'Clara',  92],
+  ['p160', 'Daniel', 160],
+  ['p600', 'Ella',   600],
+  ['p780', 'Felix',  780],
+  ['p900', 'Grace',  900],
+  // fresh audition candidates replacing the ones the owner flagged bad (0/256/400)
+  ['p60',  'Henry',  60],
+  ['p340', 'Iris',   340],
+  ['p520', 'Jack',   520],
+  ['p840', 'Kate',   840],
 ];
 // --- Voice Modal ------------------------------------------
 const VoiceModal = {

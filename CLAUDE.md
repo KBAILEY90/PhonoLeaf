@@ -618,10 +618,13 @@ Google login); verify by inspection + the owner testing on device.
     else `KOKORO_VOICES`; `_voiceKey()` persists the choice separately
     (`pl_voice_piper` vs `pl_voice_kokoro`), so switching models keeps each
     one's voice. `VoiceModal.selectNative` + `_voiceSid` + `activeVoiceLabel`
-    all go through these. `PIPER_VOICES` is currently an **audition set** — 10
-    speaker ids spread across libritts_r's 904 (labels "Voice 1..10", picker
-    shows `speaker N`); the owner listens on device and reports the good
-    sids+genders, then it gets curated + relabelled. The Kotlin plugin
+    all go through these. `PIPER_VOICES` is currently a **named audition set** —
+    11 libritts_r speaker ids with placeholder names (Ava/Ben/Clara…), first
+    entry = default (speaker 40, owner-approved); the picker still shows
+    `speaker N` so the owner can report which sids sound good + their real
+    genders, then names get finalised to match. (Round 1 dropped speakers
+    0/256/400 as bad.) The on-screen `#tts-dbg` timing readout was removed once
+    Piper proved gapless. The Kotlin plugin
     (`PhonoLeafTtsPlugin.kt`) is model-agnostic:
     it only sets the optional `dataDir`/`dictDir`/`lexicon` paths that actually
     exist (the
