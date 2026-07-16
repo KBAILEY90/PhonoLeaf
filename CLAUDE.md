@@ -352,8 +352,13 @@ Google login); verify by inspection + the owner testing on device.
   snapshot matches — fixes the previous-page flash); at base → arm `_exitArmed`,
   show the centered dimmed `#exit-hint` ("Swipe again to leave", `ExitHint`),
   push a buffer, and reset after **2s** (a back after the window re-prompts; a
-  back within it calls `history.back()` to leave). The reader back arrow is just
-  `history.back()`.
+  back within it calls `history.back()` to leave). The reader back arrow calls
+  **`Reader.back()`, NOT `history.back()`** — in the native Capacitor WebView a
+  click-driven `history.back()` doesn't reliably fire `popstate` (tap
+  registered — button highlighted — but nothing happened), so `back()`
+  minimizes directly and then consumes the pushed `reader` history entry with a
+  `_skipPop`-guarded `history.back()` (the guard makes the popstate handler skip
+  its minimize/tab logic so it isn't done twice).
 - **Seek scrubber (`Scrub`)** lives on the Home mini-player hero and in the
   reader; both are `.scrub` range inputs wired by **delegated** input/change.
   Dragging shows `#scrub-pop` (chapter + `p. N/total` + %, from
@@ -536,7 +541,7 @@ Google login); verify by inspection + the owner testing on device.
   `Reader._persistPosition()` also snapshots the current page on
   `visibilitychange`(hidden)/`pagehide`/`Reader.close()` so abrupt PWA exits
   don't lose the spot.
-- **Reader overlay top bar (`.reader-top`)** shows: `[← back]` · `[chapter · Page X/Y center]` · `[≡ chapters]`. A single `#rs-chapter` element (`.reader-top-info`, `0.7rem`) displays the combined string `"Chapter Name  ·  Page X / Y"`. `_onRelocated` populates it by flattening the full TOC tree (including `subitems`) and matching by basename — TOC hrefs are often bare filenames while `loc.start.href` has a path prefix (`xhtml/ch.xhtml`). If no direct match, falls back to the nearest preceding TOC entry by spine index (handles flat TOCs where sub-chapters aren't listed individually). The bottom `reader-meta` shows only `{pct}% through the book` (`#tts-chapter`). `applyReadTheme()` measures `.reader-top` and `.reader-bottom` `offsetHeight` and uses those as pixel padding for the epub `body`, so text isn't hidden under either overlay.
+- **Reader overlay top bar (`.reader-top`)** shows: `[← back]` · `[chapter · Page X/Y center]` · `[≡ chapters]`. A single `#rs-chapter` element (`.reader-top-info`, `0.7rem`) displays the combined string `"Chapter Name  ·  Page X / Y"`. `_onRelocated` populates it by flattening the full TOC tree (including `subitems`) and matching by basename — TOC hrefs are often bare filenames while `loc.start.href` has a path prefix (`xhtml/ch.xhtml`). If no direct match, falls back to the nearest preceding TOC entry by spine index (handles flat TOCs where sub-chapters aren't listed individually). **The overlay and the `ChapterModal` share the module-level `flattenToc()`** (subitems inline, with depth) so their chapter names match exactly — the modal used to list only top-level `State.toc` while the overlay could show a subitem name. The bottom `reader-meta` shows only `{pct}% through the book` (`#tts-chapter`). `applyReadTheme()` measures `.reader-top` and `.reader-bottom` `offsetHeight` and uses those as pixel padding for the epub `body`, so text isn't hidden under either overlay.
 - **Chapter jump** (`ChapterModal`): TOC hrefs can be relative to the nav doc
   and/or carry a `#fragment` that won't match epub.js's spine lookup, so passing
   the raw href to `display()` silently fails. `_resolveHref()` resolves it to a
@@ -607,7 +612,9 @@ Google login); verify by inspection + the owner testing on device.
     (`voices.bin` present → Kokoro config; else → VITS/Piper config), so
     switching engines is just a model-file swap. cancel() bounds the
     leave-delay to one in-flight synth. WAV files rotate through a small
-    cacheDir ring. `_stopAudio()` calls the plugin's `cancel()` (bumps an
+    cacheDir ring; each clip is **peak-normalized** to ~0.95 (gain capped 6×)
+    in `writeWav` so voices/models match in loudness (the UK vctk model was
+    quieter than the US libritts one). `_stopAudio()` calls the plugin's `cancel()` (bumps an
     `epoch`; queued-but-unstarted synths whose stamp is stale are skipped) so
     leaving the reader doesn't leave seconds of dead inference pegging the CPU.
     A genuine failure (e.g. model files not placed) strikes out to the device

@@ -160,7 +160,7 @@
                             tokens = "$base/tokens.txt",
                             dataDir = ifExists("espeak-ng-data"), // Piper is espeak-based
                         ),
-                        numThreads = threads,
+                            numThreads = threads,
                         provider = "cpu",
                     )
                 }
@@ -266,6 +266,12 @@
     
         private fun writeWav(out: OutputStream, samples: FloatArray, sampleRate: Int) {
             val n = samples.size
+            // Peak-normalize each clip to a consistent level so different models/
+            // voices match in loudness (the vctk/UK model is quieter than the
+            // libritts/US one). Gain capped so near-silent clips aren't blown up.
+            var peak = 0f
+            for (s in samples) { val a = if (s < 0f) -s else s; if (a > peak) peak = a }
+            val gain = if (peak > 0.001f) minOf(6f, 0.95f / peak) else 1f
             fun str(s: String) = out.write(s.toByteArray(Charsets.US_ASCII))
             fun i32(v: Int) { out.write(v and 0xff); out.write((v ushr 8) and 0xff); out.write((v ushr 16) and 0xff); out.write((v ushr 24) and 0xff) }
             fun i16(v: Int) { out.write(v and 0xff); out.write((v ushr 8) and 0xff) }
@@ -273,7 +279,8 @@
             str("fmt "); i32(16); i16(1); i16(1); i32(sampleRate); i32(sampleRate * 2); i16(2); i16(16)
             str("data"); i32(n * 2)
             for (s in samples) {
-                val clamped = if (s > 1f) 1f else if (s < -1f) -1f else s
+                val g = s * gain
+                val clamped = if (g > 1f) 1f else if (g < -1f) -1f else g
                 i16((clamped * 32767f).toInt())
             }
         }

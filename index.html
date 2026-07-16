@@ -839,7 +839,7 @@
   <div id="tts-prog-line"><div id="tts-prog"></div></div>
 
   <div class="reader-top">
-    <button class="icon-btn" onclick="history.back()" aria-label="Back to home" style="color:var(--text)"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg></button>
+    <button class="icon-btn" onclick="Reader.back()" aria-label="Back to home" style="color:var(--text)"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg></button>
     <div class="reader-top-center">
       <div class="reader-top-info" id="rs-chapter"></div>
     </div>
@@ -1034,6 +1034,17 @@ function hideToast() { document.getElementById('toast').classList.remove('show')
 function showView(id) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.getElementById(id + '-view').classList.add('active');
+}
+
+// Flatten the TOC tree (subitems inline after their parent), tracking depth.
+// Used by BOTH the reader overlay's current-chapter match and the chapter modal
+// so the names they show are identical.
+function flattenToc(items, depth = 0, out = []) {
+  (items || []).forEach(t => {
+    out.push({ item: t, depth });
+    if (t.subitems && t.subitems.length) flattenToc(t.subitems, depth + 1, out);
+  });
+  return out;
 }
 
 function fmtSize(b) {
@@ -2388,12 +2399,7 @@ const Reader = {
     // spine order for books where sub-chapters aren't in the TOC at all.
     const href = loc.start.href;
     const curBase = href.split('/').pop()?.split('#')[0];
-    const flatToc = (items => {
-      const out = [];
-      const walk = arr => arr?.forEach(t => { out.push(t); walk(t.subitems); });
-      walk(items);
-      return out;
-    })(State.toc);
+    const flatToc = flattenToc(State.toc).map(e => e.item); // same flatten as the chapter modal
     let tocItem = flatToc.find(t => {
       const b = t.href?.split('/').pop()?.split('#')[0];
       return b && b === curBase;
@@ -2438,9 +2444,9 @@ const Reader = {
     // If TTS was reading and asked to turn the page, resume on the new page.
     if (TTS.active && TTS._awaitingPage) {
       TTS._awaitingPage = false;
-      // Resume on the new page, retrying until its text is actually laid out so
-      // the audio matches the visible page.
-      setTimeout(() => TTS._resumeRead(0), 80);
+      // Resume on the new page ASAP (short initial delay), retrying until its
+      // text is actually laid out so the audio matches the visible page.
+      setTimeout(() => TTS._resumeRead(0), 30);
     }
 
     // Auto-start reading once the page has settled to the restored position
@@ -2675,6 +2681,20 @@ const Reader = {
     rv.classList.add('minimized');
     this.showChrome();
     Nav.go('home', true); // invoked from popstate (Back) — don't push another entry
+  },
+
+  // Reader back arrow. history.back() from a click doesn't reliably fire
+  // popstate in the native WebView (the tap registered — button highlighted —
+  // but nothing happened), so minimize directly. Then consume the pushed
+  // reader history entry with a guarded history.back() so the stack stays sane
+  // and the popstate handler doesn't re-run the minimize/tab logic.
+  back() {
+    if (!document.getElementById('reader-view').classList.contains('minimized')) this.minimize();
+    if (history.state && history.state.app === 'reader') {
+      this._skipPop = true;
+      setTimeout(() => { this._skipPop = false; }, 300); // self-heal if popstate never fires
+      history.back();
+    }
   },
 
   close() {
@@ -2922,8 +2942,8 @@ const TTS = {
     // Keep retrying while the page isn't laid out yet, OR the text we extracted
     // is still the page we just left (epub can report the old column for a frame).
     const stale = this._lastText && this._lastText === this._prevText;
-    if (((!this.chunks.length && hasText) || stale) && (tries || 0) < 14) {
-      setTimeout(() => this._resumeRead((tries || 0) + 1), 110);
+    if (((!this.chunks.length && hasText) || stale) && (tries || 0) < 24) {
+      setTimeout(() => this._resumeRead((tries || 0) + 1), 60); // poll faster; same ~1.4s max window
       return;
     }
     this._prevText = '';
@@ -3440,15 +3460,16 @@ const PIPER_VOICES = [
   ['us160', 'Nora · US female', 160, 'us'],
   ['us16',  'Ben · US male',    16,  'us'],
   ['us520', 'Jack · US male',   520, 'us'],
-  // UK (vctk) — AUDITION candidates (placeholder names, gender unknown). Listen
-  // and report the good speaker numbers + genders, then this gets curated to
-  // 2 male + 2 female like the US set.
-  ['gb0',  'Oliver · UK',  0,  'gb'],
-  ['gb10', 'Poppy · UK',   10, 'gb'],
-  ['gb30', 'Quinn · UK',   30, 'gb'],
-  ['gb50', 'Rosie · UK',   50, 'gb'],
-  ['gb70', 'Sam · UK',     70, 'gb'],
-  ['gb92', 'Tessa · UK',   92, 'gb'],
+  // UK (vctk). Round-1 confirmed females:
+  ['gb0',  'Amelia · UK female',    0,  'gb'],
+  ['gb30', 'Charlotte · UK female', 30, 'gb'],
+  // UK audition round 2 — hunting good MALES (10/50/92 were bad; Sam retained).
+  // Report gender + good/bad for each; final UK set = 2 male + 2 female.
+  ['gb70', 'Sam · UK',  70, 'gb'],
+  ['gb5',  'Leo · UK',  5,  'gb'],
+  ['gb20', 'Max · UK',  20, 'gb'],
+  ['gb45', 'Noah · UK', 45, 'gb'],
+  ['gb85', 'Ruby · UK', 85, 'gb'],
 ];
 // --- Voice Modal ------------------------------------------
 const VoiceModal = {
@@ -3518,11 +3539,15 @@ const VoiceModal = {
 // --- Chapter Modal ----------------------------------------
 const ChapterModal = {
   open() {
-    if (!State.toc.length) { toast('No chapter list available'); return; }
-    document.getElementById('chapter-list').innerHTML = State.toc.map((c, i) => `
-      <div class="chapter-item" onclick="ChapterModal.jump(${i})">
-        <span class="chapter-num">${i + 1}</span>
-        <span class="chapter-label">${esc(c.label?.trim() || 'Chapter ' + (i + 1))}</span>
+    // Flattened TOC (incl. subitems) so the names match the reader overlay's
+    // current-chapter label exactly. Subitems are indented.
+    const flat = flattenToc(State.toc);
+    if (!flat.length) { toast('No chapter list available'); return; }
+    this._flat = flat;
+    document.getElementById('chapter-list').innerHTML = flat.map(({ item, depth }, i) => `
+      <div class="chapter-item" onclick="ChapterModal.jump(${i})" style="padding-left:${12 + depth * 16}px">
+        <span class="chapter-num">${depth ? '' : (i + 1)}</span>
+        <span class="chapter-label">${esc(item.label?.trim() || 'Chapter ' + (i + 1))}</span>
       </div>`).join('');
     document.getElementById('chapter-modal').classList.add('open');
   },
@@ -3547,7 +3572,7 @@ const ChapterModal = {
   },
 
   jump(i) {
-    const item = State.toc[i];
+    const item = (this._flat || flattenToc(State.toc))[i]?.item;
     if (!item?.href) return;
     this.close();
     const target = this._resolveHref(item.href);
@@ -3593,6 +3618,9 @@ window.addEventListener('load', () => {
   // Back/edge-swipe should step back inside the app, not leave it. The full
   // reader pushes a history entry; popping it minimizes to Home instead.
   window.addEventListener('popstate', (e) => {
+    // Reader.back() already handled the reader→Home transition and is just
+    // consuming its history entry — don't run the minimize/tab logic again.
+    if (Reader._skipPop) { Reader._skipPop = false; return; }
     const rv = document.getElementById('reader-view');
     if (rv && rv.classList.contains('active') && !rv.classList.contains('minimized')) {
       Reader.minimize();                 // Back in the full reader → mini-player on Home
