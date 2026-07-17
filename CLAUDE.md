@@ -301,9 +301,14 @@ Google login); verify by inspection + the owner testing on device.
   concurrent requests); for each book without genre/pages it calls
   `Meta._fetchOL(id, title, author)` → Open Library `search.json` → stores
   `pages` (number_of_pages_median) and `genre` (`Meta._pickGenre` maps the
-  subject list to a normalized label: Science fiction / Fantasy / Mystery /
-  Romance / Thriller / Horror / Historical fiction / Biography / History /
-  Self-help / Young adult / Children's; falls back to the first subject).
+  subject list against `Meta._GENRE_MAP` to a normalized label: Science fiction /
+  Fantasy / Mystery / Romance / Thriller / Horror / Historical fiction /
+  Biography / History / Self-help / Young adult / Children's).
+  **`_pickGenre` returns `''` when nothing matches — NEVER fall back to the
+  first OL subject**: that subject is usually a topic, often echoing the book's
+  own title (Cixin Liu's *Ball Lightning* → genre "Ball lightning"), which isn't
+  a genre. `Meta._cleanGenres()` (boot, guarded by `pl_genrefix`) drops cached
+  genres left by that old fallback — any value not in `_GENRE_MAP`'s labels.
   **The OL title must be a real title**: raw Drive filenames ("Author - Title",
   dots/underscores, bracketed junk) match nothing or the WRONG book (this made
   By genre / By book length permanently empty). `fetchAll` prefers the
@@ -376,8 +381,11 @@ Google login); verify by inspection + the owner testing on device.
   in-app modal (inherits theme via CSS vars) that lists sub-folders via the Drive
   API (`'<id>' in parents and mimeType=folder`, `orderBy:'name'` → **name asc**),
   with a clickable breadcrumb (`_stack`), tap-a-row to navigate in, and "Use this
-  folder" to pick the current one. Starts at the current folder (re-selecting) or
-  `root` = My Drive. `setFolder(id,name)` persists `pl_folder_id` (id wins) /
+  folder" to pick the current one. **Always starts at `root` = My Drive**, with
+  the existing pick shown as context in `#fb-current` ("Currently: X — open a
+  folder to browse…"). It used to open INSIDE the current folder, which listed
+  only its sub-folders — usually "No sub-folders here" — so changing looked
+  impossible unless you guessed the breadcrumb was tappable (owner reported this). `setFolder(id,name)` persists `pl_folder_id` (id wins) /
   `pl_folder` and reloads; `Library.load` uses `activeFolderId()` then, only if
   a folder name is set, `findFolder(activeFolder())`. (`FolderModal` typed-entry
   remains only as a not-signed-in fallback; `CONFIG.API_KEY` is now unused.)
@@ -514,12 +522,11 @@ Google login); verify by inspection + the owner testing on device.
   turn logs `{e:'next', sl/sw/cw, skip}` (container scroll state + overshoot
   verdict) and each forward relocation logs `{e:'rel', i, pi, p, tot}` plus
   `FIX` / `trap-skip` events into a 30-entry ring buffer in `localStorage`
-  (`pl_diag`). **Settings → Debug log** (a `<details>` under the footer) shows
-  it with a "Copy log" button — ask the owner to paste it when a page-turn bug
-  can't be reproduced locally. The Settings footer also shows the **build**:
-  `const BUILD = '__BUILD__'` is sed-stamped with the commit short-SHA by
-  `deploy.yml` (shows `dev` locally) — use it to confirm the owner's PWA is
-  actually running the latest deploy before debugging further.
+  (`pl_diag`). **The Settings UI for this was REMOVED (2026-07-06, owner
+  request)** — no Debug-log `<details>`, no build stamp (it always read `dev`
+  in the native build since only `deploy.yml` sed-stamps `BUILD`, so it was
+  just noise). `Diag` still records to `pl_diag`; re-expose it temporarily if a
+  page-turn bug needs on-device evidence again.
 - **Don't re-read stale text on a blank page.** `TTS.loadPageText()` must
   *clear* `chunks` when a page is genuinely blank, or `_speak()` re-reads the
   previous page (a real bug). It tells a true blank page (the iframe's
@@ -621,9 +628,14 @@ Google login); verify by inspection + the owner testing on device.
     voice per chunk like any synthesis failure. `_synthNative` returns
     `{path, durationMs, provider, modelType}`; the last two show in the on
     -screen debug readout (`#tts-dbg`, e.g. `vits/cpu`). **The voice→speaker
-    -id map lives in JS** (catalog `[id,label,sid]`, third field = sherpa
+    -id map lives in JS** (catalog `[id,label,sid,model]`, third field = sherpa
     `sid`; `_voiceSid()`), so a wrong-sounding voice is a one-line JS fix +
     `npm run sync`, no Gradle rebuild — but the sids are MODEL-SPECIFIC.
+    **`TTS._modelType` is CACHED in `pl_modeltype` and restored synchronously at
+    parse time** (`_setModelType` keeps it in sync): `prepare()` is async, so
+    without the cache the picker briefly showed the Kokoro names and — worse —
+    the first synth used the Kokoro key/catalog, so the voice audibly changed
+    mid-sentence a few seconds in (owner-reported).
     **Per-model catalogs (`TTS._modelType`, set from `prepare()`/`_synthNative`):**
     `_nativeCatalog()` returns `PIPER_VOICES` when a Piper/vits model is loaded,
     else `KOKORO_VOICES`; `_voiceKey()` persists the choice separately
@@ -631,12 +643,13 @@ Google login); verify by inspection + the owner testing on device.
     one's voice. `VoiceModal.selectNative` + `_voiceSid` + `activeVoiceLabel`
     all go through these. `PIPER_VOICES` entries are `[id, label, sid, model]`
     where `model` ("us"/"gb") selects the native model folder; `_voiceModel()`
-    reads it and `_synthNative` passes it to the plugin. Current set: **4
-    finalised US voices** (libritts_r — Ava/Nora female, Ben/Jack male; genders
-    corrected after round 1, which dropped speakers 0/256/400) + **6 UK audition
-    candidates** (vctk — placeholder names, gender TBD; picker shows `speaker N`
-    so the owner reports the good sids+genders, then curated to 2M+2F like US).
-    First entry (Ava, us/sid 40) = default. The on-screen `#tts-dbg` timing
+    reads it and `_synthNative` passes it to the plugin. Current set (8, all
+    owner-auditioned, 2 female + 2 male per accent): **US** (libritts_r) Ava 40 /
+    Nora 160 female, Ben 16 / Jack 520 male — speakers 92 & 600 were also good
+    males if a swap is ever wanted; **UK** (vctk) Amelia 0 / Ruby 85 female,
+    Sam 70 / Max 20 male. Rejected along the way: US 0/256/400, UK 10/50/92.
+    First entry (Ava, us/sid 40) = default. The picker still prints `speaker N`
+    under each voice — drop that once the UK genders are confirmed. The on-screen `#tts-dbg` timing
     readout was removed once Piper proved gapless. The Kotlin plugin
     (`PhonoLeafTtsPlugin.kt`) is model-agnostic:
     it only sets the optional `dataDir`/`dictDir`/`lexicon` paths that actually

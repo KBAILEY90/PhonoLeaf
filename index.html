@@ -817,12 +817,7 @@
         <button class="set-link" onclick="Settings.changeFolder()">Change</button>
       </div>
     </div>
-    <div style="text-align:center;color:var(--text-dim);font-size:0.7rem;margin-top:1.4rem">PhonoLeaf &middot; A voice for every page &middot; <span id="set-build"></span></div>
-    <details style="margin-top:0.8rem;color:var(--text-dim);font-size:0.7rem">
-      <summary style="cursor:pointer;text-align:center">Debug log</summary>
-      <pre id="diag-pre" style="font-size:0.6rem;line-height:1.5;overflow-x:auto;background:var(--track);border-radius:8px;padding:0.6rem;margin:0.6rem 0;white-space:pre"></pre>
-      <div style="text-align:center"><button class="set-link" onclick="Settings.copyDiag()">Copy log</button></div>
-    </details>
+    <div style="text-align:center;color:var(--text-dim);font-size:0.7rem;margin-top:1.4rem">PhonoLeaf &middot; A voice for every page</div>
   </div>
 </div>
 
@@ -945,6 +940,7 @@
   <div class="modal-sheet">
     <div class="modal-handle"></div>
     <div class="modal-title">Choose your books folder</div>
+    <div id="fb-current" style="text-align:center;color:var(--text-dim);font-size:0.72rem;margin:-0.3rem 0 0.7rem;line-height:1.45"></div>
     <div class="fb-crumbs" id="fb-crumbs"></div>
     <div id="fb-list"></div>
     <button class="fb-use" id="fb-use" onclick="FolderBrowser.useCurrent()">Use this folder</button>
@@ -1183,24 +1179,43 @@ const Meta = {
       this._save();
     } catch (_) {}
   },
+  // OL subject substring → normalized genre label.
+  _GENRE_MAP: [
+    ['science fiction', 'Science fiction'], ['fantasy', 'Fantasy'],
+    ['mystery', 'Mystery'], ['detective', 'Mystery'],
+    ['romance', 'Romance'], ['thriller', 'Thriller'], ['horror', 'Horror'],
+    ['historical fiction', 'Historical fiction'],
+    ['biography', 'Biography'], ['autobiography', 'Biography'],
+    ['history', 'History'], ['self-help', 'Self-help'],
+    ['young adult', 'Young adult'],
+    ['juvenile', "Children's"], ['children', "Children's"],
+  ],
   _pickGenre(subjects) {
     if (!subjects.length) return '';
-    const map = [
-      ['science fiction', 'Science fiction'], ['fantasy', 'Fantasy'],
-      ['mystery', 'Mystery'], ['detective', 'Mystery'],
-      ['romance', 'Romance'], ['thriller', 'Thriller'], ['horror', 'Horror'],
-      ['historical fiction', 'Historical fiction'],
-      ['biography', 'Biography'], ['autobiography', 'Biography'],
-      ['history', 'History'], ['self-help', 'Self-help'],
-      ['young adult', 'Young adult'],
-      ['juvenile', "Children's"], ['children', "Children's"],
-    ];
     for (const s of subjects) {
       const low = s.toLowerCase();
-      for (const [k, label] of map) if (low.includes(k)) return label;
+      for (const [k, label] of this._GENRE_MAP) if (low.includes(k)) return label;
     }
-    const first = subjects[0] || '';
-    return first.length <= 36 ? first : first.slice(0, 34) + '…';
+    // No RECOGNISED genre. Never fall back to an arbitrary subject: OL's first
+    // subject is usually a topic — often echoing the book's own title (Cixin
+    // Liu's "Ball Lightning" → subject "Ball lightning") — which is not a genre.
+    // Showing nothing beats showing something wrong.
+    return '';
+  },
+  // One-time cleanup of genres cached by the old first-subject fallback (they're
+  // topics/titles, not genres). Anything not a recognised label gets dropped.
+  _cleanGenres() {
+    try {
+      if (localStorage.getItem('pl_genrefix')) return;
+      const ok = new Set(this._GENRE_MAP.map(m => m[1]));
+      let changed = false;
+      for (const id in this.data) {
+        const g = this.data[id] && this.data[id].genre;
+        if (g && !ok.has(g)) { delete this.data[id].genre; changed = true; }
+      }
+      if (changed) this._save();
+      localStorage.setItem('pl_genrefix', '1');
+    } catch (_) {}
   },
 };
 
@@ -1446,14 +1461,6 @@ const Settings = {
     const wl = document.getElementById('set-wakelock'); if (wl) wl.checked = localStorage.getItem('pl_wakelock') !== 'false';
     const f = document.getElementById('set-folder'); if (f) f.textContent = activeFolder() || 'Not selected';
     const a = document.getElementById('set-account'); if (a) a.textContent = State.userName ? 'Signed in as ' + State.userName : 'Signed in';
-    const b = document.getElementById('set-build'); if (b) b.textContent = BUILD.startsWith('__BU') ? 'dev' : BUILD;
-    const d = document.getElementById('diag-pre'); if (d) d.textContent = Diag.text() || '(empty)';
-  },
-  copyDiag() {
-    const s = `build ${BUILD}\n` + Diag.text();
-    (navigator.clipboard?.writeText(s) || Promise.reject()).then(
-      () => toast('Log copied'),
-      () => toast('Could not copy'));
   },
   changeFolder() { FolderBrowser.open(); },
   // Give the neural voice a fresh chance on this device: clear the cached speed
@@ -1651,9 +1658,19 @@ const FolderBrowser = {
   _stack: [], _items: [],
   open() {
     if (!State.token) { FolderModal.open(); return; }
+    // Always start at My Drive. Opening INSIDE the current folder (as before)
+    // showed only its sub-folders — usually "No sub-folders here" — so there was
+    // no visible way to pick a different one; you had to guess that the
+    // breadcrumb was tappable. Starting at the top makes changing obvious, and
+    // the current pick is shown as context below the title.
     this._stack = [{ id: 'root', name: 'My Drive' }];
-    const id = activeFolderId();
-    if (id && id !== 'root') this._stack.push({ id, name: activeFolder() });
+    const cur = activeFolder();
+    const hint = document.getElementById('fb-current');
+    if (hint) {
+      hint.textContent = cur
+        ? `Currently: ${cur} — open a folder to browse, then tap “Use this folder”.`
+        : 'Open a folder to browse, then tap “Use this folder”.';
+    }
     document.getElementById('browser-modal').classList.add('open');
     this._render(); this._load();
   },
@@ -2726,6 +2743,17 @@ const TTS = {
   _kid: 0,          // worker request id counter
   _kstrikes: 0,     // consecutive neural synthesis failures
   _kokoroDead: false, // 2 strikes or a slow speed-probe → device voice for the session
+  // Loaded native model family ("vits"|"kokoro"), reported by prepare()/synthesize.
+  // CACHED in localStorage and restored synchronously at parse time: prepare() is
+  // async, so without this the picker + the first synth briefly used the WRONG
+  // catalog (Kokoro names/voice) and the voice audibly switched mid-sentence once
+  // prepare resolved. `_setModelType` keeps the cache in sync.
+  _modelType: (() => { try { return localStorage.getItem('pl_modeltype') || null; } catch (_) { return null; } })(),
+  _setModelType(t) {
+    if (!t || t === this._modelType) return;
+    this._modelType = t;
+    try { localStorage.setItem('pl_modeltype', t); } catch (_) {}
+  },
   _gapT: null,  // timer for inter-chunk pauses (chapter/subtitle gaps)
   _preIdx: -1,  // chunk index whose pre-pause has already been applied
 
@@ -3140,7 +3168,7 @@ const TTS = {
     const genMs = Math.round(performance.now() - t0);
     const audioMs = r.durationMs || 0;
     if (r.provider) this._lastProvider = r.provider;
-    if (r.modelType) this._modelType = r.modelType;
+    this._setModelType(r.modelType);
     this._lastNsynth = { g: genMs, a: audioMs, r: audioMs ? +(genMs / audioMs).toFixed(2) : 0 };
     Diag.push({ e: 'nsynth', g: genMs, a: audioMs, r: this._lastNsynth.r, len: text.length });
     return (window.Capacitor && Capacitor.convertFileSrc) ? Capacitor.convertFileSrc(r.path) : ('file://' + r.path);
@@ -3264,7 +3292,7 @@ const TTS = {
     if (nat) {
       toast('Preparing the natural voice…', 0);
       nat.prepare().then(r => {
-        if (r && r.modelType) this._modelType = r.modelType; // pick the right voice catalog
+        if (r) this._setModelType(r.modelType); // pick the right voice catalog (cached for next boot)
         this.updateVoiceLabel();
         hideToast();
       }).catch(() => hideToast());
@@ -3460,16 +3488,13 @@ const PIPER_VOICES = [
   ['us160', 'Nora · US female', 160, 'us'],
   ['us16',  'Ben · US male',    16,  'us'],
   ['us520', 'Jack · US male',   520, 'us'],
-  // UK (vctk). Round-1 confirmed females:
-  ['gb0',  'Amelia · UK female',    0,  'gb'],
-  ['gb30', 'Charlotte · UK female', 30, 'gb'],
-  // UK audition round 2 — hunting good MALES (10/50/92 were bad; Sam retained).
-  // Report gender + good/bad for each; final UK set = 2 male + 2 female.
-  ['gb70', 'Sam · UK',  70, 'gb'],
-  ['gb5',  'Leo · UK',  5,  'gb'],
-  ['gb20', 'Max · UK',  20, 'gb'],
-  ['gb45', 'Noah · UK', 45, 'gb'],
-  ['gb85', 'Ruby · UK', 85, 'gb'],
+  // UK (vctk) — owner-picked keepers. Amelia's gender is confirmed; the other
+  // three are labelled to match their placeholder names — correct if a voice's
+  // gender doesn't match its label.
+  ['gb0',  'Amelia · UK female', 0,  'gb'],
+  ['gb85', 'Ruby · UK female',   85, 'gb'],
+  ['gb70', 'Sam · UK male',      70, 'gb'],
+  ['gb20', 'Max · UK male',      20, 'gb'],
 ];
 // --- Voice Modal ------------------------------------------
 const VoiceModal = {
@@ -3602,6 +3627,7 @@ const ConfirmModal = {
 // --- Boot -------------------------------------------------
 window.addEventListener('load', () => {
   CoverCache.migrate(); // one-time koboaudio → phonoleaf DB rename (fire & forget)
+  Meta._cleanGenres();  // one-time: drop bogus "genres" cached from OL subjects
   App.init();
   TTS.pickDefaultVoice(); // voices may already be loaded; voiceschanged refines later
   TTS._kokoroWarm(); // Kokoro is THE voice — start model init before first play
