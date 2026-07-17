@@ -3421,19 +3421,7 @@ const TTS = {
 
   _isNatural(v) { return this._voiceRank(v) >= 40; },
 
-
-  // Compact display name, e.g. "Microsoft Aria Online (Natural) - English (US)" -> "Aria"
-  _shortVoiceName(v) {
-    if (!v) return 'Voice';
-    let n = v.name.split(' - ')[0]
-      .replace(/^(Microsoft|Google|Apple)\s+/i, '')
-      .replace(/\s*\((Natural|Enhanced|Premium|Compact)\)/i, '')
-      .replace(/\s*Online$/i, '')
-      .trim();
-    return n || v.name;
-  },
-
-  // Active voice display string (Settings + reader pill). Kokoro when the
+  // Active voice display string (Settings). Kokoro/Piper when the
   // neural engine is running; the system voice in fallback mode.
   activeVoiceLabel() {
     if (this._engineNow() === 'kokoro') {
@@ -3444,12 +3432,10 @@ const TTS = {
     }
     return this.voice?.name || 'System default';
   },
-  // Show the active voice's name on the reader's voice button.
+  // The reader's button is always just "Voice" — it's an action, and the name it
+  // used to show varied (engine/voice-dependent, sometimes the literal word
+  // "Voice"). Settings still shows the actual active voice.
   updateVoiceLabel() {
-    const btn = document.getElementById('voice-btn');
-    if (btn) btn.textContent = this._engineNow() === 'web'
-      ? this._shortVoiceName(this.voice)
-      : this.activeVoiceLabel().split(' · ')[0];
     const sub = document.getElementById('set-voice-sub');
     if (sub) sub.textContent = this.activeVoiceLabel();
   },
