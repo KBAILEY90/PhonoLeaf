@@ -635,14 +635,14 @@ Google login); verify by inspection + the owner testing on device.
     -id map lives in JS** (catalog `[id,label,sid,model]`, third field = sherpa
     `sid`; `_voiceSid()`), so a wrong-sounding voice is a one-line JS fix +
     `npm run sync`, no Gradle rebuild — but the sids are MODEL-SPECIFIC.
-    **The model type must be known BEFORE `prepare()` resolves** or the picker
-    shows Kokoro names and — worse — the first chunk synthesizes with a Kokoro
-    speaker id, so the voice audibly changes a few seconds in (owner-reported
-    twice). Two layers: `TTS._modelType` is cached in `pl_modeltype` and
-    restored synchronously at parse time (`_setModelType` keeps it in sync), and
-    **`_effModelType()` assumes `'vits'` whenever the native plugin exists** and
-    nothing is cached — which covers a first-ever launch. `prepare()` still
-    corrects it if a Kokoro model is ever bundled natively instead.
+    **NEVER guess the model type** — sids are catalog-specific, so guessing wrong
+    makes the first chunk speak in the wrong voice and then audibly switch
+    (owner-reported twice; an earlier "assume vits when native" shortcut was
+    removed at the owner's request — don't reintroduce it). Instead
+    `_synthNative` **awaits `TTS._modelReady()`**, which resolves from the
+    plugin's `prepare()` report. Only the FIRST session waits: `_setModelType`
+    caches to `pl_modeltype` and `_modelType` is restored synchronously at parse
+    time, so later sessions resolve instantly (verified ~0ms).
     **Per-model catalogs (`TTS._modelType`, set from `prepare()`/`_synthNative`):**
     `_nativeCatalog()` returns `PIPER_VOICES` when a Piper/vits model is loaded,
     else `KOKORO_VOICES`; `_voiceKey()` persists the choice separately

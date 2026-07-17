@@ -3134,16 +3134,26 @@ const TTS = {
     } catch (_) {}
     return null;
   },
+  // Resolves once the plugin has told us which model is actually loaded. We
+  // never GUESS the model: the voice id spaces differ per model, so guessing
+  // wrong makes the first chunk speak in the wrong voice and then switch. Only
+  // the first session ever waits — the answer is cached in `pl_modeltype` and
+  // restored at parse time, so later sessions resolve instantly.
+  _modelReady() {
+    if (this._modelType) return Promise.resolve(this._modelType);
+    const nat = this._nativeTts();
+    if (!nat) return Promise.resolve(null); // web build → browser-WASM Kokoro
+    if (!this._modelReadyP) {
+      this._modelReadyP = nat.prepare()
+        .then(r => { if (r) this._setModelType(r.modelType); return this._modelType; })
+        .catch(() => null);
+    }
+    return this._modelReadyP;
+  },
+  _modelReadyP: null,
   // The voice catalog + persisted-choice key depend on the loaded native model
   // (Kokoro vs Piper) — they have different speakers and speaker-id orderings.
-  // `prepare()` reports the real type asynchronously, so until it answers we'd
-  // otherwise fall back to Kokoro: the picker showed Kokoro names AND the first
-  // chunk synthesized with a Kokoro speaker id, so the voice audibly changed a
-  // few seconds in. The cache (pl_modeltype) fixes launch 2+, but on a FIRST
-  // launch there's nothing cached — so assume the native build's shipped model
-  // (Piper/vits). prepare() still corrects this if a Kokoro model is ever
-  // bundled instead.
-  _effModelType() { return this._modelType || (this._nativeTts() ? 'vits' : null); },
+  _effModelType() { return this._modelType; },
   _nativeCatalog() { return this._effModelType() === 'vits' ? PIPER_VOICES : KOKORO_VOICES; },
   _voiceKey() { return this._effModelType() === 'vits' ? 'pl_voice_piper' : 'pl_voice_kokoro'; },
   _voiceSid() {
@@ -3176,6 +3186,10 @@ const TTS = {
     // Log gen-ms / audio-ms / ratio to Diag: ratio < ~1.0 means generation
     // outpaces playback (prefetch keeps it gapless); repeated ratios above 1.0
     // explain gaps and point at a too-slow device or model.
+    // Never synthesize before we know which model is loaded — the sid/model we
+    // pass are catalog-specific, so a guess would speak the first chunk in the
+    // wrong voice and then audibly switch. Cached after session 1 → no wait.
+    await this._modelReady();
     const t0 = performance.now();
     const r = await nat.synthesize({ text, sid: this._voiceSid(), speed: 1.0, model: this._voiceModel() });
     if (!r || !r.path) throw new Error('native synth empty');
@@ -3305,11 +3319,7 @@ const TTS = {
     const nat = this._nativeTts();
     if (nat) {
       toast('Preparing the natural voice…', 0);
-      nat.prepare().then(r => {
-        if (r) this._setModelType(r.modelType); // pick the right voice catalog (cached for next boot)
-        this.updateVoiceLabel();
-        hideToast();
-      }).catch(() => hideToast());
+      this._modelReady().then(() => { this.updateVoiceLabel(); hideToast(); }, () => hideToast());
       return;
     }
     // Browser-WASM engine: a cached slow-probe verdict skips the ~90 MB
