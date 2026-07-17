@@ -9,7 +9,14 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
 
+        <!-- Portrait-locked: rotating re-flows the epub into a different column
+             layout, which changes the page count/positions under the reader and
+             made a page-end auto-advance jump backwards several pages. The UI is
+             portrait-first anyway (matches manifest.json's "orientation").
+             Supporting landscape properly means re-anchoring to the current CFI
+             and resetting the page-turn corrector on resize — a later job. -->
         <activity
+            android:screenOrientation="portrait"
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode|navigation|density"
             android:name=".MainActivity"
             android:label="@string/title_activity_main"

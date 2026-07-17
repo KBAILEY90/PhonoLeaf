@@ -309,6 +309,10 @@ Google login); verify by inspection + the owner testing on device.
   own title (Cixin Liu's *Ball Lightning* → genre "Ball lightning"), which isn't
   a genre. `Meta._cleanGenres()` (boot, guarded by `pl_genrefix`) drops cached
   genres left by that old fallback — any value not in `_GENRE_MAP`'s labels.
+  The Stats **By genre** breakdown then shows genre-less books as **"Other"**
+  (always sorted last). NB its "still loading" check keys off `genre || pages`,
+  NOT `genre` — a book with no recognised genre legitimately has none now, so
+  the old genre-only check would have shown "loading" forever.
   **The OL title must be a real title**: raw Drive filenames ("Author - Title",
   dots/underscores, bracketed junk) match nothing or the WRONG book (this made
   By genre / By book length permanently empty). `fetchAll` prefers the
@@ -631,11 +635,14 @@ Google login); verify by inspection + the owner testing on device.
     -id map lives in JS** (catalog `[id,label,sid,model]`, third field = sherpa
     `sid`; `_voiceSid()`), so a wrong-sounding voice is a one-line JS fix +
     `npm run sync`, no Gradle rebuild — but the sids are MODEL-SPECIFIC.
-    **`TTS._modelType` is CACHED in `pl_modeltype` and restored synchronously at
-    parse time** (`_setModelType` keeps it in sync): `prepare()` is async, so
-    without the cache the picker briefly showed the Kokoro names and — worse —
-    the first synth used the Kokoro key/catalog, so the voice audibly changed
-    mid-sentence a few seconds in (owner-reported).
+    **The model type must be known BEFORE `prepare()` resolves** or the picker
+    shows Kokoro names and — worse — the first chunk synthesizes with a Kokoro
+    speaker id, so the voice audibly changes a few seconds in (owner-reported
+    twice). Two layers: `TTS._modelType` is cached in `pl_modeltype` and
+    restored synchronously at parse time (`_setModelType` keeps it in sync), and
+    **`_effModelType()` assumes `'vits'` whenever the native plugin exists** and
+    nothing is cached — which covers a first-ever launch. `prepare()` still
+    corrects it if a Kokoro model is ever bundled natively instead.
     **Per-model catalogs (`TTS._modelType`, set from `prepare()`/`_synthNative`):**
     `_nativeCatalog()` returns `PIPER_VOICES` when a Piper/vits model is loaded,
     else `KOKORO_VOICES`; `_voiceKey()` persists the choice separately
@@ -718,6 +725,14 @@ Google login); verify by inspection + the owner testing on device.
   mobile. This is a platform limitation, not a bug — see roadmap. (The neural
   path plays through `<audio>`, which unlocks MediaSession/background playback
   later — not wired yet.)
+- **The native app is PORTRAIT-LOCKED** (`android:screenOrientation="portrait"`
+  on `MainActivity`). Rotating re-flows the epub into a different column layout,
+  so page counts/positions shift under the reader — a page-end auto-advance then
+  jumped backwards several pages (owner-reported). The UI is portrait-first
+  anyway (matches `manifest.json`'s `"orientation": "portrait"`). Supporting
+  landscape properly = re-anchor to the current CFI on resize and reset the
+  page-turn corrector's stale `_prevLoc`/`_fixedAtCfi`; revisit only if wanted
+  (tablets/foldables would benefit).
 - Use `100dvh` (not `100vh`) for full-height views so mobile browser chrome
   doesn't hide the bottom controls.
 

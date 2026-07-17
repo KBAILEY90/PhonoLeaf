@@ -1558,15 +1558,21 @@ const StatsPage = {
       const map = {};
       let known = 0;
       for (const b of books) {
-        const genre = (Meta.get(b.id) || {}).genre || '';
-        if (!genre) continue;
-        known++;
+        const m = Meta.get(b.id) || {};
+        // "Fetched" = Open Library returned SOMETHING for this book. Can't key
+        // this off `genre` any more: a book with no recognised genre now
+        // legitimately has none (see Meta._pickGenre), so the old check would
+        // show "loading" forever.
+        if (m.genre || m.pages) known++;
         if (!mins(b.id) && !started(b.id)) continue; // only books with activity
+        const genre = m.genre || 'Other';           // unknown/unrecognised → Other
         const a = (map[genre] || (map[genre] = { n: 0, m: 0, rd: 0 }));
         a.n++; a.m += mins(b.id); if (read(b.id)) a.rd++;
       }
       if (!known) return `<div class="arow"><span class="aname" style="color:var(--text-dim)">Genre data is loading in the background — check back in a moment.</span><span></span><span></span><span></span></div>`;
-      const rows = Object.entries(map).sort((a, z) => z[1].m - a[1].m).slice(0, 8);
+      const rows = Object.entries(map).sort((a, z) =>
+        a[0] === 'Other' ? 1 : z[0] === 'Other' ? -1 : z[1].m - a[1].m // Other always last
+      ).slice(0, 8);
       if (!rows.length) return this._emptyBreak('genre');
       return head('Genre', 'Books', 'Min read', 'Finished') +
         rows.map(([g2, v]) => row(g2, v.n, dash(v.m), dash(v.rd))).join('');
@@ -3130,8 +3136,16 @@ const TTS = {
   },
   // The voice catalog + persisted-choice key depend on the loaded native model
   // (Kokoro vs Piper) — they have different speakers and speaker-id orderings.
-  _nativeCatalog() { return this._modelType === 'vits' ? PIPER_VOICES : KOKORO_VOICES; },
-  _voiceKey() { return this._modelType === 'vits' ? 'pl_voice_piper' : 'pl_voice_kokoro'; },
+  // `prepare()` reports the real type asynchronously, so until it answers we'd
+  // otherwise fall back to Kokoro: the picker showed Kokoro names AND the first
+  // chunk synthesized with a Kokoro speaker id, so the voice audibly changed a
+  // few seconds in. The cache (pl_modeltype) fixes launch 2+, but on a FIRST
+  // launch there's nothing cached — so assume the native build's shipped model
+  // (Piper/vits). prepare() still corrects this if a Kokoro model is ever
+  // bundled instead.
+  _effModelType() { return this._modelType || (this._nativeTts() ? 'vits' : null); },
+  _nativeCatalog() { return this._effModelType() === 'vits' ? PIPER_VOICES : KOKORO_VOICES; },
+  _voiceKey() { return this._effModelType() === 'vits' ? 'pl_voice_piper' : 'pl_voice_kokoro'; },
   _voiceSid() {
     const cat = this._nativeCatalog();
     const id = localStorage.getItem(this._voiceKey()) || cat[0][0];
