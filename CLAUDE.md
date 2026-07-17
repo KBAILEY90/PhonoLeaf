@@ -70,7 +70,12 @@ renders them with epub.js, and reads the text using the browser's Web Speech
   gitignored; Gradle configuration cache is enabled in gradle.properties).
   Installed Capacitor plugins: `@capacitor/browser` + `@capacitor/app`
   (native auth — see the "Native auth" behavior note); `CapacitorHttp` is
-  used from core. **Native TTS plugin (Stage 2b):** `PhonoLeafTtsPlugin.kt`
+  used from core; **`@jofr/capacitor-media-session`** (Stage 4 background/
+  lock-screen playback — see that behavior note). NB the media-session plugin
+  is built for Capacitor 6, installed with `--legacy-peer-deps`; it compiles on
+  Cap 8 (its Gradle has a `namespace` + AGP 8) but only declares
+  `FOREGROUND_SERVICE`, so the app manifest adds `FOREGROUND_SERVICE_MEDIA_PLAYBACK`
+  (required on Android 14+ or the FGS crashes) + `POST_NOTIFICATIONS`. **Native TTS plugin (Stage 2b):** `PhonoLeafTtsPlugin.kt`
   (registered in `MainActivity.java`) wraps sherpa-onnx's `OfflineTts`
   (Kokoro) — see the "Voice engine" note; the prebuilt AAR is committed at
   `android/app/libs/sherpa-onnx.aar` (no Maven artifact exists — un-ignored
@@ -721,10 +726,17 @@ Google login); verify by inspection + the owner testing on device.
   `window.open` gets blocked). iOS gets Enhanced/Premium-Siri steps, no
   button. Desktop excluded (`VoiceHelp.available()`): desktop voice installs
   add *variants*, not *quality*.
-- **Web Speech TTS does not play in the background / with the screen locked** on
-  mobile. This is a platform limitation, not a bug — see roadmap. (The neural
-  path plays through `<audio>`, which unlocks MediaSession/background playback
-  later — not wired yet.)
+- **Background / lock-screen playback (Stage 4, native — `@jofr/capacitor-media-session`).**
+  The plugin runs a foreground service while a MediaSession is active, which
+  keeps the WebView (and our `<audio>` sentence-chain) alive with the screen off
+  and shows lock-screen controls + metadata. The plugin CAN'T observe the
+  WebView's `<audio>`, so `TTS` drives it manually: `_mediaSetup()` (once) binds
+  action handlers (play→start, pause/stop→stop, next/prev→`Reader.turnPage`),
+  `_mediaMeta()` sets title (book) + artist (current chapter, refreshed from
+  `_onRelocated`), `_mediaState(true/false)` on `start`/`stop` starts/releases
+  the foreground service. All no-op on the web (plugin absent). NB the WEB
+  Speech (device-voice fallback) path still can't play backgrounded — only the
+  neural `<audio>` path is covered.
 - **The native app is PORTRAIT-LOCKED** (`android:screenOrientation="portrait"`
   on `MainActivity`). Rotating re-flows the epub into a different column layout,
   so page counts/positions shift under the reader — a page-end auto-advance then
@@ -805,8 +817,12 @@ the working plan, not an exploration.
        Full native flow confirmed working; voice is still WebView-WASM
        Kokoro (~10s stalls every ~2 sentences on the owner's phone) until
        Stage 2b ships the native engine.
-     - Stage 4 — MediaSession + lock-screen/background playback (native
-       `<audio>` path makes this straightforward), IndexedDB audio caching.
+     - Stage 4 — MediaSession + lock-screen/background playback: **IN PROGRESS
+       (2026-07-17)** — `@jofr/capacitor-media-session` wired in (foreground
+       service keeps the `<audio>` chain alive backgrounded; lock-screen
+       controls + metadata). See the "Background / lock-screen playback"
+       behavior note. Needs on-device verification (screen-off keeps playing,
+       lock-screen play/pause/next work). Still TODO: IndexedDB audio caching.
      - Stage 5 — Play Console ($25 one-time), internal testing track, store
        listing + privacy policy (item 4), then production rollout. iOS
        (Apple $99/yr) after Android is proven.

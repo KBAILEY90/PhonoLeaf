@@ -2446,6 +2446,7 @@ const Reader = {
     const pageStr = d?.total ? `Page ${d.page} / ${d.total}` : '';
     document.getElementById('rs-chapter').textContent =
       pageStr ? `${chapter}  ·  ${pageStr}` : chapter;
+    if (TTS.active) TTS._mediaMeta(); // keep the lock-screen chapter current
 
     // Update progress %
     let pct = 0;
@@ -2919,6 +2920,7 @@ const TTS = {
     document.getElementById('play-btn').classList.add('playing');
     Stats.startTick();
     this._acquireWakeLock();
+    this._mediaSetup(); this._mediaMeta(); this._mediaState(true); // lock-screen + background service
     Reader.hideChromeSoon(); // fade the controls ~5s after playback starts
     if (document.getElementById('reader-view').classList.contains('minimized')) Home.render();
     // If the current page has no readable text (e.g. the cover), _speak() will
@@ -2933,6 +2935,7 @@ const TTS = {
     clearTimeout(this._gapT);
     window.speechSynthesis?.cancel();
     this._stopAudio();
+    this._mediaState(false); // releases the plugin's foreground service
     const btn = document.getElementById('play-btn');
     if (btn) btn.classList.remove('playing');
     Stats.stopTick();
@@ -3133,6 +3136,34 @@ const TTS = {
           && Capacitor.Plugins && Capacitor.Plugins.PhonoLeafTts) return Capacitor.Plugins.PhonoLeafTts;
     } catch (_) {}
     return null;
+  },
+
+  // ---- Lock-screen / background playback (@jofr/capacitor-media-session) ----
+  // The plugin runs a foreground service while a MediaSession is active, which
+  // keeps the WebView (and our <audio> chain) alive when the screen is off, and
+  // shows lock-screen controls + metadata. We drive it manually since it can't
+  // observe the WebView's <audio>. No-op on the web (plugin absent).
+  _ms() { try { return (window.Capacitor && Capacitor.Plugins && Capacitor.Plugins.MediaSession) || null; } catch (_) { return null; } },
+  _msBound: false,
+  _mediaSetup() {
+    const ms = this._ms(); if (!ms || this._msBound) return; this._msBound = true;
+    const h = (action, cb) => { try { ms.setActionHandler({ action }, cb); } catch (_) {} };
+    h('play',  () => { if (!this.active) this.start(); });
+    h('pause', () => { if (this.active) this.stop(); });
+    h('stop',  () => { if (this.active) this.stop(); });
+    h('nexttrack',     () => { if (State.rendition) Reader.turnPage(1); });
+    h('previoustrack', () => { if (State.rendition) Reader.turnPage(-1); });
+  },
+  _mediaMeta() {
+    const ms = this._ms(); if (!ms) return;
+    const title = (State.currentBook?.name || 'PhonoLeaf').replace(/\.epub$/i, '');
+    // rs-chapter is "Chapter · Page X / Y" — show just the chapter as the artist line.
+    const chapter = (document.getElementById('rs-chapter')?.textContent || '').split('  ·  ')[0].trim();
+    try { ms.setMetadata({ title, artist: chapter || 'PhonoLeaf', album: 'PhonoLeaf' }); } catch (_) {}
+  },
+  _mediaState(playing) {
+    const ms = this._ms(); if (!ms) return;
+    try { ms.setPlaybackState({ playbackState: playing ? 'playing' : 'paused' }); } catch (_) {}
   },
   // Resolves once the plugin has told us which model is actually loaded. We
   // never GUESS the model: the voice id spaces differ per model, so guessing

@@ -253,7 +253,18 @@ Quick pass, ~10 minutes, on both desktop Chrome and the phone:
 - [ ] Stats tab: minutes accrue; Reset clears everything including
       started/finished
 - [ ] Theme: light/dark/auto all render correctly (incl. reading surface)
-- [ ] Settings footer build code matches the latest commit
+- [ ] **Background playback (native): start reading, then lock the screen —
+      audio keeps going; the lock screen shows a media notification with the
+      book/chapter and working play/pause (and ⏭ moves a page). Switch to
+      another app — audio continues.**
+
+### Background-playback notes
+- First launch may show an Android "Allow notifications?" prompt — allow it so
+  the lock-screen media controls appear.
+- If audio stops when the screen locks, check the phone's battery settings for
+  PhonoLeaf and set it to **Unrestricted** (aggressive OEM battery savers —
+  Samsung, Xiaomi, etc. — kill background audio otherwise). This is a
+  device-settings issue, not an app bug, but worth confirming.
 
 ---
 

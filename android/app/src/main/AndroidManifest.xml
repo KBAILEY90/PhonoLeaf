@@ -56,4 +56,12 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Background/lock-screen audio (@jofr/capacitor-media-session runs a
+         foreground service). The plugin declares FOREGROUND_SERVICE, but on
+         Android 14+ (targetSdk 36) starting a mediaPlayback FGS also needs
+         FOREGROUND_SERVICE_MEDIA_PLAYBACK or it crashes; POST_NOTIFICATIONS
+         (Android 13+) lets the media notification show. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 </manifest>
