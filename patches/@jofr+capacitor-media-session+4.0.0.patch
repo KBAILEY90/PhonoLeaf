@@ -1,0 +1,17 @@
+diff --git a/node_modules/@jofr/capacitor-media-session/android/build.gradle b/node_modules/@jofr/capacitor-media-session/android/build.gradle
+index 1111111..2222222 100644
+--- a/node_modules/@jofr/capacitor-media-session/android/build.gradle
++++ b/node_modules/@jofr/capacitor-media-session/android/build.gradle
+@@ -28,9 +28,11 @@ android {
+         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+     }
+     buildTypes {
+         release {
+             minifyEnabled false
+-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
++            // Newer AGP rejects 'proguard-android.txt' (it forces -dontoptimize);
++            // the -optimize variant is required. minifyEnabled is false anyway.
++            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+         }
+     }
+     lintOptions {

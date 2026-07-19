@@ -75,7 +75,33 @@ renders them with epub.js, and reads the text using the browser's Web Speech
   is built for Capacitor 6, installed with `--legacy-peer-deps`; it compiles on
   Cap 8 (its Gradle has a `namespace` + AGP 8) but only declares
   `FOREGROUND_SERVICE`, so the app manifest adds `FOREGROUND_SERVICE_MEDIA_PLAYBACK`
-  (required on Android 14+ or the FGS crashes) + `POST_NOTIFICATIONS`. **Native TTS plugin (Stage 2b):** `PhonoLeafTtsPlugin.kt`
+  (required on Android 14+ or the FGS crashes) + `POST_NOTIFICATIONS`.
+  **AGP 9 breaks its vendored `build.gradle` (hit 2026-07-18):** after
+  bumping AGP `8.13.0`→`9.2.1` / Gradle `8.14.3`→`9.4.1` (Android Studio's
+  own "Fix with AI"/upgrade assistant — that same tool also fixed
+  `app/build.gradle`'s own `proguardFiles` line, but has no reach into
+  `node_modules`), the plugin's own
+  `node_modules/@jofr/capacitor-media-session/android/build.gradle` line 33
+  still calls `getDefaultProguardFile('proguard-android.txt')`, which AGP 9
+  rejects outright (not just a warning — a hard `EvalIssueException`).
+  Fixed via **`patch-package`** (`patches/@jofr+capacitor-media-session+4.0.0.patch`,
+  applied by `postinstall` in `package.json`) rather than hand-editing
+  `node_modules` each time, since that gets wiped on every `npm install`.
+  **`npx patch-package <name>` couldn't auto-generate this patch** — its
+  own temp-reinstall step failed silently for this scoped package name on
+  Windows (a `cross-spawn` call with `stdio: "ignore"`, so no error ever
+  surfaces) — the patch file was hand-written as a plain unified diff
+  instead; patch-package's *apply* step doesn't care that it wasn't
+  machine-generated, and applying it was verified directly (reverted the
+  vendored file, ran `npm install`, confirmed `postinstall` put the fix
+  back). Also added `.npmrc` (`legacy-peer-deps=true`) so this plugin's
+  peer-dependency conflict with Capacitor 8 doesn't need `--legacy-peer-deps`
+  typed out by hand on every install. **Confirmed working in Android Studio**
+  — the environment that made this fix had no JDK/Android SDK
+  to run Gradle directly, so this was verified on-device rather than here;
+  the AGP `8.13.0`→`9.2.1` / Gradle `8.14.3`→`9.4.1` bump that came with it
+  builds clean too.
+  **Native TTS plugin (Stage 2b):** `PhonoLeafTtsPlugin.kt`
   (registered in `MainActivity.java`) wraps sherpa-onnx's `OfflineTts`
   (Kokoro) — see the "Voice engine" note; the prebuilt AAR is committed at
   `android/app/libs/sherpa-onnx.aar` (no Maven artifact exists — un-ignored
