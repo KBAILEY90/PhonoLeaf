@@ -3143,7 +3143,18 @@ const TTS = {
   // keeps the WebView (and our <audio> chain) alive when the screen is off, and
   // shows lock-screen controls + metadata. We drive it manually since it can't
   // observe the WebView's <audio>. No-op on the web (plugin absent).
-  _ms() { try { return (window.Capacitor && Capacitor.Plugins && Capacitor.Plugins.MediaSession) || null; } catch (_) { return null; } },
+  // TEMP KILL-SWITCH (2026-07-19): the app crashes ~1-2s after pressing play,
+  // and starting this plugin's foreground service is the prime suspect — it's a
+  // Capacitor-6-era plugin running against targetSdk 36 (Android 16), where
+  // foreground-service rules are far stricter. Off = no MediaSession calls, so
+  // the service never starts. If the crash disappears with this off, the plugin
+  // is confirmed and gets replaced by a foreground service in our OWN plugin
+  // (which we can keep Android-16-correct). Flip to true to re-test.
+  _MEDIA_ENABLED: false,
+  _ms() {
+    if (!this._MEDIA_ENABLED) return null;
+    try { return (window.Capacitor && Capacitor.Plugins && Capacitor.Plugins.MediaSession) || null; } catch (_) { return null; }
+  },
   _msBound: false,
   _mediaSetup() {
     const ms = this._ms(); if (!ms || this._msBound) return; this._msBound = true;
