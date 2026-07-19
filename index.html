@@ -3143,38 +3143,26 @@ const TTS = {
   // keeps the WebView (and our <audio> chain) alive when the screen is off, and
   // shows lock-screen controls + metadata. We drive it manually since it can't
   // observe the WebView's <audio>. No-op on the web (plugin absent).
-  // TEMP KILL-SWITCH (2026-07-19): the app crashes ~1-2s after pressing play,
-  // and starting this plugin's foreground service is the prime suspect — it's a
-  // Capacitor-6-era plugin running against targetSdk 36 (Android 16), where
-  // foreground-service rules are far stricter. Off = no MediaSession calls, so
-  // the service never starts. If the crash disappears with this off, the plugin
-  // is confirmed and gets replaced by a foreground service in our OWN plugin
-  // (which we can keep Android-16-correct). Flip to true to re-test.
-  _MEDIA_ENABLED: false,
-  _ms() {
-    if (!this._MEDIA_ENABLED) return null;
-    try { return (window.Capacitor && Capacitor.Plugins && Capacitor.Plugins.MediaSession) || null; } catch (_) { return null; }
-  },
-  _msBound: false,
-  _mediaSetup() {
-    const ms = this._ms(); if (!ms || this._msBound) return; this._msBound = true;
-    const h = (action, cb) => { try { ms.setActionHandler({ action }, cb); } catch (_) {} };
-    h('play',  () => { if (!this.active) this.start(); });
-    h('pause', () => { if (this.active) this.stop(); });
-    h('stop',  () => { if (this.active) this.stop(); });
-    h('nexttrack',     () => { if (State.rendition) Reader.turnPage(1); });
-    h('previoustrack', () => { if (State.rendition) Reader.turnPage(-1); });
-  },
-  _mediaMeta() {
-    const ms = this._ms(); if (!ms) return;
-    const title = (State.currentBook?.name || 'PhonoLeaf').replace(/\.epub$/i, '');
-    // rs-chapter is "Chapter · Page X / Y" — show just the chapter as the artist line.
-    const chapter = (document.getElementById('rs-chapter')?.textContent || '').split('  ·  ')[0].trim();
-    try { ms.setMetadata({ title, artist: chapter || 'PhonoLeaf', album: 'PhonoLeaf' }); } catch (_) {}
-  },
+  // Background playback = our OWN foreground service (PlaybackService.kt), not
+  // @jofr/capacitor-media-session — that plugin crashed the app ~1-2s after play
+  // (Capacitor-6-era code vs targetSdk 36's much stricter foreground-service
+  // rules). Without a foreground service Android suspends the app when
+  // backgrounded: the playing clip and the prefetched one finish, then the
+  // sentence-chain dies. The service keeps the process alive so it continues.
+  _mediaSetup() { /* no transport controls yet — service only */ },
+  _mediaMeta() { /* metadata rides on the service notification (see _mediaState) */ },
   _mediaState(playing) {
-    const ms = this._ms(); if (!ms) return;
-    try { ms.setPlaybackState({ playbackState: playing ? 'playing' : 'paused' }); } catch (_) {}
+    const nat = this._nativeTts(); if (!nat) return; // web build: nothing to do
+    try {
+      if (playing) {
+        const title = (State.currentBook?.name || 'PhonoLeaf').replace(/\.epub$/i, '');
+        // rs-chapter is "Chapter · Page X / Y" — the chapter alone reads better.
+        const chapter = (document.getElementById('rs-chapter')?.textContent || '').split('  ·  ')[0].trim();
+        nat.startPlaybackService({ title, text: chapter || 'Reading aloud' })?.catch?.(() => {});
+      } else {
+        nat.stopPlaybackService()?.catch?.(() => {});
+      }
+    } catch (_) { /* background playback is best-effort; never break reading */ }
   },
   // Resolves once the plugin has told us which model is actually loaded. We
   // never GUESS the model: the voice id spaces differ per model, so guessing

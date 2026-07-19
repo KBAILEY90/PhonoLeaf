@@ -752,17 +752,29 @@ Google login); verify by inspection + the owner testing on device.
   `window.open` gets blocked). iOS gets Enhanced/Premium-Siri steps, no
   button. Desktop excluded (`VoiceHelp.available()`): desktop voice installs
   add *variants*, not *quality*.
-- **Background / lock-screen playback (Stage 4, native — `@jofr/capacitor-media-session`).**
-  The plugin runs a foreground service while a MediaSession is active, which
-  keeps the WebView (and our `<audio>` sentence-chain) alive with the screen off
-  and shows lock-screen controls + metadata. The plugin CAN'T observe the
-  WebView's `<audio>`, so `TTS` drives it manually: `_mediaSetup()` (once) binds
-  action handlers (play→start, pause/stop→stop, next/prev→`Reader.turnPage`),
-  `_mediaMeta()` sets title (book) + artist (current chapter, refreshed from
-  `_onRelocated`), `_mediaState(true/false)` on `start`/`stop` starts/releases
-  the foreground service. All no-op on the web (plugin absent). NB the WEB
-  Speech (device-voice fallback) path still can't play backgrounded — only the
-  neural `<audio>` path is covered.
+- **Background playback (Stage 4, native — OUR OWN foreground service).**
+  `PlaybackService.kt` + `PhonoLeafTts.startPlaybackService/stopPlaybackService`,
+  called from `TTS._mediaState(true/false)` on `start`/`stop`. **Why it's
+  needed:** our audio is a CHAIN of one-sentence clips driven by a JS
+  `onended` loop; backgrounded, Android suspends the app, so the playing clip
+  and the already-prefetched one finish and then the chain dies (owner-observed
+  exactly that). A foreground service keeps the process alive so the loop keeps
+  running with the screen off.
+  **We do NOT use `@jofr/capacitor-media-session`** — it crashed the app ~1-2s
+  after pressing play (Capacitor-6-era plugin vs `targetSdk 36`'s much stricter
+  foreground-service rules; confirmed by a kill-switch bisect). It's still in
+  package.json but UNUSED — remove it (and its patch-package patch + `.npmrc`)
+  in a cleanup pass.
+  Android-16 requirements our service satisfies, each of which will crash or
+  kill the app if missed: `android:foregroundServiceType="mediaPlayback"` on the
+  `<service>`, `FOREGROUND_SERVICE` + `FOREGROUND_SERVICE_MEDIA_PLAYBACK`
+  permissions, `startForeground()` called IMMEDIATELY in `onStartCommand`
+  (~5s limit — the likely old crash), the matching type passed to
+  `ServiceCompat.startForeground` (API 29+), a notification channel (API 26+),
+  and `PendingIntent.FLAG_IMMUTABLE` (API 31+). The notification shows the book
+  title + current chapter. NB **no MediaSession yet** → no lock-screen
+  play/pause/skip buttons; that's a separate follow-up. The Web-Speech
+  (device-voice fallback) path still can't play backgrounded.
 - **The native app is PORTRAIT-LOCKED** (`android:screenOrientation="portrait"`
   on `MainActivity`). Rotating re-flows the epub into a different column layout,
   so page counts/positions shift under the reader — a page-end auto-advance then
@@ -843,26 +855,13 @@ the working plan, not an exploration.
        Full native flow confirmed working; voice is still WebView-WASM
        Kokoro (~10s stalls every ~2 sentences on the owner's phone) until
        Stage 2b ships the native engine.
-     - Stage 4 — MediaSession + lock-screen/background playback: **IN PROGRESS
-       (2026-07-17, build-blocker cleared 2026-07-18)** — `@jofr/capacitor
-       -media-session` wired in (foreground service keeps the `<audio>` chain
-       alive backgrounded; lock-screen controls + metadata). See the
-       "Background / lock-screen playback" behavior note. **2026-07-18: the
-       app wouldn't build at all** — Android Studio's upgrade assistant
-       bumped AGP to 9.2.1 / Gradle to 9.4.1 and fixed `app/build.gradle`'s
-       own `proguardFiles` line for the new AGP requirement, but the same
-       line inside this plugin's own vendored `build.gradle`
-       (`node_modules/@jofr/capacitor-media-session/android/build.gradle`)
-       still used the now-rejected `proguard-android.txt` and failed the
-       whole Gradle sync. Fixed via `patch-package` (see the "AGP 9 breaks
-       its vendored build.gradle" behavior note for the full story,
-       including why `patch-package`'s own patch-generator couldn't be used
-       and had to be hand-authored) — **confirmed building again in Android
-       Studio.** That only proves the build compiles, NOT that background
-       playback itself works — **still needs the on-device functional
-       verification this was already waiting on** (screen stays off and
-       keeps playing, lock-screen play/pause/next work). Still TODO:
-       IndexedDB audio caching.
+     - Stage 4 — background playback: **IN PROGRESS (2026-07-19)** — the
+       media-session PLUGIN crashed the app ~1-2s after play (Cap-6 plugin vs
+       targetSdk 36 FGS rules), proven by a kill-switch bisect; replaced with
+       our own `PlaybackService.kt` foreground service (see the "Background
+       playback" note). Needs on-device verification that audio survives the
+       screen turning off. Still TODO: MediaSession lock-screen transport
+       controls, IndexedDB audio caching, and removing the unused jofr plugin.
      - Stage 5 — Play Console ($25 one-time), internal testing track, store
        listing + privacy policy (item 4), then production rollout. iOS
        (Apple $99/yr) after Android is proven.

@@ -42,6 +42,13 @@
 
         </activity>
 
+        <!-- Keeps the WebView's <audio> sentence-chain alive when backgrounded /
+             screen off. See PlaybackService.kt. exported=false: only we start it. -->
+        <service
+            android:name=".PlaybackService"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback" />
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"

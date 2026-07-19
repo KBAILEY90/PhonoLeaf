@@ -1,7 +1,9 @@
     package com.phonoleaf.app
     
+    import android.content.Intent
     import android.content.res.AssetManager
     import android.util.Log
+    import androidx.core.content.ContextCompat
     import com.getcapacitor.JSObject
     import com.getcapacitor.Plugin
     import com.getcapacitor.PluginCall
@@ -196,6 +198,35 @@
         fun cancel(call: PluginCall) {
             epoch++
             call.resolve()
+        }
+
+        /** Start the media-playback foreground service so the WebView's <audio>
+         *  chain keeps running with the screen off / app backgrounded.
+         *  startPlaybackService({ title, text }) */
+        @PluginMethod
+        fun startPlaybackService(call: PluginCall) {
+            try {
+                val i = Intent(context, PlaybackService::class.java)
+                i.putExtra(PlaybackService.EXTRA_TITLE, call.getString("title") ?: "PhonoLeaf")
+                i.putExtra(PlaybackService.EXTRA_TEXT, call.getString("text") ?: "Reading aloud")
+                ContextCompat.startForegroundService(context, i)
+                call.resolve()
+            } catch (e: Throwable) {
+                // Reject rather than crash — the web layer just loses background
+                // playback, foreground reading is unaffected.
+                call.reject(e.message ?: "startPlaybackService failed", e as? Exception ?: RuntimeException(e))
+            }
+        }
+
+        /** Release the foreground service (playback stopped / left the reader). */
+        @PluginMethod
+        fun stopPlaybackService(call: PluginCall) {
+            try {
+                context.stopService(Intent(context, PlaybackService::class.java))
+                call.resolve()
+            } catch (e: Throwable) {
+                call.reject(e.message ?: "stopPlaybackService failed", e as? Exception ?: RuntimeException(e))
+            }
         }
     
         /** synthesize({ text, sid, speed, model }) -> { path, durationMs } */
