@@ -844,11 +844,25 @@ the working plan, not an exploration.
        Kokoro (~10s stalls every ~2 sentences on the owner's phone) until
        Stage 2b ships the native engine.
      - Stage 4 — MediaSession + lock-screen/background playback: **IN PROGRESS
-       (2026-07-17)** — `@jofr/capacitor-media-session` wired in (foreground
-       service keeps the `<audio>` chain alive backgrounded; lock-screen
-       controls + metadata). See the "Background / lock-screen playback"
-       behavior note. Needs on-device verification (screen-off keeps playing,
-       lock-screen play/pause/next work). Still TODO: IndexedDB audio caching.
+       (2026-07-17, build-blocker cleared 2026-07-18)** — `@jofr/capacitor
+       -media-session` wired in (foreground service keeps the `<audio>` chain
+       alive backgrounded; lock-screen controls + metadata). See the
+       "Background / lock-screen playback" behavior note. **2026-07-18: the
+       app wouldn't build at all** — Android Studio's upgrade assistant
+       bumped AGP to 9.2.1 / Gradle to 9.4.1 and fixed `app/build.gradle`'s
+       own `proguardFiles` line for the new AGP requirement, but the same
+       line inside this plugin's own vendored `build.gradle`
+       (`node_modules/@jofr/capacitor-media-session/android/build.gradle`)
+       still used the now-rejected `proguard-android.txt` and failed the
+       whole Gradle sync. Fixed via `patch-package` (see the "AGP 9 breaks
+       its vendored build.gradle" behavior note for the full story,
+       including why `patch-package`'s own patch-generator couldn't be used
+       and had to be hand-authored) — **confirmed building again in Android
+       Studio.** That only proves the build compiles, NOT that background
+       playback itself works — **still needs the on-device functional
+       verification this was already waiting on** (screen stays off and
+       keeps playing, lock-screen play/pause/next work). Still TODO:
+       IndexedDB audio caching.
      - Stage 5 — Play Console ($25 one-time), internal testing track, store
        listing + privacy policy (item 4), then production rollout. iOS
        (Apple $99/yr) after Android is proven.
