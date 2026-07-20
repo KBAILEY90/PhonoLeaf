@@ -71,4 +71,8 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- PARTIAL (CPU) wake lock: the foreground service stops the app being
+         killed, but not the CPU sleeping when the screen locks — and every
+         sentence needs the CPU for the JS loop + Piper inference. -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
 </manifest>

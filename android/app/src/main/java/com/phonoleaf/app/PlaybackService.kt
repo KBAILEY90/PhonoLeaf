@@ -9,6 +9,7 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
+import android.os.PowerManager
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 
@@ -44,6 +45,8 @@ class PlaybackService : Service() {
         const val EXTRA_TEXT = "text"
     }
 
+    private var wakeLock: PowerManager.WakeLock? = null
+
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -57,6 +60,10 @@ class PlaybackService : Service() {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
                     ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK else 0
             )
+            acquireCpuWakeLock()
+            // Confirmable from Logcat (filter tag "PhonoLeafPlayback") — tells us
+            // the FGS + CPU lock actually engaged if background audio still dies.
+            android.util.Log.i("PhonoLeafPlayback", "foreground service up, wakeLock=${wakeLock?.isHeld}")
         } catch (e: Throwable) {
             // Never take the app down over the notification — just stop trying.
             // Playback still works in the foreground; only background dies.
@@ -64,6 +71,38 @@ class PlaybackService : Service() {
             stopSelf()
         }
         return START_NOT_STICKY
+    }
+
+    /**
+     * PARTIAL wake lock = keep the CPU running with the screen off.
+     *
+     * The foreground service only stops the app being KILLED; it does NOT stop
+     * the CPU sleeping when the screen locks. Our playback needs the CPU because
+     * every sentence runs JS (the onended → synthesize-next loop) and native
+     * Piper inference — so without this, playback died a sentence or two after
+     * locking (i.e. once the pre-generated buffer ran out), even with the
+     * service running and battery set to unrestricted.
+     *
+     * NB the app's other wake lock (navigator.wakeLock) is a SCREEN lock, which
+     * Android releases the instant the screen turns off — useless here.
+     */
+    private fun acquireCpuWakeLock() {
+        if (wakeLock?.isHeld == true) return
+        try {
+            val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
+            wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "PhonoLeaf:playback").apply {
+                setReferenceCounted(false)
+                acquire(4 * 60 * 60 * 1000L) // safety timeout: never outlive a listening session
+            }
+        } catch (e: Throwable) {
+            android.util.Log.w("PhonoLeafPlayback", "wake lock failed: ${e.message}")
+        }
+    }
+
+    override fun onDestroy() {
+        try { if (wakeLock?.isHeld == true) wakeLock?.release() } catch (_: Throwable) {}
+        wakeLock = null
+        super.onDestroy()
     }
 
     private fun buildNotification(title: String, text: String): android.app.Notification {

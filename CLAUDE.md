@@ -765,6 +765,13 @@ Google login); verify by inspection + the owner testing on device.
   foreground-service rules; confirmed by a kill-switch bisect). It's still in
   package.json but UNUSED — remove it (and its patch-package patch + `.npmrc`)
   in a cleanup pass.
+  **It also holds a PARTIAL (CPU) wake lock while playing** — the service stops
+  the app being KILLED but not the CPU SLEEPING once the screen locks, and every
+  sentence needs the CPU for the JS `onended` loop + Piper inference. Without it
+  playback still died ~2 sentences after locking (i.e. when the pre-generated
+  buffer ran out) even with the service running and battery unrestricted. NB
+  `TTS._acquireWakeLock()` is a *screen* lock (`navigator.wakeLock`), which
+  Android releases the moment the screen turns off — it does nothing for this.
   Android-16 requirements our service satisfies, each of which will crash or
   kill the app if missed: `android:foregroundServiceType="mediaPlayback"` on the
   `<service>`, `FOREGROUND_SERVICE` + `FOREGROUND_SERVICE_MEDIA_PLAYBACK`
