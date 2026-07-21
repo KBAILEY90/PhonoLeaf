@@ -49,26 +49,42 @@ class PlaybackService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 
+    override fun onCreate() {
+        super.onCreate()
+        // Create the channel up front so onStartCommand can call startForeground
+        // as its very first action with zero setup — Android force-crashes the
+        // app (ForegroundServiceDidNotStartInTimeException) if startForeground
+        // doesn't happen within ~5s of startForegroundService().
+        try { ensureChannel() } catch (_: Throwable) {}
+    }
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        // startForeground must happen right away — do nothing slow before it.
+        // startForeground MUST be the first thing we do — the 5s watchdog is
+        // already ticking. Read extras defensively; never do slow work before it.
         val title = intent?.getStringExtra(EXTRA_TITLE) ?: "PhonoLeaf"
         val text = intent?.getStringExtra(EXTRA_TEXT) ?: "Reading aloud"
         try {
-            ensureChannel()
             ServiceCompat.startForeground(
                 this, NOTIF_ID, buildNotification(title, text),
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
                     ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK else 0
             )
+        } catch (e: Throwable) {
+            // startForeground was refused (e.g. FGS-start not allowed from the
+            // current state). The caller (PhonoLeafTtsPlugin) already gates this
+            // on the app being foreground, so this is a last-ditch guard: stop
+            // cleanly and never take the app down. Foreground reading is fine.
+            android.util.Log.w("PhonoLeafPlayback", "startForeground refused: ${e.message}")
+            try { ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE) } catch (_: Throwable) {}
+            stopSelf()
+            return START_NOT_STICKY
+        }
+        // Only after we're safely foreground do the rest (can't crash the watchdog now).
+        try {
             acquireCpuWakeLock()
-            // Confirmable from Logcat (filter tag "PhonoLeafPlayback") — tells us
-            // the FGS + CPU lock actually engaged if background audio still dies.
             android.util.Log.i("PhonoLeafPlayback", "foreground service up, wakeLock=${wakeLock?.isHeld}")
         } catch (e: Throwable) {
-            // Never take the app down over the notification — just stop trying.
-            // Playback still works in the foreground; only background dies.
-            android.util.Log.w("PhonoLeafPlayback", "startForeground failed: ${e.message}")
-            stopSelf()
+            android.util.Log.w("PhonoLeafPlayback", "post-foreground setup failed: ${e.message}")
         }
         return START_NOT_STICKY
     }

@@ -1,5 +1,7 @@
     package com.phonoleaf.app
-    
+
+    import android.app.ActivityManager
+    import android.content.Context
     import android.content.Intent
     import android.content.res.AssetManager
     import android.util.Log
@@ -206,6 +208,22 @@
         @PluginMethod
         fun startPlaybackService(call: PluginCall) {
             try {
+                // CRITICAL: only start the foreground service while the app is
+                // genuinely in the foreground. On Android 12+ starting a
+                // mediaPlayback FGS from a non-foreground state is disallowed —
+                // startForeground() then throws and Android force-crashes us with
+                // ForegroundServiceDidNotStartInTimeException (observed on device
+                // when pressing play right as the app resumes from the lock
+                // screen, mid keyguard transition). Skipping the start there
+                // costs only background playback for that press; foreground
+                // reading is unaffected and the app stays up. Once the service is
+                // running (started from a proper foreground press) it survives the
+                // screen turning off — which is the case we actually need.
+                if (!appInForeground()) {
+                    Log.w("PhonoLeafPlayback", "not foreground — skipping FGS start to avoid crash")
+                    call.resolve()
+                    return
+                }
                 val i = Intent(context, PlaybackService::class.java)
                 i.putExtra(PlaybackService.EXTRA_TITLE, call.getString("title") ?: "PhonoLeaf")
                 i.putExtra(PlaybackService.EXTRA_TEXT, call.getString("text") ?: "Reading aloud")
@@ -215,6 +233,24 @@
                 // Reject rather than crash — the web layer just loses background
                 // playback, foreground reading is unaffected.
                 call.reject(e.message ?: "startPlaybackService failed", e as? Exception ?: RuntimeException(e))
+            }
+        }
+
+        /** Is this app's process at least foreground/visible right now? Used to
+         *  gate the FGS start (see startPlaybackService). runningAppProcesses only
+         *  returns our own process on modern Android, so this is self-scoped. */
+        private fun appInForeground(): Boolean {
+            return try {
+                val am = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+                val mine = am.runningAppProcesses ?: return false
+                val myPid = android.os.Process.myPid()
+                mine.any {
+                    it.pid == myPid &&
+                    it.importance <= ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND
+                }
+            } catch (e: Throwable) {
+                false // if we can't tell, err on NOT starting — a missed background
+                      // session beats a crash
             }
         }
 

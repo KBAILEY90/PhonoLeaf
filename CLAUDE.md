@@ -831,6 +831,36 @@ Google login); verify by inspection + the owner testing on device.
   title + current chapter. NB **no MediaSession yet** → no lock-screen
   play/pause/skip buttons; that's a separate follow-up. The Web-Speech
   (device-voice fallback) path still can't play backgrounded.
+  **FGS-start crash + fix (device Logcat, 2026-07-21):** pressing play right
+  after unlocking (reader open but the app still mid keyguard-resume) crashed
+  the app — Logcat showed
+  `RemoteServiceException$ForegroundServiceDidNotStartInTimeException:
+  Context.startForegroundService() did not then call Service.startForeground()`.
+  On Android 12+ starting a `mediaPlayback` FGS from a not-fully-foreground state
+  is disallowed: our `startForeground()` was refused, and because
+  `startForegroundService()` had already armed the OS's ~5s watchdog, Android
+  force-crashed the process regardless of our try/catch (the watchdog exception
+  fires system-side and is NOT catchable). Two-layer fix: (1)
+  **`PhonoLeafTtsPlugin.startPlaybackService` now gates on `appInForeground()`**
+  (`ActivityManager.runningAppProcesses` importance ≤ `IMPORTANCE_FOREGROUND` for
+  our own pid) and simply **skips** the FGS start when we're not truly foreground
+  — a skipped start costs only that press's background capability, never a crash;
+  the service, once started from a proper foreground press, still survives the
+  screen turning off. (2) **`PlaybackService` hardened** — channel created in
+  `onCreate()`, `startForeground()` is the first action in `onStartCommand()`,
+  and if it's still refused we `stopForeground(REMOVE)`+`stopSelf()` instead of
+  proceeding. Native-only change; couldn't run Gradle in this environment
+  (no JDK/SDK), verified by review + the JS guards below. If the crash recurs,
+  the next suspect is main-thread contention delaying `onStartCommand` past 5s.
+- **`window.speechSynthesis` is UNDEFINED in the native Android WebView.** The
+  Web-Speech device-voice fallback (`_speakWeb`, `allVoices`,
+  `VoiceModal.selectNamed`, `pickDefaultVoice`) must guard every
+  `window.speechSynthesis.*` access (`?.`/`|| []`) or it throws at boot on
+  native — the Logcat above also showed
+  `Cannot read properties of undefined (reading 'getVoices')` at boot.
+  `_speakWeb` now bails via `stop()` when there's no engine (native has native
+  Piper/Kokoro; there's nothing to fall back TO). Keep new speechSynthesis calls
+  guarded.
 - **Background PAGE-TURNING — virtual pages (`TTS._vpage`).** The foreground
   service + wake lock keep the audio *alive* backgrounded, but the reader still
   stopped after ONE page: epub.js's page turn (`rendition.next()`) runs through

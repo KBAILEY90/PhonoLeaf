@@ -3183,6 +3183,11 @@ const TTS = {
   // Speak one chunk via the device Web Speech engine (Member tier — also the
   // per-chunk fallback when neural synthesis fails).
   _speakWeb(chunk, gen) {
+    // The native Android WebView has NO Web Speech engine (window.speechSynthesis
+    // is undefined). This path is the device-voice fallback for the web build;
+    // on native there's nothing to fall back TO, so bail cleanly rather than
+    // throwing (which would surface as an uncaught error and stall the reader).
+    if (!window.speechSynthesis) { this.stop(); return; }
     // Only cancel if something is actually queued/playing — a gratuitous
     // cancel() right before speak() is what triggers Android's utterance-eating
     // (see the starved-utterance retry below).
@@ -3604,7 +3609,10 @@ const TTS = {
   },
 
   allVoices() {
-    const all = window.speechSynthesis.getVoices();
+    // speechSynthesis is UNDEFINED in the native Android WebView (no Web Speech
+    // engine there — the app uses native Piper/Kokoro). Guard so the voice
+    // helpers never throw on boot; on native this list is simply empty.
+    const all = window.speechSynthesis?.getVoices?.() || [];
     const en  = all.filter(v => v.lang && v.lang.toLowerCase().startsWith('en'));
     const list = en.length ? en : all;
     return [...list].sort((a, b) => this._voiceRank(b) - this._voiceRank(a));
@@ -3716,7 +3724,7 @@ const VoiceModal = {
   // Select by name so the index from render time can't mismatch a re-sorted list.
   selectNamed(name) {
     // Always resolve from a live getVoices() call — cached objects can be stale on Chrome.
-    const live = window.speechSynthesis.getVoices();
+    const live = window.speechSynthesis?.getVoices?.() || [];
     const v = live.find(x => x.name === name) || this._list.find(x => x.name === name);
     if (!v) return;
     TTS.voice = v;
