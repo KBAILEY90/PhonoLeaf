@@ -807,6 +807,21 @@ Google login); verify by inspection + the owner testing on device.
   px/page, mitigated by the word-level straddle clipping. NB the whole
   virtual-page path is gated on `document.hidden`, so **foreground reading is
   completely unchanged** (worst case backgrounded = it stops like before).
+  **Bug hit + fixed same day: an interrupted resync could permanently break
+  reading.** `_onRelocated`'s very first check hijacks EVERY relocation while
+  `TTS._resyncing` is true (that's how it skips `loadPageText`/resume during
+  the catch-up replay without rewinding live playback) — but `stop()`/`start()`/
+  `skipPage()` didn't reset `_resyncing`/`_resyncLeft`. If the resync got cut
+  off mid-replay (e.g. the user paused right after unlocking, before the
+  catch-up turns finished), the flag stayed stuck `true` for the rest of the
+  session, silently swallowing every later relocation — page turns and chapter
+  jumps kept moving the page but TTS never resumed reading, foreground or
+  background (owner-reported as "chapter changes, page turns, but never
+  reads"). Fixed via `TTS._cancelResync()` (clears the flag + a watchdog
+  timer) called from all three entry points, plus a 4s watchdog
+  (`_armResyncWatchdog`, re-armed on each successful catch-up step) so a
+  stalled replay chain can never wedge future reading even if something else
+  interrupts it.
 - **The native app is PORTRAIT-LOCKED** (`android:screenOrientation="portrait"`
   on `MainActivity`). Rotating re-flows the epub into a different column layout,
   so page counts/positions shift under the reader — a page-end auto-advance then

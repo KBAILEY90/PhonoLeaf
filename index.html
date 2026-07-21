@@ -2408,8 +2408,8 @@ const Reader = {
     // loadPageText/resume so the still-playing chain isn't disturbed or rewound.
     if (TTS._resyncing) {
       this._fwdFixed = false;
-      if (--TTS._resyncLeft > 0) Reader.nextPage();
-      else { TTS._resyncing = false; TTS._vpage = 0; }
+      if (--TTS._resyncLeft > 0) { TTS._armResyncWatchdog(); Reader.nextPage(); }
+      else { TTS._cancelResync(); TTS._vpage = 0; }
       return;
     }
     if (wasFwd) Diag.push({ e: 'rel', i: loc.start.index, pi: pl?.start.index ?? -1, p: loc.start.displayed?.page, tot: loc.start.displayed?.total });
@@ -2785,6 +2785,7 @@ const TTS = {
              // when the screen is off — see the background-reading note).
   _resyncing: false, // replaying the background turns to catch the visible page up
   _resyncLeft: 0,
+  _resyncWatchdog: null,
   // On unlock, turn the real page `_vpage` times so the visible reader lands on
   // the column the background audio read to. Each turn is driven by the previous
   // one's `relocated` (see _onRelocated's resync block); loadPageText/resume are
@@ -2795,7 +2796,25 @@ const TTS = {
     if (n <= 0 || !State.rendition) { this._vpage = 0; return; }
     this._resyncing = true;
     this._resyncLeft = n;
+    this._armResyncWatchdog();
     Reader.nextPage();
+  },
+  // Safety net: _onRelocated's very first check hijacks EVERY relocation while
+  // _resyncing is true (skipping loadPageText/resume so it doesn't rewind live
+  // playback) — so if the replay chain ever stalls (a next() that never fires
+  // 'relocated', or _resyncing surviving a stop()/close() that interrupted it
+  // mid-replay), that flag being stuck true would silently break TTS resuming
+  // on EVERY future page turn / chapter change for the rest of the session, no
+  // matter the screen state. Re-armed on every genuine resync step; whichever
+  // fires first (real completion or this) clears it.
+  _armResyncWatchdog() {
+    clearTimeout(this._resyncWatchdog);
+    this._resyncWatchdog = setTimeout(() => { this._resyncing = false; this._resyncLeft = 0; this._vpage = 0; }, 4000);
+  },
+  _cancelResync() {
+    clearTimeout(this._resyncWatchdog);
+    this._resyncing = false;
+    this._resyncLeft = 0;
   },
   // Read only the text on the CURRENTLY VISIBLE page. In paginated mode the
   // iframe holds the whole chapter laid out in off-screen columns, so we keep
@@ -2959,6 +2978,7 @@ const TTS = {
     this._skips = 0;
     this._retryN = 0;
     this._vpage = 0; // fresh play → the visible page is the real one again
+    this._cancelResync(); // a fresh play always wins over any in-flight catch-up
     this._dir = 1; // pressing play always reads forward
     document.getElementById('play-btn').classList.add('playing');
     Stats.startTick();
@@ -2974,6 +2994,11 @@ const TTS = {
   stop() {
     this.active = false;
     this._awaitingPage = false;
+    // If pause lands mid-resync (screen just unlocked, catch-up turns still
+    // replaying), _resyncing must not survive — a stuck flag would hijack
+    // EVERY future relocation (see the resync block in _onRelocated) and
+    // silently stop TTS from ever resuming again, page turn or chapter change.
+    this._cancelResync();
     this._gen++;
     clearTimeout(this._gapT);
     window.speechSynthesis?.cancel();
@@ -3000,6 +3025,10 @@ const TTS = {
     clearTimeout(this._gapT);
     this._stopAudio();
     this._vpage = 0; // a real page turn/seek — back in sync with the visible page
+    // A manual turn/chapter-jump always wins over a still-replaying background
+    // catch-up — without this, _onRelocated's resync branch would swallow THIS
+    // turn's relocation too (see the "stuck resync" note in stop()).
+    this._cancelResync();
     this.active = true;
     this._awaitingPage = true; // Reader._onRelocated resumes once the page lays out
     this._skips = 0;
