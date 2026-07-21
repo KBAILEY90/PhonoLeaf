@@ -129,8 +129,31 @@ renders them with epub.js, and reads the text using the browser's Web Speech
 - `fonts/` — self-hosted variable woff2 (`manrope.woff2` UI, `literata.woff2`
   reading), latin subset; precached by `sw.js`. No Google Fonts hotlink.
 - `.github/workflows/deploy.yml` — deploys to GitHub Pages on push to `main`.
-- External libs via CDN: **jszip** + **epub.js** (jsdelivr), **Google Identity
-  Services** (GIS) for OAuth.
+- `vendor/` — **jszip 3.10.1 + epub.js 0.3.93, self-hosted** (2026-07-20,
+  security hardening ahead of production). Previously loaded from cdnjs/jsdelivr
+  with no Subresource Integrity — a compromised CDN could have run arbitrary JS
+  with the user's live Drive token. Vendored verbatim (not modified); bump the
+  version and re-fetch from the same upstream URLs if ever updated. Precached
+  by `sw.js` (bumped to `phonoleaf-v13`) and copied into the native shell by
+  `scripts/stage-www.js`. **Google Identity Services (GIS)** for OAuth is the
+  only remaining CDN script (`accounts.google.com/gsi/client`) — first-party
+  Google, allow-listed explicitly in the CSP below rather than vendored.
+- **Content-Security-Policy** (`<meta http-equiv>` in `index.html`, added
+  alongside the vendoring above) locks `script-src`/`connect-src`/`img-src`/etc.
+  to the known hosts (Google auth/Drive, Open Library, jsdelivr+huggingface for
+  the browser-WASM Kokoro fallback). `'unsafe-inline'` is accepted for
+  script-src/style-src — there's no build step, so inline `<script>`/`<style>`
+  can't use hashes that survive every edit — but this still blocks an injected
+  `<script src="https://evil.com/...">` and, more importantly, blocks an
+  injected inline script from ever exfiltrating data (connect-src has no
+  attacker-controlled host to fetch to). `'wasm-unsafe-eval'` is required for
+  the WASM Kokoro fallback to run at all. Verified (this environment): app
+  boots with zero CSP violations, jszip/epub.js/GIS all load, and a synthetic
+  epub renders + extracts text correctly (iframe/srcdoc goes through
+  `frame-src 'self'`). **Not yet verified on a real device** — if the natural
+  voice or sign-in ever silently breaks after touching the CSP, check the
+  browser console for a CSP violation first, same as any other native-only
+  behavior in this file.
 
 The inline script is organized into plain object "modules":
 `CONFIG`, `State`, `Theme`, `Stats`, `Nav` (tab shell), `Home`, `Settings`,
@@ -924,3 +947,28 @@ the working plan, not an exploration.
    no longer needed (no cloud TTS).
 
 Already hardened for multi-user: XSS escaping of dynamic content.
+
+## Security hardening (in progress, 2026-07-20)
+
+Prompted by production-bound status + Drive access. Audit found the XSS
+escaping already solid (every `innerHTML` sink checked) and the web auth
+token low-risk by design (~1h, no refresh token in the browser). Gaps found
+and fixed, in priority order:
+1. ~~**No Subresource Integrity on the CDN scripts**~~ — **DONE**: jszip +
+   epub.js self-hosted in `vendor/` instead (see the Tech-stack note). This
+   was the biggest real exposure (a compromised CDN could run arbitrary JS
+   with the user's live Drive token).
+2. ~~**No Content-Security-Policy**~~ — **DONE**: added (see the Tech-stack
+   note). Locks script/connect/img/etc. origins to the known hosts as a
+   backstop against XSS and exfiltration.
+3. **TODO — native refresh token in WebView localStorage.** Sandboxed to the
+   app (not exposed to other apps) but should move to Android Keystore-backed
+   encrypted storage before launch.
+4. **TODO — switch `drive.readonly` → `drive.file` + Google Picker**
+   (roadmap item 2 above). Avoids the CASA security-assessment requirement
+   for restricted scopes (~$15k+/yr) AND is the deepest security fix
+   available: even a fully compromised token could then only ever read the
+   books the user explicitly picked, not their whole Drive. Reshapes folder
+   onboarding — the custom `FolderBrowser` can't exist under `drive.file`
+   (the app can only see files the user picked via the Picker), so this is a
+   real feature change, not just a scope swap.

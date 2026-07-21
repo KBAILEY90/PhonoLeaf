@@ -8,6 +8,32 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="PhonoLeaf">
+  <!-- Defense-in-depth backstop, not a replacement for escaping dynamic content
+       with esc(). No build step means inline <script>/<style> can't use hashes
+       that survive every edit, so 'unsafe-inline' is accepted for those — but
+       script-src/connect-src/img-src are locked to the known hosts, so even an
+       injected inline script couldn't load a remote script or exfiltrate data
+       to an attacker's server. Hosts: accounts.google.com (sign-in),
+       www.googleapis.com + oauth2.googleapis.com (Drive/auth), openlibrary.org
+       (book metadata), cdn.jsdelivr.net + huggingface.co/hf.co/*.hf.co (Kokoro
+       WASM fallback model, browser/web build only — native loads the model
+       from bundled assets), *.googleusercontent.com (Drive thumbnails).
+       wasm-unsafe-eval is required for the WASM Kokoro fallback to run at all.
+       If the natural voice or sign-in ever silently breaks after a CSP edit,
+       check the browser console for a CSP violation first. -->
+  <meta http-equiv="Content-Security-Policy" content="
+    default-src 'self';
+    script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://accounts.google.com https://cdn.jsdelivr.net;
+    style-src 'self' 'unsafe-inline';
+    img-src 'self' blob: data: https://*.googleusercontent.com;
+    font-src 'self';
+    media-src 'self' blob:;
+    worker-src 'self' blob:;
+    frame-src 'self' https://accounts.google.com;
+    connect-src 'self' https://www.googleapis.com https://oauth2.googleapis.com https://accounts.google.com https://openlibrary.org https://cdn.jsdelivr.net https://huggingface.co https://hf.co https://*.hf.co https://*.huggingface.co;
+    object-src 'none';
+    base-uri 'self';
+  ">
   <link rel="manifest" href="manifest.json">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%233E8E6B'/%3E%3Cpath d='M50 24 C68 38 68 66 50 82 C32 66 32 38 50 24 Z' fill='%23F4F1E8'/%3E%3Cpath d='M50 82 L50 90' stroke='%23F4F1E8' stroke-width='3.2' stroke-linecap='round'/%3E%3Cpath d='M35 53 Q40 42 45 53 T55 53 T65 53' fill='none' stroke='%233E8E6B' stroke-width='3.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
   <title>PhonoLeaf</title>
@@ -964,8 +990,12 @@
 <div id="exit-hint"><div class="eh-box">Swipe again to leave</div></div>
 
 <!-- ============== SCRIPTS ============== -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/epubjs@0.3.93/dist/epub.min.js" crossorigin="anonymous"></script>
+<!-- Self-hosted (not CDN): a compromised CDN could otherwise run arbitrary JS
+     with the user's live Drive token. jszip 3.10.1 / epubjs 0.3.93, vendored
+     verbatim in vendor/ — bump the version in the filename comment below if
+     ever updated, and re-fetch from the same upstream URLs. -->
+<script src="vendor/jszip.min.js"></script>
+<script src="vendor/epub.min.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script>
 

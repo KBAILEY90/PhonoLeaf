@@ -3,15 +3,15 @@
 // Drive at runtime and are intentionally NOT cached (they can be very large and
 // require a live auth token).
 
-const CACHE = 'phonoleaf-v12';
+const CACHE = 'phonoleaf-v13';
 const SHELL = [
   './',
   './index.html',
   './manifest.json',
   './fonts/manrope.woff2',
   './fonts/literata.woff2',
-  'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js',
-  'https://cdn.jsdelivr.net/npm/epubjs@0.3.93/dist/epub.min.js',
+  './vendor/jszip.min.js',
+  './vendor/epub.min.js',
 ];
 
 self.addEventListener('install', e => {
@@ -59,12 +59,15 @@ self.addEventListener('fetch', e => {
     return;
   }
 
-  // Static assets / CDN libraries: cache-first, then network (and cache it).
+  // Static assets: cache-first, then network. Same-origin only — jszip/epub.js
+  // are vendored locally now (no more CDN scripts to allow-list here), and we
+  // don't want to indefinitely cache other cross-origin fetches (e.g. the
+  // Kokoro worker's unpinned jsdelivr import) which could go stale silently.
   e.respondWith((async () => {
     const cached = await caches.match(req);
     if (cached) return cached;
     const res = await fetch(req);
-    if (res.ok && (url.origin === self.location.origin || url.hostname.includes('cdnjs.cloudflare.com') || url.hostname.includes('jsdelivr.net'))) {
+    if (res.ok && url.origin === self.location.origin) {
       const c = await caches.open(CACHE);
       c.put(req, res.clone());
     }
