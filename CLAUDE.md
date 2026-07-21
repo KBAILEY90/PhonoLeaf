@@ -404,9 +404,20 @@ Google login); verify by inspection + the owner testing on device.
 - **Audio↔page sync (`TTS._resumeRead`).** After any page change the resume
   retries extraction until the new page's text is actually laid out **and** is no
   longer the page we left (`_prevText`, set in `skipPage`/forward-advance) —
-  forcing a fresh `loadPageText` each try (~14×/110ms). epub can report the old
-  column for a frame after `next()`, so without the `_prevText` guard the audio
-  read the previous page; this is the real fix for "audio doesn't match".
+  forcing a fresh `loadPageText` each try (64×/60ms, ~3.8s max). epub can
+  report the old column for a frame after `next()`, so without the `_prevText`
+  guard the audio read the previous page; this is the real fix for "audio
+  doesn't match". **The retry budget was 24×/60ms (~1.4s) until 2026-07-20** —
+  bumped after the owner hit a chapter's first page (a fresh document parse +
+  layout, often with distinct heading typography) silently never reading, in
+  every arrival direction (auto-advance, manual next, manual prev), recovering
+  only after manually pausing and pressing play again. Root cause: exhausting
+  the retry budget lands in `_speak()`'s "chunks empty but this page genuinely
+  has DOM text, so don't skip it — stop instead" branch, silently — pausing
+  and replaying just gave the SAME layout more real wall-clock time to settle,
+  which is what made it look like a fix. A genuinely blank page (cover, image)
+  is unaffected — it still exits on the very first attempt (fast path keyed off
+  `hasText`, not the retry counter).
 - **Back/edge-swipe uses real tab history (no flash).** `App._initHistory()`
   (after auth) does `replaceState({app:'base'})`; `Nav.go(tab)` then pushes
   `{app:'tab',tab}` per navigation, and the full reader pushes `{app:'reader'}`.

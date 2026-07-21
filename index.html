@@ -3082,8 +3082,17 @@ const TTS = {
     // Keep retrying while the page isn't laid out yet, OR the text we extracted
     // is still the page we just left (epub can report the old column for a frame).
     const stale = this._lastText && this._lastText === this._prevText;
-    if (((!this.chunks.length && hasText) || stale) && (tries || 0) < 24) {
-      setTimeout(() => this._resumeRead((tries || 0) + 1), 60); // poll faster; same ~1.4s max window
+    // A fresh CHAPTER'S first page is a new document parse + layout from
+    // scratch (often with distinct heading typography), which can genuinely
+    // take longer to settle than a same-section column shift. 24 tries (~1.4s)
+    // wasn't always enough — arriving on such a page would exhaust the retries,
+    // fall through to _speak()'s "has real DOM text, so don't skip it" branch,
+    // and silently stop (owner-reported: a chapter's first page never reads,
+    // in every arrival direction, until manually paused and replayed — replay
+    // works because by then the layout has simply had more time to settle).
+    // 64 tries (~3.8s) gives real books' heavier layouts real headroom.
+    if (((!this.chunks.length && hasText) || stale) && (tries || 0) < 64) {
+      setTimeout(() => this._resumeRead((tries || 0) + 1), 60);
       return;
     }
     this._prevText = '';
