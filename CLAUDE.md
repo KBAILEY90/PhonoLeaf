@@ -407,17 +407,32 @@ Google login); verify by inspection + the owner testing on device.
   forcing a fresh `loadPageText` each try (64×/60ms, ~3.8s max). epub can
   report the old column for a frame after `next()`, so without the `_prevText`
   guard the audio read the previous page; this is the real fix for "audio
-  doesn't match". **The retry budget was 24×/60ms (~1.4s) until 2026-07-20** —
-  bumped after the owner hit a chapter's first page (a fresh document parse +
-  layout, often with distinct heading typography) silently never reading, in
-  every arrival direction (auto-advance, manual next, manual prev), recovering
-  only after manually pausing and pressing play again. Root cause: exhausting
-  the retry budget lands in `_speak()`'s "chunks empty but this page genuinely
-  has DOM text, so don't skip it — stop instead" branch, silently — pausing
-  and replaying just gave the SAME layout more real wall-clock time to settle,
-  which is what made it look like a fix. A genuinely blank page (cover, image)
-  is unaffected — it still exits on the very first attempt (fast path keyed off
-  `hasText`, not the retry counter).
+  doesn't match". The retry budget is 64×/60ms (~3.8s), bumped from 24× on
+  2026-07-20 to give a fresh section's heavier layout headroom.
+- **Resume SKIPS the first chunk's lead pre-pause (`_resumeRead` sets
+  `_preIdx = idx`) — the real fix for "the chapter changes but never reads."**
+  Owner-reported: landing on a chapter's first page (e.g. "Siberia" in Ball
+  Lightning) never read aloud, in EVERY arrival direction (auto-advance, next,
+  prev, chapter jump — all route through `_resumeRead`), yet pressing
+  pause+play always fixed it. Root cause: a chapter's first chunk is its title
+  (`H1`), which carries a 3s pre-pause implemented in `_speak` as a
+  **gen-guarded silent `setTimeout`** (`if (active && gen === this._gen)
+  this._speak()`). On a fresh section, a stray second relocation / turn can bump
+  `TTS._gen` during that 3s window → the timer fires, the gen no longer matches,
+  it no-ops, and the page NEVER speaks. pause+play worked ONLY because `start()`
+  leaves `_preIdx` untouched (doesn't reset it to `-1` like `_resumeRead` did),
+  so its `_speak` sees `_preIdx === idx` and skips the same pre-pause, speaking
+  immediately. Fix: `_resumeRead` now sets `_preIdx = this.idx` right before its
+  `_speak()`, so the resumed page's first chunk speaks synchronously — no
+  gen-guarded deferral to lose. Verified in a harness: bumping `_gen` right
+  after resume no longer suppresses the read (it did before). Cost: the dramatic
+  inter-chapter lead silence is gone; **mid-page subtitle pauses (`idx > 0`)
+  still apply** (only the first chunk is exempted). A separate `Diag` breadcrumb
+  (`{e:'stop-hastext'}`) now marks the OTHER silent-stop path (page has DOM text
+  but extraction found no chunks) so `pl_diag` shows which one fired if a
+  non-reading page is seen again. NB the earlier (2026-07-20) theory that the
+  retry budget was the cause was WRONG — more retries didn't help because
+  extraction wasn't the bottleneck; the gen-voided pre-pause was.
 - **Back/edge-swipe uses real tab history (no flash).** `App._initHistory()`
   (after auth) does `replaceState({app:'base'})`; `Nav.go(tab)` then pushes
   `{app:'tab',tab}` per navigation, and the full reader pushes `{app:'reader'}`.

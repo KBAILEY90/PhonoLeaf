@@ -3083,19 +3083,25 @@ const TTS = {
     // is still the page we just left (epub can report the old column for a frame).
     const stale = this._lastText && this._lastText === this._prevText;
     // A fresh CHAPTER'S first page is a new document parse + layout from
-    // scratch (often with distinct heading typography), which can genuinely
-    // take longer to settle than a same-section column shift. 24 tries (~1.4s)
-    // wasn't always enough — arriving on such a page would exhaust the retries,
-    // fall through to _speak()'s "has real DOM text, so don't skip it" branch,
-    // and silently stop (owner-reported: a chapter's first page never reads,
-    // in every arrival direction, until manually paused and replayed — replay
-    // works because by then the layout has simply had more time to settle).
-    // 64 tries (~3.8s) gives real books' heavier layouts real headroom.
+    // scratch, which can take longer to settle than a same-section column
+    // shift — 64 tries (~3.8s) gives real books' heavier layouts headroom.
     if (((!this.chunks.length && hasText) || stale) && (tries || 0) < 64) {
       setTimeout(() => this._resumeRead((tries || 0) + 1), 60);
       return;
     }
     this._prevText = '';
+    // Skip the FIRST chunk's lead pre-pause on resume — matches pressing
+    // pause+play, which is the workaround the owner found for "the chapter
+    // changes but never reads." A chapter's first chunk is its title (H1),
+    // which carries a 3s pre-pause implemented as a gen-guarded silent timer
+    // (see _speak): if anything voids that generation during the 3s window
+    // (a stray relocation/turn on a fresh section), the timer no-ops and the
+    // page NEVER reads — in every arrival direction (auto-advance, next,
+    // prev, jump), all of which route through here. pause+play worked ONLY
+    // because start() leaves _preIdx alone and so skips the same pre-pause.
+    // We give up the dramatic inter-chapter lead silence for reading that
+    // reliably starts; mid-page subtitle pauses (idx>0) still apply normally.
+    this._preIdx = this.idx;
     this._speak();
   },
 
@@ -3116,7 +3122,7 @@ const TTS = {
         // silently jumped over (the user can press play to retry).
         const doc = document.querySelector('#viewer iframe')?.contentDocument;
         const hasDomText = !!(doc && doc.body && doc.body.textContent.trim());
-        if (hasDomText) { this.stop(); return; }
+        if (hasDomText) { Diag.push({ e: 'stop-hastext' }); this.stop(); return; }
       }
       if (this._dir < 0) {
         // We arrived here moving BACKWARD — stop on this page and wait for the
