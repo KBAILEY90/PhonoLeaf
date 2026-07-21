@@ -782,6 +782,31 @@ Google login); verify by inspection + the owner testing on device.
   title + current chapter. NB **no MediaSession yet** → no lock-screen
   play/pause/skip buttons; that's a separate follow-up. The Web-Speech
   (device-voice fallback) path still can't play backgrounded.
+- **Background PAGE-TURNING — virtual pages (`TTS._vpage`).** The foreground
+  service + wake lock keep the audio *alive* backgrounded, but the reader still
+  stopped after ONE page: epub.js's page turn (`rendition.next()`) runs through
+  the render loop (`requestAnimationFrame`), which Android FREEZES when the
+  screen is off, so the turn never completes and the chain dies at the page
+  boundary. Fix: when `document.hidden` (and not on the Web-Speech fallback,
+  which can't background anyway), `_speak()`'s forward-advance does NOT do a
+  visual turn — it reads the NEXT off-screen column's text directly.
+  `loadPageText(vpage)` shifts its geometry selection band `vpage * viewerWidth`
+  to the right (`xoff` in `inView`), so `vpage=1,2,3…` extract successive
+  off-screen columns from the already-laid-out chapter (layout/`getClientRects`
+  still work when hidden — only paint/rAF are frozen; the container is never
+  scrolled, so column N sits exactly N widths right of the visible one). Empty
+  text at `vpage>0` = ran past the section's last column → **stop** (a real
+  section turn needs epub, frozen while hidden); playback resumes on unlock.
+  **On unlock (`visibilitychange`→visible) `_resyncVisual()`** replays those
+  turns — `Reader.nextPage()` `_vpage` times, chained through `_onRelocated`'s
+  `_resyncing` guard which **skips `loadPageText`/resume** so the still-playing
+  audio isn't rewound — bringing the VISIBLE page to where the audio read to.
+  `_vpage` resets to 0 on `start()`/`skipPage()` (a real turn = back in sync)
+  and after a resync completes. Only the neural/native audio path backgrounds;
+  the geometry step (`viewerWidth` vs epub's exact clientWidth) can drift a few
+  px/page, mitigated by the word-level straddle clipping. NB the whole
+  virtual-page path is gated on `document.hidden`, so **foreground reading is
+  completely unchanged** (worst case backgrounded = it stops like before).
 - **The native app is PORTRAIT-LOCKED** (`android:screenOrientation="portrait"`
   on `MainActivity`). Rotating re-flows the epub into a different column layout,
   so page counts/positions shift under the reader — a page-end auto-advance then
@@ -862,13 +887,19 @@ the working plan, not an exploration.
        Full native flow confirmed working; voice is still WebView-WASM
        Kokoro (~10s stalls every ~2 sentences on the owner's phone) until
        Stage 2b ships the native engine.
-     - Stage 4 — background playback: **IN PROGRESS (2026-07-19)** — the
+     - Stage 4 — background playback: **IN PROGRESS (2026-07-20)** — the
        media-session PLUGIN crashed the app ~1-2s after play (Cap-6 plugin vs
        targetSdk 36 FGS rules), proven by a kill-switch bisect; replaced with
-       our own `PlaybackService.kt` foreground service (see the "Background
-       playback" note). Needs on-device verification that audio survives the
-       screen turning off. Still TODO: MediaSession lock-screen transport
-       controls, IndexedDB audio caching, and removing the unused jofr plugin.
+       our own `PlaybackService.kt` foreground service + a PARTIAL (CPU) wake
+       lock (see the "Background playback" note) — verified on device that audio
+       survives the screen turning off. Then hit "reads only ONE page locked":
+       epub's rAF-gated page turn is frozen when hidden, so added **virtual-page
+       background turning** (`TTS._vpage` / `loadPageText(vpage)` / `_resyncVisual`
+       — see the "Background PAGE-TURNING" note). Needs on-device verification
+       that reading now continues across pages with the screen off. Still TODO:
+       MediaSession lock-screen transport controls, IndexedDB audio caching,
+       removing the unused jofr plugin, and (background) a real section/chapter
+       turn while hidden (currently stops at the chapter boundary until unlock).
      - Stage 5 — Play Console ($25 one-time), internal testing track, store
        listing + privacy policy (item 4), then production rollout. iOS
        (Apple $99/yr) after Android is proven.

@@ -2356,7 +2356,11 @@ const Reader = {
         document.addEventListener('visibilitychange', () => {
           if (document.visibilityState === 'hidden') save();
           // Wake lock is auto-released when tab hides; re-acquire when visible if still playing.
-          if (document.visibilityState === 'visible' && TTS.active) TTS._acquireWakeLock();
+          if (document.visibilityState === 'visible') {
+            if (TTS.active) TTS._acquireWakeLock();
+            // Catch the visible page up to where background audio read to.
+            if (TTS._vpage > 0) TTS._resyncVisual();
+          }
         });
         window.addEventListener('pagehide', save);
       }
@@ -2397,6 +2401,17 @@ const Reader = {
     // (no progress save, no TTS resume there).
     const pl = this._prevLoc; this._prevLoc = loc;
     const wasFwd = this._fwd; this._fwd = false;
+    // Background catch-up: while the screen was off we advanced the AUDIO through
+    // the section's off-screen columns (TTS._vpage) with no visual turn (epub's
+    // turn needs the render loop, frozen when hidden). On unlock we replay those
+    // turns to bring the VISIBLE page to where the audio already is — skipping
+    // loadPageText/resume so the still-playing chain isn't disturbed or rewound.
+    if (TTS._resyncing) {
+      this._fwdFixed = false;
+      if (--TTS._resyncLeft > 0) Reader.nextPage();
+      else { TTS._resyncing = false; TTS._vpage = 0; }
+      return;
+    }
     if (wasFwd) Diag.push({ e: 'rel', i: loc.start.index, pi: pl?.start.index ?? -1, p: loc.start.displayed?.page, tot: loc.start.displayed?.total });
     if (wasFwd && !this._fwdFixed && this._fwdSkip && pl &&
         loc.start.index === pl.start.index + 1) {
@@ -2764,11 +2779,32 @@ const TTS = {
   _gapT: null,  // timer for inter-chunk pauses (chapter/subtitle gaps)
   _preIdx: -1,  // chunk index whose pre-pause has already been applied
 
+  _vpage: 0, // virtual-page offset for BACKGROUND reading (see _speak). 0 = the
+             // real visible column; N = N columns to the right, read directly
+             // from the DOM without a visual page turn (epub's turn is frozen
+             // when the screen is off — see the background-reading note).
+  _resyncing: false, // replaying the background turns to catch the visible page up
+  _resyncLeft: 0,
+  // On unlock, turn the real page `_vpage` times so the visible reader lands on
+  // the column the background audio read to. Each turn is driven by the previous
+  // one's `relocated` (see _onRelocated's resync block); loadPageText/resume are
+  // skipped there so the still-playing audio isn't rewound.
+  _resyncVisual() {
+    if (this._resyncing) return;
+    const n = this._vpage || 0;
+    if (n <= 0 || !State.rendition) { this._vpage = 0; return; }
+    this._resyncing = true;
+    this._resyncLeft = n;
+    Reader.nextPage();
+  },
   // Read only the text on the CURRENTLY VISIBLE page. In paginated mode the
   // iframe holds the whole chapter laid out in off-screen columns, so we keep
   // only text nodes whose on-screen box falls inside the viewer's visible area.
   // (Reading body.innerText would grab the whole chapter and loop forever.)
-  loadPageText() {
+  // `vpage>0` shifts the window one page-width right per step, so we can read the
+  // NEXT off-screen column(s) without turning the page — the mechanism that
+  // keeps background playback going when epub's rAF-gated turn can't run.
+  loadPageText(vpage = 0) {
     try {
       const viewer = document.getElementById('viewer');
       const iframe = viewer.querySelector('iframe');
@@ -2777,13 +2813,15 @@ const TTS = {
 
       const vbox = viewer.getBoundingClientRect();
       const ibox = iframe.getBoundingClientRect();
-      // Is an iframe-space rect inside the visible viewer box? (Node rects are in
-      // the iframe's viewport; add the iframe's offset to get top-window coords.)
+      const xoff = vpage * vbox.width; // shift the selection band N pages right
+      // Is an iframe-space rect inside the (possibly shifted) viewer box? (Node
+      // rects are in the iframe's viewport; add the iframe's offset to get
+      // top-window coords.)
       const inView = r => {
         if (!r.width || !r.height) return false;
         const left = ibox.left + r.left, right = ibox.left + r.right;
         const top  = ibox.top + r.top,  bottom = ibox.top + r.bottom;
-        return right > vbox.left + 2 && left < vbox.right - 2 && bottom > vbox.top && top < vbox.bottom;
+        return right > vbox.left + xoff + 2 && left < vbox.right + xoff - 2 && bottom > vbox.top && top < vbox.bottom;
       };
       const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT, null);
       const range = doc.createRange();
@@ -2832,12 +2870,16 @@ const TTS = {
       // Flat string for dedupe / blank detection.
       const text = segs.map(g => g.text.trim()).filter(Boolean).join(' ').trim();
       if (text) {
-        if (text === this._lastText) return; // same page re-rendered — don't restart
+        // vpage>0 deliberately loads a DIFFERENT column, so skip the same-page
+        // dedup (it would otherwise refuse the new text and stall the reader).
+        if (!vpage && text === this._lastText) return; // same page re-rendered — don't restart
         this._lastText = text;
         this.chunks = this._chunksFromSegments(segs);
         this.idx = 0; this._preIdx = -1;
         return;
       }
+      // vpage>0 with no text = ran past the last column of this section.
+      if (vpage) { this.chunks = []; this.idx = 0; return; }
       // No visible text on this page. Tell a genuinely blank page (a cover or
       // image-only section, whose DOM has no text at all) apart from a normal
       // page whose layout simply hasn't settled yet. textContent is available
@@ -2916,6 +2958,7 @@ const TTS = {
     this._awaitingPage = false;
     this._skips = 0;
     this._retryN = 0;
+    this._vpage = 0; // fresh play → the visible page is the real one again
     this._dir = 1; // pressing play always reads forward
     document.getElementById('play-btn').classList.add('playing');
     Stats.startTick();
@@ -2956,6 +2999,7 @@ const TTS = {
     this._gen++;
     clearTimeout(this._gapT);
     this._stopAudio();
+    this._vpage = 0; // a real page turn/seek — back in sync with the visible page
     this.active = true;
     this._awaitingPage = true; // Reader._onRelocated resumes once the page lays out
     this._skips = 0;
@@ -3018,6 +3062,21 @@ const TTS = {
       if (++this._skips > 20) {
         this.stop();
         toast('No text found to read');
+        return;
+      }
+      // BACKGROUND (screen off / app hidden): epub's page turn is frozen (it
+      // needs the render loop), so read the NEXT off-screen column directly by
+      // shifting the extraction window — no visual turn. The audio keeps going
+      // through the rest of the chapter; the visible page catches up on unlock.
+      if (document.hidden && this._engineNow() !== 'web' && State.rendition) {
+        const prev = this._lastText;
+        this._vpage = (this._vpage || 0) + 1;
+        this.loadPageText(this._vpage);
+        if (this.chunks.length && this._lastText !== prev) { this.idx = 0; this._preIdx = -1; this._speak(); return; }
+        // No more columns in this section — a real section turn needs epub
+        // (frozen while hidden). Stop; resumes when the screen comes back on.
+        this._vpage -= 1;
+        this.stop();
         return;
       }
       this._awaitingPage = true;
