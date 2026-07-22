@@ -2388,8 +2388,9 @@ const Reader = {
           // Wake lock is auto-released when tab hides; re-acquire when visible if still playing.
           if (document.visibilityState === 'visible') {
             if (TTS.active) TTS._acquireWakeLock();
-            // Catch the visible page up to where background audio read to.
-            if (TTS._vpage > 0) TTS._resyncVisual();
+            // Snap the visible reader to the section the background audio reached,
+            // then hand back to normal foreground page reading (see _bgResync).
+            if (TTS._bgMode) TTS._bgResync();
           }
         });
         window.addEventListener('pagehide', save);
@@ -2816,6 +2817,8 @@ const TTS = {
   _resyncing: false, // replaying the background turns to catch the visible page up
   _resyncLeft: 0,
   _resyncWatchdog: null,
+  _bgMode: false,   // reading spine text directly with the screen off (see _bgAdvance)
+  _bgSpineIdx: 0,   // spine section index the background reader is currently in
   // On unlock, turn the real page `_vpage` times so the visible reader lands on
   // the column the background audio read to. Each turn is driven by the previous
   // one's `relocated` (see _onRelocated's resync block); loadPageText/resume are
@@ -2845,6 +2848,145 @@ const TTS = {
     clearTimeout(this._resyncWatchdog);
     this._resyncing = false;
     this._resyncLeft = 0;
+  },
+
+  // --- Background reading (screen off): read spine text directly ------------
+  // When the screen is off, epub's page turn and section render are frozen (both
+  // need the render loop). Rather than fight that, we stop using the rendered
+  // columns entirely and read the book's TEXT straight from the spine — which
+  // flows across pages and chapter boundaries with the screen off. On unlock we
+  // snap the visible reader to the section the audio reached (_bgResync).
+
+  // Extract block-grouped segments from a loaded section document — the same
+  // shape loadPageText builds, but for the WHOLE section (no geometry filter,
+  // since there are no rendered columns to measure in the background).
+  _sectionSegments(docOrEl) {
+    // section.load() may hand back a full Document OR just the <html> root
+    // element (epub.js varies by state) — normalise to a body root + the Document
+    // that owns it (createTreeWalker is a Document method).
+    const ownerDoc = docOrEl.ownerDocument || docOrEl;
+    const body = docOrEl.body || (docOrEl.querySelector && docOrEl.querySelector('body')) || docOrEl;
+    if (!body || !ownerDoc.createTreeWalker) return [];
+    const BLOCK = /^(P|DIV|LI|BLOCKQUOTE|SECTION|ARTICLE|H[1-6]|HGROUP|HEADER|FOOTER|FIGCAPTION|CAPTION|TD|DD|DT|PRE|MAIN|ASIDE)$/;
+    // section.load() parses XHTML, where tagName is LOWERCASE ('h1','p'); the
+    // rendered iframe is HTML (uppercase). Normalise so block/heading detection
+    // works for both — without this every node fell through to <body> as one
+    // giant segment (heading glued to the first paragraph, no sentence splits).
+    const tagOf = el => (el.tagName || el.nodeName || '').toUpperCase();
+    const blockOf = n => {
+      let el = n.parentElement;
+      while (el && el !== body && !BLOCK.test(tagOf(el))) el = el.parentElement;
+      return el || body;
+    };
+    const walker = ownerDoc.createTreeWalker(body, NodeFilter.SHOW_TEXT, null);
+    const segs = []; let curSeg = null, node;
+    while ((node = walker.nextNode())) {
+      const s = node.nodeValue;
+      if (!s || !s.trim()) continue;
+      const block = blockOf(node);
+      if (!curSeg || curSeg.block !== block) {
+        const tag = tagOf(block);
+        curSeg = { block, text: '', tag, heading: /^H[1-6]$/.test(tag) || tag === 'HGROUP' };
+        segs.push(curSeg);
+      }
+      curSeg.text += s + ' ';
+    }
+    return segs;
+  },
+
+  // Load a spine section by index and return its full chunk list (async, no
+  // rendering). Returns [] for an empty/nav section, null on failure. We do NOT
+  // unload(): the spine's Section instances are shared with the live rendition,
+  // and unloading one epub is currently rendering (or preloading) would blank the
+  // visible view. The loaded docs are just text — a few chapters' worth of a
+  // background session is negligible memory.
+  async _loadSectionChunks(index) {
+    const book = State.epubBook;
+    const sec = book?.spine?.get(index);
+    if (!sec) return null;
+    try {
+      const doc = await sec.load(book.load.bind(book));
+      return this._chunksFromSegments(this._sectionSegments(doc));
+    } catch (_) { return null; }
+  },
+
+  // Where in the (freshly loaded) current-section chunk list to resume, so the
+  // background reader continues right after what the visible page already read —
+  // no re-read, no skip. Match a visible-page chunk inside the section chunks and
+  // continue past it (+ however many visible chunks followed it). -1 = couldn't
+  // align (fail closed → caller stops rather than restart the chapter).
+  _bgAlign(sectionChunks) {
+    const vis = this.chunks;
+    const norm = s => (s || '').replace(/\s+/g, ' ').trim();
+    if (!vis || !vis.length || !sectionChunks.length) return -1;
+    for (let v = vis.length - 1; v >= 0; v--) {
+      const vt = norm(vis[v].text);
+      if (vt.length < 8) continue; // too short to match reliably
+      const key = vt.slice(0, 30);
+      for (let i = 0; i < sectionChunks.length; i++) {
+        if (norm(sectionChunks[i].text).includes(key)) {
+          return Math.min(i + 1 + (vis.length - 1 - v), sectionChunks.length);
+        }
+      }
+    }
+    return -1;
+  },
+
+  // Advance the background reader by one step (async). First call switches from
+  // the visible page's geometry chunks to the full current-section text; later
+  // calls (at a section boundary) load the next spine section — crossing the
+  // chapter boundary a frozen visual turn can't. Guards on _gen so a stop/turn
+  // during the async load voids a stale continuation.
+  async _bgAdvance() {
+    const gen = this._gen;
+    if (!this._bgMode) {
+      // First background step: switch from the visible page's geometry chunks to
+      // the WHOLE current section's text. Read it straight from the already-
+      // rendered iframe (no spine load — that would touch the section epub is
+      // actively showing), then align to continue after what we've read.
+      const idx = State.rendition?.currentLocation()?.start?.index;
+      const doc = document.querySelector('#viewer iframe')?.contentDocument;
+      if (idx == null || !doc || !doc.body) return this.stop();
+      const chunks = this._chunksFromSegments(this._sectionSegments(doc));
+      if (!chunks || !chunks.length) return this.stop();
+      const at = this._bgAlign(chunks);
+      if (at < 0) return this.stop(); // couldn't place ourselves — fail closed
+      this._bgMode = true;
+      this._bgSpineIdx = idx;
+      this.chunks = chunks;
+      this.idx = at;
+    } else {
+      // Current section finished — load the next non-empty one (skip nav/blank).
+      const total = State.epubBook?.spine?.spineItems?.length || 0;
+      let next = this._bgSpineIdx + 1, chunks = null;
+      while (next < total) {
+        chunks = await this._loadSectionChunks(next);
+        if (this._gen !== gen || !this.active) return;
+        if (chunks && chunks.length) break;
+        next++;
+      }
+      if (!chunks || !chunks.length) return this.stop(); // end of book
+      this._bgSpineIdx = next;
+      this.chunks = chunks;
+      this.idx = 0;
+    }
+    // If we ran past the loaded section's chunks (idx === length after align),
+    // recurse to pull the next section rather than stalling.
+    if (this.idx >= this.chunks.length) { this._speak(); return; }
+    this._preIdx = this.idx; // skip the lead pre-pause so it always speaks
+    this._speak();
+  },
+
+  // On unlock: bring the visible reader to the section the audio reached and hand
+  // back to normal foreground reading from that section's first page. Reuses
+  // skipPage (which resets _bgMode/_vpage and resumes on the new page), so the
+  // audio continues from the top of the current chapter — a bounded re-read at
+  // worst, never a lost chapter or a desync.
+  _bgResync() {
+    const sec = State.epubBook?.spine?.get(this._bgSpineIdx);
+    if (!sec || !State.rendition) { this._bgMode = false; return; }
+    this._dir = 1;
+    this.skipPage(() => State.rendition.display(sec.href).catch(() => {}));
   },
   // Read only the text on the CURRENTLY VISIBLE page. In paginated mode the
   // iframe holds the whole chapter laid out in off-screen columns, so we keep
@@ -3008,6 +3150,7 @@ const TTS = {
     this._skips = 0;
     this._retryN = 0;
     this._vpage = 0; // fresh play → the visible page is the real one again
+    this._bgMode = false; // fresh play reads the visible page, not spine text
     this._cancelResync(); // a fresh play always wins over any in-flight catch-up
     this._dir = 1; // pressing play always reads forward
     document.getElementById('play-btn').classList.add('playing');
@@ -3029,6 +3172,7 @@ const TTS = {
     // EVERY future relocation (see the resync block in _onRelocated) and
     // silently stop TTS from ever resuming again, page turn or chapter change.
     this._cancelResync();
+    this._bgMode = false;
     this._gen++;
     clearTimeout(this._gapT);
     window.speechSynthesis?.cancel();
@@ -3055,6 +3199,7 @@ const TTS = {
     clearTimeout(this._gapT);
     this._stopAudio();
     this._vpage = 0; // a real page turn/seek — back in sync with the visible page
+    this._bgMode = false; // a real turn/seek exits background spine-reading
     // A manual turn/chapter-jump always wins over a still-replaying background
     // catch-up — without this, _onRelocated's resync branch would swallow THIS
     // turn's relocation too (see the "stuck resync" note in stop()).
@@ -3138,19 +3283,14 @@ const TTS = {
         toast('No text found to read');
         return;
       }
-      // BACKGROUND (screen off / app hidden): epub's page turn is frozen (it
-      // needs the render loop), so read the NEXT off-screen column directly by
-      // shifting the extraction window — no visual turn. The audio keeps going
-      // through the rest of the chapter; the visible page catches up on unlock.
-      if (document.hidden && this._engineNow() !== 'web' && State.rendition) {
-        const prev = this._lastText;
-        this._vpage = (this._vpage || 0) + 1;
-        this.loadPageText(this._vpage);
-        if (this.chunks.length && this._lastText !== prev) { this.idx = 0; this._preIdx = -1; this._speak(); return; }
-        // No more columns in this section — a real section turn needs epub
-        // (frozen while hidden). Stop; resumes when the screen comes back on.
-        this._vpage -= 1;
-        this.stop();
+      // BACKGROUND (screen off / app hidden): epub's page turn AND section render
+      // are frozen (they need the render loop). So we do NOT turn the visual page
+      // — we read the book's text straight from the spine instead (_bgAdvance),
+      // which flows across pages AND chapter boundaries with the screen off. The
+      // visible reader catches up on unlock. Only the neural/native audio path can
+      // background; the Web-Speech fallback can't, so it uses the normal turn.
+      if (document.hidden && this._engineNow() !== 'web' && State.epubBook) {
+        this._bgAdvance(); // async — loads section text, keeps reading
         return;
       }
       this._awaitingPage = true;

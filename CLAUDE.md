@@ -840,18 +840,23 @@ Google login); verify by inspection + the owner testing on device.
   is disallowed: our `startForeground()` was refused, and because
   `startForegroundService()` had already armed the OS's ~5s watchdog, Android
   force-crashed the process regardless of our try/catch (the watchdog exception
-  fires system-side and is NOT catchable). Two-layer fix: (1)
-  **`PhonoLeafTtsPlugin.startPlaybackService` now gates on `appInForeground()`**
-  (`ActivityManager.runningAppProcesses` importance ≤ `IMPORTANCE_FOREGROUND` for
-  our own pid) and simply **skips** the FGS start when we're not truly foreground
-  — a skipped start costs only that press's background capability, never a crash;
-  the service, once started from a proper foreground press, still survives the
-  screen turning off. (2) **`PlaybackService` hardened** — channel created in
-  `onCreate()`, `startForeground()` is the first action in `onStartCommand()`,
-  and if it's still refused we `stopForeground(REMOVE)`+`stopSelf()` instead of
-  proceeding. Native-only change; couldn't run Gradle in this environment
-  (no JDK/SDK), verified by review + the JS guards below. If the crash recurs,
-  the next suspect is main-thread contention delaying `onStartCommand` past 5s.
+  fires system-side and is NOT catchable). **A first fix — gating the start on
+  `appInForeground()` + hardening the service — did NOT stop it** (the app WAS
+  foreground when play was pressed, so the guard passed; the real cause is the
+  ~5s watchdog firing because the main thread was too busy at play time — resync
+  page-turns + model load — for the service's `onStartCommand` to run in time,
+  i.e. a TIMEOUT, matching "DidNotStart**InTime**"). **The fix that works: use
+  `context.startService()` instead of `ContextCompat.startForegroundService()`
+  in `startPlaybackService`.** `startService` is the ONLY thing that changes —
+  it's allowed from the foreground (we still keep the `appInForeground()` guard
+  so it can't throw `IllegalStateException` from the background) and it does NOT
+  arm the 5s watchdog, so a late `startForeground()` (called in `onStartCommand`
+  as before, to become a real mediaPlayback FGS) is fine instead of fatal. The
+  `ForegroundServiceDidNotStartInTimeException` is thrown ONLY by the
+  `startForegroundService` path, so switching eliminates the class entirely.
+  `PlaybackService` stays hardened (channel in `onCreate`, `startForeground`
+  first in `onStartCommand`, `stopForeground(REMOVE)`+`stopSelf` if refused).
+  Native-only; couldn't run Gradle here (no JDK/SDK), verified by review.
 - **`window.speechSynthesis` is UNDEFINED in the native Android WebView.** The
   Web-Speech device-voice fallback (`_speakWeb`, `allVoices`,
   `VoiceModal.selectNamed`, `pickDefaultVoice`) must guard every
@@ -861,46 +866,55 @@ Google login); verify by inspection + the owner testing on device.
   `_speakWeb` now bails via `stop()` when there's no engine (native has native
   Piper/Kokoro; there's nothing to fall back TO). Keep new speechSynthesis calls
   guarded.
-- **Background PAGE-TURNING — virtual pages (`TTS._vpage`).** The foreground
-  service + wake lock keep the audio *alive* backgrounded, but the reader still
-  stopped after ONE page: epub.js's page turn (`rendition.next()`) runs through
-  the render loop (`requestAnimationFrame`), which Android FREEZES when the
-  screen is off, so the turn never completes and the chain dies at the page
-  boundary. Fix: when `document.hidden` (and not on the Web-Speech fallback,
-  which can't background anyway), `_speak()`'s forward-advance does NOT do a
-  visual turn — it reads the NEXT off-screen column's text directly.
-  `loadPageText(vpage)` shifts its geometry selection band `vpage * viewerWidth`
-  to the right (`xoff` in `inView`), so `vpage=1,2,3…` extract successive
-  off-screen columns from the already-laid-out chapter (layout/`getClientRects`
-  still work when hidden — only paint/rAF are frozen; the container is never
-  scrolled, so column N sits exactly N widths right of the visible one). Empty
-  text at `vpage>0` = ran past the section's last column → **stop** (a real
-  section turn needs epub, frozen while hidden); playback resumes on unlock.
-  **On unlock (`visibilitychange`→visible) `_resyncVisual()`** replays those
-  turns — `Reader.nextPage()` `_vpage` times, chained through `_onRelocated`'s
-  `_resyncing` guard which **skips `loadPageText`/resume** so the still-playing
-  audio isn't rewound — bringing the VISIBLE page to where the audio read to.
-  `_vpage` resets to 0 on `start()`/`skipPage()` (a real turn = back in sync)
-  and after a resync completes. Only the neural/native audio path backgrounds;
-  the geometry step (`viewerWidth` vs epub's exact clientWidth) can drift a few
-  px/page, mitigated by the word-level straddle clipping. NB the whole
-  virtual-page path is gated on `document.hidden`, so **foreground reading is
-  completely unchanged** (worst case backgrounded = it stops like before).
-  **Bug hit + fixed same day: an interrupted resync could permanently break
-  reading.** `_onRelocated`'s very first check hijacks EVERY relocation while
-  `TTS._resyncing` is true (that's how it skips `loadPageText`/resume during
-  the catch-up replay without rewinding live playback) — but `stop()`/`start()`/
-  `skipPage()` didn't reset `_resyncing`/`_resyncLeft`. If the resync got cut
-  off mid-replay (e.g. the user paused right after unlocking, before the
-  catch-up turns finished), the flag stayed stuck `true` for the rest of the
-  session, silently swallowing every later relocation — page turns and chapter
-  jumps kept moving the page but TTS never resumed reading, foreground or
-  background (owner-reported as "chapter changes, page turns, but never
-  reads"). Fixed via `TTS._cancelResync()` (clears the flag + a watchdog
-  timer) called from all three entry points, plus a 4s watchdog
-  (`_armResyncWatchdog`, re-armed on each successful catch-up step) so a
-  stalled replay chain can never wedge future reading even if something else
-  interrupts it.
+- **Background reading — read spine TEXT directly (`TTS._bgMode`, replaced the
+  virtual-page approach 2026-07-21).** The foreground service + wake lock keep
+  the audio *alive* backgrounded, but the reader stopped at page/chapter
+  boundaries: epub.js's page turn AND section render both run through the render
+  loop (`requestAnimationFrame`), which Android FREEZES with the screen off. The
+  first attempt (virtual pages: geometry-shift the extraction window to read the
+  next off-screen COLUMN, `_vpage`/`loadPageText(vpage)`/`_resyncVisual`) crossed
+  pages but NOT sections, and stalled on short "sliver" last pages (the fixed
+  `vpage*width` band misaligned). **Replaced with reading the book's TEXT
+  straight from the spine, decoupled from visual rendering** — flows across pages
+  AND chapters with the screen off. When `document.hidden` and not the Web-Speech
+  fallback, `_speak()`'s forward-advance calls **`_bgAdvance()`** (async):
+  - **First step**: switch from the visible page's geometry chunks to the WHOLE
+    current section's chunks, read from the already-rendered iframe doc (NOT a
+    spine load — that would touch the section epub is actively showing).
+    `_bgAlign()` finds where in the section we already are (matches a visible-page
+    chunk inside the section chunks, continues just past it) so there's no re-read
+    or skip; if it can't align it fails closed (stops).
+  - **Section boundary**: `_loadSectionChunks(idx+1)` loads the NEXT spine
+    section's text via `section.load(book.load…)` (no render) and reads from its
+    top — crossing the chapter boundary a frozen visual turn can't. Skips
+    empty/nav sections; stops at end of book.
+  - **`_sectionSegments(docOrEl)`** extracts block-grouped segments like
+    `loadPageText` but with no geometry filter; it must handle BOTH a Document
+    and the bare `<html>` element (what `section.load()` returns), AND
+    **uppercase tag names** — spine sections parse as XHTML where `tagName` is
+    lowercase (`h1`,`p`), so without `toUpperCase()` every node fell through to
+    `<body>` as one giant segment (heading glued to the first paragraph). We do
+    NOT `unload()` loaded sections (shared with the live rendition; a few
+    chapters of text is negligible).
+  - **On unlock** (`visibilitychange`→visible) **`_bgResync()`** brings the
+    visible reader to the section the audio reached via
+    `skipPage(()=>display(section.href))`, which resets `_bgMode` and resumes
+    normal foreground page-reading from that chapter's first page — the audio
+    re-reads at most the current chapter's already-heard portion (bounded), never
+    a lost chapter or a desync.
+  - `_bgMode` resets on `start()`/`skipPage()`/`stop()`; the whole path is gated
+    on `document.hidden`, so **foreground reading is unchanged**. Only the
+    neural/native audio path backgrounds (Web-Speech can't). Verified in a browser
+    harness: alignment continues at the exact next chunk, and cross-section
+    load+chunking yields correctly-separated heading/sentence chunks — but the
+    audio + on-device background timing are NOT yet device-verified.
+  The old `_vpage`/`_resyncVisual`/`_resyncing`/`_armResyncWatchdog`/`_cancelResync`
+  machinery is now DORMANT (kept to avoid churn; `_vpage` stays 0 so
+  `_resyncVisual` never fires) — remove in a later cleanup. Its historical bug:
+  an interrupted resync left `_resyncing` stuck true, and `_onRelocated`'s resync
+  guard then swallowed every later relocation ("chapter changes, page turns, but
+  never reads"), fixed via `_cancelResync()` from all entry points + a 4s
+  watchdog.
 - **The native app is PORTRAIT-LOCKED** (`android:screenOrientation="portrait"`
   on `MainActivity`). Rotating re-flows the epub into a different column layout,
   so page counts/positions shift under the reader — a page-end auto-advance then

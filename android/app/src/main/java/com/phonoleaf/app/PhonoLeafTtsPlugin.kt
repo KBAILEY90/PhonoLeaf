@@ -5,7 +5,6 @@
     import android.content.Intent
     import android.content.res.AssetManager
     import android.util.Log
-    import androidx.core.content.ContextCompat
     import com.getcapacitor.JSObject
     import com.getcapacitor.Plugin
     import com.getcapacitor.PluginCall
@@ -227,7 +226,19 @@
                 val i = Intent(context, PlaybackService::class.java)
                 i.putExtra(PlaybackService.EXTRA_TITLE, call.getString("title") ?: "PhonoLeaf")
                 i.putExtra(PlaybackService.EXTRA_TEXT, call.getString("text") ?: "Reading aloud")
-                ContextCompat.startForegroundService(context, i)
+                // Use startService, NOT startForegroundService. We're foreground
+                // here (guarded above), so startService is allowed — and crucially
+                // it does NOT arm Android's 5s "must call startForeground()"
+                // watchdog. startForegroundService armed that watchdog, and when
+                // the main thread was busy at play time (resync page-turns + model
+                // load) the service's onStartCommand couldn't call startForeground()
+                // within 5s, so Android force-crashed us with
+                // ForegroundServiceDidNotStartInTimeException (uncatchable, fires
+                // system-side — the exact device crash, twice). The service still
+                // calls startForeground() in onStartCommand to become a real FGS
+                // that survives the screen turning off; without the watchdog, a
+                // late startForeground() is fine instead of fatal.
+                context.startService(i)
                 call.resolve()
             } catch (e: Throwable) {
                 // Reject rather than crash — the web layer just loses background
