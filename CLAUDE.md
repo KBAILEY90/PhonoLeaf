@@ -872,49 +872,66 @@ Google login); verify by inspection + the owner testing on device.
   boundaries: epub.js's page turn AND section render both run through the render
   loop (`requestAnimationFrame`), which Android FREEZES with the screen off. The
   first attempt (virtual pages: geometry-shift the extraction window to read the
-  next off-screen COLUMN, `_vpage`/`loadPageText(vpage)`/`_resyncVisual`) crossed
-  pages but NOT sections, and stalled on short "sliver" last pages (the fixed
-  `vpage*width` band misaligned). **Replaced with reading the book's TEXT
-  straight from the spine, decoupled from visual rendering** — flows across pages
-  AND chapters with the screen off. When `document.hidden` and not the Web-Speech
-  fallback, `_speak()`'s forward-advance calls **`_bgAdvance()`** (async):
+  next off-screen COLUMN) crossed pages but NOT sections, and stalled on short
+  "sliver" last pages. **Replaced with reading the book's TEXT straight from the
+  spine, decoupled from visual rendering** — flows across pages AND chapters with
+  the screen off. When `document.hidden` and not the Web-Speech fallback,
+  `_speak()`'s forward-advance calls **`_bgAdvance()`** (async):
   - **First step**: switch from the visible page's geometry chunks to the WHOLE
-    current section's chunks, read from the already-rendered iframe doc (NOT a
-    spine load — that would touch the section epub is actively showing).
-    `_bgAlign()` finds where in the section we already are (matches a visible-page
-    chunk inside the section chunks, continues just past it) so there's no re-read
-    or skip; if it can't align it fails closed (stops).
-  - **Section boundary**: `_loadSectionChunks(idx+1)` loads the NEXT spine
-    section's text via `section.load(book.load…)` (no render) and reads from its
-    top — crossing the chapter boundary a frozen visual turn can't. Skips
-    empty/nav sections; stops at end of book.
+    current section's chunks via **`_currentSectionChunksWithNodes()`** — reads
+    the ALREADY-RENDERED iframe document, sync, no reload. **Never call
+    `section.load()` on the currently-rendered section** — verified via harness
+    that a second `.load()` on it corrupts epub.js's per-section document
+    reference: a later `display(cfi)` into that section reports the right page
+    number but the `.epub-container` never actually scrolls (`scrollLeft` stuck
+    at 0 while `currentLocation()` claimed page 19/21). `_bgAlign()` finds where
+    in the section we already are (matches a visible-page chunk inside the
+    section chunks, continues just past it) so there's no re-read or skip; if it
+    can't align it fails closed (stops).
+  - **Section boundary**: `_loadSectionChunksWithNodes(idx+1)` loads the NEXT
+    spine section's text via `section.load(book.load…)` (no render) — safe here
+    since that section isn't rendered yet — and reads from its top, crossing the
+    chapter boundary a frozen visual turn can't. Skips empty/nav sections; stops
+    at end of book.
   - **`_sectionSegments(docOrEl)`** extracts block-grouped segments like
     `loadPageText` but with no geometry filter; it must handle BOTH a Document
     and the bare `<html>` element (what `section.load()` returns), AND
     **uppercase tag names** — spine sections parse as XHTML where `tagName` is
     lowercase (`h1`,`p`), so without `toUpperCase()` every node fell through to
     `<body>` as one giant segment (heading glued to the first paragraph). We do
-    NOT `unload()` loaded sections (shared with the live rendition; a few
-    chapters of text is negligible).
+    NOT `unload()` loaded sections (shared with the live rendition).
+    **`_chunksFromSegments` carries `node: seg.block`** on every chunk (harmless
+    unused property for normal foreground reading) — background reading uses it
+    to build a precise CFI for the exact chunk being read.
+  - **Progress is saved DURING background reading (`_bgSaveProgress`, called
+    after every chunk).** The only OTHER place progress saves is
+    `Reader._onRelocated`, which fires on a visual page turn — background reading
+    deliberately avoids those, so without this, `State.progress` stayed frozen at
+    wherever the phone was locked. Any interruption (unlock, or Android reclaiming
+    the process) then reopened the book at that STALE position and re-read it
+    from the top — owner-reported as "pressing play restarts the page," both from
+    a live unlock AND from reopening the app fresh, regardless of how far the
+    audio had actually gotten. `_bgSaveProgress` builds a CFI via **`_bgCfi()`**
+    (`section.cfiFromRange()` on a Range over the current chunk's `node`) and
+    writes it into `State.progress[bookId]` like a normal page turn would.
   - **On unlock** (`visibilitychange`→visible) **`_bgResync()`** brings the
-    visible reader to the section the audio reached via
-    `skipPage(()=>display(section.href))`, which resets `_bgMode` and resumes
-    normal foreground page-reading from that chapter's first page — the audio
-    re-reads at most the current chapter's already-heard portion (bounded), never
-    a lost chapter or a desync.
-  - `_bgMode` resets on `start()`/`skipPage()`/`stop()`; the whole path is gated
-    on `document.hidden`, so **foreground reading is unchanged**. Only the
-    neural/native audio path backgrounds (Web-Speech can't). Verified in a browser
-    harness: alignment continues at the exact next chunk, and cross-section
-    load+chunking yields correctly-separated heading/sentence chunks — but the
-    audio + on-device background timing are NOT yet device-verified.
+    visible reader to the EXACT chunk the audio reached (same CFI as
+    `_bgSaveProgress`, not just the chapter's first page) via
+    `skipPage(()=>display(cfi))`, falling back to the section's href only if a
+    CFI genuinely can't be built. Verified in a harness (60-paragraph, 21-page
+    synthetic chapter): landed on page 19/21 with the visible text matching the
+    exact target chunk, and the same worked crossing into a chapter that had
+    never been rendered before.
+  - `_bgMode`/`_bgSection` reset on `start()`/`skipPage()`/`stop()`; the whole
+    path is gated on `document.hidden`, so **foreground reading is unchanged**.
+    Only the neural/native audio path backgrounds (Web-Speech can't).
+  - **NOT yet device-verified** — everything above (alignment, cross-chapter
+    reading, CFI resync accuracy, progress persistence) is confirmed in a browser
+    harness against synthetic epubs; the audio path and real background timing
+    need an on-device test.
   The old `_vpage`/`_resyncVisual`/`_resyncing`/`_armResyncWatchdog`/`_cancelResync`
-  machinery is now DORMANT (kept to avoid churn; `_vpage` stays 0 so
-  `_resyncVisual` never fires) — remove in a later cleanup. Its historical bug:
-  an interrupted resync left `_resyncing` stuck true, and `_onRelocated`'s resync
-  guard then swallowed every later relocation ("chapter changes, page turns, but
-  never reads"), fixed via `_cancelResync()` from all entry points + a 4s
-  watchdog.
+  machinery from the virtual-page attempt is now DORMANT (kept to avoid churn;
+  `_vpage` stays 0 so `_resyncVisual` never fires) — remove in a later cleanup.
 - **The native app is PORTRAIT-LOCKED** (`android:screenOrientation="portrait"`
   on `MainActivity`). Rotating re-flows the epub into a different column layout,
   so page counts/positions shift under the reader — a page-end auto-advance then

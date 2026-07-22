@@ -2819,6 +2819,7 @@ const TTS = {
   _resyncWatchdog: null,
   _bgMode: false,   // reading spine text directly with the screen off (see _bgAdvance)
   _bgSpineIdx: 0,   // spine section index the background reader is currently in
+  _bgSection: null, // the epub.js Section object for _bgSpineIdx (for cfiFromRange)
   // On unlock, turn the real page `_vpage` times so the visible reader lands on
   // the column the background audio read to. Each turn is driven by the previous
   // one's `relocated` (see _onRelocated's resync block); loadPageText/resume are
@@ -2894,20 +2895,40 @@ const TTS = {
     return segs;
   },
 
-  // Load a spine section by index and return its full chunk list (async, no
-  // rendering). Returns [] for an empty/nav section, null on failure. We do NOT
+  // Load a spine section by index and return its full chunk list + the Section
+  // object itself (async, no rendering). null on failure/empty. We do NOT
   // unload(): the spine's Section instances are shared with the live rendition,
   // and unloading one epub is currently rendering (or preloading) would blank the
   // visible view. The loaded docs are just text — a few chapters' worth of a
   // background session is negligible memory.
-  async _loadSectionChunks(index) {
+  //
+  // NEVER call this for the section CURRENTLY shown in the live rendition — a
+  // second section.load() on an already-rendered section corrupts epub.js's
+  // internal per-section document reference: display(cfi) for that section
+  // afterwards reports the right page number but the .epub-container silently
+  // never actually scrolls (found via harness testing: scrollLeft stayed 0 while
+  // currentLocation() claimed page 19/21). Use _currentSectionChunksWithNodes for
+  // that one; this is only for sections NOT yet rendered.
+  async _loadSectionChunksWithNodes(index) {
     const book = State.epubBook;
     const sec = book?.spine?.get(index);
     if (!sec) return null;
     try {
       const doc = await sec.load(book.load.bind(book));
-      return this._chunksFromSegments(this._sectionSegments(doc));
+      const chunks = this._chunksFromSegments(this._sectionSegments(doc));
+      return chunks.length ? { chunks, section: sec } : null;
     } catch (_) { return null; }
+  },
+
+  // Build chunks for the section CURRENTLY shown in the live rendition, reading
+  // straight from the already-rendered iframe document instead of section.load()
+  // — see the warning above. Sync, no network/parse cost either.
+  _currentSectionChunksWithNodes(index) {
+    const sec = State.epubBook?.spine?.get(index);
+    const doc = document.querySelector('#viewer iframe')?.contentDocument;
+    if (!sec || !doc || !doc.body) return null;
+    const chunks = this._chunksFromSegments(this._sectionSegments(doc));
+    return chunks.length ? { chunks, section: sec } : null;
   },
 
   // Where in the (freshly loaded) current-section chunk list to resume, so the
@@ -2933,60 +2954,99 @@ const TTS = {
   },
 
   // Advance the background reader by one step (async). First call switches from
-  // the visible page's geometry chunks to the full current-section text; later
-  // calls (at a section boundary) load the next spine section — crossing the
+  // the visible page's geometry chunks to the full current-section text, read
+  // from the LIVE rendered iframe (_currentSectionChunksWithNodes — see why:
+  // section.load()-ing the currently-rendered section corrupts its display);
+  // later calls (at a section boundary) load the next spine section via
+  // section.load() — safe there since it's not yet rendered — crossing the
   // chapter boundary a frozen visual turn can't. Guards on _gen so a stop/turn
   // during the async load voids a stale continuation.
   async _bgAdvance() {
     const gen = this._gen;
     if (!this._bgMode) {
-      // First background step: switch from the visible page's geometry chunks to
-      // the WHOLE current section's text. Read it straight from the already-
-      // rendered iframe (no spine load — that would touch the section epub is
-      // actively showing), then align to continue after what we've read.
       const idx = State.rendition?.currentLocation()?.start?.index;
-      const doc = document.querySelector('#viewer iframe')?.contentDocument;
-      if (idx == null || !doc || !doc.body) return this.stop();
-      const chunks = this._chunksFromSegments(this._sectionSegments(doc));
-      if (!chunks || !chunks.length) return this.stop();
-      const at = this._bgAlign(chunks);
+      if (idx == null) return this.stop();
+      const built = this._currentSectionChunksWithNodes(idx);
+      if (!built) return this.stop();
+      const at = this._bgAlign(built.chunks);
       if (at < 0) return this.stop(); // couldn't place ourselves — fail closed
       this._bgMode = true;
       this._bgSpineIdx = idx;
-      this.chunks = chunks;
+      this._bgSection = built.section;
+      this.chunks = built.chunks;
       this.idx = at;
     } else {
       // Current section finished — load the next non-empty one (skip nav/blank).
       const total = State.epubBook?.spine?.spineItems?.length || 0;
-      let next = this._bgSpineIdx + 1, chunks = null;
+      let next = this._bgSpineIdx + 1, built = null;
       while (next < total) {
-        chunks = await this._loadSectionChunks(next);
+        built = await this._loadSectionChunksWithNodes(next);
         if (this._gen !== gen || !this.active) return;
-        if (chunks && chunks.length) break;
+        if (built) break;
         next++;
       }
-      if (!chunks || !chunks.length) return this.stop(); // end of book
+      if (!built) return this.stop(); // end of book
       this._bgSpineIdx = next;
-      this.chunks = chunks;
+      this._bgSection = built.section;
+      this.chunks = built.chunks;
       this.idx = 0;
     }
     // If we ran past the loaded section's chunks (idx === length after align),
     // recurse to pull the next section rather than stalling.
     if (this.idx >= this.chunks.length) { this._speak(); return; }
     this._preIdx = this.idx; // skip the lead pre-pause so it always speaks
+    this._bgSaveProgress(); // persist NOW — an app kill mid-background must not roll back
     this._speak();
   },
 
-  // On unlock: bring the visible reader to the section the audio reached and hand
-  // back to normal foreground reading from that section's first page. Reuses
-  // skipPage (which resets _bgMode/_vpage and resumes on the new page), so the
-  // audio continues from the top of the current chapter — a bounded re-read at
-  // worst, never a lost chapter or a desync.
+  // Build a CFI for the chunk the background reader is CURRENTLY on, from its
+  // stored `node` (see _chunksFromSegments) + the Section it came from. null if
+  // unavailable (no active background chunk, or cfiFromRange failed).
+  _bgCfi() {
+    try {
+      const chunk = this.chunks[this.idx];
+      if (!chunk || !chunk.node || !this._bgSection) return null;
+      const ownerDoc = chunk.node.ownerDocument;
+      const range = ownerDoc.createRange();
+      range.selectNodeContents(chunk.node);
+      return this._bgSection.cfiFromRange(range) || null;
+    } catch (_) { return null; }
+  },
+
+  // Persist progress DURING background reading — the ONLY other place progress
+  // is saved is Reader._onRelocated, which fires on a visual page turn, and
+  // background reading deliberately avoids those. Without this, State.progress
+  // stayed frozen at wherever the phone was locked; any interruption (unlock, or
+  // Android reclaiming the app process) then reopened the book at that STALE
+  // position and re-read it from the top — which looked exactly like "pressing
+  // play restarts the page," no matter how far the audio had actually gotten
+  // (owner-reported, both from an app reopen and from a live unlock).
+  _bgSaveProgress() {
+    const bookId = State.currentBook?.id;
+    const cfi = this._bgCfi();
+    if (!bookId || !cfi) return;
+    try {
+      let pct = 0;
+      try { pct = Math.round(State.epubBook.locations.percentageFromCfi(cfi) * 100); } catch (_) {}
+      const prev = State.progress[bookId] || {};
+      State.progress[bookId] = { ...prev, cfi, pct: pct || prev.pct || 0, ts: Date.now() };
+      State.saveProgress();
+    } catch (_) { /* best-effort — never let progress tracking break reading */ }
+  },
+
+  // On unlock: bring the visible reader to the EXACT chunk the audio reached
+  // (via the same CFI progress uses — see _bgSaveProgress) and hand back to
+  // normal foreground reading from there. Falls back to the chapter's first
+  // page only if a CFI genuinely can't be built. Reuses skipPage (which resets
+  // _bgMode/_vpage and resumes on the new page), so reading continues from
+  // right where it was — not a re-read of the whole chapter, and never a
+  // desync between what's heard and what's shown.
   _bgResync() {
-    const sec = State.epubBook?.spine?.get(this._bgSpineIdx);
-    if (!sec || !State.rendition) { this._bgMode = false; return; }
+    if (!State.rendition) { this._bgMode = false; return; }
+    const target = this._bgCfi() || this._bgSection?.href;
+    if (!target) { this._bgMode = false; return; }
     this._dir = 1;
-    this.skipPage(() => State.rendition.display(sec.href).catch(() => {}));
+    this.skipPage(() => State.rendition.display(target).catch(() => {}));
   },
   // Read only the text on the CURRENTLY VISIBLE page. In paginated mode the
   // iframe holds the whole chapter laid out in off-screen columns, so we keep
@@ -3098,12 +3158,17 @@ const TTS = {
     for (const seg of segs) {
       const t = seg.text.replace(/\s+/g, ' ').trim();
       if (!t) continue;
+      // `node` (the block-level source element) rides along unused by normal
+      // foreground reading — background reading (_bgAdvance) uses it to build a
+      // CFI for the exact chunk being read, so progress can be saved accurately
+      // and the reader can resync to the real position instead of the chapter
+      // start (see the "Background reading" note).
       if (seg.heading) {
         const chapter = seg.tag === 'H1' || seg.tag === 'HGROUP';
         const txt = /[.!?…:;]$/.test(t) ? t : t + '.';
-        out.push({ text: txt, pre: chapter ? 3000 : 2000, post: chapter ? 2000 : 1000 });
+        out.push({ text: txt, pre: chapter ? 3000 : 2000, post: chapter ? 2000 : 1000, node: seg.block });
       } else {
-        for (const c of this._split(t)) out.push({ text: c, pre: 0, post: 0 });
+        for (const c of this._split(t)) out.push({ text: c, pre: 0, post: 0, node: seg.block });
       }
     }
     return out;
@@ -3150,7 +3215,7 @@ const TTS = {
     this._skips = 0;
     this._retryN = 0;
     this._vpage = 0; // fresh play → the visible page is the real one again
-    this._bgMode = false; // fresh play reads the visible page, not spine text
+    this._bgMode = false; this._bgSection = null; // fresh play reads the visible page, not spine text
     this._cancelResync(); // a fresh play always wins over any in-flight catch-up
     this._dir = 1; // pressing play always reads forward
     document.getElementById('play-btn').classList.add('playing');
@@ -3172,7 +3237,7 @@ const TTS = {
     // EVERY future relocation (see the resync block in _onRelocated) and
     // silently stop TTS from ever resuming again, page turn or chapter change.
     this._cancelResync();
-    this._bgMode = false;
+    this._bgMode = false; this._bgSection = null;
     this._gen++;
     clearTimeout(this._gapT);
     window.speechSynthesis?.cancel();
@@ -3199,7 +3264,7 @@ const TTS = {
     clearTimeout(this._gapT);
     this._stopAudio();
     this._vpage = 0; // a real page turn/seek — back in sync with the visible page
-    this._bgMode = false; // a real turn/seek exits background spine-reading
+    this._bgMode = false; this._bgSection = null; // a real turn/seek exits background spine-reading
     // A manual turn/chapter-jump always wins over a still-replaying background
     // catch-up — without this, _onRelocated's resync branch would swallow THIS
     // turn's relocation too (see the "stuck resync" note in stop()).
