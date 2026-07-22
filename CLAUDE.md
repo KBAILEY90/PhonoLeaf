@@ -9,16 +9,19 @@ aloud. It connects to Google Drive (read-only), lists epub files from a folder,
 renders them with epub.js, and reads the text using the browser's Web Speech
 (TTS) engine.
 
-- Live: https://kbailey90.github.io/phonoleaf/
-- Repo: https://github.com/KBAILEY90/phonoleaf
+- Live: https://kbailey90.github.io/PhonoLeaf/ (case-sensitive — GitHub Pages
+  paths match the repo name's exact casing; the lowercase `/phonoleaf/` 404s.
+  Confirmed via `gh api repos/KBAILEY90/PhonoLeaf/pages` 2026-07-22.)
+- Repo: https://github.com/KBAILEY90/PhonoLeaf
 - Status: **production-bound (decided 2026-07-03)** — no longer a personal-use
   app; the owner intends to take it to production "very soon". Treat changes
   accordingly (multi-user assumptions, security, cost awareness), and keep the
   "Productization roadmap" below current — it is now the active work plan, not
   an exploration.
 - **Brand vs. infra (post-rename, 2026-06-28):** branded **PhonoLeaf**, and the
-  GitHub repo + GitHub Pages path were renamed `koboaudio` → `phonoleaf` (Live is
-  now `kbailey90.github.io/phonoleaf`). **No OAuth change was needed:** the
+  GitHub repo + GitHub Pages path were renamed `koboaudio` → `PhonoLeaf` (Live is
+  now `kbailey90.github.io/PhonoLeaf` — case-sensitive, see above). **No OAuth
+  change was needed:** the
   authorized JavaScript origin is host-only (`https://kbailey90.github.io`) — the
   same for the old and new path — so Google sign-in keeps working. Browser storage
   is per-origin (host, not path), so existing users kept their data across the
