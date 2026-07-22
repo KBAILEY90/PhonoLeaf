@@ -23,13 +23,13 @@
        check the browser console for a CSP violation first. -->
   <meta http-equiv="Content-Security-Policy" content="
     default-src 'self';
-    script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://accounts.google.com https://cdn.jsdelivr.net;
+    script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://accounts.google.com https://cdn.jsdelivr.net https://apis.google.com;
     style-src 'self' 'unsafe-inline';
     img-src 'self' blob: data: https://*.googleusercontent.com;
     font-src 'self';
     media-src 'self' blob:;
     worker-src 'self' blob:;
-    frame-src 'self' https://accounts.google.com;
+    frame-src 'self' https://accounts.google.com https://docs.google.com https://drive.google.com;
     connect-src 'self' https://www.googleapis.com https://oauth2.googleapis.com https://accounts.google.com https://openlibrary.org https://cdn.jsdelivr.net https://huggingface.co https://hf.co https://*.hf.co https://*.huggingface.co;
     object-src 'none';
     base-uri 'self';
@@ -843,6 +843,15 @@
         <button class="set-link" onclick="Settings.changeFolder()">Change</button>
       </div>
     </div>
+    <!-- TEMPORARY — drive.file + Picker migration feasibility test. Remove this
+         whole set-group (and the PickerTest module in the script) once the
+         drive.file migration decision is made either way. -->
+    <div class="set-group">
+      <div class="set-row">
+        <div><div class="sr-k">TEST: drive.file folder access</div><div class="sr-sub" id="picker-test-out" style="white-space:pre-line">Not run yet</div></div>
+        <button class="set-link" onclick="PickerTest.run()">Run test</button>
+      </div>
+    </div>
     <div style="text-align:center;color:var(--text-dim);font-size:0.7rem;margin-top:1.4rem">PhonoLeaf &middot; A voice for every page</div>
   </div>
 </div>
@@ -1012,9 +1021,11 @@ const CONFIG = {
   // scheme in AndroidManifest.xml's oauth2redirect intent-filter.
   ANDROID_CLIENT_ID: '871446308528-am1hi0il8670867uvai80q4d18fduee6.apps.googleusercontent.com',
   SCOPE:       'https://www.googleapis.com/auth/drive.readonly',
-  // Optional: the Google Picker (browse-Drive folder selector) runs on the
-  // login OAuth token alone. A browser API key here is only needed for Picker
-  // quota tracking — leave blank otherwise. (Requires the Picker API enabled.)
+  // REQUIRED for the Google Picker (used by the temporary PickerTest module —
+  // see its comment — and later by the real drive.file + Picker migration if
+  // it proceeds). Cloud Console → enable "Google Picker API" → Credentials →
+  // create an API key → restrict it (HTTP referrers: this site's origin;
+  // API restrictions: Picker API). Paste the key below.
   API_KEY:     '',
 };
 
@@ -1509,6 +1520,98 @@ const Settings = {
     try { localStorage.setItem('pl_wakelock', on ? 'true' : 'false'); } catch (_) {}
     if (!on) TTS._releaseWakeLock();
     else if (TTS.active) TTS._acquireWakeLock();
+  },
+};
+
+// ============================================================
+// TEMPORARY — drive.file + Picker migration feasibility test
+// (added 2026-07-21). Requests a SEPARATE drive.file access token via its own
+// GIS token client — never touches State.token/CONFIG.SCOPE, so the live
+// drive.readonly session is completely unaffected regardless of what this
+// does. Opens the Picker for FOLDER selection, then calls files.list scoped
+// to that folder to see whether epubs inside it are actually visible under
+// drive.file. Answers the open question: does drive.file + Picker folder
+// selection support browsing a folder's contents, or do we need to fall back
+// to Picker's multi-select-individual-files mode instead? Remove this whole
+// block + the matching Settings row + PickerTest.run() call once decided.
+// ============================================================
+const PickerTest = {
+  async _ensureGapi() {
+    if (window.gapi && window.gapi.picker) return;
+    if (!window.gapi) {
+      await new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = 'https://apis.google.com/js/api.js';
+        s.onload = resolve;
+        s.onerror = () => reject(new Error('Failed to load apis.google.com/js/api.js'));
+        document.head.appendChild(s);
+      });
+    }
+    await new Promise((resolve, reject) => {
+      window.gapi.load('picker', { callback: resolve, onerror: () => reject(new Error('Failed to load the Picker library')) });
+    });
+  },
+
+  _getFileToken() {
+    return new Promise((resolve, reject) => {
+      if (!window.google?.accounts?.oauth2) { reject(new Error('Google Identity Services not loaded yet — try again in a moment')); return; }
+      const client = google.accounts.oauth2.initTokenClient({
+        client_id: CONFIG.CLIENT_ID,
+        scope: 'https://www.googleapis.com/auth/drive.file',
+        callback: resp => resp.error ? reject(new Error(resp.error)) : resolve(resp.access_token),
+      });
+      client.requestAccessToken({ prompt: 'consent' });
+    });
+  },
+
+  async run() {
+    const out = document.getElementById('picker-test-out');
+    const set = msg => { if (out) out.textContent = msg; };
+    if (!CONFIG.API_KEY) { set('Add your Picker API key to CONFIG.API_KEY first (Cloud Console → Credentials).'); return; }
+    try {
+      set('Loading Picker library…');
+      await this._ensureGapi();
+      set('Requesting drive.file permission (a SEPARATE prompt from your normal sign-in — your existing library access is untouched)…');
+      const token = await this._getFileToken();
+      set('Opening the folder picker — choose your books folder…');
+      await new Promise(resolve => {
+        const view = new google.picker.DocsView(google.picker.ViewId.FOLDERS)
+          .setSelectFolderEnabled(true)
+          .setIncludeFolders(true);
+        const picker = new google.picker.PickerBuilder()
+          .addView(view)
+          .setOAuthToken(token)
+          .setDeveloperKey(CONFIG.API_KEY)
+          .setCallback(async data => {
+            if (data.action === google.picker.Action.PICKED) {
+              const folder = data.docs[0];
+              set(`Picked "${folder.name}" — listing epub files…`);
+              try {
+                const q = encodeURIComponent(`'${folder.id}' in parents and mimeType='application/epub+zip' and trashed=false`);
+                const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)`, {
+                  headers: { Authorization: `Bearer ${token}` },
+                });
+                const json = await res.json();
+                if (!res.ok) set('files.list FAILED (' + res.status + '): ' + JSON.stringify(json));
+                else {
+                  const names = (json.files || []).map(f => f.name);
+                  set(names.length
+                    ? `SUCCESS — found ${names.length} epub(s) in "${folder.name}":\n` + names.slice(0, 10).join('\n')
+                    : `files.list succeeded but found 0 epubs in "${folder.name}" — either the folder is empty or drive.file blocks listing its contents.`);
+                }
+              } catch (e) { set('files.list error: ' + e.message); }
+              resolve();
+            } else if (data.action === google.picker.Action.CANCEL) {
+              set('Cancelled — no folder picked.');
+              resolve();
+            }
+          })
+          .build();
+        picker.setVisible(true);
+      });
+    } catch (e) {
+      set('Error: ' + e.message);
+    }
   },
 };
 

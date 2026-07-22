@@ -988,6 +988,22 @@ the working plan, not an exploration.
 2. **Switch `drive.readonly` → `drive.file` + Google Picker** to escape
    restricted-scope verification (avoids a ~$15k+/yr security assessment).
    Free; needs the Picker API enabled + a (public, referrer-restricted) API key.
+   **IN PROGRESS (started 2026-07-21).** Open technical question before
+   committing to the full migration: does selecting a FOLDER via Picker under
+   `drive.file` grant `files.list` access to that folder's CONTENTS (needed for
+   the "browse your books folder" UX), or does `drive.file` only ever grant
+   per-file access (meaning we'd fall back to Picker's multi-select-individual-
+   files mode instead)? Docs research was inconclusive — one line in Google's
+   own scope guidance ("apps that provide local sync... may access restricted
+   scopes") hints sync/list-style apps might be steered toward broader scopes.
+   **`PickerTest` module (index.html, TEMPORARY — search for "TEMPORARY" to
+   find both it and its matching Settings row) tests this live**: requests an
+   isolated `drive.file` token (never touches the real session), opens a
+   folder-picker, and calls `files.list` scoped to the picked folder, showing
+   the result in Settings. Needs `CONFIG.API_KEY` set (owner: enable "Google
+   Picker API" in Cloud Console, create + restrict an API key, paste it in).
+   Remove `PickerTest` + its Settings row once the answer is known either way
+   — do not ship it to real users.
 3. **Voice: single Kokoro engine, shipped natively — DECIDED 2026-07-04**
    (supersedes the three-tier system, which shipped 2026-07-03 and was torn
    out the next day; Diamond/Google Cloud TTS and the testing tier-dropdown
