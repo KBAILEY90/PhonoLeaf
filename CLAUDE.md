@@ -483,20 +483,62 @@ Google login); verify by inspection + the owner testing on device.
   `about → user.displayName` (works under `drive.readonly`), caches the first
   name in `pl_user`/`State.userName`, and the Home title shows
   "Good {morning/afternoon/evening}, {name}".
-- **Drive folder selector is a custom themed browser (`FolderBrowser`), not the
-  Google Picker.** The Picker couldn't be themed or name-sorted (and looked
-  off), so Settings → "Change" / onboarding open `#browser-modal`: a normal
-  in-app modal (inherits theme via CSS vars) that lists sub-folders via the Drive
-  API (`'<id>' in parents and mimeType=folder`, `orderBy:'name'` → **name asc**),
-  with a clickable breadcrumb (`_stack`), tap-a-row to navigate in, and "Use this
-  folder" to pick the current one. **Always starts at `root` = My Drive**, with
-  the existing pick shown as context in `#fb-current` ("Currently: X — open a
-  folder to browse…"). It used to open INSIDE the current folder, which listed
-  only its sub-folders — usually "No sub-folders here" — so changing looked
-  impossible unless you guessed the breadcrumb was tappable (owner reported this). `setFolder(id,name)` persists `pl_folder_id` (id wins) /
-  `pl_folder` and reloads; `Library.load` uses `activeFolderId()` then, only if
-  a folder name is set, `findFolder(activeFolder())`. (`FolderModal` typed-entry
-  remains only as a not-signed-in fallback; `CONFIG.API_KEY` is now unused.)
+- **Drive folder selector is the Google Picker (`FolderBrowser`), migrated off
+  `drive.readonly` to `drive.file` 2026-07-22.** Under `drive.file` the app has
+  no visibility into the user's Drive until they explicitly grant access to
+  something — a custom Drive.get-based browsing UI (the old `FolderBrowser`,
+  with its own breadcrumb/in-app modal) is no longer POSSIBLE, since there's
+  nothing to browse until Google's own consent surface (Picker) hands over
+  access. Settings → "Change" / onboarding call `FolderBrowser.open()`, which:
+  - **Web**: loads `apis.google.com/js/api.js` (`_ensureGapi`), then opens a
+    `google.picker.DocsView(ViewId.FOLDERS)` with `.setParent('root')` (always
+    starts at My Drive — confirmed via the Picker API's TypeScript defs,
+    replacing the old FolderBrowser's own root-start behavior) and
+    `.setSelectFolderEnabled(true)`, reusing the LIVE `State.token` directly
+    (it already carries `drive.file` scope — no separate consent needed). On
+    `Action.PICKED`, calls `setFolder(folder.id, folder.name)` same as before.
+  - **Native**: the embedded Picker JS library needs the same Google
+    consent/account surfaces sign-in does, which Google blocks inside embedded
+    WebViews — so `App._nativeFolderPick()` uses Google's separate "Picker for
+    desktop and mobile apps" flow instead: the SAME system-browser PKCE
+    mechanism as `_nativeSignIn` (Custom Tab, same `oauth2redirect` deep link),
+    with `prompt=consent&trigger_onepick=true&allow_folder_selection=true&
+    access_type=offline` added to the authorization request. The in-flight
+    `_pkce` is tagged `mode:'pick'` so `_onDeepLink` can branch: on return, the
+    redirect carries `picked_file_ids` (comma-separated, no name) alongside a
+    fresh `code` (exchanged normally via `_tokenRequest`); the folder's name is
+    then fetched via `Drive.get('files/'+id, {fields:'name'})` before calling
+    `setFolder`. The `mode!=='pick'` (normal sign-in) path is byte-identical to
+    before — verified in a harness (mocked deep-link round-trips: sign-in still
+    calls `_enterApp()` and never touches Drive.get/setFolder; picking calls
+    Drive.get+setFolder and never touches `_enterApp()`; state-mismatch and
+    user-cancellation both produce sensible toasts). **The actual system-browser
+    OAuth round-trip is NOT device-verified** — this environment can't drive a
+    real browser-redirect flow; review carefully and confirm on-device that
+    `_onDeepLink`'s `picked_file_ids` branch actually fires.
+  - **No dark-mode/sort API exists on the Picker** (checked the full
+    `picker.Feature` enum and `PickerBuilder`/`DocsView` — nothing theme-related,
+    no `orderBy`). It renders in a cross-origin iframe, so CSS injection to force
+    a theme isn't possible either — a real, unfixable limitation, accepted
+    because the Picker only ever appears for the one folder-connect moment, never
+    for day-to-day library browsing (that stays the app's own themed `Library`
+    grid, sorted by name via `Drive.listEpubs`'s `orderBy:'name'`, unchanged).
+  - `FolderModal` (typed-entry) is now the fallback for THREE cases: not signed
+    in, the Picker library fails to load, or `CONFIG.API_KEY` isn't set — each
+    routes there automatically with a toast rather than failing silently.
+  - **One-time re-auth migration** (`<head>` script, guarded by `pl_scope_mig`,
+    same pattern as `pl_mig`): a saved `pl_auth` token or native `pl_rtoken`
+    from before this date was granted under the OLD `drive.readonly` scope —
+    refresh tokens don't silently upgrade to a new scope, so leaving them would
+    have existing installs quietly keep running on the old, broader access
+    forever. Clears `pl_auth`/`pl_rtoken`/`pl_folder_id`/`pl_folder` once (before
+    `App.init`/`tryResume` ever reads them), which naturally falls through to
+    the existing sign-in + onboarding flow — no special UI needed beyond a
+    one-shot `pl_scope_mig_notice` toast ("We tightened Google Drive permissions
+    for extra security — please sign in again") shown once sign-in lands.
+    Verified in a harness across two reloads: first reload clears everything +
+    fires the notice once; a second reload (guard already set) leaves a fresh
+    session untouched and doesn't re-fire the notice.
 - **Folder onboarding — no hardcoded default.** `activeFolder()` returns `''`
   when nothing is chosen (the old `CONFIG.FOLDER_NAME = 'Rakuten Kobo'` default
   was removed), and `hasChosenFolder()` reports whether `pl_folder_id` /
@@ -988,25 +1030,20 @@ the working plan, not an exploration.
    migrated to `pl_*` — see the "Naming policy" note.) Domains `phonoleaf.com/.ca/.app/.io` were all available and
    no conflicting trademark was found (formal CIPO/USPTO clearance still
    recommended before filing).
-2. **Switch `drive.readonly` → `drive.file` + Google Picker** to escape
-   restricted-scope verification (avoids a ~$15k+/yr security assessment).
-   Free; needs the Picker API enabled + a (public, referrer-restricted) API key.
-   **IN PROGRESS (started 2026-07-21).** Open technical question before
-   committing to the full migration: does selecting a FOLDER via Picker under
-   `drive.file` grant `files.list` access to that folder's CONTENTS (needed for
-   the "browse your books folder" UX), or does `drive.file` only ever grant
-   per-file access (meaning we'd fall back to Picker's multi-select-individual-
-   files mode instead)? Docs research was inconclusive — one line in Google's
-   own scope guidance ("apps that provide local sync... may access restricted
-   scopes") hints sync/list-style apps might be steered toward broader scopes.
-   **`PickerTest` module (index.html, TEMPORARY — search for "TEMPORARY" to
-   find both it and its matching Settings row) tests this live**: requests an
-   isolated `drive.file` token (never touches the real session), opens a
-   folder-picker, and calls `files.list` scoped to the picked folder, showing
-   the result in Settings. Needs `CONFIG.API_KEY` set (owner: enable "Google
-   Picker API" in Cloud Console, create + restrict an API key, paste it in).
-   Remove `PickerTest` + its Settings row once the answer is known either way
-   — do not ship it to real users.
+2. **Switch `drive.readonly` → `drive.file` + Google Picker** — **DONE
+   (2026-07-22).** Avoids the ~$15k+/yr CASA security assessment restricted
+   scopes require, and is the deeper security win: even a fully compromised
+   token can only ever read books the user explicitly picked, not their whole
+   Drive. The open technical question (does selecting a folder via Picker
+   under `drive.file` grant `files.list` access to its contents?) was
+   validated live via a temporary `PickerTest` module (owner confirmed it
+   correctly listed the picked folder's epubs) before committing to the full
+   migration — see the "Drive folder selector" behavior note above for the
+   complete implementation (web Picker flow, native `trigger_onepick` flow,
+   and the one-time re-auth migration for existing users).
+   **STATUS: code complete, web path verified in a browser harness; the
+   native system-browser round-trip needs on-device confirmation** (see the
+   behavior note's native bullet for exactly what to check).
 3. **Voice: single Kokoro engine, shipped natively — DECIDED 2026-07-04**
    (supersedes the three-tier system, which shipped 2026-07-03 and was torn
    out the next day; Diamond/Google Cloud TTS and the testing tier-dropdown
@@ -1091,11 +1128,9 @@ and fixed, in priority order:
 3. **TODO — native refresh token in WebView localStorage.** Sandboxed to the
    app (not exposed to other apps) but should move to Android Keystore-backed
    encrypted storage before launch.
-4. **TODO — switch `drive.readonly` → `drive.file` + Google Picker**
-   (roadmap item 2 above). Avoids the CASA security-assessment requirement
-   for restricted scopes (~$15k+/yr) AND is the deepest security fix
-   available: even a fully compromised token could then only ever read the
-   books the user explicitly picked, not their whole Drive. Reshapes folder
-   onboarding — the custom `FolderBrowser` can't exist under `drive.file`
-   (the app can only see files the user picked via the Picker), so this is a
-   real feature change, not just a scope swap.
+4. ~~**switch `drive.readonly` → `drive.file` + Google Picker**~~ — **DONE**
+   (roadmap item 2 above / the "Drive folder selector" behavior note). Avoids
+   the CASA security-assessment requirement (~$15k+/yr) AND is the deepest
+   security fix available: a fully compromised token can now only ever read
+   the books the user explicitly picked, not their whole Drive. Native
+   system-browser round-trip still needs on-device confirmation.
