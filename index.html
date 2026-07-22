@@ -3224,6 +3224,19 @@ const TTS = {
     this._mediaSetup(); this._mediaMeta(); this._mediaState(true); // lock-screen + background service
     Reader.hideChromeSoon(); // fade the controls ~5s after playback starts
     if (document.getElementById('reader-view').classList.contains('minimized')) Home.render();
+    // Skip the FIRST chunk's lead pre-pause on a fresh press-play, same reason as
+    // _resumeRead: if the current page opens on a chapter title (increasingly
+    // common now that background reading crosses chapter boundaries and
+    // _bgResync often lands right on one), the 3s gen-guarded pre-pause timer
+    // means pressing play produces total silence — reads as "doesn't play" even
+    // though it's just about to. Only a deliberate pause+play "fixed" it because
+    // the FIRST press already stamped _preIdx to match idx, so the retry skipped
+    // the same pre-pause (verified in a harness: no SPEAK ever fires from the
+    // original timer alone once stop() cancels it — waiting longer doesn't help).
+    // A user-initiated play press should speak immediately, like resuming does;
+    // mid-page subtitle pauses (idx>0) and ORGANIC auto-advance into a new
+    // chapter while already reading still get the dramatic pause.
+    this._preIdx = this.idx;
     // If the current page has no readable text (e.g. the cover), _speak() will
     // turn the page and keep going until it finds something to read.
     this._speak();

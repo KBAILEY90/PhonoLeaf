@@ -433,6 +433,27 @@ Google login); verify by inspection + the owner testing on device.
   non-reading page is seen again. NB the earlier (2026-07-20) theory that the
   retry budget was the cause was WRONG — more retries didn't help because
   extraction wasn't the bottleneck; the gen-voided pre-pause was.
+- **`start()` (press-play) also skips the lead pre-pause, same as `_resumeRead`
+  — fix for "pressing play doesn't play; pause+play fixes it" (2026-07-21).**
+  This is the SAME 3s heading pre-pause as above, hit from a different entry
+  point: `start()` never resets `_preIdx`, so on a chapter-heading page it
+  legitimately arms the 3s `setTimeout` (no gen-voiding needed this time — the
+  timer WOULD fire on its own). But the FIRST press already stamps
+  `_preIdx = this.idx` the instant the pre-pause branch is entered — so a
+  pause+play retry, even a fraction of a second later, sees `_preIdx === idx`
+  and skips the SAME pre-pause, speaking instantly. That made "press play"
+  look broken (total silence, no loading indicator) and "pause then play"
+  look like the fix — verified in a harness: the original timer never fires at
+  all once `stop()` cancels it (`clearTimeout(this._gapT)`); waiting longer on
+  the first press doesn't help. This became far more common once background
+  reading (below) started crossing chapter boundaries — `_bgResync` frequently
+  lands the visible reader right on a fresh heading. Fix: `start()` now also
+  sets `_preIdx = this.idx` right before its `_speak()`, so a user-initiated
+  play press speaks immediately every time, matching resume. Body chunks are
+  unaffected (their `pre` is always 0, so the pre-pause branch never triggers
+  for them regardless of `_preIdx`) — only ORGANIC auto-advance into a new
+  chapter while already reading (via `_resumeRead`, not `start()`) still gets
+  the dramatic pause, which remains intentional there.
 - **Back/edge-swipe uses real tab history (no flash).** `App._initHistory()`
   (after auth) does `replaceState({app:'base'})`; `Nav.go(tab)` then pushes
   `{app:'tab',tab}` per navigation, and the full reader pushes `{app:'reader'}`.
