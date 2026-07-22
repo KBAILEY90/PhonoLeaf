@@ -3786,8 +3786,8 @@ const TTS = {
     this._kpend = new Map();
     w.onmessage = e => {
       const m = e.data;
-      if (m.t === 'prog') { toast('Downloading the voice model… ' + m.p + '%', 0); return; }
-      if (m.t === 'ready') { hideToast(); toast('Natural voice ready'); this._kokoroBench(); return; }
+      if (m.t === 'prog') { this._voiceToast('Downloading the voice model… ' + m.p + '%', 0); return; }
+      if (m.t === 'ready') { hideToast(); this._voiceToast('Natural voice ready'); this._kokoroBench(); return; }
       const p = this._kpend.get(m.id);
       if (!p) return;
       this._kpend.delete(m.id);
@@ -3800,6 +3800,15 @@ const TTS = {
     this._kworker = w;
     return w;
   },
+  // Voice warm-up toasts (below) are suppressed while the user hasn't chosen a
+  // Drive folder yet — there's nothing to read anyway at that point, so a
+  // PERSISTENT (dur:0, doesn't auto-hide) "downloading voice model…" toast just
+  // competes for attention with the onboarding "choose your folder" prompt
+  // (owner-reported: the two visually collided on first launch). The warm-up
+  // itself still runs regardless — this only silences its progress toasts —
+  // and self-corrects: once a folder IS chosen, the next 'prog'/'ready'
+  // message (the download is likely still running) starts showing normally.
+  _voiceToast(msg, dur) { if (hasChosenFolder()) toast(msg, dur); },
   _kokoroWarm() { // start the model init early (boot + Retry)
     if (this._kokoroDead) return;
     // Native engine: warm the plugin (copies the model to filesDir + loads it
@@ -3807,7 +3816,7 @@ const TTS = {
     // a genuine failure (e.g. model files not placed) strikes out per-chunk.
     const nat = this._nativeTts();
     if (nat) {
-      toast('Preparing the natural voice…', 0);
+      this._voiceToast('Preparing the natural voice…', 0);
       this._modelReady().then(() => { this.updateVoiceLabel(); hideToast(); }, () => hideToast());
       return;
     }
@@ -3816,7 +3825,7 @@ const TTS = {
     const cached = this._benchCached();
     if (cached && cached.ratio > 1.25) { this._kokoroDead = true; Settings.render(); return; }
     try {
-      toast('Preparing the natural voice — first time downloads ~90 MB…', 0);
+      this._voiceToast('Preparing the natural voice — first time downloads ~90 MB…', 0);
       this._kokoroWorkerEl().postMessage(Object.assign({ t: 'load' }, this._kokoroOpts()));
     } catch (_) { hideToast(); }
   },
