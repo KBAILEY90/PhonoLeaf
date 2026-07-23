@@ -23,13 +23,13 @@
        check the browser console for a CSP violation first. -->
   <meta http-equiv="Content-Security-Policy" content="
     default-src 'self';
-    script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://accounts.google.com https://cdn.jsdelivr.net https://apis.google.com;
+    script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://accounts.google.com https://cdn.jsdelivr.net;
     style-src 'self' 'unsafe-inline';
     img-src 'self' blob: data: https://*.googleusercontent.com;
     font-src 'self';
     media-src 'self' blob:;
     worker-src 'self' blob:;
-    frame-src 'self' https://accounts.google.com https://docs.google.com https://drive.google.com;
+    frame-src 'self' https://accounts.google.com;
     connect-src 'self' https://www.googleapis.com https://oauth2.googleapis.com https://accounts.google.com https://openlibrary.org https://cdn.jsdelivr.net https://huggingface.co https://hf.co https://*.hf.co https://*.huggingface.co;
     object-src 'none';
     base-uri 'self';
@@ -681,6 +681,18 @@
     .sp-ch { font-weight: 500; max-width: 60vw; overflow: hidden; text-overflow: ellipsis; }
     .sp-pg { color: var(--text-dim); font-size: 0.64rem; margin-top: 1px; }
 
+    /* Folder browser */
+    .fb-crumbs { font-size: 0.74rem; color: var(--text-dim); margin-bottom: 0.6rem; white-space: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .fb-crumbs span { cursor: pointer; }
+    .fb-crumbs span.cur { color: var(--text); font-weight: 500; }
+    .fb-crumbs i { margin: 0 0.35rem; font-style: normal; color: var(--text-dim); }
+    #fb-list { max-height: 46vh; overflow-y: auto; -webkit-overflow-scrolling: touch; margin-bottom: 0.9rem; }
+    .fb-row { display: flex; align-items: center; gap: 0.6rem; padding: 0.7rem 0.4rem; border-bottom: 0.5px solid var(--line); cursor: pointer; }
+    .fb-row:last-child { border-bottom: none; }
+    .fb-ico { color: var(--accent); flex-shrink: 0; }
+    .fb-name { flex: 1; min-width: 0; font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .fb-empty { color: var(--text-dim); font-size: 0.82rem; padding: 1rem 0.4rem; text-align: center; }
+    .fb-use { width: 100%; background: var(--accent); color: #fff; border: none; border-radius: 10px; padding: 0.75rem; font: 500 0.9rem var(--font-ui); cursor: pointer; }
   </style>
   <script>
     /* One-time key migration (2026-07-06 rebrand): kba_* -> pl_* so nothing
@@ -707,30 +719,29 @@
         localStorage.setItem('pl_mig', '1');
       } catch (e) {}
     })();
-    /* One-time re-auth (2026-07-22): drive.readonly -> drive.file migration.
-       A saved web token (pl_auth) or native refresh token (pl_rtoken) from
-       before this date was granted under the OLD (readonly) scope — refresh
-       tokens don't silently upgrade to a new scope on their own, so leaving
-       them in place would have existing installs quietly keep running on the
-       old, broader Drive access forever, defeating the whole point of the
-       migration. Clearing them here (before App.init/tryResume ever reads
-       them) makes the app fall through to its EXISTING sign-in flow
-       naturally — no special UI needed. The previously-picked folder
-       (pl_folder_id/pl_folder) is cleared too: drive.file access to it
-       doesn't carry over from the old scope either, so it has to be
-       re-picked via the Picker regardless. pl_scope_mig_notice is a
-       SEPARATE one-shot flag (checked later, once toast() exists) so the
-       user sees a one-time "please sign in again" explanation rather than
-       silently landing back on the sign-in screen with no context. Runs once
-       per device — guarded by pl_scope_mig. */
+    /* One-time re-auth (2026-07-22, SECOND pass): the drive.file experiment was
+       REVERTED to drive.readonly the same day (drive.file can't list a picked
+       folder's contents, so the library came up empty — see CLAUDE.md). Anyone
+       who loaded the short-lived drive.file build holds a token granted under
+       THAT narrower scope, which won't have readonly access; scopes never
+       silently widen on refresh, so they must re-consent once.
+
+       Precisely targeted via `pl_scope_mig` (set only by the drive.file build):
+       its presence means "this device ran drive.file" -> clear the tokens.
+       Devices that never loaded that build still hold valid readonly tokens
+       and are left completely alone — no gratuitous sign-out.
+
+       The picked folder (pl_folder_id/pl_folder) is deliberately KEPT: a folder
+       ID is just an ID, and readonly can see the whole Drive again, so the old
+       pick resolves fine. Users re-sign-in only; they do NOT re-pick a folder.
+       Guarded by pl_scope_mig2 so it runs at most once. */
     (function () {
       try {
-        if (localStorage.getItem('pl_scope_mig')) return;
+        if (localStorage.getItem('pl_scope_mig2')) return;
+        localStorage.setItem('pl_scope_mig2', '1');
+        if (!localStorage.getItem('pl_scope_mig')) return; // never ran drive.file — nothing to fix
         localStorage.removeItem('pl_auth');
         localStorage.removeItem('pl_rtoken');
-        localStorage.removeItem('pl_folder_id');
-        localStorage.removeItem('pl_folder');
-        localStorage.setItem('pl_scope_mig', '1');
         localStorage.setItem('pl_scope_mig_notice', '1');
       } catch (e) {}
     })();
@@ -976,8 +987,19 @@
   </div>
 </div>
 
-<!-- ============== FOLDER MODAL (typed fallback if not signed in, or if the
-     Google Picker fails to load) ============== -->
+<!-- ============== FOLDER BROWSER (themed, sorted) ============== -->
+<div class="modal-backdrop" id="browser-modal" onclick="FolderBrowser.close(event)">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Choose your books folder</div>
+    <div id="fb-current" style="text-align:center;color:var(--text-dim);font-size:0.72rem;margin:-0.3rem 0 0.7rem;line-height:1.45"></div>
+    <div class="fb-crumbs" id="fb-crumbs"></div>
+    <div id="fb-list"></div>
+    <button class="fb-use" id="fb-use" onclick="FolderBrowser.useCurrent()">Use this folder</button>
+  </div>
+</div>
+
+<!-- ============== FOLDER MODAL (typed fallback if not signed in) ============== -->
 <div class="modal-backdrop" id="folder-modal" onclick="FolderModal.close(event)">
   <div class="modal-sheet">
     <div class="modal-handle"></div>
@@ -1015,16 +1037,20 @@ const CONFIG = {
   // (debug)", tied to the debug keystore's SHA-1 — must match the reversed
   // scheme in AndroidManifest.xml's oauth2redirect intent-filter.
   ANDROID_CLIENT_ID: '871446308528-am1hi0il8670867uvai80q4d18fduee6.apps.googleusercontent.com',
-  // drive.file (restricted-but-narrow): the app can only ever see files/folders
-  // the user explicitly picks via the Google Picker (FolderBrowser below) — not
-  // their whole Drive. Migrated 2026-07-22 from drive.readonly (see CLAUDE.md
-  // "Folder picker" note); avoids Google's CASA security assessment
-  // (~$15k+/yr, required for restricted scopes) and is the deeper security
-  // win: even a fully compromised token can only read picked books.
-  SCOPE:       'https://www.googleapis.com/auth/drive.file',
-  // REQUIRED for the Google Picker (FolderBrowser.open on web). Cloud Console →
-  // enable "Google Picker API" → Credentials → create an API key → restrict it
-  // (HTTP referrers: this site's origin; API restrictions: Picker API).
+  // drive.readonly (RESTRICTED scope — needs Google verification, see below).
+  // Briefly migrated to drive.file + Google Picker on 2026-07-22 and REVERTED
+  // the same day: `drive.file` grants access ONLY to files the user picks
+  // individually, so picking a FOLDER yields the folder itself but NOT its
+  // contents — `files.list` with `'<id>' in parents` came back empty and the
+  // library rendered with zero books (owner-confirmed on device). The
+  // connect-a-folder-and-it-syncs model is therefore impossible under
+  // drive.file; it requires a restricted scope. See the CLAUDE.md "Folder
+  // browser" note for the full post-mortem + the CASA cost reality.
+  SCOPE:       'https://www.googleapis.com/auth/drive.readonly',
+  // Unused again after the Picker revert (the folder browser is our own UI and
+  // needs no Picker key). Kept because the Cloud Console key already exists,
+  // is referrer-restricted, and would be needed again if the Picker ever
+  // returns. Safe to leave blank.
   API_KEY:     'AIzaSyD9W1N0DUl2juc8RiKnYLIEhq9pCjuKZ-4',
 };
 
@@ -1697,67 +1723,69 @@ function setFolder(id, name) {
   Library.load();
 }
 
-// Folder selector — Google Picker (drive.file only ever grants access to
-// folders the user explicitly picks here; a custom Drive.get browsing UI like
-// the old readonly-era FolderBrowser can no longer see anything to browse
-// until this dialog grants it). Always starts at My Drive
-// (DocsView.setParent('root')) and reuses the LIVE session token — State.token
-// already carries drive.file scope, so no separate consent prompt is needed.
-// NB the Picker dialog itself is Google's own UI: no dark-mode API exists on
-// it (checked the full picker.Feature enum — nothing theme-related), and it
-// renders in a cross-origin iframe so CSS injection to force one isn't
-// possible either. It's shown only for this one moment (onboarding / Settings
-// → Change), never for day-to-day library browsing, which stays our own
-// themed UI untouched.
+// Custom folder browser — themed to the app (CSS vars) and sorted by name.
+// Browses the user's Drive hierarchy via the Drive API with the login token;
+// always starts at My Drive root.
+//
+// Briefly replaced by the Google Picker during the drive.file experiment
+// (2026-07-22) and restored the same day. Two reasons it's the right UI here,
+// both learned the hard way: (1) under `drive.file` this browser is IMPOSSIBLE
+// (nothing is visible to browse until the user picks it) — but drive.file also
+// can't list a picked folder's contents, which broke the library outright, so
+// we're back on drive.readonly and this works again; (2) the Picker's own
+// dialog can't be themed or sorted (no API for either — it's a cross-origin
+// iframe) and, worse, selecting a FOLDER on mobile requires a long-press with
+// no visible confirm button, which the owner correctly called a blocker for
+// first-run onboarding. This modal has an unmissable "Use this folder" button.
 const FolderBrowser = {
-  async _ensureGapi() {
-    if (window.gapi && window.gapi.picker) return;
-    if (!window.gapi) {
-      await new Promise((resolve, reject) => {
-        const s = document.createElement('script');
-        s.src = 'https://apis.google.com/js/api.js';
-        s.onload = resolve;
-        s.onerror = () => reject(new Error('Failed to load apis.google.com/js/api.js'));
-        document.head.appendChild(s);
-      });
-    }
-    await new Promise((resolve, reject) => {
-      window.gapi.load('picker', { callback: resolve, onerror: () => reject(new Error('Failed to load the Picker library')) });
-    });
-  },
-  async open() {
+  _stack: [], _items: [],
+  open() {
     if (!State.token) { FolderModal.open(); return; }
-    // Native: Google blocks its own consent/picker UI inside embedded WebViews
-    // (the same reason sign-in needs the system browser) — the embedded Picker
-    // JS library would not work here. Use the separate system-browser
-    // trigger_onepick flow instead (App._nativeFolderPick).
-    if (App.isNative()) { App._nativeFolderPick(); return; }
-    if (!CONFIG.API_KEY) { toast('Picker API key not configured — see CONFIG.API_KEY'); FolderModal.open(); return; }
-    try {
-      await this._ensureGapi();
-    } catch (e) {
-      console.error('Picker library failed to load', e);
-      toast('Could not open the folder picker — using manual entry instead');
-      FolderModal.open();
-      return;
+    // Always start at My Drive. Opening INSIDE the current folder (as before)
+    // showed only its sub-folders — usually "No sub-folders here" — so there was
+    // no visible way to pick a different one; you had to guess that the
+    // breadcrumb was tappable. Starting at the top makes changing obvious, and
+    // the current pick is shown as context below the title.
+    this._stack = [{ id: 'root', name: 'My Drive' }];
+    const cur = activeFolder();
+    const hint = document.getElementById('fb-current');
+    if (hint) {
+      hint.textContent = cur
+        ? `Currently: ${cur} — open a folder to browse, then tap “Use this folder”.`
+        : 'Open a folder to browse, then tap “Use this folder”.';
     }
-    const view = new google.picker.DocsView(google.picker.ViewId.FOLDERS)
-      .setParent('root') // always My Drive, never wherever the last pick left off
-      .setSelectFolderEnabled(true)
-      .setIncludeFolders(true);
-    new google.picker.PickerBuilder()
-      .addView(view)
-      .setOAuthToken(State.token)
-      .setDeveloperKey(CONFIG.API_KEY)
-      .setCallback(data => {
-        if (data.action === google.picker.Action.PICKED) {
-          const folder = data.docs[0];
-          setFolder(folder.id, folder.name);
-        }
-      })
-      .build()
-      .setVisible(true);
+    document.getElementById('browser-modal').classList.add('open');
+    this._render(); this._load();
   },
+  _cur() { return this._stack[this._stack.length - 1]; },
+  _render() {
+    document.getElementById('fb-crumbs').innerHTML = this._stack.map((c, i) =>
+      `<span class="${i === this._stack.length - 1 ? 'cur' : ''}" onclick="FolderBrowser.crumb(${i})">${esc(c.name)}</span>`
+    ).join('<i>›</i>');
+    const u = document.getElementById('fb-use'); if (u) u.textContent = `Use “${this._cur().name}”`;
+  },
+  crumb(i) { if (i < this._stack.length - 1) { this._stack = this._stack.slice(0, i + 1); this._render(); this._load(); } },
+  enter(i) { const f = this._items[i]; if (!f) return; this._stack.push({ id: f.id, name: f.name }); this._render(); this._load(); },
+  async _load() {
+    const list = document.getElementById('fb-list');
+    list.innerHTML = '<div class="fb-empty">Loading…</div>';
+    try {
+      const d = await Drive.get('files', {
+        q: `'${this._cur().id}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`,
+        fields: 'files(id,name)', orderBy: 'name', pageSize: '200',
+      });
+      this._items = d.files || [];
+      list.innerHTML = this._items.length ? this._items.map((f, i) =>
+        `<div class="fb-row" onclick="FolderBrowser.enter(${i})">
+           <svg class="fb-ico" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+           <span class="fb-name">${esc(f.name)}</span>
+           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--text-dim);flex-shrink:0"><path d="M9 6l6 6-6 6"/></svg>
+         </div>`).join('')
+        : '<div class="fb-empty">No sub-folders here — tap the button below to use this folder.</div>';
+    } catch (e) { console.error('folder list failed', e); list.innerHTML = '<div class="fb-empty">Couldn’t load folders. Try again.</div>'; }
+  },
+  useCurrent() { const c = this._cur(); this.close(); setFolder(c.id, c.name); },
+  close(e) { if (!e || e.target.classList.contains('modal-backdrop')) document.getElementById('browser-modal').classList.remove('open'); },
 };
 
 // Typed-folder fallback (replaces the native prompt so the wording is ours).
@@ -1909,9 +1937,7 @@ const App = {
   },
 
   // ---- Native (system-browser) OAuth: code + PKCE --------------------------
-  _pkce: null, // { verifier, state, mode } for the in-flight authorization —
-               // mode is undefined/'signin' for normal sign-in, or 'pick' for
-               // the folder-selection re-grant (_nativeFolderPick below)
+  _pkce: null, // { verifier, state } for the in-flight authorization
   _b64url(bytes) {
     return btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
   },
@@ -1928,103 +1954,35 @@ const App = {
       const challenge = this._b64url(new Uint8Array(
         await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier))));
       const state = rnd(16);
-      // No folder remembered yet (first-ever sign-in, or right after the
-      // drive.file re-auth migration) — fold Google's folder-picker trigger
-      // into this SAME authorization request, so first-time sign-in is ONE
-      // continuous browser visit that ends with a folder already chosen,
-      // rather than sign-in landing in the app and THEN opening a SECOND
-      // browser round-trip to pick a folder (owner-reported: felt like being
-      // asked to log in twice). A returning user with a folder already
-      // remembered gets a plain, fast sign-in — no redundant re-pick.
-      const combinedPick = !hasChosenFolder();
-      this._pkce = { verifier, state, mode: combinedPick ? 'signin_pick' : undefined };
-      const params = {
-        client_id: CONFIG.ANDROID_CLIENT_ID,
-        redirect_uri: this._redirectUri(),
-        response_type: 'code',
-        scope: CONFIG.SCOPE,
-        code_challenge: challenge,
-        code_challenge_method: 'S256',
-        state,
-      };
-      if (combinedPick) Object.assign(params, {
-        access_type: 'offline', prompt: 'consent', trigger_onepick: 'true', allow_folder_selection: 'true',
-      });
-      const q = new URLSearchParams(params);
-      await this._plugin('Browser').open({ url: 'https://accounts.google.com/o/oauth2/v2/auth?' + q });
-    } catch (e) { toast('Sign-in failed: ' + e.message); }
-  },
-  // Folder selection on native (FolderBrowser.open routes here when isNative()).
-  // The embedded Google Picker JS library needs the same Google
-  // consent/account-chooser surfaces that sign-in does, which Google blocks
-  // inside embedded WebViews — so this uses Google's separate "Picker for
-  // desktop and mobile apps" flow instead: the SAME system-browser PKCE
-  // mechanism as _nativeSignIn, with trigger_onepick added to the
-  // authorization request. Google returns the picked folder's ID via
-  // `picked_file_ids` on the SAME oauth2redirect deep link sign-in uses,
-  // alongside a fresh authorization code (exchanged the normal way).
-  // NOT verified on-device — this environment has no way to drive a real
-  // system-browser OAuth round-trip; review carefully before shipping and
-  // confirm on-device that _onDeepLink's picked_file_ids branch fires.
-  async _nativeFolderPick() {
-    if (!CONFIG.ANDROID_CLIENT_ID) { toast('Folder picker not configured for this build'); FolderModal.open(); return; }
-    try {
-      const rnd = n => { const b = new Uint8Array(n); crypto.getRandomValues(b); return this._b64url(b); };
-      const verifier = rnd(32);
-      const challenge = this._b64url(new Uint8Array(
-        await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier))));
-      const state = rnd(16);
-      this._pkce = { verifier, state, mode: 'pick' };
+      this._pkce = { verifier, state };
       const q = new URLSearchParams({
         client_id: CONFIG.ANDROID_CLIENT_ID,
         redirect_uri: this._redirectUri(),
         response_type: 'code',
         scope: CONFIG.SCOPE,
-        access_type: 'offline',
-        prompt: 'consent',
-        trigger_onepick: 'true',
-        allow_folder_selection: 'true',
         code_challenge: challenge,
         code_challenge_method: 'S256',
         state,
       });
       await this._plugin('Browser').open({ url: 'https://accounts.google.com/o/oauth2/v2/auth?' + q });
-    } catch (e) {
-      toast('Could not open the folder picker: ' + e.message);
-      FolderModal.open();
-    }
+    } catch (e) { toast('Sign-in failed: ' + e.message); }
   },
   async _onDeepLink(url) {
     if (!url || url.indexOf(':/oauth2redirect') === -1) return;
     try { this._plugin('Browser')?.close(); } catch (_) {}
     const pk = this._pkce; this._pkce = null;
-    const mode = pk && pk.mode; // undefined = plain sign-in; 'pick' = standalone
-                                 // re-pick (Settings→Change, already in-app —
-                                 // must NOT call _enterApp()); 'signin_pick' =
-                                 // combined first-time sign-in + folder pick
-                                 // in ONE browser visit (_nativeSignIn above)
-    const isRepick = mode === 'pick';
-    const wantsPickedIds = mode === 'pick' || mode === 'signin_pick';
-    let code = '', state = '', err = '', pickedIds = '';
+    let code = '', state = '', err = '';
     try {
       const u = new URL(url);
       code = u.searchParams.get('code') || '';
       state = u.searchParams.get('state') || '';
       err = u.searchParams.get('error') || '';
-      pickedIds = u.searchParams.get('picked_file_ids') || '';
     } catch (_) {
       const m = url.match(/[?&]code=([^&]+)/); code = m ? decodeURIComponent(m[1]) : '';
       const s = url.match(/[?&]state=([^&]+)/); state = s ? decodeURIComponent(s[1]) : '';
-      const p = url.match(/[?&]picked_file_ids=([^&]+)/); pickedIds = p ? decodeURIComponent(p[1]) : '';
     }
-    if (err) {
-      toast(isRepick ? (err === 'access_denied' ? 'Folder selection cancelled' : 'Folder pick failed: ' + err) : 'Sign-in failed: ' + err);
-      return;
-    }
-    if (!code || !pk || state !== pk.state) {
-      toast((isRepick ? 'Folder pick' : 'Sign-in') + ' failed — please try again');
-      return;
-    }
+    if (err) { toast('Sign-in failed: ' + err); return; }
+    if (!code || !pk || state !== pk.state) { toast('Sign-in failed — please try again'); return; }
     try {
       const t = await this._tokenRequest({
         grant_type: 'authorization_code',
@@ -2036,26 +1994,8 @@ const App = {
       if (t.refresh_token) { try { localStorage.setItem('pl_rtoken', t.refresh_token); } catch (_) {} }
       State.token = t.access_token;
       this._saveAuth(t.access_token, t.expires_in);
-      // The redirect's picked_file_ids carries the chosen folder's ID (no
-      // name) — fetch its name for setFolder()/the UI. Applies to BOTH
-      // picking modes; a combined signin_pick with no picked_file_ids (the
-      // user completed sign-in but skipped/dismissed the inline folder step)
-      // just falls through to _enterApp() below with no folder set, and the
-      // EXISTING _promptFolderIfNeeded() picks up the slack via the normal
-      // standalone 'pick' flow — never a dead end either way.
-      if (wantsPickedIds) {
-        const folderId = (pickedIds.split(',')[0] || '').trim();
-        if (folderId) {
-          try {
-            const meta = await Drive.get('files/' + folderId, { fields: 'id,name' });
-            setFolder(meta.id, meta.name);
-          } catch (e) { toast('Could not read the picked folder: ' + e.message); }
-        } else if (isRepick) {
-          toast('No folder was picked');
-        }
-      }
-      if (!isRepick) this._enterApp(); // plain sign-in OR signin_pick — isRepick alone (Settings→Change) stays in-app
-    } catch (e) { toast((isRepick ? 'Folder pick' : 'Sign-in') + ' failed: ' + e.message); }
+      this._enterApp();
+    } catch (e) { toast('Sign-in failed: ' + e.message); }
   },
   // Google's token endpoint sends no CORS headers, so a WebView fetch would be
   // blocked — go through Capacitor's NATIVE http bridge instead. Data is
@@ -4144,13 +4084,13 @@ window.addEventListener('load', () => {
   CoverCache.migrate(); // one-time koboaudio → phonoleaf DB rename (fire & forget)
   Meta._cleanGenres();  // one-time: drop bogus "genres" cached from OL subjects
   App.init();
-  // One-shot explanation for the drive.file re-auth migration (see the early
-  // <head> script) — the auth-clearing already happened before App.init, so
-  // by now the user is looking at the sign-in screen with no context unless
-  // we tell them why. Consumed once: removed immediately so it never repeats.
+  // One-shot explanation for the scope re-auth (see the early <head> script) —
+  // the auth-clearing already happened before App.init, so by now the user is
+  // looking at the sign-in screen with no context unless we tell them why.
+  // Consumed once: removed immediately so it never repeats.
   if (localStorage.getItem('pl_scope_mig_notice')) {
     localStorage.removeItem('pl_scope_mig_notice');
-    toast('We tightened Google Drive permissions for extra security — please sign in again', 5000);
+    toast('Please sign in again — your saved folder is remembered', 5000);
   }
   TTS.pickDefaultVoice(); // voices may already be loaded; voiceschanged refines later
   TTS._kokoroWarm(); // Kokoro is THE voice — start model init before first play
