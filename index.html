@@ -1928,8 +1928,17 @@ const App = {
       const challenge = this._b64url(new Uint8Array(
         await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier))));
       const state = rnd(16);
-      this._pkce = { verifier, state };
-      const q = new URLSearchParams({
+      // No folder remembered yet (first-ever sign-in, or right after the
+      // drive.file re-auth migration) — fold Google's folder-picker trigger
+      // into this SAME authorization request, so first-time sign-in is ONE
+      // continuous browser visit that ends with a folder already chosen,
+      // rather than sign-in landing in the app and THEN opening a SECOND
+      // browser round-trip to pick a folder (owner-reported: felt like being
+      // asked to log in twice). A returning user with a folder already
+      // remembered gets a plain, fast sign-in — no redundant re-pick.
+      const combinedPick = !hasChosenFolder();
+      this._pkce = { verifier, state, mode: combinedPick ? 'signin_pick' : undefined };
+      const params = {
         client_id: CONFIG.ANDROID_CLIENT_ID,
         redirect_uri: this._redirectUri(),
         response_type: 'code',
@@ -1937,7 +1946,11 @@ const App = {
         code_challenge: challenge,
         code_challenge_method: 'S256',
         state,
+      };
+      if (combinedPick) Object.assign(params, {
+        access_type: 'offline', prompt: 'consent', trigger_onepick: 'true', allow_folder_selection: 'true',
       });
+      const q = new URLSearchParams(params);
       await this._plugin('Browser').open({ url: 'https://accounts.google.com/o/oauth2/v2/auth?' + q });
     } catch (e) { toast('Sign-in failed: ' + e.message); }
   },
@@ -1985,7 +1998,13 @@ const App = {
     if (!url || url.indexOf(':/oauth2redirect') === -1) return;
     try { this._plugin('Browser')?.close(); } catch (_) {}
     const pk = this._pkce; this._pkce = null;
-    const picking = !!(pk && pk.mode === 'pick'); // branches this whole handler; false = unchanged sign-in behavior
+    const mode = pk && pk.mode; // undefined = plain sign-in; 'pick' = standalone
+                                 // re-pick (Settings→Change, already in-app —
+                                 // must NOT call _enterApp()); 'signin_pick' =
+                                 // combined first-time sign-in + folder pick
+                                 // in ONE browser visit (_nativeSignIn above)
+    const isRepick = mode === 'pick';
+    const wantsPickedIds = mode === 'pick' || mode === 'signin_pick';
     let code = '', state = '', err = '', pickedIds = '';
     try {
       const u = new URL(url);
@@ -1999,11 +2018,11 @@ const App = {
       const p = url.match(/[?&]picked_file_ids=([^&]+)/); pickedIds = p ? decodeURIComponent(p[1]) : '';
     }
     if (err) {
-      toast(picking ? (err === 'access_denied' ? 'Folder selection cancelled' : 'Folder pick failed: ' + err) : 'Sign-in failed: ' + err);
+      toast(isRepick ? (err === 'access_denied' ? 'Folder selection cancelled' : 'Folder pick failed: ' + err) : 'Sign-in failed: ' + err);
       return;
     }
     if (!code || !pk || state !== pk.state) {
-      toast((picking ? 'Folder pick' : 'Sign-in') + ' failed — please try again');
+      toast((isRepick ? 'Folder pick' : 'Sign-in') + ' failed — please try again');
       return;
     }
     try {
@@ -2017,16 +2036,26 @@ const App = {
       if (t.refresh_token) { try { localStorage.setItem('pl_rtoken', t.refresh_token); } catch (_) {} }
       State.token = t.access_token;
       this._saveAuth(t.access_token, t.expires_in);
-      if (!picking) { this._enterApp(); return; }
-      // Folder pick: the redirect's picked_file_ids carries the chosen
-      // folder's ID (no name) — fetch its name for setFolder()/the UI.
-      const folderId = (pickedIds.split(',')[0] || '').trim();
-      if (!folderId) { toast('No folder was picked'); return; }
-      try {
-        const meta = await Drive.get('files/' + folderId, { fields: 'id,name' });
-        setFolder(meta.id, meta.name);
-      } catch (e) { toast('Could not read the picked folder: ' + e.message); }
-    } catch (e) { toast((picking ? 'Folder pick' : 'Sign-in') + ' failed: ' + e.message); }
+      // The redirect's picked_file_ids carries the chosen folder's ID (no
+      // name) — fetch its name for setFolder()/the UI. Applies to BOTH
+      // picking modes; a combined signin_pick with no picked_file_ids (the
+      // user completed sign-in but skipped/dismissed the inline folder step)
+      // just falls through to _enterApp() below with no folder set, and the
+      // EXISTING _promptFolderIfNeeded() picks up the slack via the normal
+      // standalone 'pick' flow — never a dead end either way.
+      if (wantsPickedIds) {
+        const folderId = (pickedIds.split(',')[0] || '').trim();
+        if (folderId) {
+          try {
+            const meta = await Drive.get('files/' + folderId, { fields: 'id,name' });
+            setFolder(meta.id, meta.name);
+          } catch (e) { toast('Could not read the picked folder: ' + e.message); }
+        } else if (isRepick) {
+          toast('No folder was picked');
+        }
+      }
+      if (!isRepick) this._enterApp(); // plain sign-in OR signin_pick — isRepick alone (Settings→Change) stays in-app
+    } catch (e) { toast((isRepick ? 'Folder pick' : 'Sign-in') + ' failed: ' + e.message); }
   },
   // Google's token endpoint sends no CORS headers, so a WebView fetch would be
   // blocked — go through Capacitor's NATIVE http bridge instead. Data is

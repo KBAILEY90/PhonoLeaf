@@ -499,23 +499,47 @@ Google login); verify by inspection + the owner testing on device.
     `Action.PICKED`, calls `setFolder(folder.id, folder.name)` same as before.
   - **Native**: the embedded Picker JS library needs the same Google
     consent/account surfaces sign-in does, which Google blocks inside embedded
-    WebViews — so `App._nativeFolderPick()` uses Google's separate "Picker for
-    desktop and mobile apps" flow instead: the SAME system-browser PKCE
-    mechanism as `_nativeSignIn` (Custom Tab, same `oauth2redirect` deep link),
-    with `prompt=consent&trigger_onepick=true&allow_folder_selection=true&
-    access_type=offline` added to the authorization request. The in-flight
-    `_pkce` is tagged `mode:'pick'` so `_onDeepLink` can branch: on return, the
+    WebViews — so folder selection uses Google's separate "Picker for desktop
+    and mobile apps" flow instead: the SAME system-browser PKCE mechanism as
+    `_nativeSignIn` (Custom Tab, same `oauth2redirect` deep link), with
+    `prompt=consent&trigger_onepick=true&allow_folder_selection=true&
+    access_type=offline` added to the authorization request. On return, the
     redirect carries `picked_file_ids` (comma-separated, no name) alongside a
     fresh `code` (exchanged normally via `_tokenRequest`); the folder's name is
     then fetched via `Drive.get('files/'+id, {fields:'name'})` before calling
-    `setFolder`. The `mode!=='pick'` (normal sign-in) path is byte-identical to
-    before — verified in a harness (mocked deep-link round-trips: sign-in still
-    calls `_enterApp()` and never touches Drive.get/setFolder; picking calls
-    Drive.get+setFolder and never touches `_enterApp()`; state-mismatch and
-    user-cancellation both produce sensible toasts). **The actual system-browser
-    OAuth round-trip is NOT device-verified** — this environment can't drive a
-    real browser-redirect flow; review carefully and confirm on-device that
-    `_onDeepLink`'s `picked_file_ids` branch actually fires.
+    `setFolder`.
+    **First-time sign-in folds the picker trigger into the SAME browser visit
+    (owner-reported: a separate later prompt felt like "logging in twice").**
+    `_nativeSignIn()` checks `hasChosenFolder()`: if nothing's remembered yet
+    (first-ever sign-in, or right after the `pl_scope_mig` re-auth wipe), it
+    adds the picker-trigger params to the INITIAL authorization request itself
+    and tags `_pkce.mode = 'signin_pick'` — one Custom Tab visit does consent
+    *and* folder selection, and the deep-link return sets the folder before
+    calling `_enterApp()` (so `_promptFolderIfNeeded` sees it's already chosen
+    and doesn't re-prompt). If the user completes sign-in but skips/dismisses
+    the inline folder step (no `picked_file_ids` came back), it falls through
+    to `_enterApp()` with no folder set and the existing `_promptFolderIfNeeded`
+    → standalone re-pick flow (below) picks up the slack — never a dead end.
+    A RETURNING user (folder already remembered — `signOut()` doesn't clear
+    it) gets a plain sign-in with no picker params, no redundant re-pick.
+    **Settings → "Change" always uses the STANDALONE flow**
+    (`App._nativeFolderPick()`, `_pkce.mode = 'pick'`) — same mechanism, but
+    triggered on its own (not folded into sign-in) since the user is already
+    in the app; its deep-link handling sets the folder and explicitly does
+    **not** call `_enterApp()`.
+    All three `_pkce.mode` values (`undefined` plain sign-in, `'pick'`
+    standalone re-pick, `'signin_pick'` combined) are handled by ONE
+    `_onDeepLink()`, branched via `isRepick`/`wantsPickedIds` — verified in a
+    harness across all seven cases (plain sign-in; repick success/cancel;
+    combined with/without a folder picked/cancelled entirely; state-mismatch):
+    plain sign-in remains byte-identical to pre-migration behavior (only
+    `_enterApp()` fires, no `Drive.get`/`setFolder`); combined-with-folder
+    calls `setFolder` THEN `_enterApp()`; standalone repick calls `setFolder`
+    and never `_enterApp()`. **The actual system-browser OAuth round-trip is
+    NOT device-verified** — this environment can't drive a real
+    browser-redirect flow; review carefully and confirm on-device that
+    `_onDeepLink`'s `picked_file_ids` branch actually fires, for both the
+    combined signin_pick flow and the standalone repick flow.
   - **No dark-mode/sort API exists on the Picker** (checked the full
     `picker.Feature` enum and `PickerBuilder`/`DocsView` — nothing theme-related,
     no `orderBy`). It renders in a cross-origin iframe, so CSS injection to force
