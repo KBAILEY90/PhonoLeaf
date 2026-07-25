@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#3E8E6B">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%233E8E6B'/%3E%3Cpath d='M50 24 C68 38 68 66 50 82 C32 66 32 38 50 24 Z' fill='%23F4F1E8'/%3E%3Cpath d='M50 82 L50 90' stroke='%23F4F1E8' stroke-width='3.2' stroke-linecap='round'/%3E%3Cpath d='M35 53 Q40 42 45 53 T55 53 T65 53' fill='none' stroke='%233E8E6B' stroke-width='3.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<title>Privacy Policy · PhonoLeaf</title>
+<style>
+  :root {
+    --bg:        #F4F1E8;
+    --surface:   #FBF9F2;
+    --card:      #FFFFFF;
+    --accent:    #3E8E6B;
+    --accent2:   #C98A3C;
+    --text:      #1E2A22;
+    --text-dim:  #6E7A70;
+    --line:      #E6E1D3;
+    --font-ui:   'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg:#0F1310; --surface:#161B14; --card:#1D241B;
+      --accent:#6FC598; --accent2:#E0A857;
+      --text:#E8ECE1; --text-dim:#97A290; --line:#2A3225;
+    }
+  }
+  @font-face {
+    font-family:'Manrope'; font-style:normal; font-weight:100 900;
+    font-display:swap; src:url('fonts/manrope.woff2') format('woff2');
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 400 1rem/1.65 var(--font-ui);
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 2.5rem 1.5rem 5rem; }
+  .brand { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 2rem; text-decoration: none; color: var(--text); }
+  .brand svg { flex-shrink: 0; }
+  .brand span { font-weight: 800; font-size: 1.15rem; letter-spacing: -0.01em; }
+  h1 { font-size: 1.7rem; font-weight: 800; margin: 0 0 0.3rem; letter-spacing: -0.01em; }
+  .updated { color: var(--text-dim); font-size: 0.85rem; margin-bottom: 2.2rem; }
+  h2 { font-size: 1.15rem; font-weight: 700; margin: 2.2rem 0 0.7rem; color: var(--accent); }
+  p, li { color: var(--text); }
+  p { margin: 0 0 1rem; }
+  ul { margin: 0 0 1rem; padding-left: 1.3rem; }
+  li { margin-bottom: 0.45rem; }
+  strong { font-weight: 700; }
+  a { color: var(--accent); }
+  .card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+    padding: 1.2rem 1.4rem; margin: 1.4rem 0; font-size: 0.92rem;
+  }
+  .card b { display: block; margin-bottom: 0.3rem; }
+  table { width: 100%; border-collapse: collapse; margin: 1rem 0 1.5rem; font-size: 0.92rem; }
+  th, td { text-align: left; padding: 0.6rem 0.7rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--text-dim); font-weight: 600; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.02em; }
+  .foot { margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid var(--line); color: var(--text-dim); font-size: 0.82rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <a class="brand" href="https://kbailey90.github.io/PhonoLeaf/">
+    <svg width="30" height="30" viewBox="0 0 100 100"><rect width="100" height="100" rx="22" fill="#3E8E6B"/><path d="M50 24 C68 38 68 66 50 82 C32 66 32 38 50 24 Z" fill="#F4F1E8"/><path d="M50 82 L50 90" stroke="#F4F1E8" stroke-width="3.2" stroke-linecap="round"/><path d="M35 53 Q40 42 45 53 T55 53 T65 53" fill="none" stroke="#3E8E6B" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <span>PhonoLeaf</span>
+  </a>
+
+  <h1>Privacy Policy</h1>
+  <div class="updated">Effective July 22, 2026</div>
+
+  <p>PhonoLeaf ("the app", "we", "our") turns epub books stored in your Google Drive into read-aloud audio, on your own device. This policy explains what data the app touches, why, and — just as importantly — what it never does.</p>
+
+  <div class="card">
+    <b>The short version</b>
+    PhonoLeaf has no server. There is nowhere for your data to go except between your device and Google's own services. We (the developer) never receive, see, or store your books, your Drive contents, or your listening activity anywhere.
+  </div>
+
+  <h2>What the app accesses, and why</h2>
+  <table>
+    <tr><th>Data</th><th>Why</th><th>Where it goes</th></tr>
+    <tr><td>Google Drive access (read-only)</td><td>To list and download the epub files in the folder you choose</td><td>Directly between your device and Google — never through us</td></tr>
+    <tr><td>Your Google display name</td><td>For the "Good morning, {name}" greeting on the Home screen</td><td>Stored on your device only</td></tr>
+    <tr><td>Book titles/authors</td><td>To look up genre and page-count metadata</td><td>Sent to Open Library (openlibrary.org), a public, third-party book database — no personal or account data is included</td></tr>
+    <tr><td>Reading progress, stats, settings, voice choice</td><td>So the app remembers your place and preferences</td><td>Stored on your device only (browser storage / app storage) — never transmitted anywhere</td></tr>
+    <tr><td>Book covers</td><td>Cached so they don't re-download every time</td><td>Stored on your device only</td></tr>
+  </table>
+
+  <h2>Google Drive access, specifically</h2>
+  <p>PhonoLeaf requests <strong>read-only</strong> access to Google Drive (the <code>drive.readonly</code> scope). This is a broad, Google-classified "restricted" scope — broader than the app strictly needs for the one folder you connect — chosen because it's the only way to support "connect a folder once, new books appear automatically" without you re-selecting files every time. Because of that scope, PhonoLeaf is required to go through Google's own app verification process; see Google's own explanation of what that review covers at <a href="https://support.google.com/cloud/answer/13463737" target="_blank" rel="noopener">support.google.com/cloud/answer/13463737</a>.</p>
+  <p>The app never modifies, deletes, or uploads anything to your Drive. It only lists and downloads the epub files inside the one folder you pick.</p>
+
+  <h2>What we never do</h2>
+  <ul>
+    <li>We do not operate a server, and no version of the app sends your books, Drive contents, reading activity, or personal data to us or to any server we control.</li>
+    <li>We do not sell, rent, or share your data with advertisers or data brokers. There is no advertising in the app.</li>
+    <li>We do not use your data to train any AI/ML model.</li>
+    <li>The text-to-speech voice runs entirely on your device (or, as a fallback, through your device's own built-in voice engine). Book text is never sent to a cloud speech service.</li>
+  </ul>
+
+  <h2>Third parties the app talks to</h2>
+  <p>Because PhonoLeaf has no backend of its own, your device talks directly to a short, fixed list of external services:</p>
+  <ul>
+    <li><strong>Google</strong> (accounts.google.com, googleapis.com) — sign-in and Drive access. Governed by <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Google's Privacy Policy</a>.</li>
+    <li><strong>Open Library</strong> (openlibrary.org) — a free, public book-metadata API operated by the Internet Archive, used only to look up genre/page count from a title and author.</li>
+    <li><strong>jsDelivr / Hugging Face</strong> (cdn.jsdelivr.net, huggingface.co) — only if your device falls back to the in-browser neural voice model, this downloads the (non-personal) voice model files.</li>
+  </ul>
+
+  <h2>Data stored on your device</h2>
+  <p>Everything else — your reading progress, listening stats, theme choice, voice preference, and which folder you've connected — is stored locally in your browser's or app's own storage. It never leaves your device. Uninstalling the app, clearing site data, or using "Reset listening data" in Settings removes it.</p>
+
+  <h2>Signing out</h2>
+  <p>Signing out revokes the app's access to your Google account. On the native app, this also revokes the underlying Google authorization grant, not just the local session.</p>
+
+  <h2>Children's privacy</h2>
+  <p>PhonoLeaf is not directed at children under 13, and we do not knowingly collect data from children. Since PhonoLeaf has no backend, it does not collect data from anyone, of any age, on any server we operate.</p>
+
+  <h2>Changes to this policy</h2>
+  <p>If this policy changes, the updated version will be posted at this same URL with a new effective date.</p>
+
+  <h2>Contact</h2>
+  <p>Questions about this policy: <a href="mailto:baileyke90@gmail.com">baileyke90@gmail.com</a></p>
+
+  <div class="foot">
+    <a href="terms.html">Terms of Service</a> · <a href="https://kbailey90.github.io/PhonoLeaf/">PhonoLeaf Home</a>
+  </div>
+
+</div>
+</body>
+</html>

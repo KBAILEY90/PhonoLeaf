@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#3E8E6B">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%233E8E6B'/%3E%3Cpath d='M50 24 C68 38 68 66 50 82 C32 66 32 38 50 24 Z' fill='%23F4F1E8'/%3E%3Cpath d='M50 82 L50 90' stroke='%23F4F1E8' stroke-width='3.2' stroke-linecap='round'/%3E%3Cpath d='M35 53 Q40 42 45 53 T55 53 T65 53' fill='none' stroke='%233E8E6B' stroke-width='3.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<title>Terms of Service · PhonoLeaf</title>
+<style>
+  :root {
+    --bg:        #F4F1E8;
+    --surface:   #FBF9F2;
+    --card:      #FFFFFF;
+    --accent:    #3E8E6B;
+    --accent2:   #C98A3C;
+    --text:      #1E2A22;
+    --text-dim:  #6E7A70;
+    --line:      #E6E1D3;
+    --font-ui:   'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg:#0F1310; --surface:#161B14; --card:#1D241B;
+      --accent:#6FC598; --accent2:#E0A857;
+      --text:#E8ECE1; --text-dim:#97A290; --line:#2A3225;
+    }
+  }
+  @font-face {
+    font-family:'Manrope'; font-style:normal; font-weight:100 900;
+    font-display:swap; src:url('fonts/manrope.woff2') format('woff2');
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 400 1rem/1.65 var(--font-ui);
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 2.5rem 1.5rem 5rem; }
+  .brand { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 2rem; text-decoration: none; color: var(--text); }
+  .brand svg { flex-shrink: 0; }
+  .brand span { font-weight: 800; font-size: 1.15rem; letter-spacing: -0.01em; }
+  h1 { font-size: 1.7rem; font-weight: 800; margin: 0 0 0.3rem; letter-spacing: -0.01em; }
+  .updated { color: var(--text-dim); font-size: 0.85rem; margin-bottom: 2.2rem; }
+  h2 { font-size: 1.15rem; font-weight: 700; margin: 2.2rem 0 0.7rem; color: var(--accent); }
+  p, li { color: var(--text); }
+  p { margin: 0 0 1rem; }
+  ul { margin: 0 0 1rem; padding-left: 1.3rem; }
+  li { margin-bottom: 0.45rem; }
+  strong { font-weight: 700; }
+  a { color: var(--accent); }
+  .card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+    padding: 1.2rem 1.4rem; margin: 1.4rem 0; font-size: 0.92rem;
+  }
+  .card b { display: block; margin-bottom: 0.3rem; }
+  .foot { margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid var(--line); color: var(--text-dim); font-size: 0.82rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <a class="brand" href="https://kbailey90.github.io/PhonoLeaf/">
+    <svg width="30" height="30" viewBox="0 0 100 100"><rect width="100" height="100" rx="22" fill="#3E8E6B"/><path d="M50 24 C68 38 68 66 50 82 C32 66 32 38 50 24 Z" fill="#F4F1E8"/><path d="M50 82 L50 90" stroke="#F4F1E8" stroke-width="3.2" stroke-linecap="round"/><path d="M35 53 Q40 42 45 53 T55 53 T65 53" fill="none" stroke="#3E8E6B" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <span>PhonoLeaf</span>
+  </a>
+
+  <h1>Terms of Service</h1>
+  <div class="updated">Effective July 22, 2026</div>
+
+  <div class="card">
+    <b>Not legal advice, and not yet reviewed by a lawyer</b>
+    This document was drafted to plainly describe how PhonoLeaf actually works. Before relying on it for legal protection, especially once the app leaves testing and reaches the public, it's worth having an actual lawyer review it — particularly the liability and jurisdiction sections, which are written generically below.
+  </div>
+
+  <p>By using PhonoLeaf ("the app"), you agree to these terms. If you don't agree, please don't use the app.</p>
+
+  <h2>What the app does</h2>
+  <p>PhonoLeaf connects to a folder in your own Google Drive, reads the epub files it finds there, and reads them aloud using on-device or your device's built-in text-to-speech. The app has no server or backend — it runs entirely on your device and talks directly to Google's own services.</p>
+
+  <h2>Your account and content</h2>
+  <ul>
+    <li>You're responsible for your own Google account and the books you choose to store in and read from your Drive.</li>
+    <li>You must have the right to possess and read any book file you use with the app. PhonoLeaf does not provide, host, or distribute any book content itself.</li>
+    <li>The app only ever reads the folder you explicitly connect — it does not access any other part of your Drive.</li>
+  </ul>
+
+  <h2>Acceptable use</h2>
+  <p>Please don't use the app to attempt to disrupt, reverse-engineer for malicious purposes, or gain unauthorized access to any service it connects to (including Google's APIs or Open Library).</p>
+
+  <h2>No warranty</h2>
+  <p>PhonoLeaf is provided "as is" and "as available," without warranties of any kind, express or implied — including, without limitation, warranties of merchantability, fitness for a particular purpose, or non-infringement. We don't guarantee the app will be uninterrupted, error-free, or compatible with every device or every book file.</p>
+
+  <h2>Limitation of liability</h2>
+  <p>To the fullest extent permitted by law, the developer of PhonoLeaf is not liable for any indirect, incidental, special, consequential, or punitive damages, or any loss of data, arising from your use of the app. The app is a free, independently-developed reading tool, not a commercial service with guaranteed uptime or support.</p>
+
+  <h2>Third-party services</h2>
+  <p>The app depends on services it doesn't control — principally Google Drive/Sign-In, and Open Library for book metadata. Their availability, terms, and privacy practices are their own; see <a href="https://policies.google.com/terms" target="_blank" rel="noopener">Google's Terms of Service</a> for the Google-related portion of this.</p>
+
+  <h2>Changes to the app or these terms</h2>
+  <p>The app is under active development and may change, and features may be added, altered, or removed. If these terms change materially, the updated version will be posted at this same URL with a new effective date.</p>
+
+  <h2>Termination</h2>
+  <p>You may stop using the app and revoke its access to your Google account at any time (Settings → Sign out, or directly via your <a href="https://myaccount.google.com/permissions" target="_blank" rel="noopener">Google Account permissions</a>). We may also discontinue the app at any time.</p>
+
+  <h2>Contact</h2>
+  <p>Questions about these terms: <a href="mailto:baileyke90@gmail.com">baileyke90@gmail.com</a></p>
+
+  <div class="foot">
+    <a href="privacy.html">Privacy Policy</a> · <a href="https://kbailey90.github.io/PhonoLeaf/">PhonoLeaf Home</a>
+  </div>
+
+</div>
+</body>
+</html>

@@ -107,6 +107,10 @@ renders them with epub.js, and reads the text using the browser's Web Speech
   `<script>`).
 - `sw.js` — service worker (offline app shell).
 - `manifest.json` — PWA manifest.
+- `privacy.html` / `terms.html` — standalone legal pages (own branded HTML
+  shell, not part of the inline-script app) — see the Productization roadmap
+  "Privacy policy + ToS" item for what they cover. Staged into the native
+  shell by `scripts/stage-www.js`; linked from the Settings footer.
 - **Native shell (Stage 2a, added 2026-07-06):** Capacitor 8 wraps the SAME
   web app for the Play Store build. `package.json` (scripts only — the web
   app still has no build), `capacitor.config.json` (`com.phonoleaf.app`,
@@ -1171,7 +1175,19 @@ the working plan, not an exploration.
      - Stage 5 — Play Console ($25 one-time), internal testing track, store
        listing + privacy policy (item 4), then production rollout. iOS
        (Apple $99/yr) after Android is proven.
-4. **Privacy policy + ToS** (required for Google verification & stores).
+4. ~~**Privacy policy + ToS**~~ — **DONE (2026-07-22).** `privacy.html` /
+   `terms.html` at the repo root, live at
+   `kbailey90.github.io/PhonoLeaf/privacy.html` (and `/terms.html`) — same
+   branding/theme as the app (self-hosted Manrope, light/dark via
+   `prefers-color-scheme`), linked from the Settings footer, and staged into
+   the native shell too (`scripts/stage-www.js`'s `FILES` list). Content
+   describes the app accurately (no backend, `drive.readonly` scope and why,
+   what's stored locally vs sent to Google/Open Library/jsdelivr, no ad/data
+   sale, sign-out revokes the grant). **The ToS explicitly flags itself as not
+   lawyer-reviewed** — fine for Testing-mode verification, but worth a real
+   legal review before/at public launch, especially liability + jurisdiction
+   (jurisdiction was left generic — nothing in the codebase indicates the
+   owner's legal jurisdiction to name one).
 5. **Backend** for real refresh tokens and payments (Stripe on web; Play
    Billing in-app — note Play takes 15% vs ~3% Stripe). The TTS key proxy is
    no longer needed (no cloud TTS).
