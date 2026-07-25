@@ -78,6 +78,25 @@ renders them with epub.js, and reads the text using the browser's Web Speech
       propagate after saving; this exact gotcha already cost one debugging
       session on the original `koboaudio` Android client, see the Native auth
       note below).
+    - **BLOCKER, confirmed via research: (package name, SHA-1) must be
+      globally unique across EVERY GCP/Firebase project, not just within one**
+      — creating the Android client on the new project will fail outright
+      ("An OAuth2 client already exists for this package name and SHA-1 in
+      another project") because `com.phonoleaf.app` + the debug SHA-1 above is
+      already registered to the OLD `koboaudio` project's Android client
+      (`871446308528-am1hi0il8670867uvai80q4d18fduee6.apps.googleusercontent.com`).
+      **Fix (owner-chosen): delete ONLY that one Android OAuth client from the
+      OLD `koboaudio` project FIRST**, before creating the new project's
+      Android client — this frees the (package, SHA-1) pair immediately. Leave
+      the old project's Web client
+      (`871446308528-r12mb3i1r87jrk681ms3bp55msubojt7.apps.googleusercontent.com`)
+      untouched so web sign-in keeps working on old installs during the
+      transition. Expected/accepted side effect: native sign-in on the OLD
+      project breaks the moment this happens — fine, since the native app is
+      about to be rebuilt against the new project anyway. This changes the
+      overall sequencing from "build up new, then tear down old" to
+      "free the conflicting credential in the old project, build up the new
+      one, THEN tear down the rest of the old project once verified."
     - **Once the new Web + Android client IDs exist, the code changes are
       small and contained**: `CONFIG.CLIENT_ID`, `CONFIG.ANDROID_CLIENT_ID` in
       `index.html`, and the reversed-client-id scheme in
