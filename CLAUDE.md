@@ -56,6 +56,52 @@ renders them with epub.js, and reads the text using the browser's Web Speech
     `C:\Repo\phonoleaf` manually (documented in TESTING.md §3) — note that
     renaming it detaches this project's Claude session history/memory, which
     is keyed to the folder path.
+  - **UPGRADED 2026-07-22: renaming the consent-screen branding wasn't enough
+    for the owner — the underlying Cloud Console PROJECT ID itself is still
+    literally `koboaudio`, and the owner wants zero trace of the old name
+    anywhere, not just in what users see.** Plan: create a brand-new GCP
+    project named **PhonoLeaf** from scratch (not a rename — project IDs are
+    permanent) and migrate the OAuth clients to it, rather than continue
+    patching the old project's branding. **STATUS: PENDING — new project not
+    yet created as of this writing.**
+    - **What the new project needs** (a Cowork prompt for this exists — ask
+      for it if starting fresh): Drive API enabled; OAuth consent screen
+      (External, Testing, app name "PhonoLeaf", owner's email as test user);
+      a **Web** OAuth client (JS origin `https://kbailey90.github.io`, no
+      path); an **Android** OAuth client (package `com.phonoleaf.app`, debug
+      SHA-1 `A5:6B:7C:BD:10:66:EE:40:BE:2B:EA:45:BE:A9:11:2E:BC:B2:19:08` —
+      re-derive via `keytool -list -v -keystore ~/.android/debug.keystore
+      -alias androiddebugkey -storepass android -keypass android` if this
+      keystore ever changes) with **"Enable custom URI scheme" checked under
+      Advanced Settings** — off by default, and sign-in fails silently with
+      `Error 400: Custom URI scheme is not enabled` without it (~5 min to
+      propagate after saving; this exact gotcha already cost one debugging
+      session on the original `koboaudio` Android client, see the Native auth
+      note below).
+    - **Once the new Web + Android client IDs exist, the code changes are
+      small and contained**: `CONFIG.CLIENT_ID`, `CONFIG.ANDROID_CLIENT_ID` in
+      `index.html`, and the reversed-client-id scheme in
+      `AndroidManifest.xml`'s `oauth2redirect` `<data android:scheme>` (must
+      match `ANDROID_CLIENT_ID` exactly — a mismatch breaks the deep-link
+      return silently, per the existing Native auth note). Nothing else in
+      the codebase references the GCP project — confirmed by grepping the
+      whole repo for `kobo` (case-insensitive): the only hits are the
+      `CoverCache.migrate()` IndexedDB-rename code, whose entire job is
+      deleting the old `koboaudio` DB — i.e. already fine, not a holdout.
+    - **Do NOT delete the old `koboaudio` GCP project until the new one is
+      verified working end-to-end** (web sign-in AND native sign-in, the
+      latter needs `npm run sync` + a rebuild) — build up, then tear down, not
+      the other way round. GCP has a ~30-day recovery window after shutdown
+      if this is ever done prematurely.
+    - A **third** Android OAuth client (release keystore's SHA-1, once one
+      exists) will still be needed later for the Play Store build — same as
+      would have been true on the old project; this migration doesn't add
+      extra work there, just relocates where it happens.
+    - The owner's Drive folder is separately named "Rakuten Kobo" (their own
+      Drive data, unrelated to this repo/GCP project) — renaming it is a
+      Drive-side action the owner can do anytime; the app stores the folder's
+      *id*, so renaming it doesn't break anything, though the cached display
+      name in Settings stays stale until the folder is re-picked.
 
 ## Tech stack & structure
 
