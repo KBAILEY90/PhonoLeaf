@@ -84,13 +84,13 @@ renders them with epub.js, and reads the text using the browser's Web Speech
       this exact gotcha already cost a debugging session on the original
       `koboaudio` Android client (see the Native auth note below) so it was
       verified explicitly this time rather than assumed.
-    - **STATUS: VERIFIED WORKING 2026-07-22 — both native and web sign-in
-      confirmed on the new project.** Remaining step: decommission the rest of
-      the old `koboaudio` project (IAM & Admin → Settings → Shut down;
-      ~30-day recovery window) via a Cowork prompt (ask for it if starting
-      fresh — the prompt targets the project by id, confirms it's showing
-      "koboaudio" before touching anything, and leaves the new `phonoleaf`
-      project completely alone).
+    - **STATUS: MIGRATION COMPLETE (2026-07-22).** Native and web sign-in both
+      verified working on the new `phonoleaf` project; the old `koboaudio`
+      project has been shut down via Cowork (confirmed: project number
+      871446308528, now under Resources pending deletion with the standard
+      ~30-day recovery window before permanent deletion; `phonoleaf` was
+      confirmed untouched throughout). No "kobo" trace remains anywhere —
+      code, branding, or infrastructure.
     - A **third** Android OAuth client (release keystore's SHA-1, once one
       exists) will still be needed later for the Play Store build, on this
       new project — same requirement that would have existed on the old one.
