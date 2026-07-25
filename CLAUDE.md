@@ -1040,8 +1040,10 @@ Google login); verify by inspection + the owner testing on device.
     owner then tested background reading + the press-play pre-pause fix (next
     note) together on-device and confirmed it works.
   The old `_vpage`/`_resyncVisual`/`_resyncing`/`_armResyncWatchdog`/`_cancelResync`
-  machinery from the virtual-page attempt is now DORMANT (kept to avoid churn;
-  `_vpage` stays 0 so `_resyncVisual` never fires) — remove in a later cleanup.
+  machinery from the virtual-page attempt was **REMOVED 2026-07-22** (including
+  `loadPageText`'s `vpage` parameter and the `_onRelocated` resync-hijack
+  branch that used it) — verified in a browser harness that normal page
+  reading and `start`/`stop`/`skipPage` all still work correctly.
 - **The native app is PORTRAIT-LOCKED** (`android:screenOrientation="portrait"`
   on `MainActivity`). Rotating re-flows the epub into a different column layout,
   so page counts/positions shift under the reader — a page-end auto-advance then
@@ -1147,11 +1149,14 @@ the working plan, not an exploration.
        fixed by using `startService` instead of `startForegroundService`) and
        "press play does nothing" (chapter-heading pre-pause fix in `start()`).
        Owner-confirmed working on device 2026-07-22. `@jofr/capacitor-media-session`
-       removed 2026-07-22 (see the Tech-stack note). Still TODO: MediaSession
-       lock-screen transport controls (play/pause/skip from the lock screen —
-       currently just a plain notification), IndexedDB audio caching, and
-       cleaning up the now-dormant virtual-page code (`_vpage`/`_resyncVisual`/
-       etc., kept to avoid churn but unused).
+       removed 2026-07-22 (see the Tech-stack note); the dormant virtual-page
+       code (`_vpage`/`_resyncVisual`/`_resyncing`/`_armResyncWatchdog`/
+       `_cancelResync`, and `loadPageText`'s now-unused `vpage` parameter) was
+       also deleted the same day — verified in a browser harness that
+       `loadPageText()`, `start()`/`stop()`/`skipPage()` all still work
+       correctly with it gone. Still TODO: MediaSession lock-screen transport
+       controls (play/pause/skip from the lock screen — currently just a
+       plain notification), and IndexedDB audio caching.
      - Stage 5 — Play Console ($25 one-time), internal testing track, store
        listing + privacy policy (item 4), then production rollout. iOS
        (Apple $99/yr) after Android is proven.
