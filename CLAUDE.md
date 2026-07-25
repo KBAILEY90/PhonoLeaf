@@ -120,37 +120,17 @@ renders them with epub.js, and reads the text using the browser's Web Speech
   gitignored; Gradle configuration cache is enabled in gradle.properties).
   Installed Capacitor plugins: `@capacitor/browser` + `@capacitor/app`
   (native auth — see the "Native auth" behavior note); `CapacitorHttp` is
-  used from core; **`@jofr/capacitor-media-session`** (Stage 4 background/
-  lock-screen playback — see that behavior note). NB the media-session plugin
-  is built for Capacitor 6, installed with `--legacy-peer-deps`; it compiles on
-  Cap 8 (its Gradle has a `namespace` + AGP 8) but only declares
-  `FOREGROUND_SERVICE`, so the app manifest adds `FOREGROUND_SERVICE_MEDIA_PLAYBACK`
-  (required on Android 14+ or the FGS crashes) + `POST_NOTIFICATIONS`.
-  **AGP 9 breaks its vendored `build.gradle` (hit 2026-07-18):** after
-  bumping AGP `8.13.0`→`9.2.1` / Gradle `8.14.3`→`9.4.1` (Android Studio's
-  own "Fix with AI"/upgrade assistant — that same tool also fixed
-  `app/build.gradle`'s own `proguardFiles` line, but has no reach into
-  `node_modules`), the plugin's own
-  `node_modules/@jofr/capacitor-media-session/android/build.gradle` line 33
-  still calls `getDefaultProguardFile('proguard-android.txt')`, which AGP 9
-  rejects outright (not just a warning — a hard `EvalIssueException`).
-  Fixed via **`patch-package`** (`patches/@jofr+capacitor-media-session+4.0.0.patch`,
-  applied by `postinstall` in `package.json`) rather than hand-editing
-  `node_modules` each time, since that gets wiped on every `npm install`.
-  **`npx patch-package <name>` couldn't auto-generate this patch** — its
-  own temp-reinstall step failed silently for this scoped package name on
-  Windows (a `cross-spawn` call with `stdio: "ignore"`, so no error ever
-  surfaces) — the patch file was hand-written as a plain unified diff
-  instead; patch-package's *apply* step doesn't care that it wasn't
-  machine-generated, and applying it was verified directly (reverted the
-  vendored file, ran `npm install`, confirmed `postinstall` put the fix
-  back). Also added `.npmrc` (`legacy-peer-deps=true`) so this plugin's
-  peer-dependency conflict with Capacitor 8 doesn't need `--legacy-peer-deps`
-  typed out by hand on every install. **Confirmed working in Android Studio**
-  — the environment that made this fix had no JDK/Android SDK
-  to run Gradle directly, so this was verified on-device rather than here;
-  the AGP `8.13.0`→`9.2.1` / Gradle `8.14.3`→`9.4.1` bump that came with it
-  builds clean too.
+  used from core. `@jofr/capacitor-media-session` (tried for Stage 4
+  background/lock-screen playback) was **REMOVED 2026-07-22** — it crashed
+  the app ~1-2s after pressing play (Capacitor-6-era plugin vs `targetSdk 36`
+  FGS rules) and was replaced by our own `PlaybackService.kt` (see the
+  "Background playback" behavior note for why and how). Removing it also
+  deleted `patches/@jofr+capacitor-media-session+4.0.0.patch` and `.npmrc`
+  (`legacy-peer-deps=true`) — both existed solely for this plugin's AGP-9
+  incompatibility and peer-dependency conflict with Capacitor 8; `npm install`
+  verified to resolve cleanly without either. `FOREGROUND_SERVICE_MEDIA_PLAYBACK`
+  + `POST_NOTIFICATIONS` in the manifest are still required (Android 14+ FGS
+  rules) — that's for our own `PlaybackService`, not this plugin.
   **Native TTS plugin (Stage 2b):** `PhonoLeafTtsPlugin.kt`
   (registered in `MainActivity.java`) wraps sherpa-onnx's `OfflineTts`
   (Kokoro) — see the "Voice engine" note; the prebuilt AAR is committed at
@@ -941,9 +921,9 @@ Google login); verify by inspection + the owner testing on device.
   running with the screen off.
   **We do NOT use `@jofr/capacitor-media-session`** — it crashed the app ~1-2s
   after pressing play (Capacitor-6-era plugin vs `targetSdk 36`'s much stricter
-  foreground-service rules; confirmed by a kill-switch bisect). It's still in
-  package.json but UNUSED — remove it (and its patch-package patch + `.npmrc`)
-  in a cleanup pass.
+  foreground-service rules; confirmed by a kill-switch bisect). **REMOVED from
+  package.json 2026-07-22** (+ its patch-package patch + `.npmrc`) — see the
+  "Native shell" note in Tech stack.
   **It also holds a PARTIAL (CPU) wake lock while playing** — the service stops
   the app being KILLED but not the CPU SLEEPING once the screen locks, and every
   sentence needs the CPU for the JS `onended` loop + Piper inference. Without it
@@ -1166,12 +1146,12 @@ the working plan, not an exploration.
        Also fixed on the way: a real crash (`ForegroundServiceDidNotStartInTimeException`,
        fixed by using `startService` instead of `startForegroundService`) and
        "press play does nothing" (chapter-heading pre-pause fix in `start()`).
-       Owner-confirmed working on device 2026-07-22. Still TODO: MediaSession
+       Owner-confirmed working on device 2026-07-22. `@jofr/capacitor-media-session`
+       removed 2026-07-22 (see the Tech-stack note). Still TODO: MediaSession
        lock-screen transport controls (play/pause/skip from the lock screen —
-       currently just a plain notification), IndexedDB audio caching, removing
-       the unused `@jofr/capacitor-media-session` plugin (+ its patch-package
-       patch + `.npmrc`), and cleaning up the now-dormant virtual-page code
-       (`_vpage`/`_resyncVisual`/etc., kept to avoid churn but unused).
+       currently just a plain notification), IndexedDB audio caching, and
+       cleaning up the now-dormant virtual-page code (`_vpage`/`_resyncVisual`/
+       etc., kept to avoid churn but unused).
      - Stage 5 — Play Console ($25 one-time), internal testing track, store
        listing + privacy policy (item 4), then production rollout. iOS
        (Apple $99/yr) after Android is proven.
