@@ -46,76 +46,53 @@ renders them with epub.js, and reads the text using the browser's Web Speech
     keys (`kba_tier`, `kba_gtts_key`, `kba_voicetip`, `kba_voice_diamond`)
     which are deleted. No device loses data. The migration block is the ONLY
     place `kba_` may appear in code.
-  - The Cloud Console **OAuth consent screen App name** still said
-    "KoboAudio" (found 2026-07-06 on the native consent page: "KoboAudio
-    wants to access your Google Account") — it lives in the Google project's
-    branding settings, not in this repo; owner renames it to PhonoLeaf under
-    APIs & Services → OAuth consent screen (a.k.a. Google Auth Platform →
-    Branding).
+  - ~~The Cloud Console OAuth consent screen App name still said "KoboAudio"~~
+    — **SUPERSEDED 2026-07-22**: rather than keep patching the old
+    `koboaudio`-named project's branding, the owner had the whole project
+    replaced outright (see below) with a project named "PhonoLeaf" from the
+    start. No more "KoboAudio wants to access your Google Account" prompt.
   - The owner's local clone folder (`C:\Repo\koboaudio`) must be renamed to
     `C:\Repo\phonoleaf` manually (documented in TESTING.md §3) — note that
     renaming it detaches this project's Claude session history/memory, which
     is keyed to the folder path.
-  - **UPGRADED 2026-07-22: renaming the consent-screen branding wasn't enough
-    for the owner — the underlying Cloud Console PROJECT ID itself is still
-    literally `koboaudio`, and the owner wants zero trace of the old name
-    anywhere, not just in what users see.** Plan: create a brand-new GCP
-    project named **PhonoLeaf** from scratch (not a rename — project IDs are
-    permanent) and migrate the OAuth clients to it, rather than continue
-    patching the old project's branding. **STATUS: PENDING — new project not
-    yet created as of this writing.**
-    - **What the new project needs** (a Cowork prompt for this exists — ask
-      for it if starting fresh): Drive API enabled; OAuth consent screen
-      (External, Testing, app name "PhonoLeaf", owner's email as test user);
-      a **Web** OAuth client (JS origin `https://kbailey90.github.io`, no
-      path); an **Android** OAuth client (package `com.phonoleaf.app`, debug
-      SHA-1 `A5:6B:7C:BD:10:66:EE:40:BE:2B:EA:45:BE:A9:11:2E:BC:B2:19:08` —
-      re-derive via `keytool -list -v -keystore ~/.android/debug.keystore
-      -alias androiddebugkey -storepass android -keypass android` if this
-      keystore ever changes) with **"Enable custom URI scheme" checked under
-      Advanced Settings** — off by default, and sign-in fails silently with
-      `Error 400: Custom URI scheme is not enabled` without it (~5 min to
-      propagate after saving; this exact gotcha already cost one debugging
-      session on the original `koboaudio` Android client, see the Native auth
-      note below).
-    - **BLOCKER, confirmed via research: (package name, SHA-1) must be
-      globally unique across EVERY GCP/Firebase project, not just within one**
-      — creating the Android client on the new project will fail outright
-      ("An OAuth2 client already exists for this package name and SHA-1 in
-      another project") because `com.phonoleaf.app` + the debug SHA-1 above is
-      already registered to the OLD `koboaudio` project's Android client
-      (`871446308528-am1hi0il8670867uvai80q4d18fduee6.apps.googleusercontent.com`).
-      **Fix (owner-chosen): delete ONLY that one Android OAuth client from the
-      OLD `koboaudio` project FIRST**, before creating the new project's
-      Android client — this frees the (package, SHA-1) pair immediately. Leave
-      the old project's Web client
-      (`871446308528-r12mb3i1r87jrk681ms3bp55msubojt7.apps.googleusercontent.com`)
-      untouched so web sign-in keeps working on old installs during the
+  - **REPLACED, not just re-branded (2026-07-22): the underlying Cloud Console
+    project itself was `koboaudio` — renaming consent-screen branding wasn't
+    enough for the owner, who wanted zero trace of the old name anywhere, not
+    just in what users see.** A brand-new GCP project named **PhonoLeaf**
+    (project id `phonoleaf`) was created from scratch (project IDs can't be
+    renamed) via a Cowork prompt (Drive API enabled; OAuth consent screen
+    External/Testing/test-user configured; new Web + Android OAuth clients),
+    and `CONFIG.CLIENT_ID`/`CONFIG.ANDROID_CLIENT_ID` in `index.html` +
+    `AndroidManifest.xml`'s reversed-scheme `oauth2redirect` intent-filter were
+    all repointed to it — see the "Critical facts" section below for the
+    current IDs. Nothing else in the codebase referenced the old project
+    (confirmed by grepping the whole repo for `kobo`, case-insensitive — the
+    only hits were the already-correct `CoverCache.migrate()` IndexedDB-rename
+    code, whose entire job is deleting the old `koboaudio` DB).
+    - **Real blocker hit + fixed**: (package name, SHA-1) must be globally
+      unique across EVERY GCP/Firebase project, not just within one, so
+      creating the Android client on the new project failed outright until
+      the OLD project's Android client (holding the same `com.phonoleaf.app` +
+      debug-SHA-1 pair) was deleted first. Only that one credential was
+      removed from the old project — its Web client and consent screen were
+      left untouched so old installs' web sign-in kept working through the
       transition. Expected/accepted side effect: native sign-in on the OLD
-      project breaks the moment this happens — fine, since the native app is
-      about to be rebuilt against the new project anyway. This changes the
-      overall sequencing from "build up new, then tear down old" to
-      "free the conflicting credential in the old project, build up the new
-      one, THEN tear down the rest of the old project once verified."
-    - **Once the new Web + Android client IDs exist, the code changes are
-      small and contained**: `CONFIG.CLIENT_ID`, `CONFIG.ANDROID_CLIENT_ID` in
-      `index.html`, and the reversed-client-id scheme in
-      `AndroidManifest.xml`'s `oauth2redirect` `<data android:scheme>` (must
-      match `ANDROID_CLIENT_ID` exactly — a mismatch breaks the deep-link
-      return silently, per the existing Native auth note). Nothing else in
-      the codebase references the GCP project — confirmed by grepping the
-      whole repo for `kobo` (case-insensitive): the only hits are the
-      `CoverCache.migrate()` IndexedDB-rename code, whose entire job is
-      deleting the old `koboaudio` DB — i.e. already fine, not a holdout.
-    - **Do NOT delete the old `koboaudio` GCP project until the new one is
-      verified working end-to-end** (web sign-in AND native sign-in, the
-      latter needs `npm run sync` + a rebuild) — build up, then tear down, not
-      the other way round. GCP has a ~30-day recovery window after shutdown
-      if this is ever done prematurely.
+      project broke the moment that credential was deleted — fine, since the
+      native app was about to be rebuilt against the new project anyway.
+    - **"Enable custom URI scheme" was checked under the new Android client's
+      Advanced Settings** (owner-confirmed) — required, off by default, and
+      this exact gotcha already cost a debugging session on the original
+      `koboaudio` Android client (see the Native auth note below) so it was
+      verified explicitly this time rather than assumed.
+    - **STATUS: code repointed to the new project's IDs; NOT yet verified
+      on-device.** Still needed: web sign-in test on the live site, native
+      sign-in test (`npm run sync` + rebuild), and only once BOTH are
+      confirmed working — decommission the rest of the old `koboaudio`
+      project (IAM & Admin → Settings → Shut down; ~30-day recovery window).
+      Do not shut it down before that on-device confirmation.
     - A **third** Android OAuth client (release keystore's SHA-1, once one
-      exists) will still be needed later for the Play Store build — same as
-      would have been true on the old project; this migration doesn't add
-      extra work there, just relocates where it happens.
+      exists) will still be needed later for the Play Store build, on this
+      new project — same requirement that would have existed on the old one.
     - The owner's Drive folder is separately named "Rakuten Kobo" (their own
       Drive data, unrelated to this repo/GCP project) — renaming it is a
       Drive-side action the owner can do anytime; the app stores the folder's
@@ -260,10 +237,17 @@ Google login); verify by inspection + the owner testing on device.
 
 ## Critical facts — do NOT "fix" these
 
-- **OAuth Client ID is `...ms3bp55...` (b before p).** It is
-  `871446308528-r12mb3i1r87jrk681ms3bp55msubojt7.apps.googleusercontent.com`.
-  An earlier message wrote it as `ms3pb55`; that is WRONG. Do not change it
-  without the owner explicitly asking — it must match the Google Cloud Console.
+- **OAuth Client IDs are on the "PhonoLeaf" Cloud Console project (project id
+  `phonoleaf`), not the old `koboaudio`-named one** — migrated 2026-07-22, see
+  the "Naming policy" note. `CONFIG.CLIENT_ID` (web) =
+  `88179965472-codmbgtm99mgik9qke2kucbvfkbug3ul.apps.googleusercontent.com`;
+  `CONFIG.ANDROID_CLIENT_ID` (native) =
+  `88179965472-cs9869nsk2b9i00v5ebo8sd9mrq9kmmn.apps.googleusercontent.com`,
+  which must match `AndroidManifest.xml`'s reversed-scheme `oauth2redirect`
+  intent-filter exactly (`com.googleusercontent.apps.<the same id minus the
+  .apps.googleusercontent.com suffix>`) — a mismatch breaks the native deep-link
+  return silently. Do not change either without the owner explicitly asking —
+  they must match the Google Cloud Console.
 - **epub.js must load from jsdelivr**, not cdnjs. The cdnjs path
   (`cdnjs.cloudflare.com/.../epub.js/...`) returns **404**.
 

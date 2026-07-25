@@ -1030,13 +1030,16 @@
 // |  See SETUP instructions in SETUP.md                 |
 // +======================================================+
 const CONFIG = {
-  CLIENT_ID:   '871446308528-r12mb3i1r87jrk681ms3bp55msubojt7.apps.googleusercontent.com',
+  // Both IDs below are on the "PhonoLeaf" Cloud Console project (project id
+  // `phonoleaf`), created 2026-07-22 to replace the old `koboaudio`-named
+  // project — see the CLAUDE.md "Naming policy" note for the full migration.
+  CLIENT_ID:   '88179965472-codmbgtm99mgik9qke2kucbvfkbug3ul.apps.googleusercontent.com',
   // ANDROID-type OAuth client (native app only): used by the system-browser
   // PKCE flow — Google blocks the web (GIS) flow inside embedded WebViews.
   // Same Cloud Console project as CLIENT_ID above, "PhonoLeaf Android
   // (debug)", tied to the debug keystore's SHA-1 — must match the reversed
   // scheme in AndroidManifest.xml's oauth2redirect intent-filter.
-  ANDROID_CLIENT_ID: '871446308528-am1hi0il8670867uvai80q4d18fduee6.apps.googleusercontent.com',
+  ANDROID_CLIENT_ID: '88179965472-cs9869nsk2b9i00v5ebo8sd9mrq9kmmn.apps.googleusercontent.com',
   // drive.readonly (RESTRICTED scope — needs Google verification, see below).
   // Briefly migrated to drive.file + Google Picker on 2026-07-22 and REVERTED
   // the same day: `drive.file` grants access ONLY to files the user picks
