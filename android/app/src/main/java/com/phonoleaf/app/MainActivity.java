@@ -6,8 +6,9 @@ import com.getcapacitor.BridgeActivity;
 public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
-        // Register the native Kokoro TTS plugin before the bridge starts.
+        // Register native plugins before the bridge starts.
         registerPlugin(PhonoLeafTtsPlugin.class);
+        registerPlugin(SecureStoragePlugin.class); // Keystore-backed storage for pl_rtoken
         super.onCreate(savedInstanceState);
     }
 }

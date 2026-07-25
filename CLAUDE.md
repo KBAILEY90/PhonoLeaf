@@ -151,7 +151,13 @@ renders them with epub.js, and reads the text using the browser's Web Speech
   Java while Kotlin keeps whatever `app/build.gradle` says; a mismatch fails
   `compileDebugKotlin` with "Inconsistent JVM-target compatibility" (hit
   2026-07-06). If Capacitor ever regenerates that file at a different JDK
-  version, bump `app/build.gradle` to match. Loop:
+  version, bump `app/build.gradle` to match.
+  **Secure storage plugin:** `SecureStoragePlugin.kt` (also registered in
+  `MainActivity.java`) exposes a tiny Keystore-backed `get`/`set`/`remove(key)`
+  surface via `androidx.security:security-crypto`'s `EncryptedSharedPreferences`
+  — used for the native OAuth refresh token (`pl_rtoken`); see the "Native
+  auth" behavior note and the Security-hardening section.
+  Loop:
   `npm run sync` (stage + copy into android) →
   `npm run open` (Android Studio) → Run ▶ on device — see TESTING.md §3.
   NB: GitHub Pages still deploys the repo root exactly as before — the web
@@ -257,10 +263,13 @@ Google login); verify by inspection + the owner testing on device.
   exchange and refresh go through `_tokenRequest`, which uses **`CapacitorHttp`
   (native bridge) because Google's token endpoint sends no CORS headers** — a
   WebView fetch would be blocked. The response includes a **refresh token**
-  (`pl_rtoken`): `tryResume`/`refreshToken` renew silently (`_nativeRefresh`),
-  so the native app stays signed in permanently; a failed refresh clears
-  `pl_rtoken` and falls back to interactive sign-in; `signOut` revokes the
-  grant via `oauth2.googleapis.com/revoke`. Shared post-auth path for all
+  (`pl_rtoken`, stored in Android Keystore-backed `EncryptedSharedPreferences`
+  via `SecureStoragePlugin.kt` since 2026-07-22 — see the Tech-stack note;
+  `App._getRefreshToken`/`_setRefreshToken`/`_removeRefreshToken` are the only
+  places that should touch it): `tryResume`/`refreshToken` renew silently
+  (`_nativeRefresh`), so the native app stays signed in permanently; a failed
+  refresh clears `pl_rtoken` and falls back to interactive sign-in; `signOut`
+  revokes the grant via `oauth2.googleapis.com/revoke`. Shared post-auth path for all
   flows: `App._enterApp()`. STATUS: Android OAuth client created 2026-07-06
   ("PhonoLeaf Android (debug)", package `com.phonoleaf.app`, debug-keystore
   SHA-1) and wired into `CONFIG.ANDROID_CLIENT_ID` + the manifest
@@ -1192,9 +1201,23 @@ and fixed, in priority order:
 2. ~~**No Content-Security-Policy**~~ — **DONE**: added (see the Tech-stack
    note). Locks script/connect/img/etc. origins to the known hosts as a
    backstop against XSS and exfiltration.
-3. **TODO — native refresh token in WebView localStorage.** Sandboxed to the
-   app (not exposed to other apps) but should move to Android Keystore-backed
-   encrypted storage before launch.
+3. ~~**native refresh token in WebView localStorage**~~ — **DONE (2026-07-22).**
+   `pl_rtoken` moved to Android Keystore-backed `EncryptedSharedPreferences`
+   via a new `SecureStoragePlugin.kt` (`androidx.security:security-crypto`).
+   All read/write/delete sites (`tryResume`, `_onDeepLink`, `refreshToken`,
+   `_nativeRefresh`, `signOut`) go through `App._getRefreshToken()` /
+   `_setRefreshToken()` / `_removeRefreshToken()` instead of localStorage
+   directly; web no-ops cleanly (the plugin only exists natively). A one-time
+   `App._migrateRefreshTokenToSecureStorage()` moves any existing plaintext
+   token on first native boot after this change, then clears the old key.
+   Verified in a browser harness (mocked `SecureStorage` as an in-memory
+   store): get/set/remove round-trip, migration (including idempotent
+   re-run), `tryResume()` correctly triggers native refresh from a token in
+   secure storage, `signOut()` revokes and clears it, and `refreshToken()`'s
+   failure path clears it before rethrowing. **The actual Keystore
+   encryption/Gradle build is NOT device-verified** — no JDK/Android SDK in
+   this environment; review the Kotlin plugin (`SecureStoragePlugin.kt`)
+   carefully and confirm sign-in / resume / sign-out all still work on device.
 4. **WON'T FIX — narrowing the Drive scope to `drive.file`.** It would have been
    the deepest available security fix (a compromised token could only read
    explicitly-picked books, not the whole Drive), but it is **incompatible with
