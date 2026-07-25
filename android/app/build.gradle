@@ -65,6 +65,11 @@ dependencies {
     // pl_rtoken. 1.1.0-alpha06 is the current androidx.security release using
     // the MasterKey.Builder API (the older MasterKeys object is deprecated).
     implementation "androidx.security:security-crypto:1.1.0-alpha06"
+    // MediaSessionCompat/PlaybackStateCompat/MediaMetadataCompat (still under
+    // the legacy android.support.v4.media package despite this artifact name —
+    // a known AndroidX quirk) + androidx.media.app.NotificationCompat.MediaStyle,
+    // for PlaybackService's lock-screen transport controls.
+    implementation "androidx.media:media:1.7.0"
     implementation project(':capacitor-android')
     // Native neural TTS: Kokoro via sherpa-onnx (on-device, gapless on phones).
     // Prebuilt AAR (v1.13.4) committed in libs/ — sherpa-onnx has no Maven

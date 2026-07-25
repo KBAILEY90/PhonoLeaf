@@ -3527,19 +3527,45 @@ const TTS = {
   // rules). Without a foreground service Android suspends the app when
   // backgrounded: the playing clip and the prefetched one finish, then the
   // sentence-chain dies. The service keeps the process alive so it continues.
-  _mediaSetup() { /* no transport controls yet — service only */ },
-  _mediaMeta() { /* metadata rides on the service notification (see _mediaState) */ },
+  // Book title + current chapter, as sent to the native notification/MediaSession.
+  // rs-chapter is "Chapter · Page X / Y" — the chapter alone reads better.
+  _mediaPayload() {
+    const title = (State.currentBook?.name || 'PhonoLeaf').replace(/\.epub$/i, '');
+    const chapter = (document.getElementById('rs-chapter')?.textContent || '').split('  ·  ')[0].trim();
+    return { title, text: chapter || 'Reading aloud' };
+  },
+  // Wires the lock-screen PAUSE button (PlaybackService's MediaSessionCompat,
+  // 2026-07-22) back to TTS. The notification/session only exist WHILE
+  // playing (stopPlaybackService tears them down on every pause, same as
+  // before this — see _mediaState below), so PLAY only needs to be handled
+  // for completeness; there's normally no notification left to press it on.
+  // Registered once — addListener again on every start() would stack duplicate
+  // handlers and double-stop on a single lock-screen press.
+  _mediaListenerBound: false,
+  _mediaSetup() {
+    if (this._mediaListenerBound) return;
+    const nat = this._nativeTts(); if (!nat) return;
+    this._mediaListenerBound = true;
+    nat.addListener('mediaButton', d => {
+      if (d?.action === 'pause') { if (this.active) this.stop(); }
+      else if (d?.action === 'play') { if (!this.active) this.start(); }
+    });
+  },
+  // Push updated title/chapter to the lock-screen notification as the reader
+  // advances — startPlaybackService on an ALREADY-RUNNING service just
+  // re-fires onStartCommand with fresh extras (context.startService, not
+  // startForegroundService, so this never re-arms the 5s FGS watchdog — see
+  // the crash-fix note). No-ops while not playing (nothing to update).
+  _mediaMeta() {
+    if (!this.active) return;
+    const nat = this._nativeTts(); if (!nat) return;
+    try { nat.startPlaybackService(this._mediaPayload())?.catch?.(() => {}); } catch (_) {}
+  },
   _mediaState(playing) {
     const nat = this._nativeTts(); if (!nat) return; // web build: nothing to do
     try {
-      if (playing) {
-        const title = (State.currentBook?.name || 'PhonoLeaf').replace(/\.epub$/i, '');
-        // rs-chapter is "Chapter · Page X / Y" — the chapter alone reads better.
-        const chapter = (document.getElementById('rs-chapter')?.textContent || '').split('  ·  ')[0].trim();
-        nat.startPlaybackService({ title, text: chapter || 'Reading aloud' })?.catch?.(() => {});
-      } else {
-        nat.stopPlaybackService()?.catch?.(() => {});
-      }
+      if (playing) nat.startPlaybackService(this._mediaPayload())?.catch?.(() => {});
+      else nat.stopPlaybackService()?.catch?.(() => {});
     } catch (_) { /* background playback is best-effort; never break reading */ }
   },
   // Resolves once the plugin has told us which model is actually loaded. We

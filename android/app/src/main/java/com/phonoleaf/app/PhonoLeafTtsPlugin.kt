@@ -49,7 +49,32 @@
      */
     @CapacitorPlugin(name = "PhonoLeafTts")
     class PhonoLeafTtsPlugin : Plugin() {
-    
+
+        companion object {
+            // Weak so this never keeps a destroyed plugin/Activity alive — PlaybackService
+            // (a separate Android component, not directly wired to the Capacitor bridge)
+            // uses this to reach back into JS when a lock-screen media button is pressed.
+            private var instanceRef: java.lang.ref.WeakReference<PhonoLeafTtsPlugin>? = null
+
+            /** action: "pause" | "play" — forwarded to JS as a "mediaButton" event
+             *  (see TTS._mediaSetup in index.html). Silently does nothing if the
+             *  plugin isn't currently loaded (e.g. app fully backgrounded/killed —
+             *  there's no JS to notify in that case anyway). */
+            fun notifyMediaButton(action: String) {
+                val plugin = instanceRef?.get() ?: return
+                try {
+                    val data = JSObject()
+                    data.put("action", action)
+                    plugin.notifyListeners("mediaButton", data)
+                } catch (_: Throwable) { /* best-effort — never crash the service over this */ }
+            }
+        }
+
+        override fun load() {
+            super.load()
+            instanceRef = java.lang.ref.WeakReference(this)
+        }
+
         private val ASSET_DIR = "kokoro"
         // Serializes generation off the main thread; prefetch + on-demand calls
         // queue here instead of overlapping (which would spike memory/CPU).

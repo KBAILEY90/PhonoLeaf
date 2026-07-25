@@ -947,9 +947,9 @@ Google login); verify by inspection + the owner testing on device.
   (~5s limit — the likely old crash), the matching type passed to
   `ServiceCompat.startForeground` (API 29+), a notification channel (API 26+),
   and `PendingIntent.FLAG_IMMUTABLE` (API 31+). The notification shows the book
-  title + current chapter. NB **no MediaSession yet** → no lock-screen
-  play/pause/skip buttons; that's a separate follow-up. The Web-Speech
-  (device-voice fallback) path still can't play backgrounded.
+  title + current chapter. The Web-Speech (device-voice fallback) path still
+  can't play backgrounded. (Lock-screen PAUSE control added 2026-07-22 — see
+  the "Lock-screen media controls" note below.)
   **FGS-start crash + fix (device Logcat, 2026-07-21):** pressing play right
   after unlocking (reader open but the app still mid keyguard-resume) crashed
   the app — Logcat showed
@@ -976,6 +976,60 @@ Google login); verify by inspection + the owner testing on device.
   `PlaybackService` stays hardened (channel in `onCreate`, `startForeground`
   first in `onStartCommand`, `stopForeground(REMOVE)`+`stopSelf` if refused).
   Native-only; couldn't run Gradle here (no JDK/SDK), verified by review.
+- **Lock-screen media controls (2026-07-22) — a working PAUSE button, NOT full
+  play/pause/resume.** `PlaybackService` now creates a `MediaSessionCompat` in
+  `onCreate()` (before the 5s startForeground watchdog window — same tier as
+  channel setup), activated + given `MediaMetadataCompat`
+  (title/chapter, matching the notification's own text) and a
+  `PlaybackStateCompat` (`STATE_PLAYING`, `ACTION_PAUSE`) on every
+  `onStartCommand` — including the metadata-only refreshes described below,
+  so it stays current as chapters change, not just at session start.
+  **Scope boundary, deliberate:** the notification/session only exist WHILE
+  PLAYING — pausing in-app already calls `stopPlaybackService()` (unchanged,
+  see the note above), tearing the notification down. Pressing pause from the
+  lock screen routes to that SAME `TTS.stop()` path, so no service-lifecycle
+  redesign was needed — but it also means there's no notification left to
+  press "play" on afterward. Real resume-from-lock-screen (keeping the
+  service alive through a pause, showing "Paused" + a working Play button)
+  is a deliberately separate, larger follow-up, not attempted here.
+  **Two independent ways a press reaches JS**, both ending at the same
+  `PhonoLeafTtsPlugin.notifyMediaButton(action)` → a `"mediaButton"`
+  Capacitor event → `TTS._mediaSetup`'s listener → `TTS.stop()`/`start()`:
+  (1) the system's own lock-screen/quick-settings/Bluetooth transport
+  controls, which Android delivers to `MediaSessionCompat.Callback.onPause`/
+  `onPlay` automatically once the session is active — no extra plumbing
+  needed for this path; (2) the notification's own pause **button** (inside
+  the expanded notification), which needed its own `PendingIntent` — built
+  as a **plain custom action targeting `PlaybackService` directly**
+  (`ACTION_PAUSE`, handled at the top of `onStartCommand`), deliberately
+  **NOT** `MediaButtonReceiver.buildMediaButtonPendingIntent` — that
+  official-looking helper needs a manifest `<receiver>` PLUS the service
+  itself calling `MediaButtonReceiver.handleIntent()` to route raw
+  `ACTION_MEDIA_BUTTON` broadcasts, and getting that exactly right without a
+  device to verify on felt like the wrong risk to take for one button; the
+  custom-action approach reuses the SAME `context.startService()` mechanism
+  `TTS._mediaMeta()` already relies on (proven not to re-arm the FGS
+  watchdog, per the crash-fix above), so it's fully understood rather than
+  assumed. `PhonoLeafTtsPlugin` exposes the JS-facing half via a
+  `WeakReference`-held companion instance (set in an added `load()`
+  override) — `PlaybackService` is a separate Android component with no
+  direct line to the Capacitor bridge otherwise.
+  `MediaStyle` (`androidx.media.app.NotificationCompat.MediaStyle`, from the
+  new `androidx.media:media:1.7.0` dependency) is attached to the
+  notification purely for DISPLAY (tells the system to render it as a media
+  notification and back the lock-screen media widget with this session) —
+  independent of the button-routing above. `onDestroy` deactivates + releases
+  the session alongside the existing wake-lock cleanup.
+  Verified in a browser harness (mocked the native plugin): `_mediaSetup`
+  registers its listener idempotently; `_mediaState(true)` sends the correct
+  title/chapter; `_mediaMeta()` pushes an updated payload while active and is
+  a no-op while not (no stale post-stop updates); a simulated lock-screen
+  pause press correctly runs `TTS.stop()` end-to-end through to
+  `stopPlaybackService`; a simulated play press correctly runs `TTS.start()`.
+  **The native Kotlin/Gradle side is NOT device-verified** — no JDK/Android
+  SDK in this environment (confirmed brace/paren-balanced and reviewed
+  carefully against the documented `MediaSessionCompat`/`NotificationCompat.Action`
+  APIs, but review is not a substitute for a real build + device test).
 - **`window.speechSynthesis` is UNDEFINED in the native Android WebView.** The
   Web-Speech device-voice fallback (`_speakWeb`, `allVoices`,
   `VoiceModal.selectNamed`, `pickDefaultVoice`) must guard every
@@ -1163,9 +1217,10 @@ the working plan, not an exploration.
        `_cancelResync`, and `loadPageText`'s now-unused `vpage` parameter) was
        also deleted the same day — verified in a browser harness that
        `loadPageText()`, `start()`/`stop()`/`skipPage()` all still work
-       correctly with it gone. Still TODO: MediaSession lock-screen transport
-       controls (play/pause/skip from the lock screen — currently just a
-       plain notification), and IndexedDB audio caching.
+       correctly with it gone. MediaSession lock-screen PAUSE control added
+       2026-07-22 (see the "Lock-screen media controls" behavior note) — NOT
+       device-verified. Still TODO: full resume-from-lock-screen (see that
+       note's scope boundary) and IndexedDB audio caching.
      - Stage 5 — Play Console ($25 one-time), internal testing track, store
        listing + privacy policy (item 4), then production rollout. iOS
        (Apple $99/yr) after Android is proven.
