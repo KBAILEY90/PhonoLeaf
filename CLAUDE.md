@@ -1051,10 +1051,10 @@ Google login); verify by inspection + the owner testing on device.
   - `_bgMode`/`_bgSection` reset on `start()`/`skipPage()`/`stop()`; the whole
     path is gated on `document.hidden`, so **foreground reading is unchanged**.
     Only the neural/native audio path backgrounds (Web-Speech can't).
-  - **NOT yet device-verified** — everything above (alignment, cross-chapter
-    reading, CFI resync accuracy, progress persistence) is confirmed in a browser
-    harness against synthetic epubs; the audio path and real background timing
-    need an on-device test.
+  - **DEVICE-VERIFIED (2026-07-22, owner-confirmed "seems to work"):** logic
+    was already confirmed in a browser harness against synthetic epubs; the
+    owner then tested background reading + the press-play pre-pause fix (next
+    note) together on-device and confirmed it works.
   The old `_vpage`/`_resyncVisual`/`_resyncing`/`_armResyncWatchdog`/`_cancelResync`
   machinery from the virtual-page attempt is now DORMANT (kept to avoid churn;
   `_vpage` stays 0 so `_resyncVisual` never fires) — remove in a later cleanup.
@@ -1148,19 +1148,26 @@ the working plan, not an exploration.
        Full native flow confirmed working; voice is still WebView-WASM
        Kokoro (~10s stalls every ~2 sentences on the owner's phone) until
        Stage 2b ships the native engine.
-     - Stage 4 — background playback: **IN PROGRESS (2026-07-20)** — the
-       media-session PLUGIN crashed the app ~1-2s after play (Cap-6 plugin vs
-       targetSdk 36 FGS rules), proven by a kill-switch bisect; replaced with
-       our own `PlaybackService.kt` foreground service + a PARTIAL (CPU) wake
-       lock (see the "Background playback" note) — verified on device that audio
-       survives the screen turning off. Then hit "reads only ONE page locked":
-       epub's rAF-gated page turn is frozen when hidden, so added **virtual-page
-       background turning** (`TTS._vpage` / `loadPageText(vpage)` / `_resyncVisual`
-       — see the "Background PAGE-TURNING" note). Needs on-device verification
-       that reading now continues across pages with the screen off. Still TODO:
-       MediaSession lock-screen transport controls, IndexedDB audio caching,
-       removing the unused jofr plugin, and (background) a real section/chapter
-       turn while hidden (currently stops at the chapter boundary until unlock).
+     - Stage 4 — background playback: **CORE FUNCTIONALITY DEVICE-VERIFIED
+       (2026-07-22).** The media-session PLUGIN crashed the app ~1-2s after
+       play (Cap-6 plugin vs targetSdk 36 FGS rules), proven by a kill-switch
+       bisect; replaced with our own `PlaybackService.kt` foreground service +
+       a PARTIAL (CPU) wake lock (see the "Background playback" note).
+       First page-turning attempt (virtual pages, geometry-shifting the
+       extraction window) crossed pages but not chapters and stalled on short
+       pages; REPLACED (2026-07-21) with reading the book's TEXT straight from
+       the spine, decoupled from rendering (see "Background reading — read
+       spine TEXT directly") — crosses chapters, saves progress via CFI as it
+       goes, and resyncs the visible reader to the exact chunk on unlock.
+       Also fixed on the way: a real crash (`ForegroundServiceDidNotStartInTimeException`,
+       fixed by using `startService` instead of `startForegroundService`) and
+       "press play does nothing" (chapter-heading pre-pause fix in `start()`).
+       Owner-confirmed working on device 2026-07-22. Still TODO: MediaSession
+       lock-screen transport controls (play/pause/skip from the lock screen —
+       currently just a plain notification), IndexedDB audio caching, removing
+       the unused `@jofr/capacitor-media-session` plugin (+ its patch-package
+       patch + `.npmrc`), and cleaning up the now-dormant virtual-page code
+       (`_vpage`/`_resyncVisual`/etc., kept to avoid churn but unused).
      - Stage 5 — Play Console ($25 one-time), internal testing track, store
        listing + privacy policy (item 4), then production rollout. iOS
        (Apple $99/yr) after Android is proven.
