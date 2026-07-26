@@ -1381,7 +1381,27 @@ Google login); verify by inspection + the owner testing on device.
     takes the normal path; a first-ever play with no prior background position
     falls through safely. **Still not device-verified** — same caveat as
     always, no JDK/Android SDK in this environment.
-- **`window.speechSynthesis` is UNDEFINED in the native Android WebView.** The
+  - **Icon fix confirmed working on device (2026-07-26) — but that same test
+    surfaced a bug the previous fix introduced**: owner reported "if I press
+    pause and play, they both show different numbers," plus "the page number
+    doesn't align with what's being read" while actively playing.
+    `_mediaPayload()` branched on `this._bgMode` — but `stop()` (above)
+    deliberately clears `_bgMode` on every pause while KEEPING `_bgSection`/
+    `this.chunks`/`this.idx` intact for `start()` to resume from. That meant
+    pausing flipped the DISPLAY to the foreground branch (the stale, pre-lock
+    rendered page count) while playing showed the background chunk-bucketed
+    count — two different numbering systems, visibly different numbers,
+    exactly matching the report. Fixed by keying `_mediaPayload()`'s branch on
+    `this._bgSection` instead of `this._bgMode`: `_bgSection` is only ever
+    non-null when there's a real background position to show, whether
+    actively reading or merely paused, so it's the correct signal for what to
+    DISPLAY (as opposed to `_bgMode`, which correctly answers a DIFFERENT
+    question — "should a forward-advance route through `_bgAdvance` right
+    now"). A pure foreground session (never backgrounded) is unaffected —
+    `_bgSection` stays `null` the whole time, so it still takes the rendered-
+    page branch. Verified in a harness: simulated playing → pause → resume
+    all report the identical page string; a pure-foreground payload still
+    takes the rendered-page branch untouched.
   Web-Speech device-voice fallback (`_speakWeb`, `allVoices`,
   `VoiceModal.selectNamed`, `pickDefaultVoice`) must guard every
   `window.speechSynthesis.*` access (`?.`/`|| []`) or it throws at boot on

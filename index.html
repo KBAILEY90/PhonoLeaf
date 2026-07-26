@@ -3696,7 +3696,19 @@ const TTS = {
   // (chapter as the subtitle, page as the notification's subText).
   _mediaPayload() {
     const title = (State.currentBook?.name || 'PhonoLeaf').replace(/\.epub$/i, '');
-    if (this._bgMode) {
+    // Keyed on _bgSection, NOT _bgMode. _bgMode means "actively reading in the
+    // background right now" and stop() deliberately clears it on every pause
+    // (see stop()'s comment) — but _bgSection (the real background POSITION)
+    // survives the pause on purpose, so start() can resume it exactly. If this
+    // branch were keyed on _bgMode instead, pausing would fall through to the
+    // FOREGROUND branch below (the stale, pre-lock rendered page) while
+    // playing showed the background chunk-bucketed count — two different
+    // numbering systems flip-flopping across every pause/play, which is
+    // exactly what it looked like (owner: "if I press pause and play, they
+    // both show different numbers"). _bgSection is only ever non-null when we
+    // have a real background position to report, whether actively reading or
+    // merely paused, so it's the right signal for what to DISPLAY.
+    if (this._bgSection) {
       // Background reading: the visible reader is still frozen wherever the
       // screen locked, so #rs-chapter is stale — name the chapter the AUDIO is
       // actually in, and bucket the chunk position into a page-like count
