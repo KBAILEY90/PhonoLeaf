@@ -1402,6 +1402,46 @@ Google login); verify by inspection + the owner testing on device.
     page branch. Verified in a harness: simulated playing → pause → resume
     all report the identical page string; a pure-foreground payload still
     takes the rendered-page branch untouched.
+  - **THE UNIT WAS WRONG ALL ALONG — page position is now measured in
+    CHARACTERS, calibrated against the chapter's real rendered page count
+    (2026-07-26, third and final rework).** Owner: "it starts at page 23, I
+    press back one page, it now displays page 30 ... then I go forward, the
+    voice reads something different each time but the display stays 30."
+    Two separate defects, one root cause — counting the wrong thing:
+    1. **The 23 → 30 jump at handover.** Rendered pages are equal-AREA (hence
+       roughly equal-CHARACTER); chunks are PARAGRAPHS, whose length varies
+       enormously. So paragraph-position and text-position diverge wildly
+       within a chapter — measured in a harness on a deliberately uneven but
+       realistic chapter (long descriptive paragraphs early, short dialogue
+       later), **53% of the way through the TEXT was only 14% of the way
+       through the PARAGRAPHS.** No fixed chunks-per-page constant can
+       reconcile them, so the number necessarily jumped the moment background
+       mode took over from the rendered count.
+    2. **The display freezing.** With 6 chunks bucketed per page, a one-chunk
+       press changed `floor(idx/6)` only once every six presses — so five
+       presses in six moved the audio (owner heard it) while the number sat
+       still, reading as a dead button.
+    Fixed by rebuilding the model around characters:
+    `_bgReindex(spineIdx)` builds a prefix-sum character index over the
+    chapter's chunks, and — crucially — **when that section is the one epub
+    still has laid out, calibrates chars-per-page from its ACTUAL
+    `displayed.total`** (device/font specific; cached in `pl_cpp` and reused
+    for chapters never rendered while the screen is off, with a 1800 fallback
+    and a 300–6000 sanity clamp so one freak section can't poison later ones).
+    `_bgPageOf`/`_bgPageCount`/`_bgIdxForPage` then convert between character
+    offset and page. **`_bgNav` now seeks a whole PAGE per press**
+    (`_bgIdxForPage(currentPage ± 1)`) instead of one chunk, with a guard
+    forcing `idx ± 1` if a paragraph longer than a page would otherwise leave
+    the seek on the same chunk — so a press always both moves the audio and
+    changes the number by exactly 1. Deleted `_BG_CHUNKS_PER_PAGE`.
+    Verified in a harness on the uneven-chapter model above: calibration
+    yields ~1953 chars/page and a 43-page count matching the real rendered
+    total; the handover now reports "Page 23 / 43" (the old model said 30);
+    the exact reported sequence (back one, then four forward) gives deltas
+    `-1,+1,+1,+1,+1` with the audio index moving on every single press; plus
+    a >1-page paragraph still advances, an absurd calibration is rejected
+    without persisting, a missing index degrades to blank, and a learned
+    calibration is correctly reused for a chapter that is never rendered.
   Web-Speech device-voice fallback (`_speakWeb`, `allVoices`,
   `VoiceModal.selectNamed`, `pickDefaultVoice`) must guard every
   `window.speechSynthesis.*` access (`?.`/`|| []`) or it throws at boot on

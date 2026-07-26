@@ -2460,7 +2460,7 @@ const Reader = {
     document.getElementById('tts-prog').style.width = '0%';
     document.getElementById('speed-select').value = TTS.rate;
     TTS.stop();
-    TTS._bgSection = null; // stop() now preserves this across a pause — a NEW book must not inherit it
+    TTS._bgSection = null; TTS._bgChars = null; // stop() now preserves these across a pause — a NEW book must not inherit them
     TTS._lastText = ''; // new book — allow the first section's text to load fresh
     TTS.chunks = []; TTS.idx = 0; // drop the previous book's text so auto-start reloads
     TTS._preIdx = -1; // reset chapter/subtitle pre-pause tracking for the new book
@@ -3045,6 +3045,7 @@ const TTS = {
     this._bgSection = built.section;
     this.chunks = built.chunks;
     this.idx = at;
+    this._bgReindex(idx); // build the char index + calibrate off the RENDERED page count
     return true;
   },
 
@@ -3067,6 +3068,7 @@ const TTS = {
       this._bgSection = built.section;
       this.chunks = built.chunks;
       this.idx = 0;
+      this._bgReindex(next);
     }
     // If we ran past the loaded section's chunks (idx === length after align),
     // recurse to pull the next section rather than stalling.
@@ -3084,9 +3086,11 @@ const TTS = {
   // here — epub's page turn and section render both need the render loop, which
   // Android freezes with the screen off (the whole reason _bgAdvance exists), so
   // routing these through skipPage() would hang on _awaitingPage and silently
-  // kill playback. We move inside the background text reader instead, where a
-  // "page" is one spoken chunk (a sentence/paragraph): the only unit that means
-  // anything without a layout, and the useful audio analogue of a page turn.
+  // kill playback. We move inside the background text reader instead, seeking by
+  // a whole PAGE worth of characters (see the background page model) rather than
+  // a single chunk: a chunk is one paragraph, so one-chunk-per-press left the
+  // displayed page number unchanged on ~5 of every 6 presses, which read as the
+  // button doing nothing (owner: "the display remains 30 all the time").
   async _bgNav(action) {
     if (!this._bgMode && !this._bgEnter()) return; // can't place ourselves — ignore the press
     const step = (action === 'nextPage' || action === 'nextChapter') ? 1 : -1;
@@ -3101,14 +3105,22 @@ const TTS = {
       this._mediaState(true);
     }
     if (action === 'nextPage' || action === 'prevPage') {
-      const at = this.idx + step;
-      if (at >= 0 && at < this.chunks.length) {
-        this.idx = at;
-        this._preIdx = this.idx; // speak immediately (no lead pre-pause)
-        this._bgSaveProgress();
-        this._mediaMeta(); // moved a "page" — refresh the lock screen's page count
-        this._speak();
-        return;
+      const target = this._bgPageOf(this.idx) + step;
+      if (target >= 1 && target <= this._bgPageCount()) {
+        let at = this._bgIdxForPage(target);
+        // A paragraph longer than a page could make the character seek land
+        // back on the chunk we're already reading — force real movement so a
+        // press is never silently inert.
+        if (step > 0 && at <= this.idx) at = this.idx + 1;
+        if (step < 0 && at >= this.idx) at = this.idx - 1;
+        if (at >= 0 && at < this.chunks.length) {
+          this.idx = at;
+          this._preIdx = this.idx; // speak immediately (no lead pre-pause)
+          this._bgSaveProgress();
+          this._mediaMeta(); // moved a page — refresh the lock screen's count
+          this._speak();
+          return;
+        }
       }
       // Ran off the end of this section — carry on into the adjacent one.
     }
@@ -3142,6 +3154,7 @@ const TTS = {
     // to the START of the previous chapter, which read as a big forward jump
     // relative to where the listener expected to land.
     this.idx = step > 0 ? 0 : built.chunks.length - 1;
+    this._bgReindex(i);
     this._preIdx = this.idx;
     this._bgSaveProgress();
     this._mediaMeta(); // chapter changed — refresh the lock screen
@@ -3162,41 +3175,82 @@ const TTS = {
     } catch (_) { return null; }
   },
 
-  // Chapter-relative "page" while backgrounded, e.g. "Page 4 / 19". There is no
-  // real page number here — that's a property of the RENDERED layout, and epub's
-  // render loop is exactly what's frozen with the screen off (the whole reason
-  // background reading exists). This used to be derived from `book.locations`
-  // (the whole-book, fixed-1024-character position index the seek scrubber
-  // uses) — but that granularity has NO relationship to chunk (paragraph)
-  // boundaries, so one page-button press (which always moves exactly one
-  // chunk — see _bgNav) could cross zero, one, or several location boundaries
-  // depending on how long the paragraph was. Owner-reported: pressing next
-  // page sometimes left the number unchanged, sometimes jumped it by 2.
+  // --- Background page model: measure in CHARACTERS, not paragraphs ---------
   //
-  // First fix counted raw CHUNKS (`Page idx+1 / chunks.length`) — that DID
-  // move by exactly 1 per press, but a chapter can easily have 300+
-  // paragraphs, and showing that as "Page 28 / 300" reads as obviously wrong
-  // to anyone (owner: "there are not 300 pages in that chapter alone"), even
-  // though the number itself was technically consistent.
+  // Chapter-relative "page" while backgrounded. There is no real page number
+  // here — that's a property of the RENDERED layout, and epub's render loop is
+  // exactly what's frozen with the screen off (the whole reason background
+  // reading exists). Two earlier attempts got the UNIT wrong:
+  //   1. `book.locations` (fixed ~1024-char index): its boundaries have no
+  //      relation to paragraph boundaries, so one press moved it +0, +1 or +2.
+  //   2. Counting/bucketing CHUNKS: a chunk is a paragraph, and paragraph
+  //      length varies enormously — a dialogue stretch has many short chunks
+  //      per rendered page, a descriptive one has few long ones. So chunk
+  //      position drifts badly out of step with real page numbering: the owner
+  //      saw the count jump 23 → 30 the instant background reading took over,
+  //      because ~53% of the way through the chapter's TEXT was ~67% of the way
+  //      through its PARAGRAPHS.
   //
-  // Now BUCKETS chunks into a fixed-size group per displayed "page"
-  // (_BG_CHUNKS_PER_PAGE), so the total is a believable page-like count while
-  // KEEPING the same guarantee: incrementing idx by exactly 1 (which is all
-  // _bgNav ever does) changes `Math.floor(idx / N)` by 0 or 1, NEVER more —
-  // that's a property of integer floor division by a fixed constant, true
-  // regardless of how long any given paragraph's text is. So the display now
-  // mostly holds steady across a few presses and ticks up by exactly 1 when
-  // it does move — never the erratic +2/+0 swings the location-based version
-  // produced, and never the enormous denominator the raw-chunk version showed.
-  _BG_CHUNKS_PER_PAGE: 6, // rough paragraphs-per-page estimate — not exact,
-                          // real page size depends on paragraph/font/device,
-                          // but it doesn't need to be exact, only consistent.
+  // Rendered pages are equal-AREA, hence roughly equal-CHARACTER, so measuring
+  // by character offset tracks them far more closely and stays continuous
+  // across the foreground → background handover. Better still, when we enter
+  // background mode the chapter IS still laid out, so we can read its REAL
+  // rendered page count and calibrate characters-per-page from it exactly
+  // (device/font specific — cached in `pl_cpp` and reused for chapters that
+  // are never rendered while the screen is off).
+  _bgChars: null,       // prefix sums: _bgChars[i] = characters before chunk i
+  _bgCharsPerPage: 0,   // calibrated; 0 until we've seen a rendered chapter
+  _BG_CPP_FALLBACK: 1800,
+  _bgCpp() {
+    if (this._bgCharsPerPage) return this._bgCharsPerPage;
+    const saved = parseFloat(localStorage.getItem('pl_cpp') || '');
+    if (saved > 0) { this._bgCharsPerPage = saved; return saved; }
+    return this._BG_CPP_FALLBACK;
+  },
+  // Rebuild the character index for the current background chunk list, and —
+  // when this section is the one epub actually has laid out — calibrate
+  // chars-per-page from its true rendered page count.
+  _bgReindex(spineIdx) {
+    const chunks = this.chunks || [];
+    const pre = new Array(chunks.length + 1);
+    pre[0] = 0;
+    for (let i = 0; i < chunks.length; i++) pre[i + 1] = pre[i] + ((chunks[i].text || '').length);
+    this._bgChars = pre;
+    const loc = State.rendition?.currentLocation()?.start;
+    if (loc && loc.index === spineIdx && loc.displayed?.total > 1) {
+      const cpp = pre[chunks.length] / loc.displayed.total;
+      // Ignore implausible calibrations (a part-rendered or freak section)
+      // rather than letting one poison every later chapter.
+      if (cpp >= 300 && cpp <= 6000) {
+        this._bgCharsPerPage = cpp;
+        try { localStorage.setItem('pl_cpp', String(Math.round(cpp))); } catch (_) {}
+      }
+    }
+  },
+  _bgPageOf(idx) {
+    const pre = this._bgChars;
+    if (!pre || pre.length < 2) return 1;
+    const i = Math.max(0, Math.min(idx, pre.length - 2));
+    return Math.max(1, Math.floor(pre[i] / this._bgCpp()) + 1);
+  },
+  _bgPageCount() {
+    const pre = this._bgChars;
+    if (!pre || pre.length < 2) return 0;
+    return Math.max(1, Math.ceil(pre[pre.length - 1] / this._bgCpp()));
+  },
+  // First chunk starting at/after the beginning of `page` (1-based).
+  _bgIdxForPage(page) {
+    const pre = this._bgChars;
+    if (!pre || pre.length < 2) return 0;
+    const target = (page - 1) * this._bgCpp();
+    let lo = 0, hi = pre.length - 2;
+    while (lo < hi) { const mid = (lo + hi) >> 1; if (pre[mid] < target) lo = mid + 1; else hi = mid; }
+    return lo;
+  },
   _bgChapterPage() {
-    if (!this.chunks?.length) return '';
-    const n = this._BG_CHUNKS_PER_PAGE;
-    const page = Math.floor(this.idx / n) + 1;
-    const total = Math.ceil(this.chunks.length / n);
-    return `Page ${page} / ${total}`;
+    const total = this._bgPageCount();
+    if (!total) return '';
+    return `Page ${Math.min(total, this._bgPageOf(this.idx))} / ${total}`;
   },
 
   // Persist progress DURING background reading — the ONLY other place progress
