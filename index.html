@@ -2463,6 +2463,7 @@ const Reader = {
     TTS._lastText = ''; // new book — allow the first section's text to load fresh
     TTS.chunks = []; TTS.idx = 0; // drop the previous book's text so auto-start reloads
     TTS._preIdx = -1; // reset chapter/subtitle pre-pause tracking for the new book
+    TTS._bgPageBoundsIdx = null; TTS._bgPageBounds = null; // stale bounds would misreport the new book's chapter page count
 
     try {
       toast('Downloading...', 0);
@@ -3093,6 +3094,7 @@ const TTS = {
         this.idx = at;
         this._preIdx = this.idx; // speak immediately (no lead pre-pause)
         this._bgSaveProgress();
+        this._mediaMeta(); // moved a "page" — refresh the lock screen's page count
         this._speak();
         return;
       }
@@ -3140,6 +3142,61 @@ const TTS = {
       range.selectNodeContents(chunk.node);
       return this._bgSection.cfiFromRange(range) || null;
     } catch (_) { return null; }
+  },
+
+  // Chapter-relative "page" while backgrounded, e.g. "Page 4 / 19". There is no
+  // real page number here — that's a property of the RENDERED layout, and epub's
+  // render loop is exactly what's frozen with the screen off (the whole reason
+  // background reading exists) — so this is built from `book.locations` instead:
+  // the same whole-book position index the seek scrubber already uses for its
+  // "p. N / total" popup (generated once at boot, cheap, layout-independent).
+  // Reduced to a per-CHAPTER count by binary-searching the location array for
+  // where the current spine section starts/ends (_bgLocBounds, cached per
+  // section — a handful of book.spine.get() calls, not worth repeating per chunk).
+  // '' if locations aren't generated yet or no CFI is available — same graceful
+  // degradation Scrub._info uses.
+  _bgPageBoundsIdx: null, // spine index the cached bounds below belong to
+  _bgPageBounds: null,    // { start, end } location indices, end exclusive
+  _bgLocBounds(sectionIdx) {
+    const book = State.epubBook;
+    const total = book?.locations?.length() || 0;
+    if (!total) return null;
+    const secAt = i => {
+      try { return book.spine.get(book.locations.cfiFromLocation(i))?.index; } catch (_) { return null; }
+    };
+    // Locations are generated in spine order, so section index is monotonic
+    // over i — safe to binary-search for both boundaries.
+    const lowerBound = (want) => {
+      let lo = 0, hi = total;
+      while (lo < hi) {
+        const mid = (lo + hi) >> 1;
+        const si = secAt(mid);
+        if (si == null || si < want) lo = mid + 1; else hi = mid;
+      }
+      return lo;
+    };
+    const start = lowerBound(sectionIdx);
+    const end = lowerBound(sectionIdx + 1);
+    return end > start ? { start, end } : null;
+  },
+  _bgChapterPage() {
+    try {
+      const book = State.epubBook;
+      if (!book?.locations?.length()) return '';
+      const cfi = this._bgCfi();
+      if (!cfi) return '';
+      const loc = book.locations.locationFromCfi(cfi);
+      if (loc == null || loc < 0) return '';
+      if (this._bgPageBoundsIdx !== this._bgSpineIdx) {
+        this._bgPageBounds = this._bgLocBounds(this._bgSpineIdx);
+        this._bgPageBoundsIdx = this._bgSpineIdx;
+      }
+      const b = this._bgPageBounds;
+      if (!b) return '';
+      const total = b.end - b.start;
+      const page = Math.min(total, Math.max(1, loc - b.start + 1));
+      return `Page ${page} / ${total}`;
+    } catch (_) { return ''; }
   },
 
   // Persist progress DURING background reading — the ONLY other place progress
@@ -3621,10 +3678,9 @@ const TTS = {
     if (this._bgMode) {
       // Background reading: the visible reader is still frozen wherever the
       // screen locked, so #rs-chapter is stale — name the chapter the AUDIO is
-      // actually in. Page is deliberately blank: pages are a property of the
-      // rendered layout, and there isn't one here (see _bgNav), so any number we
-      // showed would be the frozen one from before the screen went off.
-      return { title, text: chapterLabelFor(this._bgSection?.href, this._bgSpineIdx), page: '' };
+      // actually in, and derive the page from book.locations rather than the
+      // (frozen) rendered layout — see _bgChapterPage.
+      return { title, text: chapterLabelFor(this._bgSection?.href, this._bgSpineIdx), page: this._bgChapterPage() };
     }
     const chapter = (document.getElementById('rs-chapter')?.textContent || '').split('  ·  ')[0].trim();
     let page = '';

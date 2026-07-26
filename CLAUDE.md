@@ -1134,9 +1134,43 @@ Google login); verify by inspection + the owner testing on device.
     in `setSubText`, and `updateMediaSession` folds it into the metadata subtitle
     as `"Chapter · Page X / Y"` — the modern system UI shows **metadata**, not the
     notification's own title/text, so anything that must appear on the lock screen
-    has to be in the metadata. **Deliberately blank during background reading**:
-    pages are a property of the rendered layout and there isn't one, so the only
-    number available would be the frozen one from when the screen locked.
+    has to be in the metadata.
+  - **Two follow-up bugs, fixed the same day (owner-reported "the page number
+    does not change" + "disappears when I change chapters"):**
+    1. **`_bgNav`'s in-section page move never called `_mediaMeta()`.** The
+       chapter-jump branch (`_bgGotoSection`) did; the same-chapter page-turn
+       branch just updated `idx` and spoke — so pressing next/prev page while
+       locked moved the audio but never told the notification, and it looked
+       inert. One-line fix: `_bgNav` now calls `_mediaMeta()` right after moving
+       `idx`, same as the chapter branch already did.
+    2. **Background mode's page field was unconditionally `''` by original
+       design** — the first cut's reasoning ("pages are a property of the
+       rendered layout, and there isn't one here") was correct about the
+       RENDERED page number but wrong to conclude nothing usable exists: the
+       book's `book.locations` (epub.js's whole-book position index, generated
+       once at boot — the SAME data the seek scrubber already uses for its own
+       "p. N / total" popup) is independent of layout entirely. **`_bgChapterPage()`**
+       narrows that whole-book index to the current chapter: `_bgLocBounds(sectionIdx)`
+       binary-searches the location array (monotonic in spine order, since
+       locations are generated in spine order) for where the chapter starts/ends,
+       cached per section index (`_bgPageBoundsIdx`/`_bgPageBounds` — a handful of
+       `book.spine.get()` calls, not worth repeating per chunk); `_bgChapterPage`
+       then converts the current chunk's CFI (`_bgCfi()`, already built for
+       progress-saving) to a location number and reports its position within
+       those bounds. **The cache is keyed only on spine index, which is not
+       globally unique — a second book can reuse index 0** — so `Reader.open`
+       explicitly clears it (`_bgPageBoundsIdx = null`) alongside the other
+       per-book TTS resets; without that a freshly opened book could silently
+       show a chapter-page count carried over from the previous book. Blank
+       (not a crash) if `book.locations` isn't generated yet or no CFI is
+       available, matching Scrub's own fallback.
+    Verified in a fresh-tab harness with a synthetic 3-section/17-location book:
+    boundary search for each section and the past-the-end case, page position at
+    the start/middle/end of a chapter, cache recomputing on a chapter change,
+    graceful blanks (no CFI / no locations), and — matching the owner's exact
+    reports — `_bgNav('nextPage')` now pushes an updated page number and a
+    chapter change (`_bgNav('nextChapter')`) now pushes a populated one instead
+    of blank.
   - **The chapter name now tracks background reading.** It used to be scraped
     from `#rs-chapter`, which is frozen wherever the screen locked, so it named
     the chapter you STARTED in. `_mediaPayload` now derives it from the spine
