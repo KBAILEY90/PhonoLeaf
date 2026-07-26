@@ -2460,6 +2460,7 @@ const Reader = {
     document.getElementById('tts-prog').style.width = '0%';
     document.getElementById('speed-select').value = TTS.rate;
     TTS.stop();
+    TTS._bgSection = null; // stop() now preserves this across a pause — a NEW book must not inherit it
     TTS._lastText = ''; // new book — allow the first section's text to load fresh
     TTS.chunks = []; TTS.idx = 0; // drop the previous book's text so auto-start reloads
     TTS._preIdx = -1; // reset chapter/subtitle pre-pause tracking for the new book
@@ -3171,13 +3172,31 @@ const TTS = {
   // chunk — see _bgNav) could cross zero, one, or several location boundaries
   // depending on how long the paragraph was. Owner-reported: pressing next
   // page sometimes left the number unchanged, sometimes jumped it by 2.
-  // Fixed by counting CHUNKS instead: `this.chunks` in background mode already
-  // IS the current chapter's full chunk list (see _bgEnter/_bgGotoSection), so
-  // idx+1/chunks.length moves by exactly 1 per press, by construction — no
-  // locations, no CFI, no per-section caching needed.
+  //
+  // First fix counted raw CHUNKS (`Page idx+1 / chunks.length`) — that DID
+  // move by exactly 1 per press, but a chapter can easily have 300+
+  // paragraphs, and showing that as "Page 28 / 300" reads as obviously wrong
+  // to anyone (owner: "there are not 300 pages in that chapter alone"), even
+  // though the number itself was technically consistent.
+  //
+  // Now BUCKETS chunks into a fixed-size group per displayed "page"
+  // (_BG_CHUNKS_PER_PAGE), so the total is a believable page-like count while
+  // KEEPING the same guarantee: incrementing idx by exactly 1 (which is all
+  // _bgNav ever does) changes `Math.floor(idx / N)` by 0 or 1, NEVER more —
+  // that's a property of integer floor division by a fixed constant, true
+  // regardless of how long any given paragraph's text is. So the display now
+  // mostly holds steady across a few presses and ticks up by exactly 1 when
+  // it does move — never the erratic +2/+0 swings the location-based version
+  // produced, and never the enormous denominator the raw-chunk version showed.
+  _BG_CHUNKS_PER_PAGE: 6, // rough paragraphs-per-page estimate — not exact,
+                          // real page size depends on paragraph/font/device,
+                          // but it doesn't need to be exact, only consistent.
   _bgChapterPage() {
     if (!this.chunks?.length) return '';
-    return `Page ${this.idx + 1} / ${this.chunks.length}`;
+    const n = this._BG_CHUNKS_PER_PAGE;
+    const page = Math.floor(this.idx / n) + 1;
+    const total = Math.ceil(this.chunks.length / n);
+    return `Page ${page} / ${total}`;
   },
 
   // Persist progress DURING background reading — the ONLY other place progress
@@ -3365,14 +3384,28 @@ const TTS = {
 
   start() {
     Reader._autoStartBook = null; // playback started — cancel any pending auto-start
-    this.loadPageText(); // always read the page we're actually on (no stale text)
-    if (this.idx >= this.chunks.length) this.idx = 0; // restart the page if it had finished
+    // Resuming a background session that was merely PAUSED (lock-screen
+    // pause+play while still locked) must continue from the exact chunk it
+    // left off on, not fall through to loadPageText()'s "read the visible
+    // page" — that page is STALE here (background reading never touches the
+    // visible rendition, so it's still wherever the screen was when it first
+    // locked, not where the audio actually got to). stop() deliberately keeps
+    // _bgSection/this.chunks/this.idx intact for exactly this case.
+    // _isForeground() gates it so a genuine in-app play press (screen on,
+    // Activity resumed) always takes the normal "read the visible page" path
+    // below, even if stale bg state happens to still be sitting around.
+    if (!this._isForeground() && this._engineNow() !== 'web' && this._bgSection) {
+      this._bgMode = true;
+    } else {
+      this.loadPageText(); // always read the page we're actually on (no stale text)
+      if (this.idx >= this.chunks.length) this.idx = 0; // restart the page if it had finished
+      this._bgMode = false; this._bgSection = null; // fresh play reads the visible page, not spine text
+    }
     this.active = true;
     this._gen++;
     this._awaitingPage = false;
     this._skips = 0;
     this._retryN = 0;
-    this._bgMode = false; this._bgSection = null; // fresh play reads the visible page, not spine text
     this._dir = 1; // pressing play always reads forward
     document.getElementById('play-btn').classList.add('playing');
     Stats.startTick();
@@ -3401,7 +3434,14 @@ const TTS = {
   stop() {
     this.active = false;
     this._awaitingPage = false;
-    this._bgMode = false; this._bgSection = null;
+    // _bgSection/this.chunks/this.idx are DELIBERATELY kept — only the
+    // "actively reading" flag clears. See start()'s background-resume branch:
+    // a lock-screen pause must not lose the exact background reading
+    // position, or the next press has to re-derive it via fuzzy text
+    // matching (_bgAlign), which rarely lands where it left off. A REAL exit
+    // from background reading (a visual turn/seek, or opening a different
+    // book) still clears both explicitly — see skipPage() and Reader.open().
+    this._bgMode = false;
     this._gen++;
     clearTimeout(this._gapT);
     window.speechSynthesis?.cancel();
@@ -3513,7 +3553,7 @@ const TTS = {
       // which flows across pages AND chapter boundaries with the screen off. The
       // visible reader catches up on unlock. Only the neural/native audio path can
       // background; the Web-Speech fallback can't, so it uses the normal turn.
-      if (document.hidden && this._engineNow() !== 'web' && State.epubBook) {
+      if (!this._isForeground() && this._engineNow() !== 'web' && State.epubBook) {
         this._bgAdvance(); // async — loads section text, keeps reading
         return;
       }
@@ -3659,8 +3699,8 @@ const TTS = {
     if (this._bgMode) {
       // Background reading: the visible reader is still frozen wherever the
       // screen locked, so #rs-chapter is stale — name the chapter the AUDIO is
-      // actually in, and derive the page from book.locations rather than the
-      // (frozen) rendered layout — see _bgChapterPage.
+      // actually in, and bucket the chunk position into a page-like count
+      // instead of the (frozen) rendered layout — see _bgChapterPage.
       return { title, text: chapterLabelFor(this._bgSection?.href, this._bgSpineIdx), page: this._bgChapterPage() };
     }
     const chapter = (document.getElementById('rs-chapter')?.textContent || '').split('  ·  ')[0].trim();
@@ -3706,6 +3746,17 @@ const TTS = {
     this._appStateListenerBound = true;
     plugin.addListener('appStateChange', ({ isActive }) => { this._nativeAppActive = !!isActive; });
   },
+  // Canonical "is the app genuinely visible and interactive right now" check —
+  // used everywhere background-vs-foreground reading is decided (_speak's
+  // forward-advance gate, _mediaNav, start()'s background-resume branch). On
+  // native this trusts _nativeAppActive over document.hidden alone, since the
+  // LOCK-SCREEN media widget can light the screen (flipping document.hidden to
+  // false) without the Activity ever actually resuming — see
+  // _bindAppStateListener and the visibilitychange handler in Reader.open.
+  _isForeground() {
+    if (App.isNative()) return this._nativeAppActive && !document.hidden;
+    return !document.hidden;
+  },
 
   // Lock-screen page/chapter buttons. FOREGROUND: the normal reader paths, so
   // page turns keep the overshoot corrector and chapter jumps keep skipPage's
@@ -3716,7 +3767,7 @@ const TTS = {
   // keeps using the visual turn.
   _mediaNav(action) {
     const fwd = action === 'nextPage' || action === 'nextChapter';
-    if (document.hidden && this._engineNow() !== 'web' && State.epubBook) { this._bgNav(action); return; }
+    if (!this._isForeground() && this._engineNow() !== 'web' && State.epubBook) { this._bgNav(action); return; }
     if (action === 'nextPage' || action === 'prevPage') { fwd ? Reader.next() : Reader.prev(); return; }
     this._jumpChapter(fwd ? 1 : -1);
   },

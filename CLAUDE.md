@@ -1108,24 +1108,46 @@ Google login); verify by inspection + the owner testing on device.
     sharing one would make `FLAG_UPDATE_CURRENT` alias them and buttons would
     fire each other's action. Icons are stock `android.R.drawable.ic_media_*`
     (`rew`/`ff` for chapters, `previous`/`next` for pages), so no assets needed.
-  - **Notification small icon (badge) is now `R.drawable.ic_notification`, a
-    DEDICATED plain bitmap — not `android.R.drawable.ic_media_play`, and not
-    `R.mipmap.ic_launcher` either (see the two-step story below).** The
+  - **Notification small icon (badge) is `R.drawable.ic_notification`, a
+    DEDICATED bitmap — not `android.R.drawable.ic_media_play`, and not
+    `R.mipmap.ic_launcher` either. Took THREE attempts, two of them wrong,
+    both confirmed wrong on device, before landing on the right design.** The
     original stock play-triangle looked exactly like an extra playback control
     and was mistaken for one (owner: "I see a 'play' button that sends me to
     the app"). It was never a control — tapping the notification body/icon has
     always launched the app via `setContentIntent(tap)`, standard for every
     media notification — it just LOOKED like a button because of the icon.
-    **First fix attempt (`R.mipmap.ic_launcher`) was WRONG, confirmed on
-    device: it rendered as a blank circle**, not the brand mark. Root cause:
-    on API 26+ `R.mipmap.ic_launcher` resolves to `mipmap-anydpi-v26/
-    ic_launcher.xml`, an `<adaptive-icon>` (separate background-color +
-    foreground-layer XML meant for the launcher's own compositing) — `Icon.
-    createWithResource()`/`setSmallIcon()` can't flatten that outside a real
-    launcher context, and silently fell back to a blank placeholder. Fixed by
-    adding `R.drawable.ic_notification`, a genuinely flat, non-adaptive PNG at
-    every density (`drawable-mdpi/…xxxhdpi/ic_notification.png`) with nothing
-    for the OS to fail to composite.
+    1. **First attempt (`R.mipmap.ic_launcher`) rendered as a blank circle.**
+       On API 26+ that resolves to `mipmap-anydpi-v26/ic_launcher.xml`, an
+       `<adaptive-icon>` (separate background-color + foreground-layer XML
+       meant for the launcher's own compositing) — `Icon.createWithResource()`/
+       `setSmallIcon()` can't flatten that outside a real launcher context, and
+       silently fell back to a blank placeholder.
+    2. **Second attempt — a dedicated flat PNG (`R.drawable.ic_notification`)
+       of the FULL brand mark (green tile + cream leaf + waveform) — STILL
+       rendered blank, this time a plain white rounded square, confirmed on
+       device.** The shape changing (circle → square) between attempts proved
+       the reference WAS updating each time — the rendering itself was still
+       failing. Root cause: Android forces notification small icons through
+       ALPHA-CHANNEL monochrome extraction (fills the opaque region solid
+       white/tinted, expecting a thin white-on-transparent silhouette design —
+       this is documented Android guidance, ignored in the first two
+       attempts). The full mark is >85% opaque (a solid-filled tile), so the
+       extraction just produced a solid white blob with no recognizable shape
+       — not a rendering failure, a correct rendering of unsuitable source art.
+    3. **Fixed by building a proper silhouette**: the leaf+stem filled solid
+       white, with the waveform cut out as a genuinely transparent notch via
+       an SVG `<mask>` (`white` fill = kept, `black` stroke = cut), replicating
+       the two-tone design's visual read as pure alpha content — ~15% opaque,
+       the rest fully transparent. Verified via canvas pixel inspection before
+       writing to disk (100% of opaque pixels pure white; renders as a clean
+       recognizable silhouette against both light and dark test backgrounds)
+       — the earlier attempts were each visually spot-checked too, but only by
+       eye against a plain background, never by directly measuring opacity
+       composition, which is what would have caught this before shipping it
+       twice. `drawable-*dpi/ic_notification.png` regenerated at 24/36/48/72/
+       96px (standard status-bar icon sizes, smaller than the full launcher
+       icon — Android's small-icon convention, not the adaptive safe zone).
   - **This also surfaced a real, separate gap while investigating: the
     NATIVE APP'S ACTUAL ICON (`ic_launcher`/`ic_launcher_round`, i.e. the real
     home-screen icon, not just this notification) had NEVER been replaced from
@@ -1300,6 +1322,65 @@ Google login); verify by inspection + the owner testing on device.
     of the `_bgResync`→`_bgMode=false` mechanism, not confirmed via Logcat —
     if the owner still sees the jump after this fix, that inference was wrong
     and the real trigger needs on-device diagnostics.**
+  - **Two MORE bugs found on the NEXT device test round (2026-07-26,
+    owner: "if I press pause, the page number returns to normal but now it
+    skips pages again" + "there are not 300 pages in that chapter alone"):**
+    1. **Raw chunk count made an implausible "page" total.** The
+       `idx+1/chunks.length` fix above DID move by exactly 1 per press (fixing
+       the +2/+0 bug), but a real chapter can have 300+ paragraphs, and "Page
+       28 / 300" reads as obviously wrong even though it's internally
+       consistent. Fixed by **bucketing a fixed number of chunks
+       (`_BG_CHUNKS_PER_PAGE = 6`) into each displayed "page"**:
+       `Math.floor(idx/6)+1` / `Math.ceil(chunks.length/6)`. This preserves the
+       core guarantee — incrementing `idx` by exactly 1 changes a fixed-divisor
+       floor-quotient by 0 or 1, NEVER more, a property of integer division
+       regardless of paragraph length — while producing a believable total
+       (300 chunks → "50 pages"). Verified: 20 consecutive presses across
+       chunks of deliberately mismatched length never showed a delta outside
+       {0, 1}.
+    2. **`stop()`/`start()` threw away the exact background position on every
+       pause, forcing a re-alignment on resume — the SAME class of bug as the
+       `_bgResync` fix above, different trigger.** `stop()` (the lock-screen
+       PAUSE button, via `TTS._mediaSetup`'s listener) cleared
+       `_bgSection`/left `this.chunks`/`this.idx` to be overwritten by the next
+       `start()`; `start()` (lock-screen PLAY) unconditionally called
+       `loadPageText()`, which reads the CURRENTLY RENDERED page — except
+       background reading never touches the visible rendition, so that page is
+       still wherever the screen was when it FIRST locked, not where the audio
+       actually got to. So every pause+resume cycle silently reset position AND
+       forced the next nav press to `_bgEnter()`/`_bgAlign()` fresh again,
+       reading as "skips pages" (this was likely responsible for at least some
+       of the earlier "big jump" reports too, not just the `_bgResync` blip).
+       Fixed: `stop()` now clears only `_bgMode` (the "actively reading" flag)
+       and deliberately KEEPS `_bgSection`/`this.chunks`/`this.idx` intact.
+       `start()` checks a new condition — `!_isForeground() && _engineNow() !==
+       'web' && this._bgSection` — and if true, resumes background mode
+       directly from the preserved position instead of calling `loadPageText()`.
+       A genuine foreground play press (screen on, Activity resumed) is
+       unaffected (`_isForeground()` is true, so it always takes the normal
+       "read the visible page" path); the very FIRST play of a session (no
+       `_bgSection` yet) also falls through correctly, since there is no
+       background position to resume. `Reader.open()` now explicitly clears
+       `TTS._bgSection` when opening a book, since `stop()` no longer does —
+       otherwise a freshly opened book could inherit stale background state
+       from whichever book was open before.
+    3. **New shared `TTS._isForeground()` helper**, replacing raw
+       `document.hidden` checks at every background-reading entry point
+       (`_speak`'s forward-advance gate, `_mediaNav`, and the new `start()`
+       check above) for consistency with the `_bgResync` fix's reasoning: on
+       native it trusts `_nativeAppActive` over `document.hidden` alone, since
+       the lock-screen widget can light the screen without the Activity truly
+       resuming; on web it's just `!document.hidden` (no native signal, no
+       lock-screen widget to blip it).
+    Verified in a fresh-tab harness: the bucketed counter's 0-or-1 guarantee
+    across mismatched chunk lengths; `_isForeground()`'s full truth table
+    (web foreground/hidden, native active/inactive × visible/hidden); a
+    simulated pause-then-resume-while-still-locked correctly restores the
+    exact prior `_bgMode`/`idx`/chunk list rather than falling through to a
+    mocked "stale visible page" state; a genuine foreground play press still
+    takes the normal path; a first-ever play with no prior background position
+    falls through safely. **Still not device-verified** — same caveat as
+    always, no JDK/Android SDK in this environment.
 - **`window.speechSynthesis` is UNDEFINED in the native Android WebView.** The
   Web-Speech device-voice fallback (`_speakWeb`, `allVoices`,
   `VoiceModal.selectNamed`, `pickDefaultVoice`) must guard every
