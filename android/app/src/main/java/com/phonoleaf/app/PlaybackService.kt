@@ -329,16 +329,20 @@ class PlaybackService : Service() {
         val builder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(title)
             .setContentText(text)
-            // The app's own launcher icon, not a stock control glyph — this is
-            // the notification's badge/identity icon (tapping the body/icon
-            // opens the app via `tap` below, which is standard for ALL media
+            // The app's own brand mark, not a stock control glyph — this is the
+            // notification's badge/identity icon (tapping the body/icon opens
+            // the app via `tap` below, which is standard for ALL media
             // notifications), not a playback control. The old stock play-
             // triangle (android.R.drawable.ic_media_play) looked exactly like
             // an extra play button and confused it for one (owner-reported).
-            // MediaStyle notifications show this un-tinted on the lock-screen
-            // media widget (unlike the plain status bar, which always forces
-            // small icons to a flat monochrome silhouette).
-            .setSmallIcon(R.mipmap.ic_launcher)
+            // A DEDICATED drawable (R.drawable.ic_notification), NOT
+            // R.mipmap.ic_launcher: on API 26+ that resolves to the adaptive-
+            // icon XML (background + foreground layers), which Icon.create-
+            // WithResource()/setSmallIcon can't composite outside a proper
+            // launcher context — confirmed on device, it rendered as a blank
+            // circle. ic_notification is a plain flat bitmap at every
+            // density, so there is nothing for the OS to fail to flatten.
+            .setSmallIcon(R.drawable.ic_notification)
             .setContentIntent(tap)
             .setOngoing(true)
             .setShowWhen(false)

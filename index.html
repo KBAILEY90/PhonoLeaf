@@ -2514,8 +2514,20 @@ const Reader = {
           if (document.visibilityState === 'visible') {
             if (TTS.active) TTS._acquireWakeLock();
             // Snap the visible reader to the section the background audio reached,
-            // then hand back to normal foreground page reading (see _bgResync).
-            if (TTS._bgMode) TTS._bgResync();
+            // then hand back to normal foreground page reading (see _bgResync) --
+            // but ONLY on a genuine resume. On native, the screen lighting up to
+            // show the LOCK-SCREEN media widget can flip document.visibilityState
+            // to 'visible' even though the phone is still locked and the Activity
+            // never actually resumed (owner-reported: the first page-nav press
+            // after any period of screen-off caused a big jump in the shown page
+            // number, every time — exactly what re-entering background mode via
+            // _bgResync -> skipPage -> _bgMode=false -> the next press having to
+            // realign from scratch would produce). Cross-check against the native
+            // App plugin's OWN foreground signal, which tracks the real Activity
+            // lifecycle and is unaffected by that screen-on blip; on web there's
+            // no such signal (and no lock-screen widget either), so _nativeAppActive
+            // stays at its default true and behavior there is unchanged.
+            if (TTS._bgMode && TTS._nativeAppActive) TTS._bgResync();
           }
         });
         window.addEventListener('pagehide', save);
@@ -3122,8 +3134,14 @@ const TTS = {
     this._bgSpineIdx = i;
     this._bgSection = built.section;
     this.chunks = built.chunks;
-    this.idx = 0;
-    this._preIdx = 0;
+    // Moving forward starts at the new chapter's FIRST chunk; moving backward
+    // (e.g. "previous page" from a chapter's first chunk) should land on its
+    // LAST chunk — the natural continuation of "one page back" across a
+    // chapter boundary. Landing on 0 either way used to send a backward press
+    // to the START of the previous chapter, which read as a big forward jump
+    // relative to where the listener expected to land.
+    this.idx = step > 0 ? 0 : built.chunks.length - 1;
+    this._preIdx = this.idx;
     this._bgSaveProgress();
     this._mediaMeta(); // chapter changed — refresh the lock screen
     this._speak();
@@ -3662,6 +3680,7 @@ const TTS = {
   // double-toggle on a single lock-screen press.
   _mediaListenerBound: false,
   _mediaSetup() {
+    this._bindAppStateListener();
     if (this._mediaListenerBound) return;
     const nat = this._nativeTts(); if (!nat) return;
     this._mediaListenerBound = true;
@@ -3673,6 +3692,19 @@ const TTS = {
         else if (a === 'nextPage' || a === 'prevPage' || a === 'nextChapter' || a === 'prevChapter') this._mediaNav(a);
       } catch (_) { /* a bad button press must never take the session down */ }
     });
+  },
+
+  // True once the native Activity has genuinely resumed (per @capacitor/app's
+  // own lifecycle signal), kept live by _bindAppStateListener. Defaults to
+  // true so web/pre-listener behavior is unchanged until proven otherwise.
+  // See the visibilitychange handler in Reader.open for why this exists.
+  _nativeAppActive: true,
+  _appStateListenerBound: false,
+  _bindAppStateListener() {
+    if (this._appStateListenerBound || !App.isNative()) return;
+    const plugin = App._plugin('App'); if (!plugin) return;
+    this._appStateListenerBound = true;
+    plugin.addListener('appStateChange', ({ isActive }) => { this._nativeAppActive = !!isActive; });
   },
 
   // Lock-screen page/chapter buttons. FOREGROUND: the normal reader paths, so

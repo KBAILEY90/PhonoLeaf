@@ -1108,17 +1108,45 @@ Google login); verify by inspection + the owner testing on device.
     sharing one would make `FLAG_UPDATE_CURRENT` alias them and buttons would
     fire each other's action. Icons are stock `android.R.drawable.ic_media_*`
     (`rew`/`ff` for chapters, `previous`/`next` for pages), so no assets needed.
-  - **Notification small icon (badge) is the app's own launcher icon
-    (`R.mipmap.ic_launcher`), not `android.R.drawable.ic_media_play`** — the
+  - **Notification small icon (badge) is now `R.drawable.ic_notification`, a
+    DEDICATED plain bitmap — not `android.R.drawable.ic_media_play`, and not
+    `R.mipmap.ic_launcher` either (see the two-step story below).** The
     original stock play-triangle looked exactly like an extra playback control
     and was mistaken for one (owner: "I see a 'play' button that sends me to
     the app"). It was never a control — tapping the notification body/icon has
-    always launched the app via `setContentIntent(tap)`, which is standard for
-    every media notification — it just LOOKED like a button because of the
-    icon choice. MediaStyle notifications show the small icon un-tinted on the
-    lock-screen media widget specifically (unlike the plain status bar, which
-    always forces small icons to a flat monochrome silhouette), so the full-
-    color launcher icon renders as the app's actual brand mark there.
+    always launched the app via `setContentIntent(tap)`, standard for every
+    media notification — it just LOOKED like a button because of the icon.
+    **First fix attempt (`R.mipmap.ic_launcher`) was WRONG, confirmed on
+    device: it rendered as a blank circle**, not the brand mark. Root cause:
+    on API 26+ `R.mipmap.ic_launcher` resolves to `mipmap-anydpi-v26/
+    ic_launcher.xml`, an `<adaptive-icon>` (separate background-color +
+    foreground-layer XML meant for the launcher's own compositing) — `Icon.
+    createWithResource()`/`setSmallIcon()` can't flatten that outside a real
+    launcher context, and silently fell back to a blank placeholder. Fixed by
+    adding `R.drawable.ic_notification`, a genuinely flat, non-adaptive PNG at
+    every density (`drawable-mdpi/…xxxhdpi/ic_notification.png`) with nothing
+    for the OS to fail to composite.
+  - **This also surfaced a real, separate gap while investigating: the
+    NATIVE APP'S ACTUAL ICON (`ic_launcher`/`ic_launcher_round`, i.e. the real
+    home-screen icon, not just this notification) had NEVER been replaced from
+    the default Capacitor/Android-Studio scaffold** (a generic blue crossed-
+    arrows mark on white) — nobody had touched `android/app/src/main/res/
+    mipmap-*` since the project was scaffolded. Fixed the same day: regenerated
+    the full icon set (flat `ic_launcher.png`/`ic_launcher_round.png` at
+    48/72/96/144/192px per density, the adaptive `ic_launcher_foreground.png`
+    at 108/162/216/324/432px scaled into Android's ~66/108 safe zone, plus
+    `ic_notification.png` above) from the SAME inline SVG already used for the
+    PWA favicon/manifest icon (`index.html`'s "Soundwave Vein" mark) — not a
+    new design, a re-render of the already-approved brand asset, done via a
+    throwaway HTML canvas page served from the project root (file:// URLs
+    outside the served root render as static snapshots, not interactive) with
+    the resulting PNGs decoded straight to their `res/` paths. Also updated
+    `values/ic_launcher_background.xml`'s color from the scaffold default
+    `#FFFFFF` to the brand green `#3E8E6B`. `drawable-v24/ic_launcher_
+    foreground.xml` (a vector "Android robot" leftover from the same scaffold)
+    was left alone — confirmed nothing references `@drawable/ic_launcher_
+    foreground` (only `@mipmap/ic_launcher_foreground`, which the new PNGs
+    now serve), so it's dead and harmless.
   - **Page buttons do something DIFFERENT when locked, on purpose.** epub's page
     turn and section render both need the render loop, which Android freezes with
     the screen off — that is the entire reason `_bgAdvance` exists — so routing a
@@ -1225,11 +1253,53 @@ Google login); verify by inspection + the owner testing on device.
     shipped** (no JDK/Android SDK here) — **owner-tested on device 2026-07-26**:
     chapter buttons worked correctly; the page counter and the notification
     icon did not (both fixed above — see the "REPLACED the same day" and
-    "Notification small icon" bullets). Page/chapter *navigation itself* (the
-    underlying `_bgNav`/`_bgGotoSection` chunk and section movement) was NOT
-    implicated by either bug — both were purely display issues (wrong number
-    source; wrong icon asset) layered on top of navigation that already
-    worked, so it did not need to be touched.
+    "Notification small icon" bullets).
+  - **Two more bugs found in the SAME 2026-07-26 device test, this time in
+    navigation itself, not just display** (owner: "the first time I skip a
+    page, it skips many pages at once. Then it stabilizes... if I go back a
+    page, and then move forward again, it skips many pages ahead once again"):
+    1. **`_bgGotoSection` always landed on chunk 0 regardless of direction** —
+       correct when moving FORWARD into a new chapter, wrong moving BACKWARD
+       (a "previous page" press from a chapter's first chunk landed on the
+       PREVIOUS chapter's first chunk, not its last — read as an unexpected
+       forward jump relative to where a "one page back" press should land).
+       Fixed: `this.idx = step > 0 ? 0 : built.chunks.length - 1`.
+    2. **`_bgResync()` was firing on a screen-on blip, not just a genuine
+       resume — the real explanation for "the first press after any period of
+       screen-off jumps, then stabilizes, then jumps again after going back."**
+       `_bgResync()` (wired to `visibilitychange`→`'visible'`) calls
+       `skipPage()`, which sets `_bgMode = false` — exiting background chunk-
+       reading entirely. It exists so a GENUINE unlock-and-return snaps the
+       visible reader to where background audio reached. But the lock screen's
+       OWN media widget can light up the screen (and, on some Android/WebView
+       combinations, flip `document.visibilityState` to `'visible'`) without
+       the app's Activity ever actually resuming — the phone is still locked.
+       Every such blip silently exited `_bgMode`, so the NEXT nav press had to
+       call `_bgEnter()`/`_bgAlign()` again, re-placing the reader via fuzzy
+       text matching (see `_bgAlign`) — which almost never returns exactly
+       where it left off, reading as "skipped many pages." This self-repeats
+       exactly on the pattern reported: fine while actively tapping (screen
+       staying lit, no blip), bad again after any lull long enough for the
+       screen to properly go dark and re-light for the next tap. Fixed by
+       cross-checking a NEW native-only signal that tracks the real Activity
+       lifecycle instead of trusting WebView page-visibility alone:
+       `TTS._bindAppStateListener()` (called once from `_mediaSetup`) listens
+       to `@capacitor/app`'s `appStateChange` and keeps `TTS._nativeAppActive`
+       live; the `visibilitychange` handler now only calls `_bgResync()` when
+       `TTS._bgMode && TTS._nativeAppActive` — a screen-on blip with the
+       Activity still backgrounded no longer exits background mode. Defaults
+       to `true` so web (no such native signal, and no lock-screen widget
+       either) is unaffected.
+    Both fixed in a fresh-tab harness: backward chapter-boundary landing now
+    lands on the last chunk (forward landing unchanged); the resync gate
+    correctly skips `_bgResync()` when `_nativeAppActive` is false and fires
+    it when true, verified against the exact conditional shipped in
+    `index.html`, not just the logic in isolation. **Whether Android really
+    does flip `document.visibilityState` for a lock-screen widget blip on this
+    device is inferred from the reported symptom plus the confirmed existence
+    of the `_bgResync`→`_bgMode=false` mechanism, not confirmed via Logcat —
+    if the owner still sees the jump after this fix, that inference was wrong
+    and the real trigger needs on-device diagnostics.**
 - **`window.speechSynthesis` is UNDEFINED in the native Android WebView.** The
   Web-Speech device-voice fallback (`_speakWeb`, `allVoices`,
   `VoiceModal.selectNamed`, `pickDefaultVoice`) must guard every
