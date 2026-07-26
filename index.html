@@ -1115,6 +1115,38 @@ function flattenToc(items, depth = 0, out = []) {
   return out;
 }
 
+// Chapter label for a spine position. Flattens the full TOC tree (subitems hold
+// the real chapter titles) and matches by href BASENAME — a location's href
+// carries a path prefix (`xhtml/ch3.xhtml`) while TOC hrefs are often bare
+// filenames — falling back to the nearest preceding TOC entry in spine order for
+// books whose sub-chapters aren't listed individually.
+// Shared by the reader's top bar and the lock-screen metadata so the two can
+// never disagree; background reading also needs it, since it advances by spine
+// section with no relocation event to read a label from.
+function chapterLabelFor(href, spineIndex) {
+  const curBase = href?.split('/').pop()?.split('#')[0];
+  const flatToc = flattenToc(State.toc).map(e => e.item);
+  let tocItem = curBase && flatToc.find(t => {
+    const b = t.href?.split('/').pop()?.split('#')[0];
+    return b && b === curBase;
+  });
+  if (!tocItem) {
+    const spine = State.epubBook?.spine?.spineItems;
+    if (spine) {
+      const preceding = flatToc
+        .map(t => {
+          const b = t.href?.split('/').pop()?.split('#')[0];
+          const si = b ? spine.findIndex(s => s.href.split('/').pop() === b) : -1;
+          return { item: t, si };
+        })
+        .filter(x => x.si >= 0 && x.si <= spineIndex)
+        .sort((a, b) => a.si - b.si);
+      tocItem = preceding[preceding.length - 1]?.item;
+    }
+  }
+  return tocItem?.label?.trim() || `Section ${spineIndex + 1}`;
+}
+
 function fmtSize(b) {
   if (!b) return '';
   return b > 1048576 ? (b / 1048576).toFixed(1) + ' MB' : Math.round(b / 1024) + ' KB';
@@ -2544,32 +2576,8 @@ const Reader = {
       }
     }
     if (wasFwd && !this._fwdFixed) this._fixedAtCfi = null; // clean pass — forget the trap spot
-    // Chapter name + page: flatten the full TOC tree (subitems hold the real
-    // chapter titles), compare basenames (loc href has a path prefix, TOC hrefs
-    // are often bare filenames), fall back to the nearest preceding entry in
-    // spine order for books where sub-chapters aren't in the TOC at all.
-    const href = loc.start.href;
-    const curBase = href.split('/').pop()?.split('#')[0];
-    const flatToc = flattenToc(State.toc).map(e => e.item); // same flatten as the chapter modal
-    let tocItem = flatToc.find(t => {
-      const b = t.href?.split('/').pop()?.split('#')[0];
-      return b && b === curBase;
-    });
-    if (!tocItem) {
-      const spine = State.epubBook?.spine?.spineItems;
-      if (spine) {
-        const preceding = flatToc
-          .map(t => {
-            const b = t.href?.split('/').pop()?.split('#')[0];
-            const si = b ? spine.findIndex(s => s.href.split('/').pop() === b) : -1;
-            return { item: t, si };
-          })
-          .filter(x => x.si >= 0 && x.si <= loc.start.index)
-          .sort((a, b) => a.si - b.si);
-        tocItem = preceding[preceding.length - 1]?.item;
-      }
-    }
-    const chapter = tocItem?.label?.trim() || `Section ${loc.start.index + 1}`;
+    // Chapter name + page (see chapterLabelFor — shared with the lock screen).
+    const chapter = chapterLabelFor(loc.start.href, loc.start.index);
     const d = loc.start.displayed;
     const pageStr = d?.total ? `Page ${d.page} / ${d.total}` : '';
     document.getElementById('rs-chapter').textContent =
@@ -3006,20 +3014,31 @@ const TTS = {
   // section.load() — safe there since it's not yet rendered — crossing the
   // chapter boundary a frozen visual turn can't. Guards on _gen so a stop/turn
   // during the async load voids a stale continuation.
+  // Switch from the visible page's geometry chunks to the WHOLE current
+  // section's text, positioned exactly where the visible page left off. Split
+  // out of _bgAdvance so the lock-screen page/chapter buttons (_bgNav) can enter
+  // background mode too — they can be pressed before any background step has
+  // run. false = couldn't place ourselves; every caller fails closed rather than
+  // silently restarting the chapter.
+  _bgEnter() {
+    const idx = State.rendition?.currentLocation()?.start?.index;
+    if (idx == null) return false;
+    const built = this._currentSectionChunksWithNodes(idx);
+    if (!built) return false;
+    const at = this._bgAlign(built.chunks);
+    if (at < 0) return false;
+    this._bgMode = true;
+    this._bgSpineIdx = idx;
+    this._bgSection = built.section;
+    this.chunks = built.chunks;
+    this.idx = at;
+    return true;
+  },
+
   async _bgAdvance() {
     const gen = this._gen;
     if (!this._bgMode) {
-      const idx = State.rendition?.currentLocation()?.start?.index;
-      if (idx == null) return this.stop();
-      const built = this._currentSectionChunksWithNodes(idx);
-      if (!built) return this.stop();
-      const at = this._bgAlign(built.chunks);
-      if (at < 0) return this.stop(); // couldn't place ourselves — fail closed
-      this._bgMode = true;
-      this._bgSpineIdx = idx;
-      this._bgSection = built.section;
-      this.chunks = built.chunks;
-      this.idx = at;
+      if (!this._bgEnter()) return this.stop();
     } else {
       // Current section finished — load the next non-empty one (skip nav/blank).
       const total = State.epubBook?.spine?.spineItems?.length || 0;
@@ -3041,6 +3060,71 @@ const TTS = {
     if (this.idx >= this.chunks.length) { this._speak(); return; }
     this._preIdx = this.idx; // skip the lead pre-pause so it always speaks
     this._bgSaveProgress(); // persist NOW — an app kill mid-background must not roll back
+    // The visible reader is frozen where the screen locked, so #rs-chapter (and
+    // with it the lock-screen text) would otherwise still name the chapter we
+    // STARTED in. Runs about once per section, not per sentence.
+    this._mediaMeta();
+    this._speak();
+  },
+
+  // Lock-screen page/chapter buttons, backgrounded. The rendition CANNOT turn
+  // here — epub's page turn and section render both need the render loop, which
+  // Android freezes with the screen off (the whole reason _bgAdvance exists), so
+  // routing these through skipPage() would hang on _awaitingPage and silently
+  // kill playback. We move inside the background text reader instead, where a
+  // "page" is one spoken chunk (a sentence/paragraph): the only unit that means
+  // anything without a layout, and the useful audio analogue of a page turn.
+  async _bgNav(action) {
+    if (!this._bgMode && !this._bgEnter()) return; // can't place ourselves — ignore the press
+    const step = (action === 'nextPage' || action === 'nextChapter') ? 1 : -1;
+    this._gen++;              // void in-flight callbacks from the chunk we're leaving
+    clearTimeout(this._gapT);
+    this._stopAudio();
+    this._retryN = 0;
+    if (!this.active) {       // pressing a transport button means "keep listening"
+      this.active = true;
+      document.getElementById('play-btn')?.classList.add('playing');
+      Stats.startTick();
+      this._mediaState(true);
+    }
+    if (action === 'nextPage' || action === 'prevPage') {
+      const at = this.idx + step;
+      if (at >= 0 && at < this.chunks.length) {
+        this.idx = at;
+        this._preIdx = this.idx; // speak immediately (no lead pre-pause)
+        this._bgSaveProgress();
+        this._speak();
+        return;
+      }
+      // Ran off the end of this section — carry on into the adjacent one.
+    }
+    await this._bgGotoSection(this._bgSpineIdx + step, step);
+  },
+
+  // Move background reading to the nearest usable spine section from `from`,
+  // searching in `step` direction, and start at the top of whatever it lands on.
+  // Stays put (and keeps reading) at either end of the book. Never
+  // section.load()s the section the live rendition is showing — that corrupts
+  // its later display() (see _loadSectionChunksWithNodes).
+  async _bgGotoSection(from, step) {
+    const gen = this._gen;
+    const total = State.epubBook?.spine?.spineItems?.length || 0;
+    const rendered = State.rendition?.currentLocation()?.start?.index;
+    let built = null, i = from;
+    for (; i >= 0 && i < total; i += step) {
+      built = (i === rendered) ? this._currentSectionChunksWithNodes(i)
+                               : await this._loadSectionChunksWithNodes(i);
+      if (this._gen !== gen || !this.active) return; // stopped or turned while loading
+      if (built) break;
+    }
+    if (!built) { this._speak(); return; } // start/end of book — nothing to move to
+    this._bgSpineIdx = i;
+    this._bgSection = built.section;
+    this.chunks = built.chunks;
+    this.idx = 0;
+    this._preIdx = 0;
+    this._bgSaveProgress();
+    this._mediaMeta(); // chapter changed — refresh the lock screen
     this._speak();
   },
 
@@ -3529,12 +3613,29 @@ const TTS = {
   // rules). Without a foreground service Android suspends the app when
   // backgrounded: the playing clip and the prefetched one finish, then the
   // sentence-chain dies. The service keeps the process alive so it continues.
-  // Book title + current chapter, as sent to the native notification/MediaSession.
-  // rs-chapter is "Chapter · Page X / Y" — the chapter alone reads better.
+  // Book title + chapter + page, as sent to the native notification/MediaSession.
+  // rs-chapter is "Chapter · Page X / Y"; the native side keeps the two apart
+  // (chapter as the subtitle, page as the notification's subText).
   _mediaPayload() {
     const title = (State.currentBook?.name || 'PhonoLeaf').replace(/\.epub$/i, '');
+    if (this._bgMode) {
+      // Background reading: the visible reader is still frozen wherever the
+      // screen locked, so #rs-chapter is stale — name the chapter the AUDIO is
+      // actually in. Page is deliberately blank: pages are a property of the
+      // rendered layout, and there isn't one here (see _bgNav), so any number we
+      // showed would be the frozen one from before the screen went off.
+      return { title, text: chapterLabelFor(this._bgSection?.href, this._bgSpineIdx), page: '' };
+    }
     const chapter = (document.getElementById('rs-chapter')?.textContent || '').split('  ·  ')[0].trim();
-    return { title, text: chapter || 'Reading aloud' };
+    let page = '';
+    // displayed.page/total are section-relative, i.e. pages within the CHAPTER.
+    // (Fine for display — the rounding bug that rules them out for the overshoot
+    // corrector only misreports on sliver pages.)
+    try {
+      const d = State.rendition?.currentLocation()?.start?.displayed;
+      if (d?.total) page = `Page ${d.page} / ${d.total}`;
+    } catch (_) {}
+    return { title, text: chapter || 'Reading aloud', page };
   },
   // Wires the lock-screen PLAY/PAUSE buttons (PlaybackService's
   // MediaSessionCompat, 2026-07-22) back to TTS. Registered once — calling
@@ -3546,9 +3647,44 @@ const TTS = {
     const nat = this._nativeTts(); if (!nat) return;
     this._mediaListenerBound = true;
     nat.addListener('mediaButton', d => {
-      if (d?.action === 'pause') { if (this.active) this.stop(); }
-      else if (d?.action === 'play') { if (!this.active) this.start(); }
+      const a = d?.action;
+      try {
+        if (a === 'pause') { if (this.active) this.stop(); }
+        else if (a === 'play') { if (!this.active) this.start(); }
+        else if (a === 'nextPage' || a === 'prevPage' || a === 'nextChapter' || a === 'prevChapter') this._mediaNav(a);
+      } catch (_) { /* a bad button press must never take the session down */ }
     });
+  },
+
+  // Lock-screen page/chapter buttons. FOREGROUND: the normal reader paths, so
+  // page turns keep the overshoot corrector and chapter jumps keep skipPage's
+  // resume handling. BACKGROUND: hand off to _bgNav — the rendition can't turn
+  // with the screen off, and calling skipPage() there would stall playback
+  // outright (see _bgNav). The engine check mirrors _speak's: only the
+  // native/neural path can read backgrounded at all, so the Web-Speech fallback
+  // keeps using the visual turn.
+  _mediaNav(action) {
+    const fwd = action === 'nextPage' || action === 'nextChapter';
+    if (document.hidden && this._engineNow() !== 'web' && State.epubBook) { this._bgNav(action); return; }
+    if (action === 'nextPage' || action === 'prevPage') { fwd ? Reader.next() : Reader.prev(); return; }
+    this._jumpChapter(fwd ? 1 : -1);
+  },
+
+  // Jump to the START of the adjacent spine section, skipping any that don't
+  // resolve. Foreground only (_bgNav covers the backgrounded case). Like the
+  // in-app page buttons, this goes through skipPage, so it resumes reading on
+  // arrival even if playback was paused.
+  _jumpChapter(dir) {
+    const book = State.epubBook, r = State.rendition;
+    if (!book || !r) return;
+    const cur = r.currentLocation()?.start?.index;
+    if (cur == null) return;
+    const total = book.spine?.spineItems?.length || 0;
+    for (let i = cur + dir; i >= 0 && i < total; i += dir) {
+      const sec = book.spine.get(i);
+      if (sec?.href) { this._dir = dir; this.skipPage(() => r.display(sec.href)); return; }
+    }
+    toast(dir > 0 ? 'Last chapter' : 'First chapter');
   },
   // Push updated title/chapter to the lock-screen notification as the reader
   // advances — startPlaybackService on an ALREADY-RUNNING service just
@@ -3576,12 +3712,51 @@ const TTS = {
   _mediaState(playing) {
     const nat = this._nativeTts(); if (!nat) return; // web build: nothing to do
     try { nat.startPlaybackService(Object.assign(this._mediaPayload(), { playing }))?.catch?.(() => {}); } catch (_) {}
+    this._mediaCoverSync(); // async; sends artwork as its own follow-up update
   },
   // The ONLY real teardown path — called from App.signOut(). Never called on
   // a plain pause (see _mediaState above).
   _mediaStop() {
+    this._mediaCoverKey = null; // next session re-sends artwork to a fresh service
     const nat = this._nativeTts(); if (!nat) return;
     try { nat.stopPlaybackService()?.catch?.(() => {}); } catch (_) {}
+  },
+
+  _mediaCoverKey: null, // cache key of the cover the native side already holds
+  // Ship the book's cover to the native MediaSession, which draws it behind the
+  // lock-screen controls. Sent as its OWN follow-up update rather than inline in
+  // _mediaState so decoding can never delay playback starting, and only ONCE per
+  // book: this is the same bridge where a per-sentence base64 payload once froze
+  // the WebView (see _synthNative), so it must not ride along on every chapter
+  // change. Native caches the decoded bitmap, so later updates keep the artwork.
+  async _mediaCoverSync() {
+    const nat = this._nativeTts(); if (!nat) return;
+    const b = State.currentBook; if (!b) return;
+    const key = b.id + ':' + (b.size || '');
+    if (key === this._mediaCoverKey) return;
+    try {
+      const blob = await CoverCache.get(key);
+      if (!blob) return; // cover not extracted yet — retried on the next update
+      const b64 = await this._coverB64(blob);
+      if (!b64) return;
+      this._mediaCoverKey = key; // only on success, so a failure retries later
+      const p = Object.assign(this._mediaPayload(), { playing: this.active, coverB64: b64 });
+      nat.startPlaybackService(p)?.catch?.(() => {});
+    } catch (_) { /* artwork is cosmetic — never let it disturb playback */ }
+  },
+  // Blob -> downscaled JPEG base64 (no data: prefix). Capped at 512px: a full
+  // cover can be several MB and every byte crosses the JS/native bridge, while
+  // the system only ever renders this behind the lock-screen controls.
+  async _coverB64(blob) {
+    const bmp = await createImageBitmap(blob);
+    const s = Math.min(1, 512 / Math.max(bmp.width, bmp.height));
+    const w = Math.max(1, Math.round(bmp.width * s));
+    const h = Math.max(1, Math.round(bmp.height * s));
+    const cv = document.createElement('canvas');
+    cv.width = w; cv.height = h;
+    cv.getContext('2d').drawImage(bmp, 0, 0, w, h);
+    bmp.close?.();
+    return cv.toDataURL('image/jpeg', 0.85).split(',')[1] || '';
   },
   // Resolves once the plugin has told us which model is actually loaded. We
   // never GUESS the model: the voice id spaces differ per model, so guessing

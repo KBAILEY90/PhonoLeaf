@@ -1092,6 +1092,84 @@ Google login); verify by inspection + the owner testing on device.
   Bluetooth hardware keys specifically (only verified via the transport-control
   callback path, which should cover it, but wasn't tested against real
   hardware).
+- **Lock-screen controls: cover artwork, page numbers, page/chapter buttons
+  (2026-07-25).** Owner request on top of the working play/pause above.
+  - **Five buttons, and that is the hard ceiling.** Android 13+ builds the media
+    UI from the **MediaSession**, not the notification's actions, and allocates
+    exactly 5 slots: play/pause, `ACTION_SKIP_TO_PREVIOUS`,
+    `ACTION_SKIP_TO_NEXT`, then custom actions in order. So **page turns are
+    mapped onto skip-prev/next** (they also survive into the 3-button compact
+    view, via `setShowActionsInCompactView(1, 2, 3)`) and **chapters onto the two
+    custom-action slots** (`CUSTOM_PREV_CHAPTER`/`CUSTOM_NEXT_CHAPTER`,
+    `onCustomAction`). That fills all five exactly — there is no room for a sixth
+    control without dropping one of these. The notification also carries all five
+    as `NotificationCompat.Action`s (for the expanded view / older Android), each
+    with its **own PendingIntent request code** (2–7; the content tap is 0) —
+    sharing one would make `FLAG_UPDATE_CURRENT` alias them and buttons would
+    fire each other's action. Icons are stock `android.R.drawable.ic_media_*`
+    (`rew`/`ff` for chapters, `previous`/`next` for pages), so no assets needed.
+  - **Page buttons do something DIFFERENT when locked, on purpose.** epub's page
+    turn and section render both need the render loop, which Android freezes with
+    the screen off — that is the entire reason `_bgAdvance` exists — so routing a
+    lock-screen press through `skipPage()` would hang on `_awaitingPage` and
+    silently kill playback. `TTS._mediaNav` therefore branches on
+    `document.hidden` (plus the same `_engineNow() !== 'web'` check `_speak` uses,
+    since only the native path reads backgrounded at all): **foreground** → the
+    normal `Reader.next()`/`prev()` (keeping the overshoot corrector) and
+    `_jumpChapter()`; **backgrounded** → `_bgNav()`, which moves inside the
+    background text reader, where a "page" is **one spoken chunk** (a
+    sentence/paragraph) — the only unit that means anything without a layout, and
+    the useful audio analogue. Running off either end of a section falls through
+    to `_bgGotoSection`, which walks to the nearest usable spine section (skipping
+    empty/nav ones), starts at its top, and **stays put at the ends of the book**.
+    It reads the currently-rendered section via `_currentSectionChunksWithNodes`,
+    never `section.load()` — that corrupts epub's later `display()` of it (see
+    `_loadSectionChunksWithNodes`). Pressing a transport button while paused
+    resumes listening, matching what the in-app page buttons already do.
+  - `_bgEnter()` was split out of `_bgAdvance` (identical logic, still fails
+    closed) so `_bgNav` can enter background mode when a button is pressed before
+    any background step has run.
+  - **Page numbers are chapter-relative** (`displayed.page/total` are
+    section-relative). Sent as a separate `page` field: the notification puts it
+    in `setSubText`, and `updateMediaSession` folds it into the metadata subtitle
+    as `"Chapter · Page X / Y"` — the modern system UI shows **metadata**, not the
+    notification's own title/text, so anything that must appear on the lock screen
+    has to be in the metadata. **Deliberately blank during background reading**:
+    pages are a property of the rendered layout and there isn't one, so the only
+    number available would be the frozen one from when the screen locked.
+  - **The chapter name now tracks background reading.** It used to be scraped
+    from `#rs-chapter`, which is frozen wherever the screen locked, so it named
+    the chapter you STARTED in. `_mediaPayload` now derives it from the spine
+    section the audio is actually in, via a new module-level `chapterLabelFor()`
+    (extracted verbatim from `_onRelocated`, so the reader's top bar and the lock
+    screen can't drift apart), and `_bgAdvance`/`_bgGotoSection` push a
+    `_mediaMeta()` refresh on section change — about once per section, not per
+    sentence.
+  - **Artwork** is the cached cover from `CoverCache`, downscaled to 512px and
+    JPEG-encoded in JS (`_coverB64`), sent as `coverB64`. It goes as its **own
+    follow-up update** (`_mediaCoverSync` off `_mediaState`) so decoding never
+    delays playback starting, and **only once per book** (`_mediaCoverKey`, set
+    only on success so failures retry; cleared by `_mediaStop`) — this is the same
+    bridge where a per-sentence base64 payload once froze the WebView, so it must
+    not ride along on every chapter change. The plugin decodes it and hands it to
+    the service through a **static** (`PlaybackService.setArtwork`), NOT an Intent
+    extra: extras are parceled through binder even for a same-process service and
+    a bitmap would blow the ~1 MB transaction limit. Set as both
+    `METADATA_KEY_ALBUM_ART` (what the system player renders behind the controls)
+    and `METADATA_KEY_ART`, plus `setLargeIcon` on the notification.
+  - Verified in a browser harness (fresh tabs): payload shape foreground vs
+    background, all six actions routing correctly in each mode (including the
+    Web-Speech fallback still using the visual turn), `_bgNav` chunk movement and
+    its fall-through to a section move, `_bgGotoSection` skipping empty sections /
+    reading the rendered section from the live iframe / staying put at the book's
+    start / aborting on a `_gen` bump or a stop mid-load, `_bgAdvance` still
+    bootstrapping and still failing closed after the `_bgEnter` split, and the
+    cover round-tripping (900×1400 → 329×512, sent once, not re-sent, key cleared
+    on stop). A `scratchpad/bridgecheck.js`-style static check also confirmed
+    **every payload field and action name lines up across all three layers**
+    (JS → plugin `putExtra` → service `getXExtra`) — the exact class of gap that
+    caused the resume bug above. **The Kotlin is still NOT device-verified** (no
+    JDK/Android SDK here).
 - **`window.speechSynthesis` is UNDEFINED in the native Android WebView.** The
   Web-Speech device-voice fallback (`_speakWeb`, `allVoices`,
   `VoiceModal.selectNamed`, `pickDefaultVoice`) must guard every

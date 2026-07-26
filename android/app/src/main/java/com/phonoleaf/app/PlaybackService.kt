@@ -66,10 +66,20 @@ class PlaybackService : Service() {
         var isRunning = false
             private set
 
+        // Book cover, shown behind the system's lock-screen media controls.
+        // Held statically (NOT passed through the Intent): startService parcels
+        // its extras through binder even for a same-process service, and a
+        // bitmap would blow the ~1 MB transaction limit. The plugin decodes it
+        // once per book and drops it here just before starting the service.
+        @Volatile
+        private var artwork: android.graphics.Bitmap? = null
+        fun setArtwork(bmp: android.graphics.Bitmap?) { artwork = bmp }
+
         const val CHANNEL_ID = "phonoleaf_playback"
         const val NOTIF_ID = 1001
         const val EXTRA_TITLE = "title"
         const val EXTRA_TEXT = "text"
+        const val EXTRA_PAGE = "page"       // "Page X / Y" within the chapter; may be ""
         const val EXTRA_PLAYING = "playing" // boolean, defaults true — see updateMediaSession
         // The notification's OWN play/pause button targets this service
         // directly (a plain custom action, not android.intent.action.MEDIA_BUTTON)
@@ -81,6 +91,20 @@ class PlaybackService : Service() {
         // automatically once the session is active, which is all this uses.
         const val ACTION_PAUSE = "com.phonoleaf.app.ACTION_PAUSE_PLAYBACK"
         const val ACTION_PLAY = "com.phonoleaf.app.ACTION_PLAY_PLAYBACK"
+        const val ACTION_PREV_PAGE = "com.phonoleaf.app.ACTION_PREV_PAGE"
+        const val ACTION_NEXT_PAGE = "com.phonoleaf.app.ACTION_NEXT_PAGE"
+        const val ACTION_PREV_CHAPTER = "com.phonoleaf.app.ACTION_PREV_CHAPTER"
+        const val ACTION_NEXT_CHAPTER = "com.phonoleaf.app.ACTION_NEXT_CHAPTER"
+
+        // Chapter skip has no standard PlaybackState action, so it goes through
+        // CUSTOM actions. Android 13+ builds the media UI from the SESSION (not
+        // the notification's actions) and allocates 5 slots: play/pause,
+        // SKIP_TO_PREVIOUS, SKIP_TO_NEXT, then custom actions in order. Mapping
+        // page turns onto skip-prev/next and chapters onto the two custom slots
+        // fills all five exactly, and puts the page buttons in the slots that
+        // also survive into the collapsed/compact view.
+        const val CUSTOM_PREV_CHAPTER = "phonoleaf.prev_chapter"
+        const val CUSTOM_NEXT_CHAPTER = "phonoleaf.next_chapter"
     }
 
     private var wakeLock: PowerManager.WakeLock? = null
@@ -115,29 +139,52 @@ class PlaybackService : Service() {
             override fun onPlay() {
                 try { PhonoLeafTtsPlugin.notifyMediaButton("play") } catch (_: Throwable) {}
             }
+            override fun onSkipToPrevious() {
+                try { PhonoLeafTtsPlugin.notifyMediaButton("prevPage") } catch (_: Throwable) {}
+            }
+            override fun onSkipToNext() {
+                try { PhonoLeafTtsPlugin.notifyMediaButton("nextPage") } catch (_: Throwable) {}
+            }
+            override fun onCustomAction(action: String?, extras: android.os.Bundle?) {
+                val which = when (action) {
+                    CUSTOM_PREV_CHAPTER -> "prevChapter"
+                    CUSTOM_NEXT_CHAPTER -> "nextChapter"
+                    else -> return
+                }
+                try { PhonoLeafTtsPlugin.notifyMediaButton(which) } catch (_: Throwable) {}
+            }
         })
         mediaSession = session
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (intent?.action == ACTION_PAUSE || intent?.action == ACTION_PLAY) {
-            // The notification's own play/pause button tap (routed here
-            // directly, not via the media session — see ACTION_PAUSE's
-            // comment above). Same JS round-trip as the session callback
-            // either way; JS decides what actually happens and calls back
-            // into _mediaState with the new state, updating this notification.
-            val action = if (intent.action == ACTION_PAUSE) "pause" else "play"
-            try { PhonoLeafTtsPlugin.notifyMediaButton(action) } catch (_: Throwable) {}
+        // A notification button tap (routed here directly, not via the media
+        // session — see ACTION_PAUSE's comment above). Same JS round-trip as the
+        // session callbacks either way; JS decides what actually happens and
+        // calls back into _mediaState, which updates this notification. These
+        // never touch the foreground state, so no startForeground() is needed.
+        val button = when (intent?.action) {
+            ACTION_PAUSE -> "pause"
+            ACTION_PLAY -> "play"
+            ACTION_PREV_PAGE -> "prevPage"
+            ACTION_NEXT_PAGE -> "nextPage"
+            ACTION_PREV_CHAPTER -> "prevChapter"
+            ACTION_NEXT_CHAPTER -> "nextChapter"
+            else -> null
+        }
+        if (button != null) {
+            try { PhonoLeafTtsPlugin.notifyMediaButton(button) } catch (_: Throwable) {}
             return START_NOT_STICKY
         }
         // startForeground MUST be the first thing we do — the 5s watchdog is
         // already ticking. Read extras defensively; never do slow work before it.
         val title = intent?.getStringExtra(EXTRA_TITLE) ?: "PhonoLeaf"
         val text = intent?.getStringExtra(EXTRA_TEXT) ?: "Reading aloud"
+        val page = intent?.getStringExtra(EXTRA_PAGE) ?: ""
         val playing = intent?.getBooleanExtra(EXTRA_PLAYING, true) ?: true
         try {
             ServiceCompat.startForeground(
-                this, NOTIF_ID, buildNotification(title, text, playing),
+                this, NOTIF_ID, buildNotification(title, text, page, playing),
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
                     ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK else 0
             )
@@ -154,8 +201,8 @@ class PlaybackService : Service() {
         // Only after we're safely foreground do the rest (can't crash the watchdog now).
         try {
             if (playing) acquireCpuWakeLock() else releaseCpuWakeLock()
-            updateMediaSession(title, text, playing)
-            android.util.Log.i("PhonoLeafPlayback", "foreground service up ($title/$text, playing=$playing), wakeLock=${wakeLock?.isHeld}")
+            updateMediaSession(title, text, page, playing)
+            android.util.Log.i("PhonoLeafPlayback", "foreground service up ($title/$text/$page, playing=$playing), wakeLock=${wakeLock?.isHeld}")
         } catch (e: Throwable) {
             android.util.Log.w("PhonoLeafPlayback", "post-foreground setup failed: ${e.message}")
         }
@@ -167,20 +214,42 @@ class PlaybackService : Service() {
     // TTS._mediaMeta triggers as the chapter changes while playing (see
     // index.html) — cheap to repeat. Both actions are always advertised so
     // the system UI shows the right one (or toggles) regardless of OEM.
-    private fun updateMediaSession(title: String, text: String, playing: Boolean) {
+    private fun updateMediaSession(title: String, text: String, page: String, playing: Boolean) {
         val session = mediaSession ?: return
-        session.setMetadata(
-            MediaMetadataCompat.Builder()
-                .putString(MediaMetadataCompat.METADATA_KEY_TITLE, title)
-                .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, text)
-                .build()
-        )
+        // The modern system media UI shows metadata, not the notification's own
+        // title/text, so the chapter and page have to be combined into one
+        // subtitle line here to be visible on the lock screen.
+        val subtitle = if (page.isNotEmpty()) "$text · $page" else text
+        val md = MediaMetadataCompat.Builder()
+            .putString(MediaMetadataCompat.METADATA_KEY_TITLE, title)
+            .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, subtitle)
+            .putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_TITLE, title)
+            .putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_SUBTITLE, subtitle)
+        artwork?.let {
+            // ALBUM_ART is what the system media player renders behind the
+            // controls; ART is the older key some OEM skins still read.
+            md.putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, it)
+            md.putBitmap(MediaMetadataCompat.METADATA_KEY_ART, it)
+        }
+        session.setMetadata(md.build())
         session.setPlaybackState(
             PlaybackStateCompat.Builder()
                 .setActions(
                     PlaybackStateCompat.ACTION_PLAY or
                     PlaybackStateCompat.ACTION_PAUSE or
-                    PlaybackStateCompat.ACTION_PLAY_PAUSE
+                    PlaybackStateCompat.ACTION_PLAY_PAUSE or
+                    PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS or // = previous page
+                    PlaybackStateCompat.ACTION_SKIP_TO_NEXT        // = next page
+                )
+                .addCustomAction(
+                    PlaybackStateCompat.CustomAction.Builder(
+                        CUSTOM_PREV_CHAPTER, "Previous chapter", android.R.drawable.ic_media_rew
+                    ).build()
+                )
+                .addCustomAction(
+                    PlaybackStateCompat.CustomAction.Builder(
+                        CUSTOM_NEXT_CHAPTER, "Next chapter", android.R.drawable.ic_media_ff
+                    ).build()
                 )
                 .setState(
                     if (playing) PlaybackStateCompat.STATE_PLAYING else PlaybackStateCompat.STATE_PAUSED,
@@ -234,30 +303,29 @@ class PlaybackService : Service() {
         super.onDestroy()
     }
 
-    private fun buildNotification(title: String, text: String, playing: Boolean): android.app.Notification {
+    // Each button needs its OWN request code: FLAG_UPDATE_CURRENT reuses a
+    // cached PendingIntent keyed by (requestCode, ...), so sharing one would let
+    // the buttons collide and fire each other's action. 0 is the content tap.
+    private fun notifAction(icon: Int, label: String, action: String, requestCode: Int): NotificationCompat.Action {
+        val pi = PendingIntent.getService(
+            this, requestCode, Intent(this, PlaybackService::class.java).setAction(action),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE // IMMUTABLE required API 31+
+        )
+        return NotificationCompat.Action(icon, label, pi)
+    }
+
+    private fun buildNotification(title: String, text: String, page: String, playing: Boolean): android.app.Notification {
         val launch = packageManager.getLaunchIntentForPackage(packageName)?.apply {
             addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
         }
         val tap = if (launch != null) PendingIntent.getActivity(
             this, 0, launch,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE // IMMUTABLE required API 31+
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         ) else null
-        // Distinct request codes (2, 3) so the pause- and play-flavoured
-        // PendingIntents never collide with each other or with `tap` (0) when
-        // FLAG_UPDATE_CURRENT reuses a cached PendingIntent by (requestCode, action).
-        val toggleAction = if (playing) {
-            val pi = PendingIntent.getService(
-                this, 2, Intent(this, PlaybackService::class.java).setAction(ACTION_PAUSE),
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            )
-            NotificationCompat.Action(android.R.drawable.ic_media_pause, "Pause", pi)
-        } else {
-            val pi = PendingIntent.getService(
-                this, 3, Intent(this, PlaybackService::class.java).setAction(ACTION_PLAY),
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            )
-            NotificationCompat.Action(android.R.drawable.ic_media_play, "Play", pi)
-        }
+        val toggle = if (playing)
+            notifAction(android.R.drawable.ic_media_pause, "Pause", ACTION_PAUSE, 2)
+        else
+            notifAction(android.R.drawable.ic_media_play, "Play", ACTION_PLAY, 3)
         val builder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(title)
             .setContentText(text)
@@ -268,15 +336,24 @@ class PlaybackService : Service() {
             .setPriority(NotificationCompat.PRIORITY_LOW) // quiet, no sound/vibration
             .setCategory(NotificationCompat.CATEGORY_TRANSPORT)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-            .addAction(toggleAction)
+            // Order matters — the compact view below indexes into this list.
+            .addAction(notifAction(android.R.drawable.ic_media_rew, "Previous chapter", ACTION_PREV_CHAPTER, 4))
+            .addAction(notifAction(android.R.drawable.ic_media_previous, "Previous page", ACTION_PREV_PAGE, 5))
+            .addAction(toggle)
+            .addAction(notifAction(android.R.drawable.ic_media_next, "Next page", ACTION_NEXT_PAGE, 6))
+            .addAction(notifAction(android.R.drawable.ic_media_ff, "Next chapter", ACTION_NEXT_CHAPTER, 7))
+        if (page.isNotEmpty()) builder.setSubText(page)
+        artwork?.let { builder.setLargeIcon(it) }
         // MediaStyle: purely cosmetic/display (tells the system to render this
         // as a media notification and back the lock-screen media widget with
         // this session) — independent of how button taps are routed above.
+        // Compact view keeps the three middle actions: previous page,
+        // play/pause, next page (indices 1, 2, 3 of the list added above).
         mediaSession?.sessionToken?.let { token ->
             builder.setStyle(
                 androidx.media.app.NotificationCompat.MediaStyle()
                     .setMediaSession(token)
-                    .setShowActionsInCompactView(0)
+                    .setShowActionsInCompactView(1, 2, 3)
             )
         }
         return builder.build()

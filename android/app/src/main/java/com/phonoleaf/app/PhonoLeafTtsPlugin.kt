@@ -272,6 +272,23 @@
                 // pause look like a play: notification stuck on a "Pause" button
                 // with nothing to resume from.
                 i.putExtra(PlaybackService.EXTRA_PLAYING, call.getBoolean("playing", true) ?: true)
+                i.putExtra(PlaybackService.EXTRA_PAGE, call.getString("page") ?: "")
+                // Book cover -> artwork behind the lock-screen controls. Sent by
+                // JS only when the book changes (it's ~50 KB of base64 even after
+                // downscaling), and handed to the service through a static rather
+                // than the Intent — extras are parceled through binder even for a
+                // same-process service, and a bitmap would exceed the ~1 MB
+                // transaction limit. Failure is cosmetic: keep the old artwork.
+                val cover = call.getString("coverB64")
+                if (!cover.isNullOrEmpty()) {
+                    try {
+                        val bytes = android.util.Base64.decode(cover, android.util.Base64.DEFAULT)
+                        val bmp = android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                        if (bmp != null) PlaybackService.setArtwork(bmp)
+                    } catch (e: Throwable) {
+                        Log.w("PhonoLeafPlayback", "cover decode failed: ${e.message}")
+                    }
+                }
                 // Use startService, NOT startForegroundService. We're either
                 // foreground or updating an already-running FGS (guarded above),
                 // so startService is allowed — and crucially
