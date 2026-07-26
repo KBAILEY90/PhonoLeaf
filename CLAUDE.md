@@ -1108,6 +1108,17 @@ Google login); verify by inspection + the owner testing on device.
     sharing one would make `FLAG_UPDATE_CURRENT` alias them and buttons would
     fire each other's action. Icons are stock `android.R.drawable.ic_media_*`
     (`rew`/`ff` for chapters, `previous`/`next` for pages), so no assets needed.
+  - **Notification small icon (badge) is the app's own launcher icon
+    (`R.mipmap.ic_launcher`), not `android.R.drawable.ic_media_play`** — the
+    original stock play-triangle looked exactly like an extra playback control
+    and was mistaken for one (owner: "I see a 'play' button that sends me to
+    the app"). It was never a control — tapping the notification body/icon has
+    always launched the app via `setContentIntent(tap)`, which is standard for
+    every media notification — it just LOOKED like a button because of the
+    icon choice. MediaStyle notifications show the small icon un-tinted on the
+    lock-screen media widget specifically (unlike the plain status bar, which
+    always forces small icons to a flat monochrome silhouette), so the full-
+    color launcher icon renders as the app's actual brand mark there.
   - **Page buttons do something DIFFERENT when locked, on purpose.** epub's page
     turn and section render both need the render loop, which Android freezes with
     the screen off — that is the entire reason `_bgAdvance` exists — so routing a
@@ -1146,24 +1157,7 @@ Google login); verify by inspection + the owner testing on device.
     2. **Background mode's page field was unconditionally `''` by original
        design** — the first cut's reasoning ("pages are a property of the
        rendered layout, and there isn't one here") was correct about the
-       RENDERED page number but wrong to conclude nothing usable exists: the
-       book's `book.locations` (epub.js's whole-book position index, generated
-       once at boot — the SAME data the seek scrubber already uses for its own
-       "p. N / total" popup) is independent of layout entirely. **`_bgChapterPage()`**
-       narrows that whole-book index to the current chapter: `_bgLocBounds(sectionIdx)`
-       binary-searches the location array (monotonic in spine order, since
-       locations are generated in spine order) for where the chapter starts/ends,
-       cached per section index (`_bgPageBoundsIdx`/`_bgPageBounds` — a handful of
-       `book.spine.get()` calls, not worth repeating per chunk); `_bgChapterPage`
-       then converts the current chunk's CFI (`_bgCfi()`, already built for
-       progress-saving) to a location number and reports its position within
-       those bounds. **The cache is keyed only on spine index, which is not
-       globally unique — a second book can reuse index 0** — so `Reader.open`
-       explicitly clears it (`_bgPageBoundsIdx = null`) alongside the other
-       per-book TTS resets; without that a freshly opened book could silently
-       show a chapter-page count carried over from the previous book. Blank
-       (not a crash) if `book.locations` isn't generated yet or no CFI is
-       available, matching Scrub's own fallback.
+       RENDERED page number but wrong to conclude nothing usable exists.
     Verified in a fresh-tab harness with a synthetic 3-section/17-location book:
     boundary search for each section and the past-the-end case, page position at
     the start/middle/end of a chapter, cache recomputing on a chapter change,
@@ -1171,6 +1165,31 @@ Google login); verify by inspection + the owner testing on device.
     reports — `_bgNav('nextPage')` now pushes an updated page number and a
     chapter change (`_bgNav('nextChapter')`) now pushes a populated one instead
     of blank.
+  - **REPLACED the same day, on device (2026-07-26): `book.locations` was the
+    WRONG data source for the page count, not just an implementation detail —
+    owner-reported "the page change buttons sometimes increase the page number
+    by 2, sometimes by 0" while locked (working fine merely backgrounded,
+    i.e. not a JS-throttling/race issue — a genuine granularity mismatch).**
+    `book.locations` is epub.js's whole-book position index at a **fixed
+    ~1024-character granularity**, generated independent of paragraph
+    boundaries. But `_bgNav` always moves by exactly **one chunk** (one
+    paragraph) per press — and paragraph length varies a lot: a short line of
+    dialogue might not cross a single 1024-char boundary (→ the reported page
+    number doesn't move: the "+0" case), while one long descriptive paragraph
+    can span several boundaries on its own (→ the number jumps by 2+ on a
+    single press: the "+2" case). The two granularities simply don't
+    correspond 1:1, so no amount of correct CFI math fixes it.
+    **`_bgChapterPage()` now counts CHUNKS instead of locations**: in
+    background mode `this.chunks` already **is** the full current-chapter
+    chunk list (set by `_bgEnter`/`_bgGotoSection`), so
+    `` `Page ${idx + 1} / ${chunks.length}` `` moves by exactly ±1 per press,
+    by construction — no CFI, no `book.locations`, no per-section cache. This
+    deleted `_bgLocBounds`/`_bgPageBoundsIdx`/`_bgPageBounds` entirely (and the
+    matching reset in `Reader.open`) — dead code once nothing keys off spine
+    index anymore. Verified in a harness: pressing next/prev repeatedly across
+    chunks of deliberately mismatched lengths (a 6-char chunk next to an
+    1800-char one) now always changes the shown number by exactly 1, forward
+    and backward, plus blank-on-empty and the removed fields confirmed gone.
   - **The chapter name now tracks background reading.** It used to be scraped
     from `#rs-chapter`, which is frozen wherever the screen locked, so it named
     the chapter you STARTED in. `_mediaPayload` now derives it from the spine
@@ -1202,8 +1221,15 @@ Google login); verify by inspection + the owner testing on device.
     on stop). A `scratchpad/bridgecheck.js`-style static check also confirmed
     **every payload field and action name lines up across all three layers**
     (JS → plugin `putExtra` → service `getXExtra`) — the exact class of gap that
-    caused the resume bug above. **The Kotlin is still NOT device-verified** (no
-    JDK/Android SDK here).
+    caused the resume bug above. **The Kotlin was NOT device-verified when this
+    shipped** (no JDK/Android SDK here) — **owner-tested on device 2026-07-26**:
+    chapter buttons worked correctly; the page counter and the notification
+    icon did not (both fixed above — see the "REPLACED the same day" and
+    "Notification small icon" bullets). Page/chapter *navigation itself* (the
+    underlying `_bgNav`/`_bgGotoSection` chunk and section movement) was NOT
+    implicated by either bug — both were purely display issues (wrong number
+    source; wrong icon asset) layered on top of navigation that already
+    worked, so it did not need to be touched.
 - **`window.speechSynthesis` is UNDEFINED in the native Android WebView.** The
   Web-Speech device-voice fallback (`_speakWeb`, `allVoices`,
   `VoiceModal.selectNamed`, `pickDefaultVoice`) must guard every
