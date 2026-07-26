@@ -1442,6 +1442,20 @@ Google login); verify by inspection + the owner testing on device.
     a >1-page paragraph still advances, an absurd calibration is rejected
     without persisting, a missing index degrades to blank, and a learned
     calibration is correctly reused for a chapter that is never rendered.
+  - **"Previous chapter" now always opens at page 1, matching "next chapter"
+    (2026-07-26).** Owner: moving backward a chapter landed on the LAST page
+    of the previous chapter instead of its first. `_bgGotoSection`'s backward-
+    lands-on-the-last-chunk behavior (added earlier the same day, see above)
+    is correct for a PAGE-button press that happens to spill past the start of
+    a chapter — that's the natural continuation of "one page back" across the
+    boundary — but wrong for an explicit chapter jump, which should always
+    open at the start regardless of direction. `_bgNav` now passes a third
+    `atStart` argument (true only for `nextChapter`/`prevChapter`) that
+    overrides the backward case to land on chunk 0 too; the page-button
+    fallthrough path (`step` alone, no explicit chapter action) is unchanged.
+    Verified in a harness: the chapter buttons land on chunk 0 in both
+    directions, while a "previous page" press that crosses into the prior
+    chapter still lands on its last chunk as before.
   Web-Speech device-voice fallback (`_speakWeb`, `allVoices`,
   `VoiceModal.selectNamed`, `pickDefaultVoice`) must guard every
   `window.speechSynthesis.*` access (`?.`/`|| []`) or it throws at boot on

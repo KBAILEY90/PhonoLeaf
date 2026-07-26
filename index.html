@@ -3124,15 +3124,22 @@ const TTS = {
       }
       // Ran off the end of this section — carry on into the adjacent one.
     }
-    await this._bgGotoSection(this._bgSpineIdx + step, step);
+    // A page-button press that happens to cross a chapter boundary should
+    // still land near where "one page back" would naturally continue; an
+    // explicit chapter button is a deliberate jump and should always open the
+    // chapter at its start, same in both directions (owner-reported: "previous
+    // chapter" was landing on the END of the previous chapter, not page 1).
+    const atStart = action === 'nextChapter' || action === 'prevChapter';
+    await this._bgGotoSection(this._bgSpineIdx + step, step, atStart);
   },
 
   // Move background reading to the nearest usable spine section from `from`,
-  // searching in `step` direction, and start at the top of whatever it lands on.
+  // searching in `step` direction, and start at the top of whatever it lands on
+  // (or, for a page-button fallthrough moving backward, its end — see below).
   // Stays put (and keeps reading) at either end of the book. Never
   // section.load()s the section the live rendition is showing — that corrupts
   // its later display() (see _loadSectionChunksWithNodes).
-  async _bgGotoSection(from, step) {
+  async _bgGotoSection(from, step, atStart) {
     const gen = this._gen;
     const total = State.epubBook?.spine?.spineItems?.length || 0;
     const rendered = State.rendition?.currentLocation()?.start?.index;
@@ -3147,13 +3154,17 @@ const TTS = {
     this._bgSpineIdx = i;
     this._bgSection = built.section;
     this.chunks = built.chunks;
-    // Moving forward starts at the new chapter's FIRST chunk; moving backward
-    // (e.g. "previous page" from a chapter's first chunk) should land on its
-    // LAST chunk — the natural continuation of "one page back" across a
-    // chapter boundary. Landing on 0 either way used to send a backward press
-    // to the START of the previous chapter, which read as a big forward jump
-    // relative to where the listener expected to land.
-    this.idx = step > 0 ? 0 : built.chunks.length - 1;
+    // Moving forward always starts at the new chapter's FIRST chunk. Moving
+    // backward normally lands on the LAST chunk instead — the natural
+    // continuation of "one page back" when a page-button press happens to run
+    // off the start of a chapter (landing on 0 there used to send a backward
+    // PAGE press to the START of the previous chapter, reading as a big
+    // forward jump relative to where the listener expected to land). An
+    // explicit "previous chapter" press is a deliberate jump, though, and
+    // should always open the chapter at its start like "next chapter" does —
+    // `atStart` (set only for the chapter buttons) overrides the backward
+    // case to land on 0 too.
+    this.idx = (step > 0 || atStart) ? 0 : built.chunks.length - 1;
     this._bgReindex(i);
     this._preIdx = this.idx;
     this._bgSaveProgress();
