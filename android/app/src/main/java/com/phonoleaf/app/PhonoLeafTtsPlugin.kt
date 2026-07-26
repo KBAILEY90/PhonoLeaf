@@ -227,32 +227,54 @@
         }
 
         /** Start the media-playback foreground service so the WebView's <audio>
-         *  chain keeps running with the screen off / app backgrounded.
-         *  startPlaybackService({ title, text }) */
+         *  chain keeps running with the screen off / app backgrounded — and,
+         *  once it's running, update its notification/MediaSession state.
+         *  startPlaybackService({ title, text, playing }) */
         @PluginMethod
         fun startPlaybackService(call: PluginCall) {
             try {
-                // CRITICAL: only start the foreground service while the app is
-                // genuinely in the foreground. On Android 12+ starting a
+                // CRITICAL: only COLD-START the foreground service while the app
+                // is genuinely in the foreground. On Android 12+ starting a
                 // mediaPlayback FGS from a non-foreground state is disallowed —
                 // startForeground() then throws and Android force-crashes us with
                 // ForegroundServiceDidNotStartInTimeException (observed on device
                 // when pressing play right as the app resumes from the lock
                 // screen, mid keyguard transition). Skipping the start there
                 // costs only background playback for that press; foreground
-                // reading is unaffected and the app stays up. Once the service is
-                // running (started from a proper foreground press) it survives the
-                // screen turning off — which is the case we actually need.
-                if (!appInForeground()) {
-                    Log.w("PhonoLeafPlayback", "not foreground — skipping FGS start to avoid crash")
+                // reading is unaffected and the app stays up.
+                //
+                // But once the service IS running this same call is just an
+                // UPDATE (new chapter text, or play/pause flipping the
+                // notification's button) — and those legitimately originate
+                // while backgrounded: pressing pause on the lock screen is
+                // exactly that case. Gating updates on appInForeground() dropped
+                // them silently, so the notification kept showing "Pause" and the
+                // session kept saying STATE_PLAYING — the system then sent
+                // another PAUSE on the next press and reading could never resume
+                // (owner-reported). An app with a running foreground service is
+                // NOT "in the foreground" by this check either: its importance is
+                // IMPORTANCE_FOREGROUND_SERVICE (125), above IMPORTANCE_FOREGROUND
+                // (100), so the guard rejected precisely the case we need.
+                // startService() to an already-running service is allowed from the
+                // background (Android counts an app with an active FGS as
+                // foreground for the background-start restriction), and the outer
+                // catch turns any surprise into a reject rather than a crash.
+                if (!appInForeground() && !PlaybackService.isRunning) {
+                    Log.w("PhonoLeafPlayback", "not foreground and service not running — skipping FGS start to avoid crash")
                     call.resolve()
                     return
                 }
                 val i = Intent(context, PlaybackService::class.java)
                 i.putExtra(PlaybackService.EXTRA_TITLE, call.getString("title") ?: "PhonoLeaf")
                 i.putExtra(PlaybackService.EXTRA_TEXT, call.getString("text") ?: "Reading aloud")
-                // Use startService, NOT startForegroundService. We're foreground
-                // here (guarded above), so startService is allowed — and crucially
+                // Play vs pause. MUST be forwarded — the service defaults this to
+                // true, so omitting it (as this method originally did) made every
+                // pause look like a play: notification stuck on a "Pause" button
+                // with nothing to resume from.
+                i.putExtra(PlaybackService.EXTRA_PLAYING, call.getBoolean("playing", true) ?: true)
+                // Use startService, NOT startForegroundService. We're either
+                // foreground or updating an already-running FGS (guarded above),
+                // so startService is allowed — and crucially
                 // it does NOT arm Android's 5s "must call startForeground()"
                 // watchdog. startForegroundService armed that watchdog, and when
                 // the main thread was busy at play time (resync page-turns + model

@@ -54,6 +54,18 @@ import androidx.core.app.ServiceCompat
 class PlaybackService : Service() {
 
     companion object {
+        // True while this service is alive. Lets PhonoLeafTtsPlugin tell an
+        // "update the notification of the service that's already running" call
+        // apart from a "cold-start a new foreground service" one — Android's
+        // background-start restriction only applies to the latter, and the
+        // update case ORIGINATES from the background by definition (pressing
+        // pause on the lock screen), so it must not be gated on the app being
+        // foreground. @Volatile: written on the main thread, read from the
+        // plugin's bridge call.
+        @Volatile
+        var isRunning = false
+            private set
+
         const val CHANNEL_ID = "phonoleaf_playback"
         const val NOTIF_ID = 1001
         const val EXTRA_TITLE = "title"
@@ -78,6 +90,7 @@ class PlaybackService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        isRunning = true
         // Create the channel up front so onStartCommand can call startForeground
         // as its very first action with zero setup — Android force-crashes the
         // app (ForegroundServiceDidNotStartInTimeException) if startForeground
@@ -213,6 +226,7 @@ class PlaybackService : Service() {
     }
 
     override fun onDestroy() {
+        isRunning = false
         try { if (wakeLock?.isHeld == true) wakeLock?.release() } catch (_: Throwable) {}
         wakeLock = null
         try { mediaSession?.isActive = false; mediaSession?.release() } catch (_: Throwable) {}

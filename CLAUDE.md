@@ -1037,6 +1037,43 @@ Google login); verify by inspection + the owner testing on device.
   and back the lock-screen media widget with this session) — independent of
   the button-routing above. `onDestroy` deactivates + releases the session
   alongside the existing wake-lock cleanup.
+  **Two native bugs broke the resume half on first device test (fixed
+  2026-07-25, owner-reported "reading does not resume when pressing play") —
+  both in `PhonoLeafTtsPlugin.startPlaybackService`, the bridge BETWEEN the
+  JS and the service, and both individually sufficient to cause it:**
+  1. **The `playing` flag was never forwarded into the Intent.** `EXTRA_PLAYING`
+     was added to `PlaybackService` and `playing` was added to the JS payload,
+     but this method still only put `EXTRA_TITLE`/`EXTRA_TEXT` — so the service
+     fell through to its `getBooleanExtra(EXTRA_PLAYING, true)` default and
+     every pause was read as a play. **Any new field in the `_mediaState`
+     payload must be added in THREE places** (JS payload → this `putExtra` →
+     the service's `getXExtra`); the middle one is easy to miss because
+     nothing fails loudly when it's skipped.
+  2. **The `appInForeground()` guard dropped the update entirely.** It exists
+     to never cold-start an FGS from the background, but a lock-screen pause
+     ORIGINATES from the background by definition, so the state update was
+     skipped and the session stayed `STATE_PLAYING`. Note an app whose only
+     foreground component is a running FGS is **not** "foreground" by that
+     check — its importance is `IMPORTANCE_FOREGROUND_SERVICE` (125), above
+     the `IMPORTANCE_FOREGROUND` (100) threshold it compares against. Now
+     guarded as `!appInForeground() && !PlaybackService.isRunning`
+     (a new `@Volatile` companion flag set in `onCreate`/cleared in
+     `onDestroy`), so cold starts stay protected while updates to an
+     already-running service go through. `startService()` to a running
+     service is allowed from the background (Android counts an app with an
+     active FGS as foreground for the background-start restriction), and the
+     existing catch turns any surprise into a `reject` rather than a crash.
+  Net effect of the two: after a lock-screen pause the notification kept
+  showing a **Pause** button and the session kept reporting `STATE_PLAYING`,
+  so the next press dispatched `pause` again — which `TTS._mediaSetup`'s
+  listener correctly no-ops on (`if (this.active)`, already false). Nothing
+  resumed.
+  **Process lesson:** the browser harness below mocked the native plugin, so
+  it could never have caught either bug — it verified the JS emits
+  `{playing:false}` and stopped exactly where the real defect began. A mock
+  validates the half you didn't break. When a feature spans the JS/native
+  bridge, the payload has to be traced THROUGH the plugin into the service by
+  reading that code, not inferred from the JS end behaving correctly.
   Verified in a browser harness (mocked the native plugin, fresh tab — an
   earlier run in a long-reused tab produced contradictory results that turned
   out to be stale state from prior test scripts in that same tab, not a real
