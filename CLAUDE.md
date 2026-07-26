@@ -976,60 +976,85 @@ Google login); verify by inspection + the owner testing on device.
   `PlaybackService` stays hardened (channel in `onCreate`, `startForeground`
   first in `onStartCommand`, `stopForeground(REMOVE)`+`stopSelf` if refused).
   Native-only; couldn't run Gradle here (no JDK/SDK), verified by review.
-- **Lock-screen media controls (2026-07-22) — a working PAUSE button, NOT full
-  play/pause/resume.** `PlaybackService` now creates a `MediaSessionCompat` in
-  `onCreate()` (before the 5s startForeground watchdog window — same tier as
-  channel setup), activated + given `MediaMetadataCompat`
-  (title/chapter, matching the notification's own text) and a
-  `PlaybackStateCompat` (`STATE_PLAYING`, `ACTION_PAUSE`) on every
-  `onStartCommand` — including the metadata-only refreshes described below,
-  so it stays current as chapters change, not just at session start.
-  **Scope boundary, deliberate:** the notification/session only exist WHILE
-  PLAYING — pausing in-app already calls `stopPlaybackService()` (unchanged,
-  see the note above), tearing the notification down. Pressing pause from the
-  lock screen routes to that SAME `TTS.stop()` path, so no service-lifecycle
-  redesign was needed — but it also means there's no notification left to
-  press "play" on afterward. Real resume-from-lock-screen (keeping the
-  service alive through a pause, showing "Paused" + a working Play button)
-  is a deliberately separate, larger follow-up, not attempted here.
+- **Lock-screen media controls (2026-07-22, upgraded to full play/pause the
+  same day) — working PAUSE **and** RESUME from the lock screen.** First cut
+  shipped pause-only (pressing pause tore the notification down via the
+  existing `stopPlaybackService()` path, leaving nothing to press "play" on
+  afterward); owner tested it and pushed back immediately ("the pop up leaves
+  when you press it. The lockscreen popup needs to allow play and pause"), so
+  the same day this was redesigned so **the foreground service now survives a
+  pause**. `PlaybackService` creates a `MediaSessionCompat` in `onCreate()`
+  (before the 5s startForeground watchdog window — same tier as channel
+  setup), activated + given `MediaMetadataCompat` (title/chapter, matching the
+  notification's own text) and a `PlaybackStateCompat` on every
+  `onStartCommand` — including the metadata-only refreshes described below, so
+  it stays current as chapters change, not just at session start.
+  **Design: `TTS._mediaState(playing)` (index.html) always calls
+  `startPlaybackService` — for BOTH play and pause — carrying a `playing`
+  boolean extra (`EXTRA_PLAYING`, defaults `true`), never `stopPlaybackService`
+  on a plain pause.** `onStartCommand` reads it and passes it through to
+  `buildNotification(title, text, playing)` (swaps the action button between
+  "Pause" targeting `ACTION_PAUSE` and "Play" targeting `ACTION_PLAY`, distinct
+  `PendingIntent` request codes 2/3 so `FLAG_UPDATE_CURRENT` can't collide them)
+  and `updateMediaSession(title, text, playing)` (sets `STATE_PLAYING` or
+  `STATE_PAUSED`, always advertising `ACTION_PLAY or ACTION_PAUSE or
+  ACTION_PLAY_PAUSE` so the system UI shows the right control regardless of
+  OEM). The CPU wake lock still tracks play/pause precisely
+  (`acquireCpuWakeLock()`/`releaseCpuWakeLock()` — nothing needs the CPU while
+  genuinely paused). **The service is now only ever really torn down by
+  `TTS._mediaStop()`**, wired into `App.signOut()` right after `TTS.stop()`
+  (`index.html`, with a comment noting `TTS.stop()` alone only pauses the
+  notification now) — there's no other "stop reading this book, for good"
+  action in the app today (`Reader.close()` exists but has no caller; the
+  mini-player model is that the loaded book persists across tabs), so signing
+  out is the one clear "done" signal.
   **Two independent ways a press reaches JS**, both ending at the same
   `PhonoLeafTtsPlugin.notifyMediaButton(action)` → a `"mediaButton"`
-  Capacitor event → `TTS._mediaSetup`'s listener → `TTS.stop()`/`start()`:
+  Capacitor event → `TTS._mediaSetup`'s listener → `TTS.stop()`/`TTS.start()`:
   (1) the system's own lock-screen/quick-settings/Bluetooth transport
   controls, which Android delivers to `MediaSessionCompat.Callback.onPause`/
   `onPlay` automatically once the session is active — no extra plumbing
-  needed for this path; (2) the notification's own pause **button** (inside
-  the expanded notification), which needed its own `PendingIntent` — built
-  as a **plain custom action targeting `PlaybackService` directly**
-  (`ACTION_PAUSE`, handled at the top of `onStartCommand`), deliberately
-  **NOT** `MediaButtonReceiver.buildMediaButtonPendingIntent` — that
-  official-looking helper needs a manifest `<receiver>` PLUS the service
-  itself calling `MediaButtonReceiver.handleIntent()` to route raw
-  `ACTION_MEDIA_BUTTON` broadcasts, and getting that exactly right without a
-  device to verify on felt like the wrong risk to take for one button; the
-  custom-action approach reuses the SAME `context.startService()` mechanism
-  `TTS._mediaMeta()` already relies on (proven not to re-arm the FGS
-  watchdog, per the crash-fix above), so it's fully understood rather than
-  assumed. `PhonoLeafTtsPlugin` exposes the JS-facing half via a
-  `WeakReference`-held companion instance (set in an added `load()`
-  override) — `PlaybackService` is a separate Android component with no
-  direct line to the Capacitor bridge otherwise.
+  needed for this path; (2) the notification's own play/pause **button**
+  (inside the expanded notification), which needed its own `PendingIntent` per
+  state — built as a **plain custom action targeting `PlaybackService`
+  directly** (`ACTION_PAUSE`/`ACTION_PLAY`, handled at the top of
+  `onStartCommand`, returning `START_NOT_STICKY` without touching the
+  foreground state), deliberately **NOT**
+  `MediaButtonReceiver.buildMediaButtonPendingIntent` — that official-looking
+  helper needs a manifest `<receiver>` PLUS the service itself calling
+  `MediaButtonReceiver.handleIntent()` to route raw `ACTION_MEDIA_BUTTON`
+  broadcasts, and getting that exactly right without a device to verify on
+  felt like the wrong risk to take for one button; the custom-action approach
+  reuses the SAME `context.startService()` mechanism `TTS._mediaMeta()`
+  already relies on (proven not to re-arm the FGS watchdog, per the crash-fix
+  above), so it's fully understood rather than assumed. `PhonoLeafTtsPlugin`
+  exposes the JS-facing half via a `WeakReference`-held companion instance
+  (set in an added `load()` override) — `PlaybackService` is a separate
+  Android component with no direct line to the Capacitor bridge otherwise.
   `MediaStyle` (`androidx.media.app.NotificationCompat.MediaStyle`, from the
-  new `androidx.media:media:1.7.0` dependency) is attached to the
-  notification purely for DISPLAY (tells the system to render it as a media
-  notification and back the lock-screen media widget with this session) —
-  independent of the button-routing above. `onDestroy` deactivates + releases
-  the session alongside the existing wake-lock cleanup.
-  Verified in a browser harness (mocked the native plugin): `_mediaSetup`
-  registers its listener idempotently; `_mediaState(true)` sends the correct
-  title/chapter; `_mediaMeta()` pushes an updated payload while active and is
-  a no-op while not (no stale post-stop updates); a simulated lock-screen
-  pause press correctly runs `TTS.stop()` end-to-end through to
-  `stopPlaybackService`; a simulated play press correctly runs `TTS.start()`.
-  **The native Kotlin/Gradle side is NOT device-verified** — no JDK/Android
-  SDK in this environment (confirmed brace/paren-balanced and reviewed
+  `androidx.media:media:1.7.0` dependency) is attached to the notification
+  purely for DISPLAY (tells the system to render it as a media notification
+  and back the lock-screen media widget with this session) — independent of
+  the button-routing above. `onDestroy` deactivates + releases the session
+  alongside the existing wake-lock cleanup.
+  Verified in a browser harness (mocked the native plugin, fresh tab — an
+  earlier run in a long-reused tab produced contradictory results that turned
+  out to be stale state from prior test scripts in that same tab, not a real
+  bug; confirmed by re-running clean): `_mediaState(true)` sends
+  `{playing:true}` via `startPlaybackService`; `_mediaState(false)` ALSO goes
+  through `startPlaybackService` with `{playing:false}` and never touches
+  `stopPlaybackService`; a simulated lock-screen play press while paused
+  correctly runs `TTS.start()`; a simulated pause press while playing
+  correctly runs `TTS.stop()`; `_mediaStop()` (the sign-out path) is the only
+  call that reaches `stopPlaybackService`. **The native Kotlin/Gradle side is
+  NOT device-verified** — no JDK/Android SDK in this environment (reviewed
   carefully against the documented `MediaSessionCompat`/`NotificationCompat.Action`
-  APIs, but review is not a substitute for a real build + device test).
+  APIs and confirmed brace/paren-balanced, but review is not a substitute for
+  a real build + device test). **Still not attempted**: showing playback
+  position/progress in the notification, and media-button handling via
+  Bluetooth hardware keys specifically (only verified via the transport-control
+  callback path, which should cover it, but wasn't tested against real
+  hardware).
 - **`window.speechSynthesis` is UNDEFINED in the native Android WebView.** The
   Web-Speech device-voice fallback (`_speakWeb`, `allVoices`,
   `VoiceModal.selectNamed`, `pickDefaultVoice`) must guard every
@@ -1217,10 +1242,13 @@ the working plan, not an exploration.
        `_cancelResync`, and `loadPageText`'s now-unused `vpage` parameter) was
        also deleted the same day — verified in a browser harness that
        `loadPageText()`, `start()`/`stop()`/`skipPage()` all still work
-       correctly with it gone. MediaSession lock-screen PAUSE control added
-       2026-07-22 (see the "Lock-screen media controls" behavior note) — NOT
-       device-verified. Still TODO: full resume-from-lock-screen (see that
-       note's scope boundary) and IndexedDB audio caching.
+       correctly with it gone. MediaSession lock-screen play/pause control
+       added 2026-07-22 (see the "Lock-screen media controls" behavior note)
+       — same-day upgrade from an initial pause-only cut after owner testing
+       showed the notification disappearing on pause with nothing left to
+       resume from; the service now survives a pause and both directions
+       round-trip. NOT device-verified (JS side verified in a browser
+       harness). Still TODO: IndexedDB audio caching.
      - Stage 5 — Play Console ($25 one-time), internal testing track, store
        listing + privacy policy (item 4), then production rollout. iOS
        (Apple $99/yr) after Android is proven.

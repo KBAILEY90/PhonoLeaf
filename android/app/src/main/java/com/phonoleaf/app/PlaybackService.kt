@@ -36,18 +36,20 @@ import androidx.core.app.ServiceCompat
  *     app if that doesn't happen within ~5s — the likely old crash)
  *   - the matching service type passed to startForeground (required API 29+)
  *
- * MediaSessionCompat (2026-07-22) adds a working lock-screen PAUSE button.
- * The notification/session only exist WHILE PLAYING — a pause in-app already
- * stops this service entirely (see index.html TTS._mediaState), which tears
- * the notification down. Pressing pause from the lock screen just triggers
- * that SAME path (via PhonoLeafTtsPlugin.notifyMediaButton -> a JS
- * "mediaButton" event -> TTS.stop()), so no service-lifecycle redesign was
- * needed to add it — the notification disappearing on pause is intentional,
- * consistent, unchanged behavior, not a regression. A PLAY-from-lock-screen
- * path is wired for completeness but is normally unreachable, since there's
- * no notification left to press once paused; resuming after a pause from the
- * lock screen (keeping the notification alive in a "paused" state) is a
- * separate, larger follow-up, not attempted here.
+ * MediaSessionCompat (2026-07-22) adds working lock-screen PLAY/PAUSE
+ * buttons. Unlike the first cut of this feature, the foreground service now
+ * SURVIVES a pause: index.html TTS._mediaState(playing) always calls
+ * startPlaybackService (never stopPlaybackService) for both play and pause,
+ * carrying a `playing` flag so this service can show "Playing"+Pause or
+ * "Paused"+Play without tearing anything down — a pause-only teardown left
+ * nothing to press "play" on afterward (owner-reported after the first
+ * version shipped). The CPU wake lock still tracks play/pause precisely
+ * (held only while actually playing — nothing to keep the CPU awake for
+ * while paused). The service is only ever genuinely stopped by
+ * TTS._mediaStop(), called from App.signOut() — there's no other "stop
+ * reading this book" action in the app today (Reader.close() exists but has
+ * no caller; minimizing keeps the mini-player, and playback is meant to
+ * persist across tabs), so signing out is the one clear "done" signal.
  */
 class PlaybackService : Service() {
 
@@ -56,15 +58,17 @@ class PlaybackService : Service() {
         const val NOTIF_ID = 1001
         const val EXTRA_TITLE = "title"
         const val EXTRA_TEXT = "text"
-        // The notification's OWN pause button targets this service directly
-        // (a plain custom action, not android.intent.action.MEDIA_BUTTON) —
-        // deliberately NOT MediaButtonReceiver: that path additionally needs a
+        const val EXTRA_PLAYING = "playing" // boolean, defaults true — see updateMediaSession
+        // The notification's OWN play/pause button targets this service
+        // directly (a plain custom action, not android.intent.action.MEDIA_BUTTON)
+        // — deliberately NOT MediaButtonReceiver: that path additionally needs a
         // manifest <receiver> and routing hardware/Bluetooth KeyEvents through
         // MediaButtonReceiver.handleIntent(), which isn't verifiable without a
         // device. Lock-screen/quick-settings transport controls DON'T need any
         // of that — Android delivers those to MediaSessionCompat.Callback
         // automatically once the session is active, which is all this uses.
         const val ACTION_PAUSE = "com.phonoleaf.app.ACTION_PAUSE_PLAYBACK"
+        const val ACTION_PLAY = "com.phonoleaf.app.ACTION_PLAY_PLAYBACK"
     }
 
     private var wakeLock: PowerManager.WakeLock? = null
@@ -103,20 +107,24 @@ class PlaybackService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (intent?.action == ACTION_PAUSE) {
-            // The notification's own pause-button tap (routed here directly,
-            // not via the media session — see ACTION_PAUSE's comment above).
-            // Same JS round-trip as the session callback either way.
-            try { PhonoLeafTtsPlugin.notifyMediaButton("pause") } catch (_: Throwable) {}
+        if (intent?.action == ACTION_PAUSE || intent?.action == ACTION_PLAY) {
+            // The notification's own play/pause button tap (routed here
+            // directly, not via the media session — see ACTION_PAUSE's
+            // comment above). Same JS round-trip as the session callback
+            // either way; JS decides what actually happens and calls back
+            // into _mediaState with the new state, updating this notification.
+            val action = if (intent.action == ACTION_PAUSE) "pause" else "play"
+            try { PhonoLeafTtsPlugin.notifyMediaButton(action) } catch (_: Throwable) {}
             return START_NOT_STICKY
         }
         // startForeground MUST be the first thing we do — the 5s watchdog is
         // already ticking. Read extras defensively; never do slow work before it.
         val title = intent?.getStringExtra(EXTRA_TITLE) ?: "PhonoLeaf"
         val text = intent?.getStringExtra(EXTRA_TEXT) ?: "Reading aloud"
+        val playing = intent?.getBooleanExtra(EXTRA_PLAYING, true) ?: true
         try {
             ServiceCompat.startForeground(
-                this, NOTIF_ID, buildNotification(title, text),
+                this, NOTIF_ID, buildNotification(title, text, playing),
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
                     ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK else 0
             )
@@ -132,19 +140,21 @@ class PlaybackService : Service() {
         }
         // Only after we're safely foreground do the rest (can't crash the watchdog now).
         try {
-            acquireCpuWakeLock()
-            updateMediaSession(title, text)
-            android.util.Log.i("PhonoLeafPlayback", "foreground service up, wakeLock=${wakeLock?.isHeld}")
+            if (playing) acquireCpuWakeLock() else releaseCpuWakeLock()
+            updateMediaSession(title, text, playing)
+            android.util.Log.i("PhonoLeafPlayback", "foreground service up ($title/$text, playing=$playing), wakeLock=${wakeLock?.isHeld}")
         } catch (e: Throwable) {
             android.util.Log.w("PhonoLeafPlayback", "post-foreground setup failed: ${e.message}")
         }
         return START_NOT_STICKY
     }
 
-    // Marks the session active + PLAYING with matching metadata. Called on
-    // every onStartCommand, including the metadata-only refreshes TTS._mediaMeta
-    // triggers as the chapter changes (see index.html) — cheap to repeat.
-    private fun updateMediaSession(title: String, text: String) {
+    // Marks the session active + PLAYING/PAUSED with matching metadata. Called
+    // on every onStartCommand, including the metadata-only refreshes
+    // TTS._mediaMeta triggers as the chapter changes while playing (see
+    // index.html) — cheap to repeat. Both actions are always advertised so
+    // the system UI shows the right one (or toggles) regardless of OEM.
+    private fun updateMediaSession(title: String, text: String, playing: Boolean) {
         val session = mediaSession ?: return
         session.setMetadata(
             MediaMetadataCompat.Builder()
@@ -154,8 +164,15 @@ class PlaybackService : Service() {
         )
         session.setPlaybackState(
             PlaybackStateCompat.Builder()
-                .setActions(PlaybackStateCompat.ACTION_PAUSE or PlaybackStateCompat.ACTION_PLAY_PAUSE)
-                .setState(PlaybackStateCompat.STATE_PLAYING, PlaybackStateCompat.PLAYBACK_POSITION_UNKNOWN, 1f)
+                .setActions(
+                    PlaybackStateCompat.ACTION_PLAY or
+                    PlaybackStateCompat.ACTION_PAUSE or
+                    PlaybackStateCompat.ACTION_PLAY_PAUSE
+                )
+                .setState(
+                    if (playing) PlaybackStateCompat.STATE_PLAYING else PlaybackStateCompat.STATE_PAUSED,
+                    PlaybackStateCompat.PLAYBACK_POSITION_UNKNOWN, 1f
+                )
                 .build()
         )
         session.isActive = true
@@ -187,6 +204,14 @@ class PlaybackService : Service() {
         }
     }
 
+    // Paused playback needs no CPU (nothing is generating/advancing) — release
+    // it so a long pause (service now stays alive across pauses, see the class
+    // doc) doesn't hold the CPU awake for no reason. Re-acquired by the next
+    // acquireCpuWakeLock() call when play resumes.
+    private fun releaseCpuWakeLock() {
+        try { if (wakeLock?.isHeld == true) wakeLock?.release() } catch (_: Throwable) {}
+    }
+
     override fun onDestroy() {
         try { if (wakeLock?.isHeld == true) wakeLock?.release() } catch (_: Throwable) {}
         wakeLock = null
@@ -195,7 +220,7 @@ class PlaybackService : Service() {
         super.onDestroy()
     }
 
-    private fun buildNotification(title: String, text: String): android.app.Notification {
+    private fun buildNotification(title: String, text: String, playing: Boolean): android.app.Notification {
         val launch = packageManager.getLaunchIntentForPackage(packageName)?.apply {
             addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
         }
@@ -203,10 +228,22 @@ class PlaybackService : Service() {
             this, 0, launch,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE // IMMUTABLE required API 31+
         ) else null
-        val pause = PendingIntent.getService(
-            this, 0, Intent(this, PlaybackService::class.java).setAction(ACTION_PAUSE),
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
+        // Distinct request codes (2, 3) so the pause- and play-flavoured
+        // PendingIntents never collide with each other or with `tap` (0) when
+        // FLAG_UPDATE_CURRENT reuses a cached PendingIntent by (requestCode, action).
+        val toggleAction = if (playing) {
+            val pi = PendingIntent.getService(
+                this, 2, Intent(this, PlaybackService::class.java).setAction(ACTION_PAUSE),
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            NotificationCompat.Action(android.R.drawable.ic_media_pause, "Pause", pi)
+        } else {
+            val pi = PendingIntent.getService(
+                this, 3, Intent(this, PlaybackService::class.java).setAction(ACTION_PLAY),
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            NotificationCompat.Action(android.R.drawable.ic_media_play, "Play", pi)
+        }
         val builder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(title)
             .setContentText(text)
@@ -217,7 +254,7 @@ class PlaybackService : Service() {
             .setPriority(NotificationCompat.PRIORITY_LOW) // quiet, no sound/vibration
             .setCategory(NotificationCompat.CATEGORY_TRANSPORT)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-            .addAction(NotificationCompat.Action(android.R.drawable.ic_media_pause, "Pause", pause))
+            .addAction(toggleAction)
         // MediaStyle: purely cosmetic/display (tells the system to render this
         // as a media notification and back the lock-screen media widget with
         // this session) — independent of how button taps are routed above.

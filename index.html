@@ -2104,6 +2104,8 @@ const App = {
     State.token = null;
     try { localStorage.removeItem('pl_auth'); } catch (_) {}
     TTS.stop();
+    TTS._mediaStop(); // TTS.stop() only pauses the notification now — signing
+                       // out is a real "done" signal, so tear it down for real.
     Nav.hideBar();
     showView('signin');
   },
@@ -3282,7 +3284,7 @@ const TTS = {
     clearTimeout(this._gapT);
     window.speechSynthesis?.cancel();
     this._stopAudio();
-    this._mediaState(false); // releases the plugin's foreground service
+    this._mediaState(false); // updates lock-screen to "Paused" — service stays alive
     const btn = document.getElementById('play-btn');
     if (btn) btn.classList.remove('playing');
     Stats.stopTick();
@@ -3534,13 +3536,10 @@ const TTS = {
     const chapter = (document.getElementById('rs-chapter')?.textContent || '').split('  ·  ')[0].trim();
     return { title, text: chapter || 'Reading aloud' };
   },
-  // Wires the lock-screen PAUSE button (PlaybackService's MediaSessionCompat,
-  // 2026-07-22) back to TTS. The notification/session only exist WHILE
-  // playing (stopPlaybackService tears them down on every pause, same as
-  // before this — see _mediaState below), so PLAY only needs to be handled
-  // for completeness; there's normally no notification left to press it on.
-  // Registered once — addListener again on every start() would stack duplicate
-  // handlers and double-stop on a single lock-screen press.
+  // Wires the lock-screen PLAY/PAUSE buttons (PlaybackService's
+  // MediaSessionCompat, 2026-07-22) back to TTS. Registered once — calling
+  // addListener again on every start() would stack duplicate handlers and
+  // double-toggle on a single lock-screen press.
   _mediaListenerBound: false,
   _mediaSetup() {
     if (this._mediaListenerBound) return;
@@ -3555,18 +3554,34 @@ const TTS = {
   // advances — startPlaybackService on an ALREADY-RUNNING service just
   // re-fires onStartCommand with fresh extras (context.startService, not
   // startForegroundService, so this never re-arms the 5s FGS watchdog — see
-  // the crash-fix note). No-ops while not playing (nothing to update).
+  // the crash-fix note). No-ops while not playing (nothing to update — while
+  // paused the notification already shows the right, unchanging state).
   _mediaMeta() {
     if (!this.active) return;
     const nat = this._nativeTts(); if (!nat) return;
-    try { nat.startPlaybackService(this._mediaPayload())?.catch?.(() => {}); } catch (_) {}
+    try { nat.startPlaybackService(Object.assign(this._mediaPayload(), { playing: true }))?.catch?.(() => {}); } catch (_) {}
   },
+  // Play AND pause both keep the foreground service (and its notification)
+  // alive — only startPlaybackService is ever called here, carrying a
+  // `playing` flag so the native side shows "Playing"+Pause-button or
+  // "Paused"+Play-button without tearing anything down. This is what makes
+  // the lock-screen control genuinely round-trip (press pause there, later
+  // press play there, and it resumes) — the earlier version called
+  // stopPlaybackService() on every pause, which killed the notification
+  // immediately, leaving nothing to press "play" on (owner-reported).
+  // The service is only ever actually stopped by _mediaStop() (sign-out) —
+  // there's currently no in-app "stop reading this book" action distinct
+  // from pause, matching the existing mini-player model where the loaded
+  // book persists across tabs until the user signs out or kills the app.
   _mediaState(playing) {
     const nat = this._nativeTts(); if (!nat) return; // web build: nothing to do
-    try {
-      if (playing) nat.startPlaybackService(this._mediaPayload())?.catch?.(() => {});
-      else nat.stopPlaybackService()?.catch?.(() => {});
-    } catch (_) { /* background playback is best-effort; never break reading */ }
+    try { nat.startPlaybackService(Object.assign(this._mediaPayload(), { playing }))?.catch?.(() => {}); } catch (_) {}
+  },
+  // The ONLY real teardown path — called from App.signOut(). Never called on
+  // a plain pause (see _mediaState above).
+  _mediaStop() {
+    const nat = this._nativeTts(); if (!nat) return;
+    try { nat.stopPlaybackService()?.catch?.(() => {}); } catch (_) {}
   },
   // Resolves once the plugin has told us which model is actually loaded. We
   // never GUESS the model: the voice id spaces differ per model, so guessing
