@@ -28,15 +28,20 @@ re-check before buying. `.com` recommended.
 
 ### Steps once the domain is bought
 
-1. Add a `CNAME` file at the repo root containing just the bare domain
-   (e.g. `phonoleaf.com`). GitHub Pages reads this.
-2. DNS at the registrar:
-   - Apex `A` records → `185.199.108.153`, `185.199.109.153`,
-     `185.199.110.153`, `185.199.111.153`
+1. **Set the custom domain in GitHub FIRST, before touching DNS.** GitHub's docs
+   are explicit that adding the domain to GitHub before pointing DNS at it
+   prevents a domain-takeover window. Repo → Settings → Pages → Custom domain.
+   (This writes the `CNAME` file at the repo root for you — just the bare
+   domain, e.g. `phonoleaf.com`.)
+2. DNS at the registrar (values confirmed against GitHub's docs 2026-07-26):
+   - Apex `A` → `185.199.108.153`, `185.199.109.153`, `185.199.110.153`,
+     `185.199.111.153`
+   - Apex `AAAA` (optional, IPv6) → `2606:50c0:8000::153`,
+     `2606:50c0:8001::153`, `2606:50c0:8002::153`, `2606:50c0:8003::153`
    - `CNAME` for `www` → `kbailey90.github.io`
-   - Confirm current values against GitHub's docs at setup time.
-3. GitHub repo → Settings → Pages → set the custom domain, wait for the cert,
-   then enable **Enforce HTTPS**.
+   - DNS can take up to 24 h to propagate.
+3. Back in repo → Settings → Pages, wait for the certificate to issue, then
+   enable **Enforce HTTPS**.
 4. Google Search Console → add a **Domain property** → add the TXT record it
    gives you. **Verify while signed in as the Cloud project Owner** — the docs
    flag this as critical; verifying from a different account means the OAuth
@@ -134,19 +139,80 @@ matches what's submitted.
 
 ---
 
-## Owner checklist
+## OWNER CHECKLIST
 
-- [ ] Re-check availability and buy the domain
-- [ ] `CNAME` + DNS + GitHub Pages custom domain + Enforce HTTPS
-- [ ] Search Console Domain property, verified **as the Cloud project Owner**
-- [ ] Consent screen: authorized domain, homepage/privacy/terms URLs, app logo
-- [ ] Web OAuth client: add the new JS origin (keep the old one)
-- [ ] Repoint the two hardcoded URLs in `privacy.html`
-- [ ] Record the demo video
-- [ ] Submit for verification and record what Google says about CASA
+Two decisions first — they unblock everything else and one of them can save
+you two weeks.
 
-## Not blockers, but Play Store will need them later
+### Decisions
 
-- A **release keystore** (none exists; `android/app/build.gradle` has no
-  `signingConfig` and is still `versionCode 1`)
-- A **third Android OAuth client** for the release keystore's SHA-1
+- [ ] **Which domain.** `phonoleaf.com` recommended. Check availability at
+      [Namecheap](https://www.namecheap.com/domains/registration/results/?domain=phonoleaf.com),
+      [Cloudflare Registrar](https://dash.cloudflare.com/?to=/:account/domains/register)
+      (at-cost pricing, no markup), or
+      [Porkbun](https://porkbun.com/checkout/search?q=phonoleaf.com).
+- [ ] **Play Console account type: personal or organization?** New **personal**
+      accounts must run a closed test with **12 testers opted in continuously
+      for 14 days** before they can ship to production.
+      **Organization accounts registered to a legal business entity are exempt
+      entirely.** If you're likely to incorporate anyway, doing it before you
+      register removes a hard 14-day gate.
+      [Requirement details](https://support.google.com/googleplay/android-developer/answer/14151465)
+
+### Verification track — in this order
+
+- [ ] **1. Buy the domain** (see links above).
+- [ ] **2. Add it to GitHub Pages BEFORE configuring DNS** (prevents a
+      takeover window):
+      [repo Pages settings](https://github.com/KBAILEY90/PhonoLeaf/settings/pages)
+- [ ] **3. Add the DNS records** at your registrar — exact values in the
+      "Steps once the domain is bought" section above.
+      [GitHub's DNS reference](https://docs.github.com/en/pages/configuring-a-custom-domain-for-your-github-pages-site/managing-a-custom-domain-for-your-github-pages-site)
+- [ ] **4. Enable Enforce HTTPS** once the cert issues (same Pages settings page).
+- [ ] **5. Verify the domain in Search Console** as a **Domain property**
+      (DNS TXT). ⚠️ Do this **while signed in as the Cloud project Owner** —
+      Google's docs flag that verifying from another account means the OAuth
+      system won't recognise the ownership.
+      [Search Console](https://search.google.com/search-console)
+- [ ] **6. Update the OAuth consent screen**: add the domain under Authorized
+      domains; set Application home page → `https://<domain>/home.html`,
+      Privacy policy → `https://<domain>/privacy.html`, Terms →
+      `https://<domain>/terms.html`; upload the app logo.
+      [Consent screen / branding](https://console.cloud.google.com/auth/branding?project=phonoleaf)
+      (if that URL has moved: Cloud Console → APIs & Services → OAuth consent screen)
+- [ ] **7. Add the new JavaScript origin** to the **Web** OAuth client:
+      `https://<domain>`. **Keep `https://kbailey90.github.io`** so existing
+      web installs keep working.
+      [Credentials](https://console.cloud.google.com/apis/credentials?project=phonoleaf)
+- [ ] **8. Tell me the domain** so I can repoint the two hardcoded github.io
+      URLs in `privacy.html`.
+- [ ] **9. Record the demo video** — script in the section above. Record on the
+      new domain, keep the address bar visible.
+- [ ] **10. Submit for verification**, then tell me what Google says about
+      CASA so it can be recorded here.
+      [How to submit](https://support.google.com/cloud/answer/13463073)
+
+### Play Store track — can run in parallel
+
+- [ ] **Register the Play Console account** ($25 one-time).
+      [Sign up](https://play.google.com/console/signup)
+- [ ] If you went **personal**: start recruiting the 12 testers early — the
+      14-day clock is the gate, and it runs independently of everything above.
+- [ ] **Create the release keystore.** Tell me when you're ready and I'll give
+      you the exact `keytool` command plus the Gradle signing config — the
+      keystore file and passwords must never be committed. (Today
+      `android/app/build.gradle` has **no** `signingConfig` and is still
+      `versionCode 1`, so no release build is possible yet.)
+- [ ] **Create a third Android OAuth client** for the release keystore's SHA-1
+      (same Credentials page as step 7). Reminder from CLAUDE.md: tick
+      **"Enable custom URI scheme"** under Advanced Settings — it's off by
+      default and its absence has already cost one debugging session.
+
+### Still owed from earlier work
+
+- [ ] **Confirm sign-out → sign-in still works on device.** The refresh token
+      moved to Android Keystore storage and that change was never explicitly
+      device-verified (it's likely fine — you've been signing in throughout —
+      but a deliberate sign-out/sign-in round trip would close it out).
+- [ ] Optional: get the ToS reviewed by an actual lawyer before public launch,
+      and decide a jurisdiction (currently left generic).
