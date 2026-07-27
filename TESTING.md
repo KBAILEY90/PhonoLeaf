@@ -10,7 +10,7 @@ when we actually publish (and Apple's $99/year if/when we do iOS).
 ## 1. Testing the web app (works today)
 
 ### On your computer
-1. Open https://kbailey90.github.io/phonoleaf/ in **Chrome**.
+1. Open https://phonoleaf.com/ in **Chrome**.
 2. Check the build: **Settings tab → footer** shows a 7-character build code
    (e.g. `4d29b8d`). Compare it against the latest commit on
    https://github.com/KBAILEY90/PhonoLeaf/commits/main — if it doesn't match,

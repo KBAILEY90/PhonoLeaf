@@ -9,9 +9,17 @@ aloud. It connects to Google Drive (read-only), lists epub files from a folder,
 renders them with epub.js, and reads the text using the browser's Web Speech
 (TTS) engine.
 
-- Live: https://kbailey90.github.io/PhonoLeaf/ (case-sensitive — GitHub Pages
-  paths match the repo name's exact casing; the lowercase `/phonoleaf/` 404s.
-  Confirmed via `gh api repos/KBAILEY90/PhonoLeaf/pages` 2026-07-22.)
+- Live: **https://phonoleaf.com/** — custom domain bought 2026-07-26 and set via
+  the root `CNAME` file, because `github.io` **cannot** be used for Google OAuth
+  verification (it needs a DNS-level TXT record; see `VERIFICATION.md`). Pages
+  now serves at the domain ROOT, not the `/PhonoLeaf/` repo path — harmless
+  because `manifest.json`'s `start_url` (`./index.html`) and the service-worker
+  registration (`./sw.js`) are both RELATIVE, so PWA scope follows the new path
+  automatically. The old `https://kbailey90.github.io/PhonoLeaf/` (case-
+  sensitive; lowercase 404s) redirects here once the domain is live, and its
+  JS origin must STAY in the Web OAuth client so existing installs keep working.
+  NB browser storage is per-origin: web users from the old URL will look
+  signed-out and lose local progress/stats. Native is unaffected.
 - Repo: https://github.com/KBAILEY90/PhonoLeaf
 - Status: **production-bound (decided 2026-07-03)** — no longer a personal-use
   app; the owner intends to take it to production "very soon". Treat changes

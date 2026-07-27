@@ -54,10 +54,14 @@ re-check before buying. `.com` recommended.
    **Keep `https://kbailey90.github.io` in the list** until every existing
    install has migrated, or web sign-in breaks for them. (Per CLAUDE.md the
    origin is host-only, so the old one keeps working today.)
-7. Repo cleanup: `privacy.html` hardcodes
-   `https://kbailey90.github.io/PhonoLeaf/` in two places (brand link + footer)
-   — repoint both. `home.html`, by contrast, uses relative links throughout and
-   needs no change.
+7. Repo cleanup — **DONE 2026-07-26.** `privacy.html` **and `terms.html`** each
+   hardcoded `https://kbailey90.github.io/PhonoLeaf/` twice (brand link +
+   footer); all four now point at `https://phonoleaf.com/home.html`. (An
+   earlier note in this file said privacy.html only — that was wrong.) A stale
+   lowercase URL in `TESTING.md` was fixed too. `home.html` uses relative links
+   throughout and needed no change. The staged copies under
+   `android/app/src/main/assets/public/` are generated and untracked — they
+   refresh on the next `npm run sync`.
 
 **Note:** browser storage is per-origin, so users on the old URL will appear
 signed-out and lose local progress/stats on the new domain. The native app is
@@ -161,10 +165,17 @@ you two weeks.
 
 ### Verification track — in this order
 
-- [ ] **1. Buy the domain** (see links above).
-- [ ] **2. Add it to GitHub Pages BEFORE configuring DNS** (prevents a
-      takeover window):
+- [x] **1. Buy the domain** — `phonoleaf.com`, bought 2026-07-26.
+- [x] **1b.** Root `CNAME` file committed, and all hardcoded github.io URLs in
+      `privacy.html` / `terms.html` / `TESTING.md` repointed. (Me.)
+- [ ] **2. Set the custom domain in GitHub Pages BEFORE configuring DNS**
+      (prevents a takeover window). The committed `CNAME` ships in the deploy
+      artifact — the workflow uploads `path: '.'` — but set it in the UI too,
+      since that's what authoritatively claims the domain for this repo:
       [repo Pages settings](https://github.com/KBAILEY90/PhonoLeaf/settings/pages)
+      ⚠️ Once this is set, `kbailey90.github.io/PhonoLeaf/` redirects to
+      `phonoleaf.com`, so the site is unreachable until DNS resolves. Do step 3
+      immediately after.
 - [ ] **3. Add the DNS records** at your registrar — exact values in the
       "Steps once the domain is bought" section above.
       [GitHub's DNS reference](https://docs.github.com/en/pages/configuring-a-custom-domain-for-your-github-pages-site/managing-a-custom-domain-for-your-github-pages-site)
@@ -184,8 +195,9 @@ you two weeks.
       `https://<domain>`. **Keep `https://kbailey90.github.io`** so existing
       web installs keep working.
       [Credentials](https://console.cloud.google.com/apis/credentials?project=phonoleaf)
-- [ ] **8. Tell me the domain** so I can repoint the two hardcoded github.io
-      URLs in `privacy.html`.
+- [ ] **8. Confirm the live site loads at `https://phonoleaf.com/`** and that
+      sign-in still works there (the Web OAuth client needs step 7 done first,
+      or sign-in will fail with an origin error).
 - [ ] **9. Record the demo video** — script in the section above. Record on the
       new domain, keep the address bar visible.
 - [ ] **10. Submit for verification**, then tell me what Google says about
