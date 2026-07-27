@@ -1577,6 +1577,37 @@ the working plan, not an exploration.
    screen for verification to learn the real tier/requirement from Google** (see
    the behavior note for links + caveats). Do this early — verification is not
    instant and gates public launch.
+   **Researched 2026-07-26 — see `VERIFICATION.md` for the full plan. Two
+   blockers found, one of which is a hard stop:**
+   - **`kbailey90.github.io` CANNOT be verified — a custom domain is required.**
+     Google's domain-verification doc requires authorized domains be verified as
+     a **Domain Property (DNS-level)** in Search Console, i.e. a **TXT record in
+     the domain's DNS**, which is impossible on `github.io` (no DNS control).
+     Developers independently report the review team rejecting github.io as not
+     first-party. Homepage AND privacy policy must both live on the owned
+     domain. This has the longest lead time of anything remaining (buy → DNS →
+     Pages cert → Search Console → consent screen → add the new JS origin to
+     the Web OAuth client, keeping the old one so existing installs keep
+     working). NB browser storage is per-origin, so web users on the old URL
+     will look signed-out and lose local progress on the new domain; native is
+     unaffected.
+   - **The app root is a sign-in wall**, which fails Google's "publicly
+     accessible … clearly demonstrate[s] relevance" homepage rule — a standard
+     rejection cause. FIXED: added **`home.html`**, a real public landing page
+     (what it does, how it works, an explicit "How PhonoLeaf uses your Google
+     Drive data" section, links to privacy/terms). Web-only by design — NOT in
+     `stage-www.js`'s `FILES` (no marketing page in the APK) and not precached
+     by `sw.js`, matching how privacy/terms are already handled. Uses relative
+     links throughout so the domain move needs no edits to it; `privacy.html`
+     by contrast hardcodes the github.io URL twice and will need repointing.
+     A nicer root-landing/`/app/` split was deliberately NOT done — it would
+     touch the SW cache scope, the manifest `start_url` and the native staging
+     for zero verification benefit, since reviewers use the URL you supply.
+   - CASA remains genuinely unresolved: the rule keys on "ability to access data
+     from or through a third-party server" (PhonoLeaf has none), but the
+     enumerated exemptions are personal-use / dev-testing / service-owned-data /
+     Workspace-internal / domain-wide-install — **"public app with no backend"
+     is not among them**. Submitting is still the only authoritative answer.
 3. **Voice: single Kokoro engine, shipped natively — DECIDED 2026-07-04**
    (supersedes the three-tier system, which shipped 2026-07-03 and was torn
    out the next day; Diamond/Google Cloud TTS and the testing tier-dropdown

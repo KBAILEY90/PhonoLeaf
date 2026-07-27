@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#3E8E6B">
+<meta name="description" content="PhonoLeaf reads the epubs in your Google Drive aloud, with a natural on-device voice, background playback and lock-screen controls.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%233E8E6B'/%3E%3Cpath d='M50 24 C68 38 68 66 50 82 C32 66 32 38 50 24 Z' fill='%23F4F1E8'/%3E%3Cpath d='M50 82 L50 90' stroke='%23F4F1E8' stroke-width='3.2' stroke-linecap='round'/%3E%3Cpath d='M35 53 Q40 42 45 53 T55 53 T65 53' fill='none' stroke='%233E8E6B' stroke-width='3.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<title>PhonoLeaf — your Google Drive epubs, read aloud</title>
+<style>
+  :root {
+    --bg:        #F4F1E8;
+    --surface:   #FBF9F2;
+    --card:      #FFFFFF;
+    --accent:    #3E8E6B;
+    --accent2:   #C98A3C;
+    --text:      #1E2A22;
+    --text-dim:  #6E7A70;
+    --line:      #E6E1D3;
+    --font-ui:   'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg:#0F1310; --surface:#161B14; --card:#1D241B;
+      --accent:#6FC598; --accent2:#E0A857;
+      --text:#E8ECE1; --text-dim:#97A290; --line:#2A3225;
+    }
+  }
+  @font-face {
+    font-family:'Manrope'; font-style:normal; font-weight:100 900;
+    font-display:swap; src:url('fonts/manrope.woff2') format('woff2');
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 400 1rem/1.65 var(--font-ui);
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 2.5rem 1.5rem 5rem; }
+  .brand { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 3rem; text-decoration: none; color: var(--text); }
+  .brand svg { flex-shrink: 0; }
+  .brand span { font-weight: 800; font-size: 1.15rem; letter-spacing: -0.01em; }
+
+  .hero { text-align: center; margin-bottom: 3.5rem; }
+  .hero .mark { margin-bottom: 1.2rem; }
+  h1 { font-size: 2.1rem; font-weight: 800; margin: 0 0 0.6rem; letter-spacing: -0.02em; line-height: 1.2; }
+  .tagline { color: var(--accent2); font-weight: 700; font-size: 0.95rem; letter-spacing: 0.02em; margin-bottom: 1.1rem; }
+  .lede { color: var(--text-dim); font-size: 1.05rem; max-width: 30rem; margin: 0 auto 1.8rem; }
+  .cta {
+    display: inline-block; background: var(--accent); color: #fff; text-decoration: none;
+    font-weight: 700; font-size: 0.98rem; padding: 0.8rem 1.7rem; border-radius: 999px;
+  }
+  .cta-note { display: block; color: var(--text-dim); font-size: 0.82rem; margin-top: 0.8rem; }
+
+  h2 { font-size: 1.2rem; font-weight: 700; margin: 2.8rem 0 0.9rem; color: var(--accent); }
+  p { margin: 0 0 1rem; }
+  a { color: var(--accent); }
+
+  .steps { list-style: none; padding: 0; margin: 0 0 1rem; counter-reset: s; }
+  .steps li {
+    position: relative; padding-left: 2.6rem; margin-bottom: 1.1rem; counter-increment: s;
+  }
+  .steps li::before {
+    content: counter(s); position: absolute; left: 0; top: 0.05rem;
+    width: 1.75rem; height: 1.75rem; border-radius: 50%;
+    background: var(--accent); color: #fff;
+    font-size: 0.85rem; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .steps b { display: block; }
+  .steps span { color: var(--text-dim); font-size: 0.93rem; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.9rem; margin: 1.2rem 0 1rem; }
+  .feat {
+    background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 1.1rem 1.2rem;
+  }
+  .feat b { display: block; margin-bottom: 0.25rem; font-size: 0.95rem; }
+  .feat span { color: var(--text-dim); font-size: 0.88rem; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+    padding: 1.2rem 1.4rem; margin: 1.4rem 0; font-size: 0.92rem;
+  }
+  .card b { display: block; margin-bottom: 0.3rem; }
+  ul { margin: 0 0 1rem; padding-left: 1.3rem; }
+  li { margin-bottom: 0.45rem; }
+  code {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 5px;
+    padding: 0.08rem 0.35rem; font-size: 0.88em;
+  }
+  .foot { margin-top: 3.5rem; padding-top: 1.5rem; border-top: 1px solid var(--line); color: var(--text-dim); font-size: 0.82rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <a class="brand" href="home.html">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="28" height="28" aria-hidden="true"><rect width="100" height="100" rx="22" fill="#3E8E6B"/><path d="M50 24 C68 38 68 66 50 82 C32 66 32 38 50 24 Z" fill="#F4F1E8"/><path d="M50 82 L50 90" stroke="#F4F1E8" stroke-width="3.2" stroke-linecap="round"/><path d="M35 53 Q40 42 45 53 T55 53 T65 53" fill="none" stroke="#3E8E6B" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <span>PhonoLeaf</span>
+  </a>
+
+  <div class="hero">
+    <div class="mark">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="76" height="76" aria-hidden="true"><rect width="100" height="100" rx="22" fill="#3E8E6B"/><path d="M50 24 C68 38 68 66 50 82 C32 66 32 38 50 24 Z" fill="#F4F1E8"/><path d="M50 82 L50 90" stroke="#F4F1E8" stroke-width="3.2" stroke-linecap="round"/><path d="M35 53 Q40 42 45 53 T55 53 T65 53" fill="none" stroke="#3E8E6B" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+    <h1>Your Google Drive epubs, read aloud</h1>
+    <div class="tagline">A voice for every page</div>
+    <p class="lede">
+      PhonoLeaf turns the ebooks already sitting in your Google Drive into an
+      audiobook library. Connect a folder once, and every epub in it becomes
+      something you can listen to — on a walk, doing dishes, or with the screen off.
+    </p>
+    <a class="cta" href="index.html">Open PhonoLeaf</a>
+    <span class="cta-note">Free · Sign in with Google · Nothing to install</span>
+  </div>
+
+  <h2>How it works</h2>
+  <ol class="steps">
+    <li>
+      <b>Sign in with Google</b>
+      <span>Used only to reach the ebook files in your own Drive. PhonoLeaf has no separate account to create.</span>
+    </li>
+    <li>
+      <b>Choose the Drive folder your ebooks live in</b>
+      <span>Browse your Drive inside the app and pick a folder. Add more epubs to it later and they simply appear — no re-picking.</span>
+    </li>
+    <li>
+      <b>Press play</b>
+      <span>Pick a book and listen. PhonoLeaf remembers exactly where you stopped, in every book.</span>
+    </li>
+  </ol>
+
+  <h2>What it does</h2>
+  <div class="grid">
+    <div class="feat">
+      <b>Natural speech</b>
+      <span>A neural voice that runs entirely on your device, with a choice of accents and voices. Falls back to your system voice where that isn't available.</span>
+    </div>
+    <div class="feat">
+      <b>Keeps reading with the screen off</b>
+      <span>Playback continues when your phone is locked, with play/pause, page and chapter controls on the lock screen.</span>
+    </div>
+    <div class="feat">
+      <b>Picks up where you left off</b>
+      <span>Your position is saved per book, down to the paragraph — across pauses, chapters and restarts.</span>
+    </div>
+    <div class="feat">
+      <b>Your library, as a library</b>
+      <span>Real cover art pulled from each epub, search, chapter jumping and adjustable reading speed from 0.5× to 2×.</span>
+    </div>
+    <div class="feat">
+      <b>Listening stats</b>
+      <span>Hours listened, a day streak, and a breakdown by author, book, genre or book length.</span>
+    </div>
+    <div class="feat">
+      <b>Light and dark</b>
+      <span>A warm paper theme by day, a dim forest one by night, or follow your system setting.</span>
+    </div>
+  </div>
+
+  <h2>How PhonoLeaf uses your Google Drive data</h2>
+  <p>
+    PhonoLeaf asks for <strong>read-only</strong> access to Google Drive (the
+    <code>drive.readonly</code> scope). It uses that access for exactly one purpose:
+    to list the epub files in the folder you choose and download them so they can be
+    rendered and read aloud.
+  </p>
+  <div class="card">
+    <b>What PhonoLeaf never does</b>
+    <ul>
+      <li>Never creates, edits, moves or deletes anything in your Drive — the access it holds is read-only.</li>
+      <li>Never sends your files or your Drive data to any server of ours. <strong>PhonoLeaf has no backend</strong>: your books travel from Google straight to your device.</li>
+      <li>Never uses your data for advertising, and never sells or transfers it.</li>
+      <li>Never reads anything outside the folder you connect, in normal use.</li>
+    </ul>
+  </div>
+  <p>
+    Your reading position, listening stats and settings are stored locally on your
+    own device, not in an account. Signing out revokes PhonoLeaf's access to your
+    Google account. Full detail is in the
+    <a href="privacy.html">Privacy Policy</a>.
+  </p>
+
+  <h2>Where you can use it</h2>
+  <p>
+    PhonoLeaf runs in the browser on phones, tablets and desktops, and can be
+    installed to your home screen as an app. An Android build is currently in
+    private testing.
+  </p>
+
+  <div class="foot">
+    <a href="privacy.html">Privacy Policy</a> ·
+    <a href="terms.html">Terms of Service</a> ·
+    <a href="index.html">Open the app</a><br><br>
+    Contact: <a href="mailto:baileyke90@gmail.com">baileyke90@gmail.com</a>
+  </div>
+
+</div>
+</body>
+</html>
