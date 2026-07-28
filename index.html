@@ -2865,6 +2865,18 @@ const Reader = {
     try {
       const book = State.currentBook;
       if (!book || !State.rendition) return;
+      // If background reading holds a position, the VISIBLE reader is stale —
+      // it is frozen wherever the screen locked, while the audio has moved on
+      // (possibly by many chapters). Saving the visible location here would
+      // roll progress back to the lock point. That is exactly the reported
+      // bug: this handler runs on every visibilitychange→hidden and on
+      // pagehide, and during a long locked session the screen lights and
+      // darkens repeatedly (the lock-screen media widget alone does it), so
+      // the good background position was being clobbered over and over.
+      // Flush the BACKGROUND position instead — _bgSaveProgress already keeps
+      // it current per chunk, and re-running it here makes the final write
+      // before an app kill the audio's true position.
+      if (TTS._bgSection) { TTS._bgSaveProgress(); return; }
       const loc = State.rendition.currentLocation();
       const cfi = loc?.start?.cfi;
       if (!cfi) return;

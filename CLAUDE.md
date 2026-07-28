@@ -1564,6 +1564,27 @@ Google login); verify by inspection + the owner testing on device.
     audio had actually gotten. `_bgSaveProgress` builds a CFI via **`_bgCfi()`**
     (`section.cfiFromRange()` on a Range over the current chunk's `node`) and
     writes it into `State.progress[bookId]` like a normal page turn would.
+  - **`Reader._persistPosition()` must NOT run while background reading holds a
+    position — it was silently rolling progress back for a whole listening
+    session (owner-reported 2026-07-28: "listened ~40 min locked, reopened, was
+    brought back many pages").** That handler saves
+    `State.rendition.currentLocation()` — the VISIBLE reader — which during
+    background reading is frozen wherever the screen locked, while the audio may
+    be chapters ahead. It is wired to `visibilitychange`→hidden, `pagehide` AND
+    `Reader.close()`, and a locked phone lights and darkens repeatedly over a
+    long session (the lock-screen media widget alone does it), so every one of
+    those fired an unconditional overwrite of the good per-chunk background CFI
+    with the stale lock-point one. `_bgSaveProgress` was working perfectly the
+    whole time; its writes were just being clobbered afterwards. Fixed by
+    branching on `TTS._bgSection` (non-null ⇔ a background position exists, and
+    it is by definition more current than the frozen visible one): that path now
+    calls `TTS._bgSaveProgress()` and returns, so the last write before an app
+    kill is the audio's true position. `_bgSection` is the right guard because
+    `skipPage()` clears it on any real visual turn/seek — including via
+    `_bgResync()` on a genuine unlock — so a user who has returned to normal
+    foreground reading is unaffected. Verified in a harness: the background CFI
+    survives ten simulated screen blips and a `Reader.close()`, while a
+    pure-foreground session still saves the visible location as before.
   - **On unlock** (`visibilitychange`→visible) **`_bgResync()`** brings the
     visible reader to the EXACT chunk the audio reached (same CFI as
     `_bgSaveProgress`, not just the chapter's first page) via
