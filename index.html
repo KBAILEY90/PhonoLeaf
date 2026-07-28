@@ -30,7 +30,7 @@
     media-src 'self' blob:;
     worker-src 'self' blob:;
     frame-src 'self' https://accounts.google.com;
-    connect-src 'self' https://www.googleapis.com https://oauth2.googleapis.com https://accounts.google.com https://openlibrary.org https://cdn.jsdelivr.net https://huggingface.co https://hf.co https://*.hf.co https://*.huggingface.co;
+    connect-src 'self' blob: https://www.googleapis.com https://oauth2.googleapis.com https://accounts.google.com https://openlibrary.org https://cdn.jsdelivr.net https://huggingface.co https://hf.co https://*.hf.co https://*.huggingface.co;
     object-src 'none';
     base-uri 'self';
   ">
@@ -1029,9 +1029,8 @@
       reading never stops &mdash; it just sounds more robotic.
     </p>
     <p class="confirm-msg" style="font-size:0.85rem">
-      <b>Retry</b> re-tests this device, which is worth doing if it was busy the
-      first time. The installable Android app is noticeably faster at this than
-      the website.
+      <b>Retry</b> re-tests this device, which is worth doing if it happened to
+      be busy the first time.
     </p>
     <div class="confirm-btns">
       <button class="confirm-cancel" onclick="VoiceInfo.close()">Close</button>

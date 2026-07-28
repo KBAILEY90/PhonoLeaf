@@ -11,7 +11,7 @@ const out = path.join(root, 'www');
 fs.rmSync(out, { recursive: true, force: true });
 fs.mkdirSync(out, { recursive: true });
 
-const FILES = ['index.html', 'manifest.json', 'sw.js', 'privacy.html', 'terms.html'];
+const FILES = ['index.html', 'manifest.json', 'sw.js', 'home.html', 'privacy.html', 'terms.html'];
 const DIRS = ['fonts', 'vendor'];
 
 for (const f of FILES) fs.copyFileSync(path.join(root, f), path.join(out, f));
