@@ -1820,16 +1820,43 @@ the working plan, not an exploration.
      It would also require ad-network tracking, undermining the "nothing leaves
      your device" position that is simultaneously the main marketing line and
      an asset in the Google review. Subscription-only.
-6. **In-app Feedback + Report-a-bug forms — DECIDED 2026-07-28: build with
-   `mailto:` now, revisit once the payments backend exists.** The owner asked
+6. **In-app Feedback + Report-a-bug forms — SHIPPED 2026-07-28 (option (a):
+   `mailto:` now; option (c), a real backend with genuine anonymity, deferred
+   until item 5 exists — decision recorded, not yet built).** The owner asked
    for an anonymous option; **with no backend that is impossible to deliver
    honestly** — `mailto:` opens the user's own mail client, so their address is
    on the message no matter what the form claims. A checkbox promising
-   anonymity would be a lie, so it is deliberately NOT being built. Bug reports
-   collect device/build diagnostics and support an image attachment via the
-   mobile share sheet (`navigator.share` with files), falling back to a
-   plain `mailto:` where that is unavailable. Genuine anonymity and real
-   uploads wait for the backend (item 5).
+   anonymity would be a lie, so it was deliberately NOT built.
+   - **`Feedback`** (Settings → Send feedback): email (pre-filled from
+     `State.userEmail`, editable) + a message box. Empty message blocks send.
+   - **`BugReport`** (Settings → Report a bug): email (same pre-fill, always
+     shown — this one may need a reply, so no anonymity option even in
+     principle), what-happened, optional steps-to-reproduce, and an optional
+     photo. `_diagnostics()` auto-collects `navigator.userAgent` (covers "model
+     and make of device" on Android without asking the user to type it),
+     screen size, language, native-vs-web + `BUILD`, and current voice
+     engine/fallback state — all folded into the draft body, sent nowhere
+     unless the user presses Send.
+   - **Photo attachment**: no browser can attach a real file via `mailto:`.
+     Where `navigator.share`+`canShare({files})` exist (mobile), the photo
+     goes through the OS share sheet instead — but Web Share has no concept of
+     "recipient", so the destination address is folded into the shared text
+     and the user picks the app themselves. Everywhere else, mailto fires
+     without the photo and the body says so. A cancelled/failed share falls
+     through to the mailto path rather than silently dropping the report.
+   - **`App.loadUser()`** now also requests `emailAddress` from the Drive
+     `about` fields (previously `displayName` only) and caches it as
+     `State.userEmail`/`pl_email`, purely to pre-fill these two forms.
+   - **`CONFIG.SUPPORT_EMAIL`** is the single mailto target for both forms —
+     currently the owner's personal address, with a comment to swap to
+     `support@phonoleaf.com` once that inbox (Cloudflare Email Routing) is
+     confirmed working, so a one-line change moves both forms later.
+   - Verified in a browser harness: email pre-fill, empty-field blocking on
+     both forms, exact mailto URL construction (target, subject, body
+     encoding), the share-sheet path actually invoking `navigator.share` with
+     the file attached and the support email folded into the text, and a
+     thrown/cancelled share falling through to mailto without an uncaught
+     exception.
 
 Already hardened for multi-user: XSS escaping of dynamic content.
 

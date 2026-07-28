@@ -420,6 +420,22 @@
     }
     .modal-title { font-size: 1rem; font-weight: 700; margin-bottom: 1rem; }
 
+    /* Feedback / bug-report forms */
+    .form-label { font-size: 0.78rem; font-weight: 600; color: var(--text-dim); margin: 0.9rem 0 0.35rem; }
+    .form-label:first-of-type { margin-top: 0; }
+    .form-input, .form-textarea {
+      width: 100%; background: var(--bg); color: var(--text); box-sizing: border-box;
+      border: 0.5px solid var(--line); border-radius: 10px;
+      padding: 0.6rem 0.8rem; font: 0.88rem var(--font-ui); outline: none;
+    }
+    .form-textarea { resize: vertical; min-height: 5.5rem; font-family: var(--font-ui); }
+    .form-hint { font-size: 0.72rem; color: var(--text-dim); margin-top: 0.35rem; }
+    .form-submit {
+      width: 100%; background: var(--accent); color: #fff; border: none;
+      border-radius: 10px; padding: 0.75rem; font: 600 0.9rem var(--font-ui);
+      cursor: pointer; margin-top: 1.2rem;
+    }
+
     /* Centered confirm dialog */
     .confirm-backdrop {
       display: none; position: fixed; inset: 0;
@@ -902,6 +918,16 @@
         <button class="set-link" onclick="Settings.changeFolder()">Change</button>
       </div>
     </div>
+    <div class="set-group">
+      <div class="set-row">
+        <div><div class="sr-k">Send feedback</div><div class="sr-sub">Ideas or anything on your mind</div></div>
+        <button class="set-link" onclick="Feedback.open()">Open</button>
+      </div>
+      <div class="set-row">
+        <div><div class="sr-k">Report a bug</div><div class="sr-sub">Tell us what went wrong</div></div>
+        <button class="set-link" onclick="BugReport.open()">Open</button>
+      </div>
+    </div>
     <div style="text-align:center;color:var(--text-dim);font-size:0.7rem;margin-top:1.4rem">
       PhonoLeaf &middot; A voice for every page<br>
       <a href="privacy.html" style="color:var(--text-dim)">Privacy Policy</a> &middot; <a href="terms.html" style="color:var(--text-dim)">Terms of Service</a>
@@ -1072,6 +1098,39 @@
   </div>
 </div>
 
+<!-- ============== SEND FEEDBACK ============== -->
+<div class="modal-backdrop" id="feedback-modal" onclick="Feedback.close(event)">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Send feedback</div>
+    <p style="font-size:0.82rem;color:var(--text-dim);margin:0 0 0.9rem">Ideas, requests, anything on your mind. This opens your email app with a draft ready to send.</p>
+    <div class="form-label">Your email <span style="font-weight:400">(so we can reply)</span></div>
+    <input id="fb-email" class="form-input" type="email" placeholder="you@example.com" inputmode="email">
+    <div class="form-label">Message</div>
+    <textarea id="fb-message" class="form-textarea" placeholder="What's on your mind?"></textarea>
+    <button class="form-submit" onclick="Feedback.send()">Send feedback</button>
+  </div>
+</div>
+
+<!-- ============== REPORT A BUG ============== -->
+<div class="modal-backdrop" id="bugreport-modal" onclick="BugReport.close(event)">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Report a bug</div>
+    <p style="font-size:0.82rem;color:var(--text-dim);margin:0 0 0.9rem">This opens your email app with your device details already filled in, so we can help faster.</p>
+    <div class="form-label">Your email</div>
+    <input id="bug-email" class="form-input" type="email" placeholder="you@example.com" inputmode="email">
+    <div class="form-label">What happened?</div>
+    <textarea id="bug-what" class="form-textarea" placeholder="What went wrong?"></textarea>
+    <div class="form-label">Steps to reproduce <span style="font-weight:400">(optional)</span></div>
+    <textarea id="bug-steps" class="form-textarea" style="min-height:4rem" placeholder="1. …&#10;2. …&#10;3. …"></textarea>
+    <div class="form-label">Add a photo <span style="font-weight:400">(optional)</span></div>
+    <input id="bug-photo" type="file" accept="image/*" class="form-input" style="padding:0.4rem 0.6rem" onchange="BugReport.onPhotoChange(this)">
+    <div class="form-hint" id="bug-photo-hint"></div>
+    <button class="form-submit" onclick="BugReport.send()">Send report</button>
+  </div>
+</div>
+
 <!-- ============== TOAST ============== -->
 <div id="toast"></div>
 <div id="scrub-pop"></div>
@@ -1117,6 +1176,11 @@ const CONFIG = {
   // is referrer-restricted, and would be needed again if the Picker ever
   // returns. Safe to leave blank.
   API_KEY:     'AIzaSyD9W1N0DUl2juc8RiKnYLIEhq9pCjuKZ-4',
+  // Where Feedback/BugReport's mailto: drafts go. Swap to support@phonoleaf.com
+  // once that inbox is confirmed working (Cloudflare Email Routing) — kept as
+  // the personal address until then so reports don't vanish into an unchecked
+  // mailbox.
+  SUPPORT_EMAIL: 'baileyke90@gmail.com',
 };
 
 // --- State -----------------------------------------------
@@ -1128,6 +1192,7 @@ const State = {
   epubBook:    null,
   toc:         [],
   userName:    (() => { try { return localStorage.getItem('pl_user') || ''; } catch (_) { return ''; } })(),
+  userEmail:   (() => { try { return localStorage.getItem('pl_email') || ''; } catch (_) { return ''; } })(),
   ready:       false, // true once a library load attempt has finished
   progress:    JSON.parse(localStorage.getItem('pl_prog') || '{}'),
   saveProgress() { localStorage.setItem('pl_prog', JSON.stringify(this.progress)); },
@@ -2037,14 +2102,18 @@ const App = {
   },
 
   // Fetch the signed-in user's name (Drive "about") to greet them on Home.
+  // Also grabs their email so the feedback/bug-report forms can pre-fill a
+  // reply address without asking the user to type it every time.
   async loadUser() {
     try {
-      const d = await Drive.get('about', { fields: 'user(displayName)' });
+      const d = await Drive.get('about', { fields: 'user(displayName,emailAddress)' });
       const dn = ((d && d.user && d.user.displayName) || '').trim();
       State.userName = dn ? dn.split(/\s+/)[0] : '';
+      State.userEmail = ((d && d.user && d.user.emailAddress) || '').trim();
       try { localStorage.setItem('pl_user', State.userName); } catch (_) {}
+      try { localStorage.setItem('pl_email', State.userEmail); } catch (_) {}
       Home.render();
-    } catch (_) { /* name is optional */ }
+    } catch (_) { /* name/email are optional */ }
   },
 
   // Request an access token; resolves with the token string.
@@ -4607,6 +4676,95 @@ const MyData = {
     try { indexedDB.deleteDatabase('phonoleaf'); } catch (_) {}
     toast('All local data deleted');
     setTimeout(() => location.reload(), 900);
+  },
+};
+
+// --- Feedback + bug reports ------------------------------------------------
+// No backend, so both go out via mailto: (opens the user's own mail app).
+// DECIDED 2026-07-28: an anonymous option was requested but is NOT built —
+// mailto: always exposes the sender's own configured address in the message
+// it creates, so a checkbox promising anonymity would be a lie regardless of
+// what this form does. Revisit once a real backend exists (roadmap item 5/6
+// in CLAUDE.md); until then this is the honest version of the feature.
+const Feedback = {
+  open() {
+    const email = document.getElementById('fb-email'); if (email) email.value = State.userEmail || '';
+    const msg = document.getElementById('fb-message'); if (msg) msg.value = '';
+    document.getElementById('feedback-modal').classList.add('open');
+  },
+  close(e) { if (!e || e.target.classList.contains('modal-backdrop')) document.getElementById('feedback-modal').classList.remove('open'); },
+  send() {
+    const email = (document.getElementById('fb-email')?.value || '').trim();
+    const message = (document.getElementById('fb-message')?.value || '').trim();
+    if (!message) { toast('Write a message first'); return; }
+    const body = [`Reply email: ${email || '(not given)'}`, '', message].join('\n');
+    // mailto: is a top-level navigation, same as VoiceHelp's install-voice
+    // intent: — window.open would be popup-blocked.
+    location.href = `mailto:${CONFIG.SUPPORT_EMAIL}?subject=${encodeURIComponent('PhonoLeaf feedback')}&body=${encodeURIComponent(body)}`;
+    this.close();
+  },
+};
+
+const BugReport = {
+  open() {
+    const email = document.getElementById('bug-email'); if (email) email.value = State.userEmail || '';
+    for (const id of ['bug-what', 'bug-steps']) { const el = document.getElementById(id); if (el) el.value = ''; }
+    const photo = document.getElementById('bug-photo'); if (photo) photo.value = '';
+    const hint = document.getElementById('bug-photo-hint'); if (hint) hint.textContent = '';
+    document.getElementById('bugreport-modal').classList.add('open');
+  },
+  close(e) { if (!e || e.target.classList.contains('modal-backdrop')) document.getElementById('bugreport-modal').classList.remove('open'); },
+  onPhotoChange(input) {
+    const hint = document.getElementById('bug-photo-hint');
+    if (hint) hint.textContent = input.files?.[0] ? `Selected: ${input.files[0].name}` : '';
+  },
+  // Answers the "model and make of your device" ask without making the user
+  // type it: navigator.userAgent on Android includes the device model, and
+  // App.isNative()/BUILD identify which shell + version they're on. Nothing
+  // here is sent anywhere unless the user presses Send.
+  _diagnostics() {
+    return [
+      `App: PhonoLeaf ${App.isNative() ? 'Android app' : 'web'}, build ${BUILD}`,
+      `Device: ${navigator.userAgent}`,
+      `Screen: ${window.innerWidth}×${window.innerHeight} @ ${window.devicePixelRatio || 1}x`,
+      `Language: ${navigator.language || 'unknown'}`,
+      `Voice: ${TTS._kokoroDead ? 'standard (fallback)' : 'natural'}${TTS._modelType ? ', model ' + TTS._modelType : ''}`,
+    ].join('\n');
+  },
+  async send() {
+    const email = (document.getElementById('bug-email')?.value || '').trim();
+    const what = (document.getElementById('bug-what')?.value || '').trim();
+    const steps = (document.getElementById('bug-steps')?.value || '').trim();
+    if (!what) { toast('Describe what happened first'); return; }
+    const file = document.getElementById('bug-photo')?.files?.[0] || null;
+    const subject = 'PhonoLeaf bug report';
+    const body = [
+      `Reply email: ${email || '(not given)'}`,
+      '',
+      'What happened:',
+      what,
+      '',
+      steps ? `Steps to reproduce:\n${steps}\n` : '',
+      '--- Device info ---',
+      this._diagnostics(),
+    ].join('\n');
+
+    // No browser supports a real attachment via mailto:. The mobile share
+    // sheet CAN attach a file, but it has no concept of "recipient" — the
+    // user picks the destination app themselves — so the address goes in the
+    // shared text instead. Falls back to plain mailto (photo omitted, noted
+    // in the body) wherever Web Share with files isn't available (desktop,
+    // most non-mobile browsers).
+    if (file && navigator.share && navigator.canShare?.({ files: [file] })) {
+      try {
+        await navigator.share({ title: subject, text: body + `\n\n(Please send this to ${CONFIG.SUPPORT_EMAIL} with the photo attached.)`, files: [file] });
+        this.close();
+        return;
+      } catch (_) { /* share sheet cancelled/failed — fall through to mailto */ }
+    }
+    const note = file ? '\n\n(A photo was selected but could not be attached automatically here — reply to this email with it attached.)' : '';
+    location.href = `mailto:${CONFIG.SUPPORT_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body + note)}`;
+    this.close();
   },
 };
 
