@@ -1774,6 +1774,41 @@ the working plan, not an exploration.
 5. **Backend** for real refresh tokens and payments (Stripe on web; Play
    Billing in-app — note Play takes 15% vs ~3% Stripe). The TTS key proxy is
    no longer needed (no cloud TTS).
+   **Owner intent (2026-07-28): NOT permanently free — a free trial (~1 week)
+   then a paid subscription.** `terms.html` was updated the same day to stop
+   asserting the app is free, and now carries a **Pricing** section promising
+   price/billing/cancellation will be shown before any charge. Notes:
+   - **Android could ship subscriptions with NO backend** — the Play Billing
+     library can query active purchases on-device. Weaker (spoofable) but
+     common for small apps. **Web genuinely needs one**: Stripe has no
+     client-safe "is this user subscribed?" call, since checking requires the
+     secret key. A Cloudflare Worker is the cheap option — the DNS is already
+     there.
+   - **Tie entitlement to the Google account id, do NOT build a password
+     system.** Sign-in already provides stable identity, so `home.html`'s "no
+     separate account to create" claim stays true even once paid.
+   - **Sequencing: submit for OAuth verification BEFORE the backend exists.**
+     The CASA trigger is "ability to access data from or through a third-party
+     server"; today the honest answer is a clean no. A payments backend that
+     never touches Drive data shouldn't change that, but submitting first means
+     being judged on the simpler architecture. Keep payment infrastructure
+     strictly segregated from Google user data so the answer stays no.
+   - **Audio ads were considered and advised against (2026-07-28.)** Spotify
+     inserts ads into its OWN licensed catalog; PhonoLeaf would be inserting
+     them into the user's private files, which is a different proposition.
+     It would also require ad-network tracking, undermining the "nothing leaves
+     your device" position that is simultaneously the main marketing line and
+     an asset in the Google review. Subscription-only.
+6. **In-app Feedback + Report-a-bug forms — DECIDED 2026-07-28: build with
+   `mailto:` now, revisit once the payments backend exists.** The owner asked
+   for an anonymous option; **with no backend that is impossible to deliver
+   honestly** — `mailto:` opens the user's own mail client, so their address is
+   on the message no matter what the form claims. A checkbox promising
+   anonymity would be a lie, so it is deliberately NOT being built. Bug reports
+   collect device/build diagnostics and support an image attachment via the
+   mobile share sheet (`navigator.share` with files), falling back to a
+   plain `mailto:` where that is unavailable. Genuine anonymity and real
+   uploads wait for the backend (item 5).
 
 Already hardened for multi-user: XSS escaping of dynamic content.
 
