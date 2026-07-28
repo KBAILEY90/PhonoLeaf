@@ -168,36 +168,28 @@ you two weeks.
 - [x] **1. Buy the domain** — `phonoleaf.com`, bought 2026-07-26.
 - [x] **1b.** Root `CNAME` file committed, and all hardcoded github.io URLs in
       `privacy.html` / `terms.html` / `TESTING.md` repointed. (Me.)
-- [ ] **2. Set the custom domain in GitHub Pages BEFORE configuring DNS**
-      (prevents a takeover window). The committed `CNAME` ships in the deploy
-      artifact — the workflow uploads `path: '.'` — but set it in the UI too,
-      since that's what authoritatively claims the domain for this repo:
-      [repo Pages settings](https://github.com/KBAILEY90/PhonoLeaf/settings/pages)
-      ⚠️ Once this is set, `kbailey90.github.io/PhonoLeaf/` redirects to
-      `phonoleaf.com`, so the site is unreachable until DNS resolves. Do step 3
-      immediately after.
-- [ ] **3. Add the DNS records** at your registrar — exact values in the
-      "Steps once the domain is bought" section above.
-      [GitHub's DNS reference](https://docs.github.com/en/pages/configuring-a-custom-domain-for-your-github-pages-site/managing-a-custom-domain-for-your-github-pages-site)
-- [ ] **4. Enable Enforce HTTPS** once the cert issues (same Pages settings page).
-- [ ] **5. Verify the domain in Search Console** as a **Domain property**
-      (DNS TXT). ⚠️ Do this **while signed in as the Cloud project Owner** —
-      Google's docs flag that verifying from another account means the OAuth
-      system won't recognise the ownership.
-      [Search Console](https://search.google.com/search-console)
-- [ ] **6. Update the OAuth consent screen**: add the domain under Authorized
-      domains; set Application home page → `https://<domain>/home.html`,
-      Privacy policy → `https://<domain>/privacy.html`, Terms →
-      `https://<domain>/terms.html`; upload the app logo.
-      [Consent screen / branding](https://console.cloud.google.com/auth/branding?project=phonoleaf)
-      (if that URL has moved: Cloud Console → APIs & Services → OAuth consent screen)
-- [ ] **7. Add the new JavaScript origin** to the **Web** OAuth client:
-      `https://<domain>`. **Keep `https://kbailey90.github.io`** so existing
-      web installs keep working.
-      [Credentials](https://console.cloud.google.com/apis/credentials?project=phonoleaf)
-- [ ] **8. Confirm the live site loads at `https://phonoleaf.com/`** and that
-      sign-in still works there (the Web OAuth client needs step 7 done first,
-      or sign-in will fail with an origin error).
+- [x] **2. Custom domain set in GitHub Pages** (done 2026-07-26).
+- [x] **3. DNS records added** — at **Cloudflare, DNS-only / grey-cloud (not
+      proxied)**: 4×A, 4×AAAA, `CNAME www` → `kbailey90.github.io`. All 9 live.
+- [x] **4. Enforce HTTPS** on, certificate issued.
+- [x] **5. Search Console** — `phonoleaf.com` verified as a **Domain property**
+      via TXT, **as `baileyke90@gmail.com`**, the account that owns the
+      `phonoleaf` GCP project. (This was the critical bit.)
+- [x] **6. OAuth consent screen** repointed to the `phonoleaf.com` URLs;
+      authorized domains now `phonoleaf.com` **+ the retained
+      `kbailey90.github.io`**. App logo uploaded manually by the owner after
+      the console threw a generic backend error on automated attempts — the
+      asset is `brand/oauth-consent-logo-120.png`.
+- [x] **7. Web OAuth client** — `https://phonoleaf.com` added as a second
+      authorized JS origin; `https://kbailey90.github.io` **kept**.
+- [x] **8. Live site verified 2026-07-26**: `home.html`, `privacy.html` and
+      `terms.html` all serve over HTTPS with repointed links, and the old
+      `kbailey90.github.io/PhonoLeaf/` returns a **301 → `phonoleaf.com`**.
+      ⚠️ **Still worth doing by hand: a real sign-in on `phonoleaf.com`.** The
+      new JS origin is registered, but an actual Google sign-in round trip on
+      the new domain has not been exercised — and remember storage is
+      per-origin, so it will behave like a fresh install (signed out, no local
+      progress). That is expected, not a bug.
 - [ ] **9. Record the demo video** — script in the section above. Record on the
       new domain, keep the address bar visible.
 - [ ] **10. Submit for verification**, then tell me what Google says about

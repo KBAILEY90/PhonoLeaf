@@ -9,15 +9,23 @@ aloud. It connects to Google Drive (read-only), lists epub files from a folder,
 renders them with epub.js, and reads the text using the browser's Web Speech
 (TTS) engine.
 
-- Live: **https://phonoleaf.com/** — custom domain bought 2026-07-26 and set via
-  the root `CNAME` file, because `github.io` **cannot** be used for Google OAuth
-  verification (it needs a DNS-level TXT record; see `VERIFICATION.md`). Pages
-  now serves at the domain ROOT, not the `/PhonoLeaf/` repo path — harmless
-  because `manifest.json`'s `start_url` (`./index.html`) and the service-worker
-  registration (`./sw.js`) are both RELATIVE, so PWA scope follows the new path
-  automatically. The old `https://kbailey90.github.io/PhonoLeaf/` (case-
-  sensitive; lowercase 404s) redirects here once the domain is live, and its
-  JS origin must STAY in the Web OAuth client so existing installs keep working.
+- Live: **https://phonoleaf.com/** — custom domain, **fully cut over 2026-07-26**
+  (DNS live, HTTPS enforced, certificate issued). Moved off `github.io` because
+  it **cannot** be used for Google OAuth verification (that needs a DNS-level
+  TXT record; see `VERIFICATION.md`). Set via the root `CNAME` file; DNS is at
+  **Cloudflare, DNS-only / grey-cloud (NOT proxied)** — 4×A
+  (`185.199.108-111.153`), 4×AAAA (`2606:50c0:8000-8003::153`), `CNAME www` →
+  `kbailey90.github.io`.
+  Pages now serves at the domain ROOT, not the `/PhonoLeaf/` repo path —
+  harmless because `manifest.json`'s `start_url` (`./index.html`) and the
+  service-worker registration (`./sw.js`) are both RELATIVE, so PWA scope
+  follows the new path automatically.
+  **Verified live 2026-07-26:** `https://kbailey90.github.io/PhonoLeaf/` now
+  returns a **301 to `https://phonoleaf.com/`**, and `home.html` / `privacy.html`
+  / `terms.html` all serve correctly over HTTPS with their links repointed.
+  The old `kbailey90.github.io` **JS origin and authorized domain are
+  deliberately KEPT** (on both the Web OAuth client and the consent screen) so
+  existing installs keep working — do not "tidy" them away.
   NB browser storage is per-origin: web users from the old URL will look
   signed-out and lose local progress/stats. Native is unaffected.
 - Repo: https://github.com/KBAILEY90/PhonoLeaf
@@ -1585,8 +1593,31 @@ the working plan, not an exploration.
    screen for verification to learn the real tier/requirement from Google** (see
    the behavior note for links + caveats). Do this early — verification is not
    instant and gates public launch.
-   **Researched 2026-07-26 — see `VERIFICATION.md` for the full plan. Two
-   blockers found, one of which is a hard stop:**
+   **STATUS 2026-07-26 — infrastructure DONE, submission still pending.**
+   Completed (all owner/Cowork console work, verified against the live site):
+   - `phonoleaf.com` bought, DNS live at Cloudflare (grey-cloud), GitHub Pages
+     custom domain set, **Enforce HTTPS on, certificate issued**.
+   - **Google Search Console: `phonoleaf.com` verified as a DOMAIN property**
+     (TXT `google-site-verification=NBZEK_Le1xNnfcw61nVrvE94t_afnXWJB15vjVz-HK4`),
+     verified as `baileyke90@gmail.com` — the SAME account that owns the
+     `phonoleaf` GCP project, which is the part Google's docs call critical.
+   - **OAuth consent screen** (Google Auth Platform → Branding) repointed:
+     home `https://phonoleaf.com/home.html`, privacy `…/privacy.html`, terms
+     `…/terms.html`; authorized domains = `phonoleaf.com` **+ the old
+     `kbailey90.github.io`, deliberately kept**. App logo uploaded by the owner
+     (Cowork's own upload attempts failed on a generic backend error unrelated
+     to the image; the owner did it manually — a 120×120 PNG re-rendered from
+     the same inline "Soundwave Vein" SVG lives at
+     `brand/oauth-consent-logo-120.png`).
+   - **Web OAuth client** gained `https://phonoleaf.com` as a second authorized
+     JS origin, alongside the retained `https://kbailey90.github.io`.
+   Remaining before submission: **record the demo video** (script in
+   `VERIFICATION.md`), then submit. **The app is still in Testing and must NOT
+   be submitted until the video exists** — owner's standing instruction.
+   The CASA question below is still unresolved and only submission answers it.
+
+   **Original research (2026-07-26) — see `VERIFICATION.md` for the full plan.
+   Two blockers were found, one a hard stop:**
    - **`kbailey90.github.io` CANNOT be verified — a custom domain is required.**
      Google's domain-verification doc requires authorized domains be verified as
      a **Domain Property (DNS-level)** in Search Console, i.e. a **TXT record in
