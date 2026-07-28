@@ -925,6 +925,42 @@ Google login); verify by inspection + the owner testing on device.
     (`_synthGoogle`, `_gcache`, `GOOGLE_VOICES`, `pl_voice_diamond`,
     `pl_gtts_key`, `Settings.setGKey`), and the `VoiceHelp` onboarding
     popup + `pl_voicetip`. Stale keys may linger in old installs; harmless.
+- **Natural-voice status row is ALWAYS visible (`#voice-quality-group`,
+  renamed from `#fallback-group` 2026-07-28).** It used to render only when
+  `TTS._kokoroDead`, which meant the majority of users — the ones for whom the
+  natural voice works — never learned the feature existed, and the ones in
+  fallback got no explanation of *why*. Now the row always shows, and only its
+  wording plus right-hand control change: working ⇒ sub-text "On — generated on
+  your device" and a static `.set-stat` reading **On**; fallback ⇒ "Unavailable
+  on this device — using the standard voice" and the **Retry** button
+  (`Settings.retryNeural()`). Retry is deliberately hidden when it's working —
+  there's nothing to retry. A small circled-"i" (`.sr-info`) opens `VoiceInfo`,
+  a static explainer modal covering what the natural voice is (on-device, no
+  text sent anywhere), why some devices fall back (it must generate faster than
+  realtime), and that the Android app is faster at it than the web build.
+  `#vh-row` (VoiceHelp) still shows only in fallback mode AND on mobile.
+- **Your data: export + erase (`MyData`, Settings) — added 2026-07-28.**
+  GDPR-style access and erasure, which the app can genuinely satisfy alone
+  because there is no backend: everything is `pl_*` localStorage + the
+  IndexedDB cover cache.
+  - `MyData.export()` serialises every `pl_*` key to a downloaded JSON file
+    (`phonoleaf-data-YYYY-MM-DD.json`), parsing values back into real JSON
+    where possible. **`pl_auth` and `pl_rtoken` are deliberately EXCLUDED**
+    (`MyData._SECRET`) — writing a live access/refresh token into a file the
+    user may share would hand over their whole Drive. Non-`pl_` keys are
+    untouched.
+  - `MyData.deleteAll()` **signs out FIRST, then wipes** — that order is
+    load-bearing: `App.signOut()` needs the still-valid token to revoke the
+    grant at Google, so clearing storage first would destroy the token and
+    leave the grant dangling on Google's side. Then it removes every `pl_*`
+    key, deletes the `phonoleaf` IndexedDB, and reloads.
+  - `ConfirmModal.show(cb, msg, okLabel)` gained optional text params for the
+    destructive confirm; both **default back to the original stats-reset
+    wording on every call**, so a custom message can never linger and mislabel
+    the next confirmation (verified in a harness).
+  - `privacy.html` documents all three routes (export / delete / stats-only
+    reset) under "Your rights over your data" — a policy claiming rights the
+    UI doesn't offer would be worse than not claiming them.
 - **Better-voices helper (`VoiceHelp`) — fallback-mode only, MOBILE ONLY.**
   Points users at higher-quality SYSTEM voices, relevant only when the app is
   reading with the device voice: the Settings row `#vh-row` shows only when

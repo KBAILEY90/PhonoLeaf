@@ -572,6 +572,20 @@
     .seg button.on { background: var(--surface); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,0.14); }
     .set-select { background: var(--bg); color: var(--text); border: 0.5px solid var(--line); border-radius: 9px; padding: 0.35rem 0.6rem; font: 0.78rem var(--font-ui); cursor: pointer; }
     .set-link { background: none; border: none; font: 500 0.82rem var(--font-ui); color: var(--accent); cursor: pointer; }
+    .set-link.danger { color: #C0453B; }
+    @media (prefers-color-scheme: dark) { .set-link.danger { color: #E8776C; } }
+    [data-theme="light"] .set-link.danger { color: #C0453B; }
+    [data-theme="dark"]  .set-link.danger { color: #E8776C; }
+    /* Static status text where a row reports state instead of offering an action. */
+    .set-stat { font: 600 0.8rem var(--font-ui); color: var(--text-dim); flex-shrink: 0; }
+    /* Small circled "i" — opens an explainer modal for a setting. */
+    .sr-info {
+      width: 15px; height: 15px; padding: 0; margin-left: 0.35rem;
+      border: 1px solid var(--text-dim); border-radius: 50%;
+      background: none; color: var(--text-dim);
+      font: 700 0.58rem/1 var(--font-ui); cursor: pointer;
+      vertical-align: middle; flex-shrink: 0;
+    }
     .tog { position: relative; display: inline-block; width: 44px; height: 26px; flex-shrink: 0; cursor: pointer; }
     .tog input { opacity: 0; width: 0; height: 0; position: absolute; }
     .tog-track { position: absolute; inset: 0; border-radius: 13px; background: var(--track); transition: background 0.2s; }
@@ -847,16 +861,35 @@
         <label class="tog"><input type="checkbox" id="set-wakelock" onchange="Settings.setWakeLock(this.checked)"><span class="tog-track"></span></label>
       </div>
     </div>
-    <div class="set-group" id="fallback-group" style="display:none">
-      <!-- Shown only when this device can't run the neural voice in real time
-           (TTS._kokoroDead) — the app is then reading with the device voice. -->
+    <div class="set-group" id="voice-quality-group">
+      <!-- ALWAYS visible. It used to appear only in fallback mode, which meant
+           the majority of users (for whom the natural voice works) never learned
+           the feature existed, and those in fallback got no explanation of why.
+           Now it reports either state, with an "i" explainer either way. -->
       <div class="set-row" id="neural-row">
-        <div><div class="sr-k">Natural voice</div><div class="sr-sub">Unavailable on this device &mdash; using the standard voice</div></div>
-        <button class="set-link" onclick="Settings.retryNeural()">Retry</button>
+        <div>
+          <div class="sr-k">Natural voice<button class="sr-info" onclick="VoiceInfo.open()" aria-label="About the natural voice">i</button></div>
+          <div class="sr-sub" id="neural-sub">Checking&hellip;</div>
+        </div>
+        <span class="set-stat" id="neural-status">On</span>
+        <button class="set-link" id="neural-retry" onclick="Settings.retryNeural()" style="display:none">Retry</button>
       </div>
       <div class="set-row" id="vh-row" style="display:none">
         <div><div class="sr-k">Better device voices</div><div class="sr-sub">Install free natural voices</div></div>
         <button class="set-link" onclick="VoiceHelp.open()">How</button>
+      </div>
+    </div>
+    <!-- Your data: GDPR-style access (export) and erasure (delete). Everything
+         PhonoLeaf holds is local to this device, so both are handled here —
+         there is no server to request anything from. -->
+    <div class="set-group">
+      <div class="set-row">
+        <div><div class="sr-k">Export my data</div><div class="sr-sub">Download everything stored on this device</div></div>
+        <button class="set-link" onclick="MyData.export()">Export</button>
+      </div>
+      <div class="set-row">
+        <div><div class="sr-k">Delete my data</div><div class="sr-sub">Erase local data and disconnect Google</div></div>
+        <button class="set-link danger" onclick="MyData.confirmDelete()">Delete</button>
       </div>
     </div>
     <div class="set-group">
@@ -975,6 +1008,33 @@
     <div class="confirm-btns">
       <button class="confirm-cancel" onclick="VoiceHelp.close()">Close</button>
       <button class="confirm-ok" id="vh-action" onclick="VoiceHelp.action()">Open</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============== NATURAL VOICE EXPLAINER ============== -->
+<div class="confirm-backdrop" id="voiceinfo-modal" onclick="VoiceInfo.close()">
+  <div class="confirm-box" onclick="event.stopPropagation()" style="text-align:left">
+    <p class="confirm-msg" style="font-weight:600;margin-bottom:0.5rem">About the natural voice</p>
+    <p class="confirm-msg" style="font-size:0.85rem">
+      PhonoLeaf comes with its own natural-sounding voice that runs entirely on
+      your device &mdash; nothing you read is sent to a server to be turned into
+      speech.
+    </p>
+    <p class="confirm-msg" style="font-size:0.85rem">
+      To play without gaps it has to generate speech faster than you can listen
+      to it. Most phones manage this comfortably; some slower or older devices,
+      and some web browsers, can&rsquo;t keep up. When that happens PhonoLeaf
+      automatically switches to the standard voice built into your device, so
+      reading never stops &mdash; it just sounds more robotic.
+    </p>
+    <p class="confirm-msg" style="font-size:0.85rem">
+      <b>Retry</b> re-tests this device, which is worth doing if it was busy the
+      first time. The installable Android app is noticeably faster at this than
+      the website.
+    </p>
+    <div class="confirm-btns">
+      <button class="confirm-cancel" onclick="VoiceInfo.close()">Close</button>
     </div>
   </div>
 </div>
@@ -1559,9 +1619,19 @@ const Settings = {
     document.querySelectorAll('#theme-seg button').forEach(b => b.classList.toggle('on', b.dataset.mode === m));
     const sel = document.getElementById('set-speed'); if (sel) sel.value = localStorage.getItem('pl_speed') || '1';
     const vs = document.getElementById('set-voice-sub'); if (vs) vs.textContent = TTS.activeVoiceLabel();
-    // Fallback-mode rows: only shown when the neural voice is unavailable here.
-    const fg = document.getElementById('fallback-group'); if (fg) fg.style.display = TTS._kokoroDead ? '' : 'none';
-    const vh = document.getElementById('vh-row'); if (vh) vh.style.display = (TTS._kokoroDead && VoiceHelp.available()) ? '' : 'none';
+    // Natural-voice row is ALWAYS shown; only its wording and right-hand
+    // control change. Retry is offered solely in fallback mode (there is
+    // nothing to retry when it's already working).
+    const dead = TTS._kokoroDead;
+    const nsub = document.getElementById('neural-sub');
+    if (nsub) nsub.textContent = dead
+      ? 'Unavailable on this device — using the standard voice'
+      : 'On — generated on your device';
+    const nst = document.getElementById('neural-status'); if (nst) nst.style.display = dead ? 'none' : '';
+    const nrt = document.getElementById('neural-retry'); if (nrt) nrt.style.display = dead ? '' : 'none';
+    // "Better device voices" only helps while we're actually using the device
+    // voice, and only on mobile (desktop installs add variants, not quality).
+    const vh = document.getElementById('vh-row'); if (vh) vh.style.display = (dead && VoiceHelp.available()) ? '' : 'none';
     const wl = document.getElementById('set-wakelock'); if (wl) wl.checked = localStorage.getItem('pl_wakelock') !== 'false';
     const f = document.getElementById('set-folder'); if (f) f.textContent = activeFolder() || 'Not selected';
     const a = document.getElementById('set-account'); if (a) a.textContent = State.userName ? 'Signed in as ' + State.userName : 'Signed in';
@@ -4444,9 +4514,89 @@ const ChapterModal = {
 // --- Confirm dialog ----------------------------------------
 const ConfirmModal = {
   _cb: null,
-  show(cb) { this._cb = cb; document.getElementById('confirm-modal').classList.add('open'); },
+  // Defaults are the stats-reset wording this dialog originally had. They're
+  // re-applied on every show() so a previous caller's custom text can never
+  // linger and mislabel the next confirmation.
+  _DEF_MSG: 'Are you sure you want to reset your listening data? This cannot be undone.',
+  _DEF_OK: 'Reset',
+  show(cb, msg, okLabel) {
+    this._cb = cb;
+    const m = document.querySelector('#confirm-modal .confirm-msg');
+    const o = document.querySelector('#confirm-modal .confirm-ok');
+    if (m) m.textContent = msg || this._DEF_MSG;
+    if (o) o.textContent = okLabel || this._DEF_OK;
+    document.getElementById('confirm-modal').classList.add('open');
+  },
   close() { document.getElementById('confirm-modal').classList.remove('open'); this._cb = null; },
   _ok() { const cb = this._cb; this.close(); if (cb) cb(); },
+};
+
+const VoiceInfo = {
+  open()  { document.getElementById('voiceinfo-modal').classList.add('open'); },
+  close() { document.getElementById('voiceinfo-modal').classList.remove('open'); },
+};
+
+// --- Your data: export + erase -------------------------------------------
+// PhonoLeaf has no backend, so everything it holds about you is on this device:
+// localStorage (`pl_*`) and the IndexedDB cover cache. That makes both GDPR
+// access and erasure things the app can genuinely satisfy on its own.
+const MyData = {
+  _isOurs(k) { return !!k && k.startsWith('pl_'); },
+  // Credentials are deliberately EXCLUDED from the export — writing a live
+  // access/refresh token into a file the user downloads and may share would
+  // hand over their Drive. They're not "their data" in a useful sense anyway.
+  _SECRET: ['pl_auth', 'pl_rtoken'],
+
+  export() {
+    try {
+      const data = {};
+      for (const k of Object.keys(localStorage)) {
+        if (!this._isOurs(k) || this._SECRET.includes(k)) continue;
+        const raw = localStorage.getItem(k);
+        try { data[k] = JSON.parse(raw); } catch (_) { data[k] = raw; }
+      }
+      const payload = {
+        app: 'PhonoLeaf',
+        exportedAt: new Date().toISOString(),
+        note: 'Everything PhonoLeaf stores about you, all of it local to this device. '
+            + 'Sign-in tokens are deliberately excluded. Your ebooks live in your '
+            + 'Google Drive and are not part of this export.',
+        data,
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'phonoleaf-data-' + new Date().toISOString().slice(0, 10) + '.json';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+      toast('Data exported');
+    } catch (_) { toast('Could not export data'); }
+  },
+
+  confirmDelete() {
+    ConfirmModal.show(
+      () => this.deleteAll(),
+      'Delete all PhonoLeaf data on this device and disconnect your Google account? '
+      + 'Your ebooks in Google Drive are NOT touched. This cannot be undone.',
+      'Delete'
+    );
+  },
+
+  // Order matters: sign out FIRST so the still-valid token can revoke the
+  // Google grant, then wipe local storage. Doing it the other way round would
+  // destroy the token and leave the grant dangling on Google's side.
+  async deleteAll() {
+    try { await App.signOut(); } catch (_) {}
+    try {
+      for (const k of Object.keys(localStorage)) if (this._isOurs(k)) localStorage.removeItem(k);
+    } catch (_) {}
+    try { indexedDB.deleteDatabase('phonoleaf'); } catch (_) {}
+    toast('All local data deleted');
+    setTimeout(() => location.reload(), 900);
+  },
 };
 
 // --- Boot -------------------------------------------------
