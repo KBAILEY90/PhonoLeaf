@@ -9,6 +9,7 @@ public class MainActivity extends BridgeActivity {
         // Register native plugins before the bridge starts.
         registerPlugin(PhonoLeafTtsPlugin.class);
         registerPlugin(SecureStoragePlugin.class); // Keystore-backed storage for pl_rtoken
+        registerPlugin(EmailComposerPlugin.class); // direct-to-mail-app compose, bypassing the generic share chooser
         super.onCreate(savedInstanceState);
     }
 }

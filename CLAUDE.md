@@ -1794,7 +1794,10 @@ the working plan, not an exploration.
    owner's legal jurisdiction to name one).
 5. **Backend** for real refresh tokens and payments (Stripe on web; Play
    Billing in-app — note Play takes 15% vs ~3% Stripe). The TTS key proxy is
-   no longer needed (no cloud TTS).
+   no longer needed (no cloud TTS). **When this gets built, fold in the
+   desktop bug-report photo upload too** (Cloudflare Worker + R2 — see the
+   "Feedback + Report a bug" behavior note's "Desktop" bullet) rather than
+   standing up a second, separate backend for it.
    **Owner intent (2026-07-28): NOT permanently free — a free trial (~1 week)
    then a paid subscription.** `terms.html` was updated the same day to stop
    asserting the app is free, and now carries a **Pricing** section promising
@@ -1846,47 +1849,97 @@ the working plan, not an exploration.
      **Android's WebView implements NO Web Share API at all, not even
      Level 1** — `navigator.share` is simply `undefined` there — so the
      original `navigator.share`-only implementation could never fire inside
-     the app itself, only in mobile browsers. Fixed by adding two official
-     Capacitor plugins, `@capacitor/filesystem` and `@capacitor/share`
-     (`package.json`; both auto-register via `cap sync`, confirmed in this
-     environment — no MainActivity changes needed, unlike our custom Kotlin
-     plugins). On native, `BugReport.send()` now: reads the picked photo as
-     base64 (`FileReader.readAsDataURL`), writes it into the app's cache dir
-     via `Filesystem.writeFile` (`directory: 'CACHE'` — already exposed to the
-     FileProvider via the existing `file_paths.xml` `cache-path` entry, so no
-     native config changes were needed beyond installing the plugins), then
-     hands the resulting `file://` URI to `Share.share({ files: […] })`, which
-     invokes Android's REAL native share sheet — a genuine attachment, not a
-     promise. On web, `navigator.share`+`canShare({files})` (Chrome/Safari
-     mobile support Web Share Level 2 with files) is unchanged and still used
-     when not native. Web Share has no concept of "recipient" either way, so
-     the destination address is folded into the shared text and the user
-     picks the destination app themselves. **The one gap that remains
-     genuinely unclosed without a backend: desktop browsers** (most lack
-     file-share support entirely — Firefox has none at all) — those still fall
-     back to plain mailto with the photo omitted and a note in the body. A
-     failure or cancellation at ANY stage (native plugin error, web share
-     cancelled) falls through to that same mailto path rather than throwing or
-     silently dropping the report.
+     the app itself, only in mobile browsers.
+     **REWORKED AGAIN the same day (2026-07-28)** — the FIRST fix (route
+     through `@capacitor/share`) technically attached the photo, but owner
+     feedback made clear it traded one confusing UX for another: `Share.share()`
+     always shows Android's full generic "share to ANY app" chooser (Gmail
+     buried among Messages/Bluetooth/Drive/WhatsApp/Nearby Share/…), with no
+     explanation anywhere that the user needed to tap their mail app out of
+     that unrelated list. Replaced with a small custom plugin,
+     **`EmailComposerPlugin.kt`** (registered in `MainActivity.java`, same
+     pattern as `PhonoLeafTtsPlugin`/`SecureStoragePlugin`), which builds an
+     `ACTION_SEND` intent typed `message/rfc822` instead of a generic share —
+     only email apps register an intent-filter for that MIME type, so the OS
+     resolves it itself: with exactly one mail app installed (the common case)
+     it launches straight into the compose screen with NO picker at all; with
+     more than one, the picker it shows is restricted to just those apps, not
+     the full share sheet. `App.composeEmail({to, subject, body,
+     attachmentUri})` wraps the plugin call, resolving `false` on web (where
+     there's no share-chooser confusion to route around — a plain `mailto:`
+     already goes straight to the one mail app on both platforms) so callers
+     fall back to plain mailto automatically. **`@capacitor/share` was removed
+     entirely** (`package.json`, confirmed gone from `cap sync`'s plugin list
+     and both regenerated Gradle files) — nothing uses it anymore.
+     **`@capacitor/filesystem` is still used**, for staging the photo into the
+     cache dir before handing a URI to the new plugin.
+     **A real correctness bug was caught and fixed while building this, not
+     assumed to be fine**: `Filesystem.writeFile()` returns a `file://` URI,
+     but Android throws `FileUriExposedException` if a raw `file://` URI (into
+     OUR app's private storage) is handed to ANOTHER app's process via an
+     Intent — it has to be wrapped into a `content://` URI via
+     `FileProvider.getUriForFile()` first, using the SAME FileProvider already
+     configured in `AndroidManifest.xml`/`file_paths.xml` (originally set up
+     for `@capacitor/share`'s internal use, which did this same conversion for
+     us — invisibly, since we never wrote that code ourselves until now).
+     `EmailComposerPlugin.kt` does this conversion explicitly. Also uses
+     `activity.startActivity()`, not `context.startActivity()` — the latter
+     throws unless `FLAG_ACTIVITY_NEW_TASK` is set, since Capacitor's plugin
+     `context` is not guaranteed to be an Activity context; `activity` is.
+     On web, `navigator.share`+`canShare({files})` (Chrome/Safari mobile
+     support Web Share Level 2 with files) is unchanged. Web Share has no
+     concept of "recipient" either way, so the destination address is folded
+     into the shared text and the user picks the destination app themselves.
+   - **Desktop — DECIDED 2026-07-28: ship the honest, no-infrastructure fix
+     now (a clear instruction, not a silent "didn't work"); a real fix (upload
+     + link) is noted for later, not built.** Desktop genuinely can't auto-
+     attach without a backend: most browsers lack file-share support entirely
+     (Firefox has none at all), and no browser on any platform can attach a
+     file via `mailto:` — a hard protocol limit, not something to code around.
+     The fix that shipped: when the final mailto fallback is reached with a
+     photo still un-attached (desktop, or any native/web attach path failing),
+     the body names the file explicitly — *"Don't forget to attach the photo
+     you selected (`filename.jpg`) — drag it into this email…"* — stated
+     BEFORE the mail app opens, not apologized for after. This was the actual
+     owner complaint ("taking them for idiots") — not that desktop lacks true
+     automation (every app hits that same wall), but that the app tried
+     silently and only admitted failure afterward.
+     **NOT built — Option A, for later**: a small upload endpoint (Cloudflare
+     Worker + R2 — Cloudflare is already the DNS provider) that the photo
+     uploads to, with a link folded into the mailto body instead of an
+     attachment. Would give true parity with native/mobile web. Should be
+     built as PART OF the payments backend (roadmap item 5), not a second
+     separate backend effort — and per that item's own reasoning, **submit for
+     OAuth verification before either exists**, so the CASA "third-party
+     server" answer stays a clean no for as long as possible. Would also need:
+     size/type limits, an expiry policy (R2 lifecycle rules) so screenshots
+     don't accumulate forever, and a privacy-policy line, since a photo would
+     then briefly live somewhere that isn't purely "on your device" — the
+     current strongest privacy claim, for this one feature only.
    - **`App.loadUser()`** now also requests `emailAddress` from the Drive
      `about` fields (previously `displayName` only) and caches it as
      `State.userEmail`/`pl_email`, purely to pre-fill these two forms.
-   - **`CONFIG.SUPPORT_EMAIL`** is the single mailto target for both forms —
-     currently the owner's personal address, with a comment to swap to
+   - **`CONFIG.SUPPORT_EMAIL`** is the single mailto/compose target for both
+     forms — currently the owner's personal address, with a comment to swap to
      `support@phonoleaf.com` once that inbox (Cloudflare Email Routing) is
      confirmed working, so a one-line change moves both forms later.
    - Verified in a browser harness: email pre-fill, empty-field blocking on
-     both forms, exact mailto URL construction (target, subject, body
-     encoding); the native path (mocked `Capacitor.Plugins.Filesystem`/
-     `Share`) writing base64 photo data to the CACHE directory and handing
-     `Share.share` a real `file://` URI; a native plugin failure falling
-     through to mailto without an uncaught exception; and the web path still
-     invoking `navigator.share` with the actual `File` object. **The native
-     plugin calls themselves are NOT device-verified** — same caveat as every
-     other native-only change in this file: no JDK/Android SDK in this
-     environment. `npm install` + `npm run sync` WERE run here and confirmed
-     clean (`cap sync` reports both new plugins found and registered for
-     android), so the JS/native wiring is at least known to build correctly.
+     both forms; the native path (mocked `Capacitor.Plugins.Filesystem`/
+     `EmailComposer`) staging base64 photo data to the CACHE directory and
+     calling `EmailComposer.compose` with a `file://` attachment URI, correct
+     `to`/`subject`; a Filesystem staging failure still sending the report
+     (without the attachment, filename noted in the body) rather than blocking
+     it; a total `EmailComposer` failure falling through to mailto without an
+     uncaught exception; native-with-no-photo never touching Filesystem at
+     all; the web path still invoking `navigator.share` with the real `File`
+     object; and the exact desktop fallback note text, confirmed to include
+     the real filename. **The native plugin calls themselves are NOT
+     device-verified** — same caveat as every other native-only change in this
+     file: no JDK/Android SDK in this environment. `npm install` + `npm run
+     sync` WERE run here and confirmed clean both times (adding, then removing,
+     `@capacitor/share`; `cap sync` correctly lists only the 3 plugins actually
+     in use for the second run), so the JS/native wiring is at least known to
+     build correctly.
 
 Already hardened for multi-user: XSS escaping of dynamic content.
 

@@ -1995,6 +1995,28 @@ const App = {
   isNative() { return !!(window.Capacitor && Capacitor.isNativePlatform && Capacitor.isNativePlatform()); },
   _plugin(name) { return (window.Capacitor && Capacitor.Plugins && Capacitor.Plugins[name]) || null; },
 
+  // Opens the device's mail app DIRECTLY on native, via EmailComposerPlugin.kt
+  // (an ACTION_SEND typed message/rfc822 — only email apps register for that,
+  // so the OS either launches the one installed mail app with no picker at
+  // all, or shows a picker restricted to just email apps). This exists
+  // because Capacitor's own Share.share() always shows the FULL generic
+  // "share to any app" chooser (Gmail, Messages, Bluetooth, Drive,
+  // WhatsApp...), which read as broken — owner-reported: had no idea they
+  // were meant to tap their mail app out of that unrelated list.
+  // Resolves true if it launched the mail app; false means the caller should
+  // fall back to a plain mailto: link (always the case on web — there's no
+  // share-chooser confusion to route around there, since a mailto: URL
+  // already goes straight to a mail app on both platforms).
+  async composeEmail({ to, subject, body, attachmentUri }) {
+    if (!this.isNative()) return false;
+    try {
+      const plugin = this._plugin('EmailComposer');
+      if (!plugin) return false;
+      await plugin.compose({ to, subject, body, attachmentUri });
+      return true;
+    } catch (_) { return false; }
+  },
+
   // Native refresh-token storage (SecureStoragePlugin.kt, Android
   // Keystore-backed) — replaces plain localStorage for pl_rtoken, which was
   // sandboxed to the app but not encrypted at rest. Falls back to a no-op on
@@ -4693,14 +4715,16 @@ const Feedback = {
     document.getElementById('feedback-modal').classList.add('open');
   },
   close(e) { if (!e || e.target.classList.contains('modal-backdrop')) document.getElementById('feedback-modal').classList.remove('open'); },
-  send() {
+  async send() {
     const email = (document.getElementById('fb-email')?.value || '').trim();
     const message = (document.getElementById('fb-message')?.value || '').trim();
     if (!message) { toast('Write a message first'); return; }
     const body = [`Reply email: ${email || '(not given)'}`, '', message].join('\n');
+    const subject = 'PhonoLeaf feedback';
+    if (await App.composeEmail({ to: CONFIG.SUPPORT_EMAIL, subject, body })) { this.close(); return; }
     // mailto: is a top-level navigation, same as VoiceHelp's install-voice
     // intent: — window.open would be popup-blocked.
-    location.href = `mailto:${CONFIG.SUPPORT_EMAIL}?subject=${encodeURIComponent('PhonoLeaf feedback')}&body=${encodeURIComponent(body)}`;
+    location.href = `mailto:${CONFIG.SUPPORT_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     this.close();
   },
 };
@@ -4731,6 +4755,17 @@ const BugReport = {
       `Voice: ${TTS._kokoroDead ? 'standard (fallback)' : 'natural'}${TTS._modelType ? ', model ' + TTS._modelType : ''}`,
     ].join('\n');
   },
+  // Read a File as base64 (no data: prefix) — what Filesystem.writeFile()
+  // needs for its `data` param on native. FileReader, not File.arrayBuffer(),
+  // for the widest baseline WebView compatibility.
+  _fileToBase64(file) {
+    return new Promise((res, rej) => {
+      const r = new FileReader();
+      r.onload = () => res(String(r.result).split(',')[1] || '');
+      r.onerror = rej;
+      r.readAsDataURL(file);
+    });
+  },
   async send() {
     const email = (document.getElementById('bug-email')?.value || '').trim();
     const what = (document.getElementById('bug-what')?.value || '').trim();
@@ -4751,50 +4786,54 @@ const BugReport = {
 
     // No browser supports a real attachment via mailto: — that part is a hard
     // protocol limitation, not something to code around. But a photo the user
-    // deliberately picked should actually go out, not silently vanish with a
-    // "please attach it yourself" note, so we try two REAL attachment paths
-    // before ever falling back to that.
-    const shareText = body + `\n\n(Please send this to ${CONFIG.SUPPORT_EMAIL}.)`;
-    if (file && App.isNative()) {
-      // Android's WebView has NO Web Share API AT ALL (not even text-only,
-      // let alone files) — confirmed, this is a real platform gap, not a
-      // missing feature check. navigator.share is simply undefined here, so
-      // the web-share branch below can never fire on native, and would have
-      // silently dropped every photo from the app itself — almost certainly
-      // where most real bug reports with a screenshot come from. Route
-      // through Capacitor's own Filesystem + Share plugins instead: write the
-      // photo into the app's cache dir (already exposed to the FileProvider
-      // in file_paths.xml, so no native config was needed beyond installing
-      // the plugins), then hand that file:// URI to the native Android share
-      // sheet, which DOES support real attachments.
-      try {
-        const fs = App._plugin('Filesystem'), share = App._plugin('Share');
-        if (fs && share) {
-          const b64 = await new Promise((res, rej) => {
-            const r = new FileReader();
-            r.onload = () => res(String(r.result).split(',')[1] || '');
-            r.onerror = rej;
-            r.readAsDataURL(file);
-          });
+    // deliberately picked should actually go out (or, failing that, the user
+    // should be told exactly what to do about it), not silently vanish.
+    if (App.isNative()) {
+      // Stage the photo into the app's cache dir first (already exposed to
+      // the FileProvider via file_paths.xml, so no native config was needed
+      // beyond installing @capacitor/filesystem). If staging fails, still
+      // send the report — just without the attachment, noted in the body —
+      // rather than blocking the whole report on a photo problem.
+      let attachmentUri = null, staged = true;
+      if (file) {
+        try {
+          const fs = App._plugin('Filesystem');
+          if (!fs) throw new Error('Filesystem plugin unavailable');
+          const b64 = await this._fileToBase64(file);
           const ext = (file.name.match(/\.\w+$/)?.[0]) || '.jpg';
-          const written = await fs.writeFile({ path: `phonoleaf-bug-${Date.now()}${ext}`, data: b64, directory: 'CACHE' });
-          await share.share({ title: subject, text: shareText, files: [written.uri] });
-          this.close();
-          return;
-        }
-      } catch (_) { /* native share/filesystem failed — fall through to mailto */ }
+          attachmentUri = (await fs.writeFile({ path: `phonoleaf-bug-${Date.now()}${ext}`, data: b64, directory: 'CACHE' })).uri;
+        } catch (_) { staged = false; }
+      }
+      const nativeBody = (file && !staged)
+        ? body + `\n\nDon't forget to attach the photo you selected (${file.name}) — your mail app's attach/paperclip button.`
+        : body;
+      // Goes straight to the mail app (EmailComposerPlugin.kt) rather than
+      // Capacitor's generic Share.share(), which shows a "share to ANY app"
+      // chooser — Gmail buried among Messages/Bluetooth/Drive/WhatsApp read
+      // as broken (owner-reported). Only if this fails (e.g. genuinely no
+      // mail app installed) do we fall through to plain mailto below.
+      if (await App.composeEmail({ to: CONFIG.SUPPORT_EMAIL, subject, body: nativeBody, attachmentUri })) {
+        this.close();
+        return;
+      }
     } else if (file && navigator.share && navigator.canShare?.({ files: [file] })) {
       // Web (mobile Chrome/Safari support Web Share Level 2 with files; most
       // desktop browsers don't, which is the one gap this doesn't close).
       // Web Share has no concept of "recipient" — the user picks the
       // destination app themselves — so the address goes in the shared text.
       try {
-        await navigator.share({ title: subject, text: shareText, files: [file] });
+        await navigator.share({ title: subject, text: body + `\n\n(Please send this to ${CONFIG.SUPPORT_EMAIL}.)`, files: [file] });
         this.close();
         return;
       } catch (_) { /* share sheet cancelled/failed — fall through to mailto */ }
     }
-    const note = file ? '\n\n(A photo was selected but could not be attached automatically here — reply to this email with it attached.)' : '';
+    // Final fallback (desktop, or the above genuinely failed). If a photo was
+    // picked but isn't going with this email, say so plainly and by name —
+    // not "sorry, try again yourself" after the fact, but a clear instruction
+    // before the mail app even opens.
+    const note = file
+      ? `\n\nDon't forget to attach the photo you selected (${file.name}) — drag it into this email, or use your mail app's attach/paperclip button, before sending.`
+      : '';
     location.href = `mailto:${CONFIG.SUPPORT_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body + note)}`;
     this.close();
   },
