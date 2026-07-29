@@ -4749,15 +4749,47 @@ const BugReport = {
       this._diagnostics(),
     ].join('\n');
 
-    // No browser supports a real attachment via mailto:. The mobile share
-    // sheet CAN attach a file, but it has no concept of "recipient" — the
-    // user picks the destination app themselves — so the address goes in the
-    // shared text instead. Falls back to plain mailto (photo omitted, noted
-    // in the body) wherever Web Share with files isn't available (desktop,
-    // most non-mobile browsers).
-    if (file && navigator.share && navigator.canShare?.({ files: [file] })) {
+    // No browser supports a real attachment via mailto: — that part is a hard
+    // protocol limitation, not something to code around. But a photo the user
+    // deliberately picked should actually go out, not silently vanish with a
+    // "please attach it yourself" note, so we try two REAL attachment paths
+    // before ever falling back to that.
+    const shareText = body + `\n\n(Please send this to ${CONFIG.SUPPORT_EMAIL}.)`;
+    if (file && App.isNative()) {
+      // Android's WebView has NO Web Share API AT ALL (not even text-only,
+      // let alone files) — confirmed, this is a real platform gap, not a
+      // missing feature check. navigator.share is simply undefined here, so
+      // the web-share branch below can never fire on native, and would have
+      // silently dropped every photo from the app itself — almost certainly
+      // where most real bug reports with a screenshot come from. Route
+      // through Capacitor's own Filesystem + Share plugins instead: write the
+      // photo into the app's cache dir (already exposed to the FileProvider
+      // in file_paths.xml, so no native config was needed beyond installing
+      // the plugins), then hand that file:// URI to the native Android share
+      // sheet, which DOES support real attachments.
       try {
-        await navigator.share({ title: subject, text: body + `\n\n(Please send this to ${CONFIG.SUPPORT_EMAIL} with the photo attached.)`, files: [file] });
+        const fs = App._plugin('Filesystem'), share = App._plugin('Share');
+        if (fs && share) {
+          const b64 = await new Promise((res, rej) => {
+            const r = new FileReader();
+            r.onload = () => res(String(r.result).split(',')[1] || '');
+            r.onerror = rej;
+            r.readAsDataURL(file);
+          });
+          const ext = (file.name.match(/\.\w+$/)?.[0]) || '.jpg';
+          const written = await fs.writeFile({ path: `phonoleaf-bug-${Date.now()}${ext}`, data: b64, directory: 'CACHE' });
+          await share.share({ title: subject, text: shareText, files: [written.uri] });
+          this.close();
+          return;
+        }
+      } catch (_) { /* native share/filesystem failed — fall through to mailto */ }
+    } else if (file && navigator.share && navigator.canShare?.({ files: [file] })) {
+      // Web (mobile Chrome/Safari support Web Share Level 2 with files; most
+      // desktop browsers don't, which is the one gap this doesn't close).
+      // Web Share has no concept of "recipient" — the user picks the
+      // destination app themselves — so the address goes in the shared text.
+      try {
+        await navigator.share({ title: subject, text: shareText, files: [file] });
         this.close();
         return;
       } catch (_) { /* share sheet cancelled/failed — fall through to mailto */ }

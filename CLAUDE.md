@@ -1837,13 +1837,37 @@ the working plan, not an exploration.
      screen size, language, native-vs-web + `BUILD`, and current voice
      engine/fallback state — all folded into the draft body, sent nowhere
      unless the user presses Send.
-   - **Photo attachment**: no browser can attach a real file via `mailto:`.
-     Where `navigator.share`+`canShare({files})` exist (mobile), the photo
-     goes through the OS share sheet instead — but Web Share has no concept of
-     "recipient", so the destination address is folded into the shared text
-     and the user picks the app themselves. Everywhere else, mailto fires
-     without the photo and the body says so. A cancelled/failed share falls
-     through to the mailto path rather than silently dropping the report.
+   - **Photo attachment — no browser can attach a real file via `mailto:`,
+     but the first cut also silently failed to attach on NATIVE, which is
+     where most real bug-report photos come from.** Owner pushback
+     (2026-07-28): shipping an upload control that quietly degrades to "please
+     attach it yourself" is a broken promise, not a fallback — fixed the same
+     day. Root cause of the native gap, confirmed by research (not assumed):
+     **Android's WebView implements NO Web Share API at all, not even
+     Level 1** — `navigator.share` is simply `undefined` there — so the
+     original `navigator.share`-only implementation could never fire inside
+     the app itself, only in mobile browsers. Fixed by adding two official
+     Capacitor plugins, `@capacitor/filesystem` and `@capacitor/share`
+     (`package.json`; both auto-register via `cap sync`, confirmed in this
+     environment — no MainActivity changes needed, unlike our custom Kotlin
+     plugins). On native, `BugReport.send()` now: reads the picked photo as
+     base64 (`FileReader.readAsDataURL`), writes it into the app's cache dir
+     via `Filesystem.writeFile` (`directory: 'CACHE'` — already exposed to the
+     FileProvider via the existing `file_paths.xml` `cache-path` entry, so no
+     native config changes were needed beyond installing the plugins), then
+     hands the resulting `file://` URI to `Share.share({ files: […] })`, which
+     invokes Android's REAL native share sheet — a genuine attachment, not a
+     promise. On web, `navigator.share`+`canShare({files})` (Chrome/Safari
+     mobile support Web Share Level 2 with files) is unchanged and still used
+     when not native. Web Share has no concept of "recipient" either way, so
+     the destination address is folded into the shared text and the user
+     picks the destination app themselves. **The one gap that remains
+     genuinely unclosed without a backend: desktop browsers** (most lack
+     file-share support entirely — Firefox has none at all) — those still fall
+     back to plain mailto with the photo omitted and a note in the body. A
+     failure or cancellation at ANY stage (native plugin error, web share
+     cancelled) falls through to that same mailto path rather than throwing or
+     silently dropping the report.
    - **`App.loadUser()`** now also requests `emailAddress` from the Drive
      `about` fields (previously `displayName` only) and caches it as
      `State.userEmail`/`pl_email`, purely to pre-fill these two forms.
@@ -1853,10 +1877,16 @@ the working plan, not an exploration.
      confirmed working, so a one-line change moves both forms later.
    - Verified in a browser harness: email pre-fill, empty-field blocking on
      both forms, exact mailto URL construction (target, subject, body
-     encoding), the share-sheet path actually invoking `navigator.share` with
-     the file attached and the support email folded into the text, and a
-     thrown/cancelled share falling through to mailto without an uncaught
-     exception.
+     encoding); the native path (mocked `Capacitor.Plugins.Filesystem`/
+     `Share`) writing base64 photo data to the CACHE directory and handing
+     `Share.share` a real `file://` URI; a native plugin failure falling
+     through to mailto without an uncaught exception; and the web path still
+     invoking `navigator.share` with the actual `File` object. **The native
+     plugin calls themselves are NOT device-verified** — same caveat as every
+     other native-only change in this file: no JDK/Android SDK in this
+     environment. `npm install` + `npm run sync` WERE run here and confirmed
+     clean (`cap sync` reports both new plugins found and registered for
+     android), so the JS/native wiring is at least known to build correctly.
 
 Already hardened for multi-user: XSS escaping of dynamic content.
 
