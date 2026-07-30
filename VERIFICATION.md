@@ -111,35 +111,71 @@ start this early rather than late.
 
 ---
 
-## Demo video — script (owner records)
+## Demo video — shot list (owner records)
 
-Google requires an unlisted/public video showing, in English:
+Google requires an unlisted-or-public video, **in English**, showing the OAuth
+consent screen with the app name readable, the **OAuth client ID visible**, and
+concrete proof of what each restricted scope is actually used for.
 
-1. The **OAuth consent screen**, with the app name clearly readable, and the
-   **browser address bar visible showing the OAuth client ID**. Do not crop the
-   address bar — this is an explicit requirement and a common rejection cause.
-2. The full sign-in flow, start to finish.
-3. **What each restricted scope is actually used for.** For `drive.readonly`,
-   show in one continuous take:
-   - the folder picker listing folders from Drive,
-   - choosing the ebook folder,
-   - the library populating with epubs from that folder,
-   - opening a book and playback starting.
-4. State plainly (on screen or in narration) that access is read-only and that
-   nothing is written back to Drive.
+### ⚠️ Two things that will get the video rejected if missed
 
-Suggested narration beats:
+**1. Revoke the app's access BEFORE recording, or no consent screen appears.**
+`App.signIn()` calls `getToken('')` — an empty `prompt`. Once you've already
+granted access (you have), Google issues a token **silently** and the consent
+screen never renders. The video would then contain no consent screen at all →
+automatic rejection.
+Fix, right before recording: go to
+[Google Account → Third-party access](https://myaccount.google.com/permissions),
+find **PhonoLeaf**, and click **Remove access**. The next sign-in then shows
+the full consent screen. (Harmless — you just re-grant it during the recording.)
 
-> "This is PhonoLeaf, a web app that reads the epub files in your own Google
-> Drive aloud. I'm signing in with Google — you can see the consent screen and
-> the client ID in the address bar. It requests Drive read-only access. Now I
-> pick the Drive folder my ebooks are in. PhonoLeaf lists the epubs in that
-> folder and downloads the one I choose so it can be displayed and read aloud
-> on my device. It never modifies anything in Drive, and the files are never
-> sent to any server — PhonoLeaf has no backend."
+**2. The client ID probably WON'T be legible in the address bar.**
+Web sign-in uses GIS `initTokenClient`, which opens the consent screen in a
+**popup**, and popup windows render a truncated, read-only address bar (origin
+only — usually just `accounts.google.com`), not the full URL with
+`?client_id=…`. Don't rely on it.
+Fix: **open the video on the Cloud Console credentials page with the Web client
+ID plainly visible** (Shot 1 below). That satisfies "show the client ID"
+unambiguously, regardless of how the popup renders. If the popup *does* happen
+to show the full URL, that's a bonus, not the plan.
 
-Record on the **custom domain**, after step 6 above, so the URL in the video
-matches what's submitted.
+### Before you hit record
+
+- [ ] Revoke access (see above).
+- [ ] Open [Credentials](https://console.cloud.google.com/apis/credentials?project=phonoleaf)
+      in a tab, ready on the **Web** client.
+- [ ] Confirm the connected Drive folder has a few epubs in it.
+- [ ] Chrome, maximised, English UI.
+- [ ] Record the **whole screen** — not a cropped region. A cropped recording
+      that hides the address bar is a documented rejection cause.
+- [ ] Close unrelated tabs so the address bar is uncluttered and legible.
+
+### The shots
+
+| # | On screen | Say (roughly) |
+|---|---|---|
+| 1 | Cloud Console → Credentials → the **Web** OAuth client, client ID visible. Hold ~4s. | "This is the OAuth client being verified for PhonoLeaf — client ID `88179965472-codmbgtm…`." |
+| 2 | Navigate to `phonoleaf.com` — the sign-in screen. | "PhonoLeaf is a web app that reads the epub files in your own Google Drive aloud." |
+| 3 | Click **Sign in with Google**. Consent screen appears. **Hold ~5s, don't rush.** App name "PhonoLeaf" and the Drive permission must both be readable. | "Here's the consent screen. The app name is PhonoLeaf, and it's requesting read-only access to Google Drive." |
+| 4 | Grant access → lands on Home. | "I grant access." |
+| 5 | The folder browser opens (first run). Browse Drive, pick the ebooks folder. | "PhonoLeaf asks which Drive folder my ebooks are in. This is the only folder it reads." |
+| 6 | Library populates with the epubs from that folder. | "It lists the epub files in that folder — this is what the `drive.readonly` scope is used for." |
+| 7 | Open a book. Reader appears, press play, **let audio play audibly for ~5s**. | "It downloads the book I choose so it can be displayed and read aloud, entirely on my device." |
+| 8 | Optional: Settings → show Privacy Policy / Terms links and Sign out. | "PhonoLeaf never modifies, uploads, or deletes anything in Drive — the access is read-only. There's no backend, so the files are never sent to any server of ours." |
+
+Shots 5–7 should ideally be **one continuous take** — that's the part proving
+the scope's actual use, and cuts there invite doubt.
+
+### Before submitting the video
+
+- [ ] Watch it back with sound.
+- [ ] The consent screen is on screen long enough to read the app name.
+- [ ] The client ID is legible in Shot 1.
+- [ ] The address bar is visible throughout (never cropped out).
+- [ ] It's on **`phonoleaf.com`**, not `kbailey90.github.io`, and not the
+      native app — it's the **Web** OAuth client under review.
+- [ ] Upload to YouTube as **Unlisted** (not Private — reviewers must be able
+      to open it without being added as a viewer).
 
 ---
 
@@ -185,13 +221,17 @@ you two weeks.
 - [x] **8. Live site verified 2026-07-26**: `home.html`, `privacy.html` and
       `terms.html` all serve over HTTPS with repointed links, and the old
       `kbailey90.github.io/PhonoLeaf/` returns a **301 → `phonoleaf.com`**.
-      ⚠️ **Still worth doing by hand: a real sign-in on `phonoleaf.com`.** The
-      new JS origin is registered, but an actual Google sign-in round trip on
-      the new domain has not been exercised — and remember storage is
-      per-origin, so it will behave like a fresh install (signed out, no local
-      progress). That is expected, not a bug.
-- [ ] **9. Record the demo video** — script in the section above. Record on the
-      new domain, keep the address bar visible.
+      **Sign-in on `phonoleaf.com` confirmed working by the owner 2026-07-28** —
+      the new JS origin is live and the full Google round trip succeeds on the
+      new domain. (Storage is per-origin, so it behaves like a fresh install:
+      signed out, no local progress, covers re-downloading. Expected, not a bug.)
+- [ ] **9. Record the demo video** — **shot list in the section above.**
+      ⚠️ **Revoke the app's access at
+      [Third-party access](https://myaccount.google.com/permissions) first**, or
+      the consent screen won't appear at all (sign-in passes an empty `prompt`,
+      so an existing grant is honoured silently) — that alone would fail the
+      review. Open on the Cloud Console credentials page so the client ID is
+      legible; the GIS popup's address bar can't be relied on for it.
 - [ ] **10. Submit for verification**, then tell me what Google says about
       CASA so it can be recorded here.
       [How to submit](https://support.google.com/cloud/answer/13463073)
