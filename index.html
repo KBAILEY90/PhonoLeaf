@@ -1176,11 +1176,10 @@ const CONFIG = {
   // is referrer-restricted, and would be needed again if the Picker ever
   // returns. Safe to leave blank.
   API_KEY:     'AIzaSyD9W1N0DUl2juc8RiKnYLIEhq9pCjuKZ-4',
-  // Where Feedback/BugReport's mailto: drafts go. Swap to support@phonoleaf.com
-  // once that inbox is confirmed working (Cloudflare Email Routing) — kept as
-  // the personal address until then so reports don't vanish into an unchecked
-  // mailbox.
-  SUPPORT_EMAIL: 'baileyke90@gmail.com',
+  // Where Feedback/BugReport's mailto:/compose drafts go. Forwards to the
+  // owner's personal inbox via Cloudflare Email Routing — confirmed working
+  // 2026-07-28 (cross-account test email received).
+  SUPPORT_EMAIL: 'support@phonoleaf.com',
 };
 
 // --- State -----------------------------------------------

@@ -1668,6 +1668,24 @@ the working plan, not an exploration.
      `brand/oauth-consent-logo-120.png`).
    - **Web OAuth client** gained `https://phonoleaf.com` as a second authorized
      JS origin, alongside the retained `https://kbailey90.github.io`.
+   - **`support@phonoleaf.com` set up (2026-07-28) via Cloudflare Email
+     Routing**, forwarding to the owner's personal inbox — confirmed working
+     with a real cross-account test email (Cloudflare's Activity Log alone
+     wasn't trusted as proof: a same-account test from `baileyke90@gmail.com`
+     to itself gets deduplicated by Gmail and never visibly arrives, so a
+     second test from a different account was used to actually confirm
+     delivery). Routing setup added 5 DNS records (3 MX, 1 DKIM TXT, 1 SPF
+     TXT) without touching any existing record. Added as **Developer contact
+     information** on the consent screen alongside the personal address (both
+     kept, not replaced, so Google's own project notifications don't stop
+     reaching the inbox that's actually watched). **Cannot** be set as the
+     consent screen's own **"User support email"** field — confirmed by
+     checking the actual dropdown, which offers only the signed-in Google
+     account or a Google Group the owner manages, matching Google's
+     documented restriction on that field. `CONFIG.SUPPORT_EMAIL` in
+     `index.html` and the contact links in `home.html`/`privacy.html`/
+     `terms.html` were switched to it the same day — see the Feedback/bug-
+     report behavior note.
    Remaining before submission: **record the demo video** (script in
    `VERIFICATION.md`), then submit. **The app is still in Testing and must NOT
    be submitted until the video exists** — owner's standing instruction.
@@ -1919,10 +1937,14 @@ the working plan, not an exploration.
    - **`App.loadUser()`** now also requests `emailAddress` from the Drive
      `about` fields (previously `displayName` only) and caches it as
      `State.userEmail`/`pl_email`, purely to pre-fill these two forms.
-   - **`CONFIG.SUPPORT_EMAIL`** is the single mailto/compose target for both
-     forms — currently the owner's personal address, with a comment to swap to
-     `support@phonoleaf.com` once that inbox (Cloudflare Email Routing) is
-     confirmed working, so a one-line change moves both forms later.
+   - **`CONFIG.SUPPORT_EMAIL` is `support@phonoleaf.com`** (switched from the
+     owner's personal address 2026-07-28, after confirming the Cloudflare
+     Email Routing forward with a real cross-account test email). Same address
+     also now used in `home.html`/`privacy.html`/`terms.html`'s contact
+     links — all four updated together. Routes to the owner's personal inbox —
+     see the OAuth verification status section below for the Cloud Console
+     side of this same change (Developer contact info, and why the consent
+     screen's own "User support email" field can't use it).
    - Verified in a browser harness: email pre-fill, empty-field blocking on
      both forms; the native path (mocked `Capacitor.Plugins.Filesystem`/
      `EmailComposer`) staging base64 photo data to the CACHE directory and
