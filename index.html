@@ -112,14 +112,42 @@
     .view { display: none; height: 100vh; height: 100dvh; flex-direction: column; overflow: hidden; }
     .view.active { display: flex; }
 
-    /* --- Sign-in --- */
+    /* --- Sign-in / welcome --- */
+    /* Scrolls rather than clipping: .view is fixed-height + overflow:hidden,
+       and this screen now carries real content. `.si-wrap { margin: auto 0 }`
+       still centres it vertically whenever there IS spare room, so short
+       viewports scroll and tall ones stay centred. */
     #signin-view {
       align-items: center;
-      justify-content: center;
-      padding: 2rem;
+      justify-content: flex-start;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: 1.5rem 1.5rem calc(1.5rem + var(--safe-b));
       text-align: center;
       background: var(--bg);
     }
+    .si-wrap {
+      margin: auto 0;
+      width: 100%; max-width: 26rem;
+      display: flex; flex-direction: column; align-items: center;
+    }
+    .si-lede { color: var(--text-dim); font-size: 0.92rem; line-height: 1.5; margin: 0 0 1.7rem; }
+    .si-steps { width: 100%; display: flex; flex-direction: column; gap: 0.9rem; margin-bottom: 1.8rem; text-align: left; }
+    .si-step { display: flex; align-items: flex-start; gap: 0.7rem; }
+    .si-num {
+      flex-shrink: 0; width: 1.55rem; height: 1.55rem; border-radius: 50%;
+      background: var(--accent); color: #fff;
+      font: 700 0.75rem/1 var(--font-ui);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .si-step-t { font-size: 0.88rem; font-weight: 600; }
+    .si-step-s { font-size: 0.78rem; color: var(--text-dim); line-height: 1.45; margin-top: 0.1rem; }
+    .si-privacy {
+      margin-top: 1.3rem; font-size: 0.75rem; color: var(--text-dim); line-height: 1.55;
+      max-width: 24rem;
+    }
+    .si-links { margin-top: 1.1rem; font-size: 0.72rem; }
+    .si-links a { color: var(--text-dim); }
     .app-icon {
       width: 90px; height: 90px;
       border-radius: 22px;
@@ -145,7 +173,6 @@
       transition: transform 0.15s, box-shadow 0.15s;
     }
     .signin-btn:active { transform: scale(0.97); }
-    .signin-note { margin-top: 1.5rem; font-size: 0.8rem; color: var(--text-dim); line-height: 1.5; }
 
     /* Config warning */
     .config-warn {
@@ -792,10 +819,42 @@
   <div class="config-warn" id="config-warn">
     &#9888; Set your Google Client ID in CONFIG at the top of this file before use.
   </div>
-  <div style="padding: 3rem 2rem; display:flex; flex-direction:column; align-items:center;">
+  <!-- Welcome + sign-in. Deliberately explains what the app does and what it
+       will ask for BEFORE the Google button: requesting a restricted Drive
+       scope is the biggest ask in the funnel, and it used to happen with no
+       context at all. Single screen (no extra tap) so returning users aren't
+       slowed down; a future multi-step carousel can slice this same content
+       across slides without rewriting it. -->
+  <div class="si-wrap">
     <div class="app-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="90" height="90" aria-hidden="true"><rect width="100" height="100" rx="22" fill="#3E8E6B"/><path d="M50 24 C68 38 68 66 50 82 C32 66 32 38 50 24 Z" fill="#F4F1E8"/><path d="M50 82 L50 90" stroke="#F4F1E8" stroke-width="3.2" stroke-linecap="round"/><path d="M35 53 Q40 42 45 53 T55 53 T65 53" fill="none" stroke="#3E8E6B" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
     <div class="app-name">PhonoLeaf</div>
     <div class="app-tagline">A voice for every page</div>
+    <p class="si-lede">Turn the ebooks already sitting in your Google Drive into an audiobook library.</p>
+
+    <div class="si-steps">
+      <div class="si-step">
+        <div class="si-num">1</div>
+        <div>
+          <div class="si-step-t">Connect a Drive folder</div>
+          <div class="si-step-s">Pick the folder your epubs are in — that's the only one PhonoLeaf reads.</div>
+        </div>
+      </div>
+      <div class="si-step">
+        <div class="si-num">2</div>
+        <div>
+          <div class="si-step-t">Your library appears</div>
+          <div class="si-step-s">Every epub in that folder, with its real cover art. Add more later and they show up on their own.</div>
+        </div>
+      </div>
+      <div class="si-step">
+        <div class="si-num">3</div>
+        <div>
+          <div class="si-step-t">Press play</div>
+          <div class="si-step-s">A natural voice reads aloud — even with the screen off — and remembers where you stopped.</div>
+        </div>
+      </div>
+    </div>
+
     <button class="signin-btn" onclick="App.signIn()">
       <svg width="20" height="20" viewBox="0 0 24 24">
         <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
@@ -805,9 +864,13 @@
       </svg>
       Sign in with Google
     </button>
-    <p class="signin-note">
-      Pick a Google Drive folder of epubs to read from.<br>
-      Only reads your epub files - never modifies anything.
+
+    <p class="si-privacy">
+      <strong>Read-only access.</strong> PhonoLeaf never changes, uploads or deletes anything in your Drive.
+      There's no server — your books go from Google straight to your device.
+    </p>
+    <p class="si-links">
+      <a href="privacy.html">Privacy Policy</a> &middot; <a href="terms.html">Terms of Service</a>
     </p>
   </div>
 </div>
