@@ -2143,6 +2143,10 @@ const App = {
     this.loadUser();
     Library.load(); // a stale/revoked token surfaces as a 401 -> silent refresh
     this._promptFolderIfNeeded();
+    // Start the voice model only now — see the boot block for why it isn't
+    // done there. Silent by design (_kokoroWarm shows nothing); Settings →
+    // Natural voice is where its state is reported.
+    TTS._kokoroWarm();
   },
 
   // "Keep me logged in": reuse a saved, unexpired token so reopening the app
@@ -4334,8 +4338,11 @@ const TTS = {
     this._kpend = new Map();
     w.onmessage = e => {
       const m = e.data;
-      if (m.t === 'prog') { this._voiceToast('Downloading the voice model… ' + m.p + '%', 0); return; }
-      if (m.t === 'ready') { hideToast(); this._voiceToast('Natural voice ready'); this._kokoroBench(); return; }
+      // Download progress/ready are deliberately SILENT — the model warms in
+      // the background and nothing about it should interrupt the user. Its
+      // state is reported in Settings → Natural voice instead.
+      if (m.t === 'prog') return;
+      if (m.t === 'ready') { this.updateVoiceLabel(); this._kokoroBench(); return; }
       const p = this._kpend.get(m.id);
       if (!p) return;
       this._kpend.delete(m.id);
@@ -4348,34 +4355,33 @@ const TTS = {
     this._kworker = w;
     return w;
   },
-  // Voice warm-up toasts (below) are suppressed while the user hasn't chosen a
-  // Drive folder yet — there's nothing to read anyway at that point, so a
-  // PERSISTENT (dur:0, doesn't auto-hide) "downloading voice model…" toast just
-  // competes for attention with the onboarding "choose your folder" prompt
-  // (owner-reported: the two visually collided on first launch). The warm-up
-  // itself still runs regardless — this only silences its progress toasts —
-  // and self-corrects: once a folder IS chosen, the next 'prog'/'ready'
-  // message (the download is likely still running) starts showing normally.
-  _voiceToast(msg, dur) { if (hasChosenFolder()) toast(msg, dur); },
-  _kokoroWarm() { // start the model init early (boot + Retry)
+  // The whole warm-up is SILENT. It used to announce itself with a persistent
+  // (dur:0) "downloading the voice model…" toast; an earlier fix suppressed
+  // that until a folder was chosen, but that gate was the wrong one — a
+  // returning, signed-OUT visitor still has `pl_folder_id` in localStorage, so
+  // the toast reappeared on the sign-in screen (owner-reported on
+  // phonoleaf.com). Nothing about a background model download should interrupt
+  // anyone, least of all before they've signed in, so it now says nothing at
+  // all. Its state is reported in Settings → Natural voice, which is always
+  // visible, and playback has its own "Generating audio…" toast at the point
+  // where a delay would actually be felt.
+  _kokoroWarm() { // start the model init (post-auth via _enterApp, and Retry)
     if (this._kokoroDead) return;
     // Native engine: warm the plugin (copies the model to filesDir + loads it
     // on first run). No speed probe — native is faster than realtime by design;
     // a genuine failure (e.g. model files not placed) strikes out per-chunk.
     const nat = this._nativeTts();
     if (nat) {
-      this._voiceToast('Preparing the natural voice…', 0);
-      this._modelReady().then(() => { this.updateVoiceLabel(); hideToast(); }, () => hideToast());
+      this._modelReady().then(() => this.updateVoiceLabel(), () => {});
       return;
     }
     // Browser-WASM engine: a cached slow-probe verdict skips the ~90 MB
-    // download entirely and goes straight to fallback (silently — runs at boot).
+    // download entirely and goes straight to fallback.
     const cached = this._benchCached();
     if (cached && cached.ratio > 1.25) { this._kokoroDead = true; Settings.render(); return; }
     try {
-      this._voiceToast('Preparing the natural voice — first time downloads ~90 MB…', 0);
       this._kokoroWorkerEl().postMessage(Object.assign({ t: 'load' }, this._kokoroOpts()));
-    } catch (_) { hideToast(); }
+    } catch (_) { /* silent — falls back to the device voice per chunk */ }
   },
   _benchCached() {
     try {
@@ -4915,7 +4921,11 @@ window.addEventListener('load', () => {
     toast('Please sign in again — your saved folder is remembered', 5000);
   }
   TTS.pickDefaultVoice(); // voices may already be loaded; voiceschanged refines later
-  TTS._kokoroWarm(); // Kokoro is THE voice — start model init before first play
+  // NOT warmed here. The model init used to run at boot, which meant a
+  // signed-OUT visitor to phonoleaf.com could be met with a "downloading the
+  // voice model" message before they'd even signed in — alarming, and it
+  // spends ~90 MB of someone's data before they've agreed to anything.
+  // It now starts from App._enterApp(), i.e. only once there's a real session.
 
   // Restore the saved default playback speed.
   const sp = parseFloat(localStorage.getItem('pl_speed'));
