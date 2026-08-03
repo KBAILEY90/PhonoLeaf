@@ -109,6 +109,36 @@ developer — assigns the level. Recertification is annual.
 **The authoritative answer comes from submitting.** That is the main reason to
 start this early rather than late.
 
+### Re-researched 2026-07-29 — one finding that changes the shape of this
+
+Google's own restricted-scope page states the assessment is initiated by
+Google, not by you: **"the Google Trust and Safety team will contact you when
+it is time to initiate the security assessment process."** So CASA is not a
+gate you clear *before* submitting, and not something to buy pre-emptively —
+you submit, and Google tells you whether an assessment is required and at what
+level. Two practical consequences:
+- **Nothing about CASA should delay recording the video or submitting.**
+- **Don't pay for anything until Google asks.** The AL1/AL2 figures are what
+  to budget for if they come back asking, not a cost to incur now.
+
+Also confirmed: the assurance level is **dynamic** — Google states it "may
+increase based on changes in your user base or data-handling practices," and
+an app validated at AL2 stays at AL2 in later years. That is a direct argument
+for the sequencing already decided in CLAUDE.md roadmap item 5: **submit while
+the architecture is still backend-free**, because adding a payments server
+later is exactly the kind of "change in data-handling practices" that could
+raise the level on a future recertification.
+
+The Limited Use requirements themselves (verbatim from the Google API Services
+User Data Policy) are four: limit use to user-facing features prominent in the
+app's UI; don't transfer the data except for those features, security, legal
+compliance, or M&A with consent; no human reading of the data; and handle it
+securely. Prohibited outright: transferring or selling to advertising
+platforms/data brokers/resellers, and using it for ad serving, retargeting,
+personalised advertising, or credit/lending decisions. `privacy.html` now
+carries an explicit Limited Use commitment covering all of these (added
+2026-07-29 — see the pre-submission audit note below).
+
 ---
 
 ## Demo video — shot list (owner records)
@@ -117,7 +147,7 @@ Google requires an unlisted-or-public video, **in English**, showing the OAuth
 consent screen with the app name readable, the **OAuth client ID visible**, and
 concrete proof of what each restricted scope is actually used for.
 
-### ⚠️ Two things that will get the video rejected if missed
+### ⚠️ THREE things that will get the video rejected if missed
 
 **1. Revoke the app's access BEFORE recording, or no consent screen appears.**
 `App.signIn()` calls `getToken('')` — an empty `prompt`. Once you've already
@@ -138,6 +168,26 @@ Fix: **open the video on the Cloud Console credentials page with the Web client
 ID plainly visible** (Shot 1 below). That satisfies "show the client ID"
 unambiguously, regardless of how the popup renders. If the popup *does* happen
 to show the full URL, that's a bonus, not the plan.
+**Do a dry run and look**: if the popup's address bar shows the client ID,
+capture it and you've satisfied the requirement literally.
+
+**3. You have TWO OAuth clients — the video must cover BOTH.**
+Google, verbatim: *"If you use multiple clients, and therefore have multiple
+OAuth client IDs, you must show how the data is accessed on each OAuth
+client."* This project has a **Web** client and an **Android** client, both
+requesting `drive.readonly`, both under the same consent screen. A web-only
+video is therefore incomplete by Google's own rule.
+Add a second segment recorded off the phone (screen recording, or a steady
+camera): open the native app → sign in (the Chrome Custom Tab consent flow) →
+folder picker → library lists the epubs → open a book → playback. Same story,
+second client. Say out loud which client each segment is.
+If you'd rather not demo Android yet — reasonable, since the only Android
+client today is tied to the **debug** keystore and the app isn't released —
+the alternative is to **delete the Android OAuth client before submitting**
+and re-create it (against the release keystore) when you actually ship to
+Play. Then the project genuinely has one client and a web-only video is
+complete. Deleting it breaks native sign-in until re-created, so only do this
+if you're pausing native work. **Decide this before recording**, not after.
 
 ### Before you hit record
 
@@ -172,8 +222,12 @@ the scope's actual use, and cuts there invite doubt.
 - [ ] The consent screen is on screen long enough to read the app name.
 - [ ] The client ID is legible in Shot 1.
 - [ ] The address bar is visible throughout (never cropped out).
-- [ ] It's on **`phonoleaf.com`**, not `kbailey90.github.io`, and not the
-      native app — it's the **Web** OAuth client under review.
+- [ ] The web segment is on **`phonoleaf.com`**, not `kbailey90.github.io`.
+- [ ] **Both OAuth clients are covered** (web + Android), or the Android client
+      has been deleted from the project — see trap 3.
+- [ ] The app name and branding on screen match the consent screen exactly —
+      *"demo doesn't match the submitted app's name and branding"* is a
+      documented rejection reason.
 - [ ] Upload to YouTube as **Unlisted** (not Private — reviewers must be able
       to open it without being added as a viewer).
 
@@ -260,3 +314,49 @@ you two weeks.
       but a deliberate sign-out/sign-in round trip would close it out).
 - [ ] Optional: get the ToS reviewed by an actual lawyer before public launch,
       and decide a jurisdiction (currently left generic).
+
+---
+
+## Pre-submission audit (2026-07-29)
+
+Full pass over requirements, code, branding and legal pages before recording.
+
+### Fixed as part of this audit
+
+- **`privacy.html` had no explicit Limited Use affirmation.** Google requires
+  the policy to "comply with the Google API Services User Data Policy and the
+  Limited Use requirements for restricted scopes." The policy covered the
+  *substance* thoroughly (read-only, no sale, no ads, no AI training, no
+  server) but never referenced the policy **by name** — and reviewers look for
+  that explicit statement. This is a well-known rejection cause. Added a
+  "Limited Use commitment" card naming and linking the Google API Services
+  User Data Policy and enumerating all four Limited Use requirements.
+
+### Checked and clean
+
+- **No debug leftovers**: zero `console.log`/`debugger` in `index.html`; no
+  `TODO`/`FIXME`/`HACK` markers in `index.html` or `sw.js`.
+- **Branding is consistent** — "PhonoLeaf" everywhere: `manifest.json`
+  (`name` + `short_name`), `home.html`, `privacy.html`, `terms.html`, the app
+  UI, the launcher/notification icons, and the consent screen. This matters
+  directly: *"demo doesn't match the submitted app's name and branding"* is a
+  documented video-rejection reason.
+- **Bug-report diagnostics leak nothing sensitive** — `_diagnostics()` collects
+  user agent, screen size, language, build and voice-engine state only; no
+  token, no auth state, no `pl_*` storage values. Confirmed by grep.
+- **No secrets tracked in git** — no `.jks`, `.keystore`, `.env` or
+  credential files. The release keystore (when created) must stay untracked.
+- **Homepage requirement satisfied** — `home.html` is publicly accessible (not
+  behind the sign-in wall), its relevance to the app is explicit, and it is on
+  the same domain as the privacy policy, as required.
+- **Privacy policy is on the same domain as the homepage** and linked from the
+  consent screen — both required.
+
+### Known, accepted, not blockers
+
+- **`CONFIG.API_KEY` is dead code.** Unused since the Picker revert (the folder
+  browser is our own UI). It's a referrer-restricted browser key, so leaving it
+  is not a security problem, and CLAUDE.md documents why it was kept. Harmless
+  either way — worth deleting only as tidiness, not before submission.
+- **ToS still flags itself as not lawyer-reviewed**, and jurisdiction is
+  generic. Fine for verification; matters more once payments land.
