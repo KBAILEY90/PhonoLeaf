@@ -237,6 +237,12 @@ almost certainly less costly — and removes the judgement call entirely.
       new Kotlin plugin (`EmailComposerPlugin.kt`) has never been compiled.
       Don't discover a build failure mid-recording.
 - [ ] Revoke access **again** after Segment A, and sign out inside the app.
+      ⚠️ **Expect TWO "PhonoLeaf" entries** on the permissions page — OAuth
+      grants are recorded per *client ID*, and this project has a Web and an
+      Android client, both showing the same consent-screen branding. **Revoke
+      every entry**, not just the first: leaving the Android grant intact means
+      Segment B signs in silently with **no consent screen**, which is exactly
+      what fails the review. Re-check the page right before recording B.
 - [ ] Phone language set to English.
 - [ ] Silence notifications (Do Not Disturb) — a banner mid-consent-screen
       looks bad and can obscure the app name.
