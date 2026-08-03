@@ -186,8 +186,37 @@ client today is tied to the **debug** keystore and the app isn't released —
 the alternative is to **delete the Android OAuth client before submitting**
 and re-create it (against the release keystore) when you actually ship to
 Play. Then the project genuinely has one client and a web-only video is
-complete. Deleting it breaks native sign-in until re-created, so only do this
-if you're pausing native work. **Decide this before recording**, not after.
+complete. **Decide this before recording**, not after.
+
+**Is delete-then-restore allowed? (researched 2026-07-29)** Google's list of
+[changes that require re-verification](https://support.google.com/cloud/answer/13464018)
+is short and specific: **adding new sensitive/restricted scopes**, and
+**changing the app name, logo/icon, redirect URI, homepage link or privacy
+policy link** on the consent screen. **Adding an OAuth client ID is not on
+that list**, so mechanically, adding an Android client to an already-approved
+project — with scopes that are already approved — does not itself trip a
+documented re-verification trigger, and there is no automatic "flag".
+But mechanics aren't the whole answer, and two things are worth being clear
+about:
+- **There's a real difference between housekeeping and concealment.** Deleting
+  the client because Android genuinely isn't a shipping platform (true today:
+  debug keystore, not on Play, not distributed to anyone) is honest — the
+  review then reflects what actually ships. Deleting it purely to keep it out
+  of the reviewer's view, intending to restore *the same client* right after
+  approval, means the approval rests on an incomplete picture of the app. No
+  alarm fires, but it isn't a position worth being in for a product that
+  intends to operate on this grant for years.
+- **It's a deferral, not an escape.** Restricted-scope apps get **annual
+  re-verification**, and a release Android client is needed for Play anyway
+  (different SHA-1 from the debug one). So the Android client has to be
+  disclosed and demonstrated eventually regardless — the only question is
+  whether that happens now or at the next review.
+
+**Practical blocker that likely settles it:** deleting the Android client
+breaks native sign-in *immediately*, and verification review can take weeks.
+That means no working Android build to test on for the entire review window,
+stalling native development. Recording ~3 extra minutes of phone footage is
+almost certainly less costly — and removes the judgement call entirely.
 
 ### Before you hit record
 
