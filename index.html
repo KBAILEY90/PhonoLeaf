@@ -1769,10 +1769,14 @@ const VoiceHelp = {
 // of truth (packStatus() re-derives it, nothing here is persisted to
 // localStorage), so a fresh install / cleared app data can't disagree with it.
 const VoicePacks = {
-  // Kept in sync with PhonoLeafTtsPlugin.kt's VOICE_PACKS map. approxMB is
-  // only the fallback shown before packStatus() resolves a real size.
+  // Kept in sync with PhonoLeafTtsPlugin.kt's VOICE_PACKS map, PLUS "us" —
+  // the one bundled model, listed here too (as always-"Included", not
+  // removable — see rowHTML) so the popup shows the complete picture rather
+  // than only the optional downloads. approxMB is only the fallback shown
+  // before packStatus() resolves a real size.
   CATALOG: [
-    { model: 'gb', label: 'British English', approxMB: 77 },
+    { model: 'us', label: 'English (US)', approxMB: 0 },
+    { model: 'gb', label: 'English (UK)', approxMB: 77 },
     { model: 'fr', label: 'French', approxMB: 64 },
     { model: 'de', label: 'German', approxMB: 64 },
     { model: 'es', label: 'Spanish', approxMB: 64 },
@@ -1863,8 +1867,12 @@ const VoicePacks = {
   available() { return !!this._plugin(); },
 
   // One row's markup for the Language Packs modal — label, status, and
-  // whichever action (Download / Cancel / Remove) applies right now.
+  // whichever action (Download / Cancel / Remove) applies right now. "us" is
+  // the one bundled-not-downloaded model: always shown as Included, with no
+  // Remove button — it's required for the app to function at all, and
+  // deletePack() rejects it server-side anyway (VOICE_PACKS has no "us" key).
   rowHTML({ model, label, approxMB }) {
+    const removable = model !== 'us';
     const st = this._status[model];
     const prog = this._progress[model];
     let sub, right;
@@ -1875,8 +1883,8 @@ const VoicePacks = {
       sub = 'Checking…';
       right = '';
     } else if (st.downloaded) {
-      sub = 'Downloaded';
-      right = `<button class="set-link danger" onclick="VoicePacks.remove('${model}')">Remove</button>`;
+      sub = removable ? 'Downloaded' : 'Included';
+      right = removable ? `<button class="set-link danger" onclick="VoicePacks.remove('${model}')">Remove</button>` : '';
     } else {
       const mb = Math.round((st.approxBytes || approxMB * 1024 * 1024) / (1024 * 1024));
       sub = `${mb} MB`;

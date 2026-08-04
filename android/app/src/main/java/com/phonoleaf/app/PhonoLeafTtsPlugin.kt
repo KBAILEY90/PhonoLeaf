@@ -298,10 +298,29 @@
             call.resolve()
         }
 
-        // Bumped by cancelDownload() / a new downloadPack() call for the same
-        // model, so an in-flight download's loop notices and unwinds instead of
-        // racing a second one or continuing after the caller gave up.
-        @Volatile private var downloadEpoch = 0
+        // PER-MODEL epoch, bumped by cancelDownload(model) or a fresh
+        // downloadPack(model) call for the SAME model, so an in-flight
+        // download's loop notices and unwinds instead of racing a second call
+        // for that model or continuing after the caller gave up. Keyed by
+        // model — MUST NOT be a single shared counter: an earlier bug used one
+        // global epoch, so starting pack B's download bumped it and instantly
+        // looked like a cancel to pack A's still-running loop, even though
+        // nothing about A was cancelled (owner-reported: downloading two packs
+        // at once froze both, then the first in line self-cancelled).
+        private val downloadEpochs = java.util.concurrent.ConcurrentHashMap<String, java.util.concurrent.atomic.AtomicInteger>()
+        private fun bumpDownloadEpoch(model: String) =
+            downloadEpochs.computeIfAbsent(model) { java.util.concurrent.atomic.AtomicInteger(0) }.incrementAndGet()
+        private fun currentDownloadEpoch(model: String) = downloadEpochs[model]?.get() ?: 0
+
+        // Dedicated queue for pack downloads, separate from genExecutor (which
+        // runs TTS synthesis). Two reasons: (1) the owner asked for downloads
+        // to queue rather than race each other — a single-thread executor does
+        // exactly that, serializing them in request order; (2) sharing
+        // genExecutor would mean a multi-minute pack download blocks every
+        // synthesize() call behind it, freezing audio playback while a
+        // download is in flight, which is unrelated but would be an easy new
+        // bug to introduce while fixing this one.
+        private val downloadExecutor = Executors.newSingleThreadExecutor()
 
         /** packStatus({model}) -> {downloaded, approxBytes}. Bundled models (not
          *  in VOICE_PACKS, e.g. "us") always report downloaded=true. Lets the
@@ -338,8 +357,8 @@
             if (model.isNullOrEmpty()) { call.reject("model required"); return }
             val info = VOICE_PACKS[model]
             if (info == null) { call.reject("no such voice pack: $model"); return }
-            val stamp = ++downloadEpoch
-            genExecutor.execute {
+            val stamp = bumpDownloadEpoch(model)
+            downloadExecutor.execute {
                 val folder = folderFor(model)
                 val dest = File(context.filesDir, folder)
                 // Extract into a scratch dir first, swap in only on full success —
@@ -363,7 +382,7 @@
                     val progressIn = ProgressInputStream(conn.inputStream) { n ->
                         downloaded += n
                         val now = System.currentTimeMillis()
-                        if (now - lastEmit >= 200 && stamp == downloadEpoch) {
+                        if (now - lastEmit >= 200 && stamp == currentDownloadEpoch(model)) {
                             lastEmit = now
                             val p = JSObject()
                             p.put("model", model); p.put("downloaded", downloaded); p.put("total", total)
@@ -375,7 +394,7 @@
                         TarArchiveInputStream(bz).use { tar ->
                             var entry = tar.nextTarEntry
                             while (entry != null) {
-                                if (stamp != downloadEpoch) throw InterruptedIOException("cancelled")
+                                if (stamp != currentDownloadEpoch(model)) throw InterruptedIOException("cancelled")
                                 // The archive wraps everything in one top-level dir
                                 // (e.g. "vits-piper-en_GB-vctk-medium/model.onnx") —
                                 // strip it so files land straight under `dest`,
@@ -390,7 +409,7 @@
                             }
                         }
                     }
-                    if (stamp != downloadEpoch) throw InterruptedIOException("cancelled")
+                    if (stamp != currentDownloadEpoch(model)) throw InterruptedIOException("cancelled")
                     synchronized(lock) {
                         // Drop a loaded instance of the model we just replaced —
                         // ensureReady() will re-copy/reload from the fresh files.
@@ -411,12 +430,16 @@
             }
         }
 
-        /** Abort an in-flight downloadPack() call (e.g. user backs out of the
-         *  Settings screen mid-download). The download loop notices on its next
-         *  chunk/entry and rejects; any partial scratch dir is cleaned up there. */
+        /** cancelDownload({model}) — abort an in-flight downloadPack() call for
+         *  ONE model (e.g. the user taps Cancel on that pack). Scoped to the
+         *  given model only — it must NOT affect any other model's in-flight
+         *  download. The download loop notices on its next chunk/progress
+         *  check and rejects; any partial scratch dir is cleaned up there. */
         @PluginMethod
         fun cancelDownload(call: PluginCall) {
-            downloadEpoch++
+            val model = call.getString("model")
+            if (model.isNullOrEmpty()) { call.reject("model required"); return }
+            bumpDownloadEpoch(model)
             call.resolve()
         }
 
