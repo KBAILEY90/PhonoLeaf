@@ -223,6 +223,9 @@ almost certainly less costly — and removes the judgement call entirely.
 **Desktop (opening shot + Segment A)**
 
 - [ ] Revoke access (see above).
+- [ ] Rename the Android client off "(debug)" — e.g. "PhonoLeaf Android" —
+      before recording the opening shot; a "(debug)" label invites the
+      reviewer to wonder why a dev build is being submitted.
 - [ ] Open [Credentials](https://console.cloud.google.com/apis/credentials?project=phonoleaf)
       in a tab, with both the **Web** and **Android** clients visible.
 - [ ] Confirm the connected Drive folder has a few epubs in it.
@@ -264,7 +267,7 @@ Remove access, before recording the phone. Also sign out inside the app.
 
 | # | On screen | Say |
 |---|---|---|
-| 0 | Cloud Console → [Credentials](https://console.cloud.google.com/apis/credentials?project=phonoleaf), showing the **Web** and **Android** OAuth clients in the list. Click into each briefly so both IDs are readable. | "PhonoLeaf uses two OAuth clients in one project: a Web client, `88179965472-codmbgtm…`, and an Android client, `88179965472-cs9869…`. I'll show Drive access on both." |
+| 0 | Cloud Console → [Credentials](https://console.cloud.google.com/apis/credentials?project=phonoleaf), showing the **Web** and **Android** OAuth clients in the list (confirm the Android one now reads "PhonoLeaf Android", not "(debug)" — rename it first if you haven't). Click into each briefly so both IDs are readable. | "PhonoLeaf uses two OAuth clients in one project: a Web client, `88179965472-codmbgtm…`, and an Android client, `88179965472-cs9869…`. I'll show Drive access on both." |
 
 This single shot satisfies "show the client ID" for both clients up front, which
 matters because neither the GIS popup nor the Android Custom Tab reliably
@@ -274,8 +277,8 @@ exposes a full URL in a readable address bar.
 
 | # | On screen | Say |
 |---|---|---|
-| A1 | Navigate to `phonoleaf.com` — the sign-in screen. Address bar visible. | "This is the web app, on phonoleaf.com, using the Web OAuth client." |
-| A2 | Click **Sign in with Google**. Consent screen appears. **Hold ~5s.** App name "PhonoLeaf" and the Drive permission must both be readable. | "Here's the consent screen. The app name is PhonoLeaf, and it requests read-only access to Google Drive." |
+| A1 | Navigate to `phonoleaf.com` — the **welcome screen**. Address bar visible. Let it sit ~3s on the hero + tagline, then scroll slowly through the three numbered steps ("Connect a Drive folder" / "Your library appears" / "Press play") and the read-only/no-server line — **don't click Sign in yet**. | "This is the web app, on phonoleaf.com, using the Web OAuth client. Before asking for anything, it explains what it does: connect a Drive folder, your library appears, press play. And it states up front that access is read-only and there's no backend — nothing leaves the device." |
+| A2 | Scroll back up, click **Sign in with Google**. Consent screen appears. **Hold ~5s.** App name "PhonoLeaf" and the Drive permission must both be readable. | "Now I sign in. Here's the consent screen — app name PhonoLeaf, requesting read-only access to Google Drive." |
 | A3 | Grant → lands on Home. | "I grant access." |
 | A4 | Folder browser opens (first run). Browse Drive, pick the ebooks folder. | "PhonoLeaf asks which Drive folder my ebooks are in. That folder is the only one it reads." |
 | A5 | Library fills with the epubs from that folder. | "It lists the epub files in that folder — this is what the drive.readonly scope is used for." |
@@ -283,19 +286,22 @@ exposes a full URL in a readable address bar.
 | A7 | Settings → show the Privacy Policy and Terms links, and Sign out. | "PhonoLeaf never modifies, uploads or deletes anything in Drive — the access is read-only. There's no backend, so files are never sent to any server of ours." |
 
 **A4–A6 in one continuous take** — that's the segment proving actual scope use,
-and cuts there invite doubt.
+and cuts there invite doubt. A1's slow scroll is worth the extra few seconds: it
+puts the "why does this app want Drive access" answer on screen before the
+consent prompt even appears, which is exactly what a reviewer is looking for.
 
 #### Segment B — Android client (phone)
 
 Record with Android's built-in screen recorder (swipe down → **Screen record**),
 **with the microphone enabled** so you can narrate as you go.
 
-Before you start: revoke access (above), and make sure the app is signed out.
+Before you start: revoke access (above — check for BOTH grants), and make sure
+the app is signed out.
 
 | # | On screen | Say |
 |---|---|---|
-| B1 | The PhonoLeaf app open on the sign-in screen. | "Same app, Android build, using the Android OAuth client `88179965472-cs9869…`." |
-| B2 | Tap **Sign in with Google**. A Chrome Custom Tab opens the consent screen. **Hold ~5s** — app name and the Drive permission readable. | "The Android app opens the consent screen in the system browser. Same app name, same read-only Drive permission." |
+| B1 | The PhonoLeaf app open on the **welcome screen** (same content as A1 — hero, three steps, read-only/no-server line). Scroll through it slowly, **don't tap Sign in yet**. | "Same app, Android build, using the Android OAuth client `88179965472-cs9869…`. Same explanation up front — what it does, and that Drive access is read-only." |
+| B2 | Scroll back up, tap **Sign in with Google**. A Chrome Custom Tab opens the consent screen. **Hold ~5s** — app name and the Drive permission readable. | "It opens the consent screen in the system browser. Same app name, same read-only Drive permission." |
 | B3 | Grant → returns to the app, signed in. | "I grant access, and it returns to the app." |
 | B4 | Folder browser → pick the ebooks folder. | "I pick the same Drive folder." |
 | B5 | Library fills with the epubs. | "The Android client lists the epubs in that folder — the same drive.readonly usage." |
