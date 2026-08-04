@@ -15,10 +15,18 @@
     import com.k2fsa.sherpa.onnx.OfflineTtsKokoroModelConfig
     import com.k2fsa.sherpa.onnx.OfflineTtsModelConfig
     import com.k2fsa.sherpa.onnx.OfflineTtsVitsModelConfig
+    import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
+    import org.apache.commons.compress.compressors.bzip2.BZip2CompressorInputStream
     import java.io.BufferedOutputStream
     import java.io.File
+    import java.io.FileNotFoundException
     import java.io.FileOutputStream
+    import java.io.IOException
+    import java.io.InputStream
+    import java.io.InterruptedIOException
     import java.io.OutputStream
+    import java.net.HttpURLConnection
+    import java.net.URL
     import java.util.concurrent.Executors
     
     /**
@@ -46,6 +54,14 @@
      * On first use we copy that folder to filesDir once (espeak-ng-data / dict /
      * lexicon files must be opened by native code via real filesystem paths, not
      * through the AssetManager), then load from disk.
+     *
+     * Not every model is bundled this way. Accents beyond the store build's US
+     * default (currently "gb") ship nothing in assets at all — see VOICE_PACKS —
+     * and are instead fetched straight into filesDir on demand via
+     * downloadPack(), to keep the store APK to one model's size (~78 MB) rather
+     * than growing per language. ensureReady() throws a distinguishable
+     * PackNotDownloadedException for these until downloadPack() has run once;
+     * packStatus() lets the Settings UI check/show that state up front.
      */
     @CapacitorPlugin(name = "PhonoLeafTts")
     class PhonoLeafTtsPlugin : Plugin() {
@@ -104,9 +120,58 @@
         // placed files. Surfaced to the readout so we can confirm which engine ran.
         @Volatile private var activeModelType = "?"
     
-        // Asset/filesDir subfolder for a model key. "gb" → the British model;
-        // anything else ("us"/default) → the primary `kokoro` folder.
-        private fun folderFor(model: String) = if (model == "gb") "kokoro-gb" else ASSET_DIR
+        // Asset/filesDir subfolder for a model key: looked up from VOICE_PACKS
+        // for anything downloadable; "us"/anything else falls back to the
+        // bundled `kokoro` folder.
+        private fun folderFor(model: String) = VOICE_PACKS[model]?.folder ?: ASSET_DIR
+
+        // Voice packs NOT bundled in the APK's assets — fetched on demand via
+        // downloadPack() into filesDir instead. Keeps the store build's install
+        // size to just the US model (see CLAUDE.md's "MODEL SIZES" note: bundling
+        // every accent/language doesn't scale, ~65-80 MB each). Source is the
+        // SAME public sherpa-onnx GitHub release the US model already ships
+        // from (TESTING.md §3.6) — no separate hosting to maintain. Sizes are
+        // the exact `.tar.bz2` asset sizes from that release (checked
+        // 2026-08-04 via `gh release view tts-models --repo k2-fsa/sherpa-onnx`),
+        // not estimates.
+        private data class VoicePackInfo(val folder: String, val url: String, val approxBytes: Long)
+        private val VOICE_PACKS = mapOf(
+            "gb" to VoicePackInfo(
+                folder = "kokoro-gb",
+                url = "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-en_GB-vctk-medium.tar.bz2",
+                approxBytes = 80488085L,
+            ),
+            // Single-speaker models (unlike US/GB's multi-speaker libritts_r/vctk)
+            // — no speaker-id audition needed, sid is always 0. Picked as the
+            // most standard/well-known community Piper voice per language
+            // (siwis/thorsten/davefx), NOT owner-audited for quality or gender —
+            // see the PIPER_VOICES comment in index.html.
+            "fr" to VoicePackInfo(
+                folder = "kokoro-fr",
+                url = "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-fr_FR-siwis-medium.tar.bz2",
+                approxBytes = 67207459L,
+            ),
+            "de" to VoicePackInfo(
+                folder = "kokoro-de",
+                url = "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-de_DE-thorsten-medium.tar.bz2",
+                approxBytes = 67214254L,
+            ),
+            "es" to VoicePackInfo(
+                folder = "kokoro-es",
+                url = "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-es_ES-davefx-medium.tar.bz2",
+                approxBytes = 67184952L,
+            ),
+        )
+
+        // Thrown when a downloadable model's files aren't on disk yet. Message is
+        // prefixed so the JS layer can detect this SPECIFIC condition (prompt to
+        // download) rather than treating it like any other synth failure (silent
+        // strike-out to the device voice) — a user who explicitly picked a GB
+        // voice should be told why it's not speaking, not silently hear the wrong
+        // one. Extends FileNotFoundException so it's still caught by every
+        // existing `catch (e: Throwable)` site unchanged.
+        private class PackNotDownloadedException(model: String) :
+            FileNotFoundException("PACK_NOT_DOWNLOADED:$model")
 
         private fun ensureReady(model: String): OfflineTts {
             tts?.let { if (loadedModel == model) return it }
@@ -120,6 +185,13 @@
                 val dest = File(ctx.filesDir, folder)
                 val marker = File(dest, ".ready-$MODEL_VERSION")
                 if (!marker.exists()) {
+                    if (VOICE_PACKS.containsKey(model)) {
+                        // Not shipped in assets — must go through downloadPack()
+                        // first. Don't fall through to copyAssetDir: there's
+                        // nothing in assets to copy, so it would just throw a
+                        // less specific "no *.onnx" error below.
+                        throw PackNotDownloadedException(model)
+                    }
                     dest.deleteRecursively() // clear any older model copy
                     copyAssetDir(ctx.assets, folder, dest)
                     marker.createNewFile()
@@ -224,6 +296,162 @@
         fun cancel(call: PluginCall) {
             epoch++
             call.resolve()
+        }
+
+        // Bumped by cancelDownload() / a new downloadPack() call for the same
+        // model, so an in-flight download's loop notices and unwinds instead of
+        // racing a second one or continuing after the caller gave up.
+        @Volatile private var downloadEpoch = 0
+
+        /** packStatus({model}) -> {downloaded, approxBytes}. Bundled models (not
+         *  in VOICE_PACKS, e.g. "us") always report downloaded=true. Lets the
+         *  Settings UI show pack size before download and reflect current state
+         *  without duplicating a flag in JS storage — the filesystem marker is
+         *  the single source of truth. */
+        @PluginMethod
+        fun packStatus(call: PluginCall) {
+            val model = call.getString("model")
+            if (model.isNullOrEmpty()) { call.reject("model required"); return }
+            val info = VOICE_PACKS[model]
+            val ret = JSObject()
+            if (info == null) {
+                ret.put("downloaded", true)
+                ret.put("approxBytes", 0)
+                call.resolve(ret)
+                return
+            }
+            val dest = File(context.filesDir, folderFor(model))
+            ret.put("downloaded", File(dest, ".ready-$MODEL_VERSION").exists())
+            ret.put("approxBytes", info.approxBytes)
+            call.resolve(ret)
+        }
+
+        /** downloadPack({model}) — streams the model's .tar.bz2 straight into
+         *  filesDir, extracting as it goes (no separate on-disk archive copy).
+         *  Emits "packProgress" events ({model, downloaded, total, pct}) at most
+         *  5x/sec while it runs; resolves once the pack is ready to use, rejects
+         *  on any network/disk/cancel failure (nothing partial is left usable —
+         *  see the tmp-dir swap below). */
+        @PluginMethod
+        fun downloadPack(call: PluginCall) {
+            val model = call.getString("model")
+            if (model.isNullOrEmpty()) { call.reject("model required"); return }
+            val info = VOICE_PACKS[model]
+            if (info == null) { call.reject("no such voice pack: $model"); return }
+            val stamp = ++downloadEpoch
+            genExecutor.execute {
+                val folder = folderFor(model)
+                val dest = File(context.filesDir, folder)
+                // Extract into a scratch dir first, swap in only on full success —
+                // a failed/cancelled download must never leave a half-written
+                // folder that ensureReady() then treats as ready.
+                val tmp = File(context.filesDir, "$folder-tmp")
+                var conn: HttpURLConnection? = null
+                try {
+                    tmp.deleteRecursively(); tmp.mkdirs()
+                    conn = (URL(info.url).openConnection() as HttpURLConnection).apply {
+                        connectTimeout = 15000
+                        readTimeout = 30000
+                        instanceFollowRedirects = true
+                        connect()
+                    }
+                    if (conn.responseCode !in 200..299)
+                        throw IOException("download failed: HTTP ${conn.responseCode}")
+                    val total = conn.contentLengthLong.let { if (it > 0) it else info.approxBytes }
+                    var downloaded = 0L
+                    var lastEmit = 0L
+                    val progressIn = ProgressInputStream(conn.inputStream) { n ->
+                        downloaded += n
+                        val now = System.currentTimeMillis()
+                        if (now - lastEmit >= 200 && stamp == downloadEpoch) {
+                            lastEmit = now
+                            val p = JSObject()
+                            p.put("model", model); p.put("downloaded", downloaded); p.put("total", total)
+                            p.put("pct", if (total > 0) minOf(99, (downloaded * 100 / total).toInt()) else 0)
+                            notifyListeners("packProgress", p)
+                        }
+                    }
+                    BZip2CompressorInputStream(progressIn).use { bz ->
+                        TarArchiveInputStream(bz).use { tar ->
+                            var entry = tar.nextTarEntry
+                            while (entry != null) {
+                                if (stamp != downloadEpoch) throw InterruptedIOException("cancelled")
+                                // The archive wraps everything in one top-level dir
+                                // (e.g. "vits-piper-en_GB-vctk-medium/model.onnx") —
+                                // strip it so files land straight under `dest`,
+                                // matching where ensureReady() expects them.
+                                val rel = entry.name.substringAfter('/', "")
+                                if (!entry.isDirectory && rel.isNotEmpty()) {
+                                    val out = File(tmp, rel)
+                                    out.parentFile?.mkdirs()
+                                    out.outputStream().use { os -> tar.copyTo(os) }
+                                }
+                                entry = tar.nextTarEntry
+                            }
+                        }
+                    }
+                    if (stamp != downloadEpoch) throw InterruptedIOException("cancelled")
+                    synchronized(lock) {
+                        // Drop a loaded instance of the model we just replaced —
+                        // ensureReady() will re-copy/reload from the fresh files.
+                        if (loadedModel == model) { tts = null; loadedModel = null }
+                        dest.deleteRecursively()
+                        if (!tmp.renameTo(dest)) throw IOException("could not install pack")
+                    }
+                    File(dest, ".ready-$MODEL_VERSION").createNewFile()
+                    val p = JSObject(); p.put("model", model); p.put("downloaded", downloaded); p.put("total", downloaded); p.put("pct", 100)
+                    notifyListeners("packProgress", p)
+                    call.resolve()
+                } catch (e: Throwable) {
+                    tmp.deleteRecursively()
+                    call.reject(e.message ?: "download failed", e as? Exception ?: RuntimeException(e))
+                } finally {
+                    conn?.disconnect()
+                }
+            }
+        }
+
+        /** Abort an in-flight downloadPack() call (e.g. user backs out of the
+         *  Settings screen mid-download). The download loop notices on its next
+         *  chunk/entry and rejects; any partial scratch dir is cleaned up there. */
+        @PluginMethod
+        fun cancelDownload(call: PluginCall) {
+            downloadEpoch++
+            call.resolve()
+        }
+
+        /** deletePack({model}) — reclaim the space a downloaded pack uses. Only
+         *  valid for models in VOICE_PACKS (never the bundled "us" model). */
+        @PluginMethod
+        fun deletePack(call: PluginCall) {
+            val model = call.getString("model")
+            if (model.isNullOrEmpty()) { call.reject("model required"); return }
+            if (!VOICE_PACKS.containsKey(model)) { call.reject("not a removable pack: $model"); return }
+            synchronized(lock) {
+                if (loadedModel == model) { tts = null; loadedModel = null }
+            }
+            File(context.filesDir, folderFor(model)).deleteRecursively()
+            call.resolve()
+        }
+
+        // Thin InputStream wrapper that reports bytes read as they're consumed —
+        // used to drive download progress events without buffering the whole
+        // response in memory first.
+        private class ProgressInputStream(
+            private val wrapped: InputStream,
+            private val onBytes: (Int) -> Unit,
+        ) : InputStream() {
+            override fun read(): Int {
+                val b = wrapped.read()
+                if (b >= 0) onBytes(1)
+                return b
+            }
+            override fun read(b: ByteArray, off: Int, len: Int): Int {
+                val n = wrapped.read(b, off, len)
+                if (n > 0) onBytes(n)
+                return n
+            }
+            override fun close() = wrapped.close()
         }
 
         /** Start the media-playback foreground service so the WebView's <audio>

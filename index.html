@@ -958,6 +958,20 @@
         <button class="set-link" onclick="VoiceHelp.open()">How</button>
       </div>
     </div>
+    <!-- Language packs: accents/languages beyond the store build's bundled US
+         default (only British English today) are downloaded on demand rather
+         than shipped in the APK — see CLAUDE.md's "MODEL SIZES" note. A single
+         summary row here opens LangPacksModal, which lists every pack
+         (downloaded or available) with its own Download/Remove action — scales
+         better than one Settings row per pack as more languages are added.
+         Native-only; hidden on the web build, where VoicePacks.refresh() is a
+         no-op and summary() returns null. -->
+    <div class="set-group" id="langpacks-group" style="display:none">
+      <div class="set-row">
+        <div><div class="sr-k">Language packs</div></div>
+        <button class="set-link" onclick="LangPacksModal.open()">Downloads</button>
+      </div>
+    </div>
     <!-- Your data: GDPR-style access (export) and erasure (delete). Everything
          PhonoLeaf holds is local to this device, so both are handled here —
          there is no server to request anything from. -->
@@ -1077,6 +1091,15 @@
     <div class="modal-handle"></div>
     <div class="modal-title">Choose Voice</div>
     <div id="voice-list"></div>
+  </div>
+</div>
+
+<!-- ============== LANGUAGE PACKS MODAL ============== -->
+<div class="modal-backdrop" id="langpacks-modal" onclick="LangPacksModal.close(event)">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Language Packs</div>
+    <div id="langpacks-list"></div>
   </div>
 </div>
 
@@ -1738,6 +1761,152 @@ const VoiceHelp = {
   close() { document.getElementById('voicehelp-modal').classList.remove('open'); },
 };
 
+// --- Voice packs (native only) -----------------------------
+// Accents beyond the store build's bundled US default are fetched on demand
+// via the PhonoLeafTts plugin (downloadPack) instead of shipping in the APK —
+// see CLAUDE.md's "MODEL SIZES" note. This module owns the client-side status
+// cache + progress state; the plugin's filesystem marker is the actual source
+// of truth (packStatus() re-derives it, nothing here is persisted to
+// localStorage), so a fresh install / cleared app data can't disagree with it.
+const VoicePacks = {
+  // Kept in sync with PhonoLeafTtsPlugin.kt's VOICE_PACKS map. approxMB is
+  // only the fallback shown before packStatus() resolves a real size.
+  CATALOG: [
+    { model: 'gb', label: 'British English', approxMB: 77 },
+    { model: 'fr', label: 'French', approxMB: 64 },
+    { model: 'de', label: 'German', approxMB: 64 },
+    { model: 'es', label: 'Spanish', approxMB: 64 },
+  ],
+  _status: {},   // model -> {downloaded, approxBytes}, once known
+  _progress: {}, // model -> {pct}, while a download is in flight
+  _listenerBound: false,
+
+  _plugin() { return TTS._nativeTts(); },
+
+  // Re-render Settings (always) and whichever of the Voice / Language Packs
+  // modals is currently open (both *.open() calls are idempotent, so calling
+  // one again is just a refresh) so a download's progress/completion shows up
+  // wherever it's visible, without any of the three having to poll.
+  _notify() {
+    Settings.render();
+    const vm = document.getElementById('voice-modal');
+    if (vm && vm.classList.contains('open')) VoiceModal.open();
+    const lm = document.getElementById('langpacks-modal');
+    if (lm && lm.classList.contains('open')) LangPacksModal.open();
+  },
+
+  _bindListener() {
+    if (this._listenerBound) return;
+    const p = this._plugin();
+    if (!p || !p.addListener) return;
+    this._listenerBound = true;
+    p.addListener('packProgress', data => {
+      if (!data || !data.model) return;
+      if (data.pct >= 100) delete this._progress[data.model];
+      else this._progress[data.model] = { pct: data.pct };
+      this._notify();
+    });
+  },
+
+  // Kicks off a background packStatus() check for every catalog entry not yet
+  // known. Settings.render() reads whatever's cached synchronously (showing
+  // "Checking…" until the first check resolves) and calls this again itself,
+  // so it's safe/cheap to call on every render.
+  refresh() {
+    const p = this._plugin();
+    if (!p) return; // web build — nothing to manage
+    this._bindListener();
+    for (const { model } of this.CATALOG) {
+      if (this._status[model]) continue;
+      p.packStatus({ model }).then(r => { this._status[model] = r; this._notify(); }).catch(() => {});
+    }
+  },
+
+  async download(model) {
+    const p = this._plugin();
+    if (!p) return;
+    this._progress[model] = { pct: 0 };
+    this._notify();
+    try {
+      await p.downloadPack({ model });
+      this._status[model] = { downloaded: true, approxBytes: (this._status[model] || {}).approxBytes || 0 };
+      toast('Voice pack downloaded');
+    } catch (e) {
+      toast('Download failed: ' + ((e && e.message) || 'check your connection and try again'));
+    }
+    delete this._progress[model];
+    this._notify();
+  },
+
+  async cancel(model) {
+    const p = this._plugin();
+    if (!p) return;
+    try { await p.cancelDownload({ model }); } catch (_) {}
+    delete this._progress[model];
+    this._notify();
+  },
+
+  async remove(model) {
+    const p = this._plugin();
+    if (!p) return;
+    try {
+      await p.deletePack({ model });
+      this._status[model] = { downloaded: false, approxBytes: (this._status[model] || {}).approxBytes || 0 };
+      toast('Voice pack removed');
+    } catch (e) { toast('Could not remove pack: ' + ((e && e.message) || '')); }
+    this._notify();
+  },
+
+  // Whether the "Language packs" Settings row applies at all — native only
+  // (the web build has no packs to manage). No summary/status text on the row
+  // itself by design: the Downloads button's own modal is where status lives.
+  available() { return !!this._plugin(); },
+
+  // One row's markup for the Language Packs modal — label, status, and
+  // whichever action (Download / Cancel / Remove) applies right now.
+  rowHTML({ model, label, approxMB }) {
+    const st = this._status[model];
+    const prog = this._progress[model];
+    let sub, right;
+    if (prog) {
+      sub = `Downloading… ${prog.pct}%`;
+      right = `<button class="set-link" onclick="VoicePacks.cancel('${model}')">Cancel</button>`;
+    } else if (!st) {
+      sub = 'Checking…';
+      right = '';
+    } else if (st.downloaded) {
+      sub = 'Downloaded';
+      right = `<button class="set-link danger" onclick="VoicePacks.remove('${model}')">Remove</button>`;
+    } else {
+      const mb = Math.round((st.approxBytes || approxMB * 1024 * 1024) / (1024 * 1024));
+      sub = `${mb} MB`;
+      right = `<button class="set-link" onclick="VoicePacks.download('${model}')">Download</button>`;
+    }
+    return `<div class="voice-item" style="cursor:default">
+      <div><div class="voice-name">${esc(label)}</div><div class="voice-lang">${esc(sub)}</div></div>
+      ${right}
+    </div>`;
+  },
+};
+
+// --- Language Packs Modal -----------------------------------
+// Lists every VoicePacks.CATALOG entry (downloaded or available) with its own
+// action, opened from Settings' "Language packs" row. Scales to more entries
+// without adding a Settings row per language — unlike VoiceModal (which gates
+// individual VOICES on their pack), this is purely pack management.
+const LangPacksModal = {
+  open() {
+    VoicePacks.refresh();
+    document.getElementById('langpacks-list').innerHTML =
+      VoicePacks.CATALOG.map(c => VoicePacks.rowHTML(c)).join('');
+    document.getElementById('langpacks-modal').classList.add('open');
+  },
+  close(e) {
+    if (!e || e.target.classList.contains('modal-backdrop'))
+      document.getElementById('langpacks-modal').classList.remove('open');
+  },
+};
+
 // --- Settings ---------------------------------------------
 const Settings = {
   render() {
@@ -1761,6 +1930,11 @@ const Settings = {
     const wl = document.getElementById('set-wakelock'); if (wl) wl.checked = localStorage.getItem('pl_wakelock') !== 'false';
     const f = document.getElementById('set-folder'); if (f) f.textContent = activeFolder() || 'Not selected';
     const a = document.getElementById('set-account'); if (a) a.textContent = State.userName ? 'Signed in as ' + State.userName : 'Signed in';
+    // Language packs: hidden on the web build (no plugin to ask). Pre-warm the
+    // status cache so opening the modal doesn't show a "Checking…" beat.
+    VoicePacks.refresh();
+    const lpg = document.getElementById('langpacks-group');
+    if (lpg) lpg.style.display = VoicePacks.available() ? '' : 'none';
   },
   changeFolder() { FolderBrowser.open(); },
   // Give the neural voice a fresh chance on this device: clear the cached speed
@@ -4276,6 +4450,26 @@ const TTS = {
       if (n) this._preSynth = { key: gen + ':' + (this.idx + 1), p: this._synth(n.text).catch(() => null) };
     } catch (e) {
       if (!this.active || gen !== this._gen) return;
+      // The selected voice's accent pack isn't downloaded yet (PhonoLeafTts
+      // throws a message prefixed like this — see PackNotDownloadedException).
+      // This is NOT a sign the natural voice itself is broken, so it must NOT
+      // feed the strike-out below — that would wrongly disable Kokoro entirely
+      // for the whole session (including the always-available US voice) over a
+      // missing GB pack. Fall back to the device voice for this chunk, point
+      // the user at Settings, and switch the persisted choice back to the
+      // model's first (always-bundled) voice so later chunks don't keep
+      // hitting the same missing pack and re-toasting every chunk.
+      const msg = String((e && e.message) || e || '');
+      const missingModel = msg.startsWith('PACK_NOT_DOWNLOADED:') ? msg.slice('PACK_NOT_DOWNLOADED:'.length) : null;
+      if (missingModel) {
+        const cat = this._nativeCatalog();
+        const fallback = cat.find(v => (v[3] || 'us') !== missingModel) || cat[0];
+        if (fallback) localStorage.setItem(this._voiceKey(), fallback[0]);
+        toast('That voice needs its language pack downloaded — see Settings → Voice packs. Using the standard voice for now.');
+        this.updateVoiceLabel();
+        this._speakWeb(chunk, gen);
+        return;
+      }
       // Strike-out: two consecutive failures (timeout, worker error, OOM)
       // disable Kokoro for the session so every chunk doesn't wait 30s.
       if (!this._kokoroDead && ++this._kstrikes >= 2) {
@@ -4560,6 +4754,15 @@ const PIPER_VOICES = [
   ['gb85', 'Ruby · UK female',   85, 'gb'],
   ['gb70', 'Sam · UK male',      70, 'gb'],
   ['gb20', 'Max · UK male',      20, 'gb'],
+  // French/German/Spanish (2026-08-04) — each a SINGLE-speaker model (siwis /
+  // thorsten / davefx, the standard community Piper voice per language), so
+  // sid is always 0 — no audition needed to pick among speakers, unlike US/GB.
+  // Gender/quality are NOT owner-confirmed by ear yet (no device here) —
+  // labelled by language only until that happens; relabel with a name +
+  // gender once audited, same as US/GB were.
+  ['fr0', 'French voice',  0, 'fr'],
+  ['de0', 'German voice',  0, 'de'],
+  ['es0', 'Spanish voice', 0, 'es'],
 ];
 // --- Voice Modal ------------------------------------------
 const VoiceModal = {
@@ -4570,14 +4773,31 @@ const VoiceModal = {
     if (TTS._engineNow() === 'kokoro') {
       const cat = TTS._nativeCatalog();
       const cur = localStorage.getItem(TTS._voiceKey()) || cat[0][0];
-      document.getElementById('voice-list').innerHTML = cat.map(([id, label, sid]) => `
-        <div class="voice-item ${cur === id ? 'active' : ''}" onclick="VoiceModal.selectNative(this.dataset.vname)" data-vname="${esc(id)}">
+      // Voices whose accent pack isn't downloaded (PIPER_VOICES' 4th field,
+      // e.g. "gb") can't be selected yet — show them locked with a way to
+      // start the download, instead of letting a tap fail mid-read later
+      // (see the PACK_NOT_DOWNLOADED handling in TTS._playAudio).
+      VoicePacks.refresh();
+      document.getElementById('voice-list').innerHTML = cat.map(([id, label, sid, model]) => {
+        const m = model || 'us';
+        const locked = m !== 'us' && !(VoicePacks._status[m] && VoicePacks._status[m].downloaded);
+        if (locked) {
+          const dl = VoicePacks._progress[m];
+          return `<div class="voice-item" style="opacity:.6" onclick="VoiceModal.downloadFor('${m}')" data-vname="${esc(id)}">
+            <div>
+              <div class="voice-name">${esc(label)} <span class="voice-badge">&#10024; Natural</span></div>
+              <div class="voice-lang">${dl ? `Downloading&hellip; ${dl.pct}%` : 'Needs download &mdash; tap to get it'}</div>
+            </div>
+          </div>`;
+        }
+        return `<div class="voice-item ${cur === id ? 'active' : ''}" onclick="VoiceModal.selectNative(this.dataset.vname)" data-vname="${esc(id)}">
           <div>
             <div class="voice-name">${esc(label)} <span class="voice-badge">&#10024; Natural</span></div>
             <div class="voice-lang">speaker ${sid}</div>
           </div>
           ${cur === id ? '<span class="voice-check">&#10003;</span>' : ''}
-        </div>`).join('');
+        </div>`;
+      }).join('');
       document.getElementById('voice-modal').classList.add('open');
       return;
     }
@@ -4592,6 +4812,14 @@ const VoiceModal = {
         ${TTS.voice?.name === v.name ? '<span class="voice-check">&#10003;</span>' : ''}
       </div>`).join('');
     document.getElementById('voice-modal').classList.add('open');
+  },
+
+  // Tapping a locked (pack-not-downloaded) voice starts the download instead
+  // of selecting it; VoicePacks re-renders this modal as progress comes in
+  // (see VoicePacks._notify), so the row updates itself and unlocks in place.
+  downloadFor(model) {
+    if (VoicePacks._progress[model]) return; // already downloading
+    VoicePacks.download(model);
   },
 
   // Native voice selection (Kokoro or Piper — key + catalog per model type);

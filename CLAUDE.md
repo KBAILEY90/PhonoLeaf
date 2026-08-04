@@ -170,13 +170,67 @@ renders them with epub.js, and reads the text using the browser's Web Speech
   Every future language would add another ~75–80 MB — this does NOT amortise
   the way the web model does (see below).
   **DECISION (owner, 2026-07-29): ship US ONLY in the store build; GB and any
-  future languages become in-app downloadable voice packs.** Not implemented
-  yet — deliberately deferred until after the OAuth verification video is
-  recorded and submitted. When it is built: drop `kokoro-gb/` from the bundled
-  assets, fetch packs on demand into `filesDir` (where `ensureReady`'s
-  `folderFor` already loads from, so the plugin needs little change), and give
-  Settings a voice-pack UI showing size before download. Play Asset Delivery is
-  the alternative if bundling is preferred over a custom fetch.
+  future languages become in-app downloadable voice packs. IMPLEMENTED
+  2026-08-04** (started right after OAuth verification was submitted, per the
+  deferral above). `kokoro-gb`/`-fr`/`-de`/`-es` are no longer looked for in
+  assets at all — `PhonoLeafTtsPlugin.ensureReady()` treats any model in a new
+  `VOICE_PACKS` map as download-only and throws a distinguishable
+  `PackNotDownloadedException` ("PACK_NOT_DOWNLOADED:<model>") if its filesDir
+  copy isn't there yet, rather than trying (and failing) to copy it from
+  assets. Three new `@PluginMethod`s: `packStatus({model})` →
+  `{downloaded, approxBytes}` (checks the same `.ready-$MODEL_VERSION` marker
+  `ensureReady` already used, so there's a single source of truth — nothing
+  duplicated into `localStorage`); `downloadPack({model})` streams the pack's
+  `.tar.bz2` straight from the **same public sherpa-onnx GitHub release URL**
+  the US model already ships from (TESTING.md §3.6) — no separate hosting —
+  extracting via **Apache Commons Compress** (`org.apache.commons:commons-compress:1.28.0`,
+  new Maven Central dependency; `java.util.zip` has no bzip2 support) into a
+  scratch `-tmp` dir that's only swapped in on full success, so a
+  failed/cancelled download can never leave a half-written folder that
+  `ensureReady` later treats as ready; emits `packProgress` events
+  (`{model, downloaded, total, pct}`, throttled to 5/sec) via the plugin's
+  existing `notifyListeners` mechanism (same one `mediaButton` already uses).
+  `deletePack({model})` reclaims the space.
+  **Catalog, launched with GB then expanded the same day to 4 packs**: British
+  English (`gb`, multi-speaker vctk, 4 owner-audition-picked voices, 80488085
+  bytes) plus French (`fr`, `fr_FR-siwis`, 67207459 bytes), German (`de`,
+  `de_DE-thorsten`, 67214254 bytes), Spanish (`es`, `es_ES-davefx`, 67184952
+  bytes) — sizes are exact `.tar.bz2` asset sizes read live from
+  `gh release view tts-models --repo k2-fsa/sherpa-onnx`, not estimates. The
+  three new ones are **single-speaker** models (no sid audition needed, unlike
+  US/GB) picked as the most standard/well-known community Piper voice per
+  language — but **NOT owner-audited for quality or gender** (no device in
+  this environment); `PIPER_VOICES` labels them generically ("French voice"
+  etc.) until that happens, same as the US/GB set was before its own audition
+  round.
+  **JS side (`VoicePacks` module, `index.html`):** owns the status/progress
+  cache. Settings shows a single **"Language packs"** row (no status text on
+  the row itself, by owner request — status lives in the popup) with a
+  **Downloads** button → **`LangPacksModal`**, a popup listing every catalog
+  entry with its own action (size before download, live progress + Cancel
+  while downloading, Remove once downloaded) — a single summary row was chosen
+  over one Settings row per pack (the first cut) specifically so it scales as
+  more languages are added, per owner feedback. `VoicePacks._notify()` keeps
+  Settings and whichever of `VoiceModal`/`LangPacksModal` is open in sync as
+  downloads progress, without either modal polling. Also gates `VoiceModal`: a
+  voice whose pack isn't downloaded shows locked with "tap to get it" instead
+  of being selectable, so a user can't pick a voice that then silently fails
+  mid-chapter. **The one real correctness trap this uncovered**:
+  `TTS._playAudio`'s existing catch-all counted ANY native-synth failure
+  toward a 2-strikes-and-disable-Kokoro-for-the-session counter — so hitting
+  `PACK_NOT_DOWNLOADED` (e.g. a stale `pl_voice_piper` choice from before this
+  feature existed, on a fresh install) would have wrongly killed the natural
+  voice ENTIRELY, including the always-bundled US model, over nothing more
+  than one missing pack. Fixed by special-casing that message prefix before
+  the strike-out check: it falls back to the device voice for just that
+  chunk, resets the persisted voice choice back to the model's first
+  (always-available) voice so later chunks don't keep re-hitting the same
+  wall, and points the user at Settings — without touching
+  `_kstrikes`/`_kokoroDead`. **Not device-verified** — same caveat as every
+  other native change in this file: no JDK/Android SDK in this environment.
+  `index.html`'s JS syntax-checked clean; the Kotlin was reviewed carefully
+  against Commons Compress's documented `TarArchiveInputStream`/
+  `BZip2CompressorInputStream` API but not compiled.
   **`app/build.gradle`'s `compileOptions`/`kotlinOptions.jvmTarget` MUST
   match `capacitor.build.gradle`'s `compileOptions`** (currently both
   `VERSION_21`/`'21'`) — the latter is auto-regenerated by every `cap sync`/
@@ -1842,13 +1896,19 @@ the working plan, not an exploration.
      - Stage 5 — Play Console ($25 one-time), internal testing track, store
        listing + privacy policy (item 4), then production rollout. iOS
        (Apple $99/yr) after Android is proven.
-       **BLOCKER to resolve before the store build: APK size.** The bundled
-       Piper models are ~185 MB uncompressed (US 78.5 + GB 77 + espeak data),
-       which is at/over Play's ~200 MB app-bundle ceiling before app code.
-       **Decided 2026-07-29: ship US only, GB + future languages as in-app
-       downloadable voice packs** — see the model-sizes note in the Tech-stack
-       "Native TTS plugin" section for the implementation sketch. Not started;
-       deliberately after OAuth verification.
+       **APK-size blocker — RESOLVED 2026-08-04.** The bundled Piper models
+       were ~185 MB uncompressed (US 78.5 + GB 77 + espeak data), at/over
+       Play's ~200 MB app-bundle ceiling before app code. **Decided
+       2026-07-29, implemented 2026-08-04: ship US only, GB + future
+       languages as in-app downloadable voice packs** — see the model-sizes
+       note in the Tech-stack "Native TTS plugin" section for what shipped
+       (`VOICE_PACKS`/`downloadPack`/Commons Compress on the native side, the
+       `VoicePacks` module + Settings UI + `VoiceModal` gating on the JS
+       side). Store build now bundles only the US model (~78.5 MB), matching
+       the original goal. Still not device-verified — no JDK/Android SDK in
+       this environment; needs a real build + device test (including an
+       actual `downloadPack` run against the live GitHub release URL) before
+       this can be marked done for real.
 4. ~~**Privacy policy + ToS**~~ — **DONE (2026-07-22).** `privacy.html` /
    `terms.html` at the repo root, live at
    `kbailey90.github.io/PhonoLeaf/privacy.html` (and `/terms.html`) — same

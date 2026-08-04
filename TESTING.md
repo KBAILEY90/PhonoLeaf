@@ -204,34 +204,54 @@ model you place (Kokoro vs Piper), so switching is just a file swap.
    (Piper has NO `voices.bin` — that's exactly how the plugin knows it's a Piper
    model rather than Kokoro.)
 
-4. **Also place the British model** (for the UK voices) into a SECOND folder
-   `kokoro-gb`, same way:
-   ```
-   cd C:\Repo\phonoleaf\android\app\src\main\assets
-   curl -L -o g.tar.bz2 https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-en_GB-vctk-medium.tar.bz2
-   tar -xf g.tar.bz2
-   ren vits-piper-en_GB-vctk-medium kokoro-gb
-   del g.tar.bz2
-   ```
-   Result: `assets\kokoro\` (US) and `assets\kokoro-gb\` (UK), each with its own
-   `.onnx` + `tokens.txt` + `espeak-ng-data\`. The plugin loads whichever the
-   selected voice needs (US or UK) and switches on demand (~1s the first time
-   you pick the other accent).
+4. **Every accent/language beyond US is NOT placed manually any more (changed
+   2026-08-04, expanded from British-only the same day).** It used to be a
+   second bundled asset folder (`kokoro-gb`), same as US — but that's what
+   pushed the debug/store APK to ~185 MB total for just ONE extra language
+   (see CLAUDE.md's "MODEL SIZES" note), so every non-US model is now a
+   downloadable **language pack**, fetched by the app itself into the phone's
+   storage on demand rather than shipped in assets. Current catalog: British
+   English (`gb`, multi-speaker, 4 audition-picked voices), French (`fr`),
+   German (`de`), Spanish (`es`) — the latter three are single-speaker models
+   (siwis/thorsten/davefx, the standard community Piper voice per language),
+   picked from the same GitHub release's asset list but **not yet owner-
+   audited for quality/gender** (no device in this environment — see the
+   `PIPER_VOICES` comment in `index.html`). **Do NOT create
+   `assets\kokoro-gb\`, `kokoro-fr\`, `kokoro-de\`, or `kokoro-es\` any more —
+   the plugin no longer looks there for any of them** (`ensureReady()` treats
+   every model key in `VOICE_PACKS` as download-only and throws even if you
+   place files there manually, so the old manual-place step is now a silent
+   no-op, not just redundant).
+   To test it: Run ▶ with only `assets\kokoro\` (US) present, then on the
+   device/emulator (needs real internet — it downloads from the same
+   sherpa-onnx GitHub release as step 2, ~65-80 MB depending on the language)
+   go to **Settings → Language packs → Downloads**, which lists all four with
+   Download/Remove per pack, or open the voice picker and tap any locked
+   voice — both paths call the same `PhonoLeafTts.downloadPack` and show live
+   progress. Once a pack finishes, its voices unlock and behave exactly like
+   the US ones. **Remove** in the Language Packs popup deletes it again if you
+   want to re-test the download flow.
 
 5. **Build and run:** `npm run sync`, then Run ▶ in Android Studio.
 
-6. **Test:** open a book and play — it should be gapless. Open the voice picker:
-   4 US voices (Ava/Nora/Ben/Jack) + 6 UK audition voices
-   (Oliver/Poppy/Quinn/Rosie/Sam/Tessa), each showing its `speaker N`. Picking a
-   voice previews it mid-read. For the UK ones, note which speaker numbers sound
-   good and their gender — they'll be curated to 2 male + 2 female like the US
-   set.
+6. **Test:** open a book and play — it should be gapless. Open the voice
+   picker: 4 US voices (Ava/Nora/Ben/Jack) always available, plus 4 UK voices
+   (Amelia/Ruby/Sam/Max) and one voice each for French/German/Spanish once
+   their packs are downloaded (step 4). Picking a voice previews it mid-read —
+   this is also the first real chance to confirm the French/German/Spanish
+   voices' quality and gender and relabel them from the generic "French
+   voice"/"German voice"/"Spanish voice" placeholders, the same way the
+   US/UK audition set was originally curated.
 
 Notes:
-- This model folder is gitignored — it never gets committed, and each fresh
-  clone re-does this step.
-- The whole model is bundled into the debug APK. The Play Store build will
-  download it on first run instead (Stage 5) so the store download stays small.
+- The `assets\kokoro\` model folder is gitignored — it never gets committed,
+  and each fresh clone re-does step 1-3 for the bundled US model. Every other
+  language pack isn't a repo/assets concern at all any more — it lives purely
+  in the app's own storage on the test device, fetched at runtime.
+- The US model is bundled into the debug APK; the store build ships US only
+  (Stage 5) so the store download stays small. British English, French,
+  German, Spanish (and any future language) are all downloadable-pack models
+  going forward — don't bundle a second accent/language as an asset again.
 - The readout header shows `cores=N type/provider` (e.g. `vits/cpu`) and each
   line is `gGEN aAUDIO rRATIO`. `r` under 1.0 = faster than realtime = gapless.
 

@@ -77,6 +77,12 @@ dependencies {
     // AAR bundles the onnxruntime JNI .so for all ABIs (self-contained, no
     // transitive deps).
     implementation(name: 'sherpa-onnx', ext: 'aar')
+    // Streams + extracts the downloadable voice-pack .tar.bz2 archives
+    // (PhonoLeafTtsPlugin.downloadPack) straight from the upstream sherpa-onnx
+    // GitHub release — java.util.zip has no bzip2 support, so this is the
+    // standard, well-maintained library for it. On Maven Central directly (no
+    // flatDir needed, unlike the AAR above).
+    implementation "org.apache.commons:commons-compress:1.28.0"
     testImplementation "junit:junit:$junitVersion"
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"

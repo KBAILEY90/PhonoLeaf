@@ -11,9 +11,19 @@
 
 # Voice model files are large and owner-placed — never committed.
 # See TESTING.md §3.6 for how to download + extract them here.
-# kokoro/ = primary (US) model, kokoro-gb/ = British model.
+# kokoro/ = primary (US) model, the only one bundled as an asset.
 /app/src/main/assets/kokoro/
+
+# kokoro-gb/, kokoro-fr/, kokoro-de/, kokoro-es/ are NOT placed here (2026-08-04)
+# — each is a downloadable voice pack fetched at runtime into the app's own
+# storage instead (PhonoLeafTtsPlugin.downloadPack), not a build-time asset.
+# These rules are kept only so an old local copy (or a stale habit) doesn't
+# get committed by accident — ensureReady() ignores these paths entirely for
+# any model key in VOICE_PACKS.
 /app/src/main/assets/kokoro-gb/
+/app/src/main/assets/kokoro-fr/
+/app/src/main/assets/kokoro-de/
+/app/src/main/assets/kokoro-es/
 
 # Files for the ART/Dalvik VM
 *.dex
