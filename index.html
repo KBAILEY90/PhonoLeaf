@@ -1834,13 +1834,16 @@ const VoicePacks = {
     if (!p) return;
     // "us" isn't a real download — it's the bundled model's filesDir copy,
     // which may have been removed (see remove()) to free space. Reinstalling
-    // it is just re-copying from the APK's own assets (prepare() triggers
-    // ensureReady()'s copy path), so there's no packProgress/percent to show.
+    // it is just re-copying from the APK's own assets, so there's no
+    // packProgress/percent to show. Deliberately calls reinstallPack, NOT
+    // prepare() — prepare() is also called implicitly at TTS startup to
+    // detect the loaded model family, and must never silently undo a
+    // deliberate removal; only this explicit user action may do that.
     if (model === 'us') {
       this._progress[model] = { installing: true };
       this._notify();
       try {
-        await p.prepare({ model: 'us' });
+        await p.reinstallPack({ model: 'us' });
         this._status[model] = { downloaded: true, approxBytes: 0 };
         toast('Voice reinstalled');
       } catch (e) {

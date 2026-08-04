@@ -243,12 +243,12 @@ class PlaybackService : Service() {
                 )
                 .addCustomAction(
                     PlaybackStateCompat.CustomAction.Builder(
-                        CUSTOM_PREV_CHAPTER, "Previous chapter", android.R.drawable.ic_media_rew
+                        CUSTOM_PREV_CHAPTER, "Previous chapter", R.drawable.ic_fast_rewind
                     ).build()
                 )
                 .addCustomAction(
                     PlaybackStateCompat.CustomAction.Builder(
-                        CUSTOM_NEXT_CHAPTER, "Next chapter", android.R.drawable.ic_media_ff
+                        CUSTOM_NEXT_CHAPTER, "Next chapter", R.drawable.ic_fast_forward
                     ).build()
                 )
                 .setState(
@@ -350,11 +350,23 @@ class PlaybackService : Service() {
             .setCategory(NotificationCompat.CATEGORY_TRANSPORT)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             // Order matters — the compact view below indexes into this list.
-            .addAction(notifAction(android.R.drawable.ic_media_rew, "Previous chapter", ACTION_PREV_CHAPTER, 4))
-            .addAction(notifAction(android.R.drawable.ic_media_previous, "Previous page", ACTION_PREV_PAGE, 5))
+            // Icons are our own vector drawables (ic_skip_previous/next,
+            // ic_fast_rewind/forward), not the stock android.R.drawable.ic_media_*
+            // ones — see the "Lock-screen icon consistency" note in CLAUDE.md:
+            // ic_media_previous/next and ic_media_rew/ff are two visually
+            // MISMATCHED stock icon families (different fill/line style), which
+            // was reported as inconsistent-looking on the lock screen. Note the
+            // lock-screen MEDIA WIDGET itself only renders OUR icon for the two
+            // CUSTOM actions (rewind/forward, set on PlaybackStateCompat above)
+            // — its skip-previous/next icons are drawn entirely by Android's own
+            // System UI for the standard ACTION_SKIP_TO_PREVIOUS/NEXT actions and
+            // can't be overridden; these two are only for the notification's own
+            // expanded view, kept consistent with the same custom icon set.
+            .addAction(notifAction(R.drawable.ic_fast_rewind, "Previous chapter", ACTION_PREV_CHAPTER, 4))
+            .addAction(notifAction(R.drawable.ic_skip_previous, "Previous page", ACTION_PREV_PAGE, 5))
             .addAction(toggle)
-            .addAction(notifAction(android.R.drawable.ic_media_next, "Next page", ACTION_NEXT_PAGE, 6))
-            .addAction(notifAction(android.R.drawable.ic_media_ff, "Next chapter", ACTION_NEXT_CHAPTER, 7))
+            .addAction(notifAction(R.drawable.ic_skip_next, "Next page", ACTION_NEXT_PAGE, 6))
+            .addAction(notifAction(R.drawable.ic_fast_forward, "Next chapter", ACTION_NEXT_CHAPTER, 7))
         if (page.isNotEmpty()) builder.setSubText(page)
         artwork?.let { builder.setLargeIcon(it) }
         // MediaStyle: purely cosmetic/display (tells the system to render this

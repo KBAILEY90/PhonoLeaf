@@ -120,6 +120,15 @@
         // placed files. Surfaced to the readout so we can confirm which engine ran.
         @Volatile private var activeModelType = "?"
     
+        // Marks that a NON-VOICE_PACKS model (i.e. "us") was explicitly removed
+        // via deletePack(), so ensureReady() knows not to silently re-copy it
+        // from assets — see the "explicitly removed" check there. Only
+        // reinstallPack() clears this; ordinary ensureReady()/prepare() calls
+        // (including the implicit one at TTS startup) must never clear it
+        // themselves, or a deliberate removal would get silently undone the
+        // next time the app tries to detect the model type.
+        private fun removedMarkerFile(model: String) = File(context.filesDir, ".removed-$model")
+
         // Asset/filesDir subfolder for a model key: looked up from VOICE_PACKS
         // for anything downloadable; "us"/anything else falls back to the
         // bundled `kokoro` folder.
@@ -190,6 +199,18 @@
                         // first. Don't fall through to copyAssetDir: there's
                         // nothing in assets to copy, so it would just throw a
                         // less specific "no *.onnx" error below.
+                        throw PackNotDownloadedException(model)
+                    }
+                    if (removedMarkerFile(model).exists()) {
+                        // "us" (the only asset-backed, non-VOICE_PACKS model)
+                        // was EXPLICITLY removed via deletePack() — do not
+                        // silently re-copy it from assets here. Without this
+                        // check, the very next synth() call after tapping
+                        // Remove would auto-heal it straight back, making
+                        // removal look broken (owner-reported: "still doesn't
+                        // get removed"). It must stay gone, exactly like a
+                        // real pack would, until reinstallPack() explicitly
+                        // clears this marker and re-copies it.
                         throw PackNotDownloadedException(model)
                     }
                     dest.deleteRecursively() // clear any older model copy
@@ -469,10 +490,14 @@
          *  paths for espeak-ng-data/etc, not an AssetManager stream) — deleting
          *  that filesDir copy genuinely frees ~78 MB of device storage, even
          *  though the asset copy baked into the APK itself can't be freed
-         *  without uninstalling. Safe to remove: it's NOT a real download, so
-         *  ensureReady()/prepare() just re-copies it from assets again the next
-         *  time a US voice is used — no network, no PACK_NOT_DOWNLOADED (that
-         *  exception is only thrown for models actually in VOICE_PACKS). */
+         *  without uninstalling.
+         *  For "us" this ALSO writes removedMarkerFile() — without it,
+         *  ensureReady() would silently re-copy "us" from assets on the very
+         *  next synth() call (it has no download to fail, so nothing would
+         *  otherwise stop it from just healing itself back), which made
+         *  Remove look like it did nothing (owner-reported). With the marker,
+         *  "us" now stays removed exactly like a real pack would, until
+         *  reinstallPack() is called. */
         @PluginMethod
         fun deletePack(call: PluginCall) {
             val model = call.getString("model")
@@ -482,7 +507,28 @@
                 if (loadedModel == model) { tts = null; loadedModel = null }
             }
             File(context.filesDir, folderFor(model)).deleteRecursively()
+            if (!VOICE_PACKS.containsKey(model)) removedMarkerFile(model).createNewFile()
             call.resolve()
+        }
+
+        /** reinstallPack({model}) — explicit user action to bring back an
+         *  asset-backed model (currently only "us") after deletePack() removed
+         *  it. Deliberately NOT the same as prepare(): prepare() is also called
+         *  implicitly at TTS startup to detect the loaded model's family, and
+         *  must NEVER silently undo a deliberate removal just because playback
+         *  started — only this explicit call may clear removedMarkerFile(). */
+        @PluginMethod
+        fun reinstallPack(call: PluginCall) {
+            val model = call.getString("model")
+            if (model.isNullOrEmpty()) { call.reject("model required"); return }
+            if (VOICE_PACKS.containsKey(model)) { call.reject("use downloadPack for network packs"); return }
+            try {
+                removedMarkerFile(model).delete()
+                ensureReady(model)
+                call.resolve()
+            } catch (e: Throwable) {
+                call.reject(e.message ?: "reinstall failed", e as? Exception ?: RuntimeException(e))
+            }
         }
 
         // Thin InputStream wrapper that reports bytes read as they're consumed —

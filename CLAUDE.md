@@ -244,17 +244,29 @@ renders them with epub.js, and reads the text using the browser's Web Speech
   unaffected (baked into the install, can't be freed without uninstalling),
   but `ensureReady()` also keeps a SEPARATE full copy in `filesDir` (native
   code needs real filesystem paths for espeak-ng-data etc., not an
-  AssetManager stream) — deleting THAT copy genuinely frees ~78 MB, and
-  `ensureReady()`/`prepare()` just silently re-copies it from assets again the
-  moment a US voice is next used (no network, no `PACK_NOT_DOWNLOADED` — that
-  exception is only thrown for models actually in `VOICE_PACKS`, which "us"
-  isn't). `packStatus` now checks "us"'s real `filesDir` marker too instead of
-  hardcoding `downloaded:true`. In the Language Packs popup this reads as
-  "Included"/"Remove" when present and "Not installed"/"Reinstall" when not
-  (`VoicePacks.download('us')` calls `prepare({model:'us'})` instead of
-  `downloadPack`, since there's no URL/percent for a local asset re-copy —
-  shown as "Installing…" with no Cancel button, since there's nothing
-  meaningful to interrupt).
+  AssetManager stream) — deleting THAT copy genuinely frees ~78 MB. `packStatus`
+  now checks "us"'s real `filesDir` marker too instead of hardcoding
+  `downloaded:true`. In the Language Packs popup this reads as
+  "Included"/"Remove" when present and "Not installed"/"Reinstall" when not.
+  **First cut had a real bug, caught by the owner on-device: "us" still
+  doesn't get removed.** Root cause: `ensureReady()` had NO way to tell "us"
+  was never installed apart from "us" was JUST explicitly removed — both look
+  identical as "marker file missing" — so it unconditionally treated either
+  case as "first launch, bootstrap it" and silently re-copied the model from
+  assets on the very next `synthesize()` call (often within seconds, since
+  that's just the next sentence being read), making Remove look like it did
+  nothing. Fixed with **`removedMarkerFile(model)`**, a sentinel `deletePack`
+  writes for any non-`VOICE_PACKS` model ("us"): `ensureReady()` now throws
+  `PackNotDownloadedException` (same as a real undownloaded pack) whenever
+  that marker is present, instead of falling through to `copyAssetDir`. Only
+  a NEW dedicated **`reinstallPack({model})`** method clears the marker and
+  re-copies — deliberately NOT folded into `prepare()`, because `prepare()` is
+  ALSO called implicitly at TTS startup (`TTS._modelReady()`) to detect the
+  loaded model family, and that implicit call must never silently undo a
+  deliberate removal just because the user pressed play.
+  `VoicePacks.download('us')` calls `reinstallPack`, not `prepare` /
+  `downloadPack` — shown as "Installing…" with no Cancel button, since a local
+  asset re-copy has no percent/URL and nothing meaningful to interrupt.
   **"Queued" vs "Downloading 0%" fixed the same day (owner-reported: with the
   download queue from the concurrency fix above, a pack waiting its turn
   looked identical to one stuck at 0%).** `downloadPack` now emits an initial
@@ -1306,8 +1318,34 @@ Google login); verify by inspection + the owner testing on device.
     as `NotificationCompat.Action`s (for the expanded view / older Android), each
     with its **own PendingIntent request code** (2–7; the content tap is 0) —
     sharing one would make `FLAG_UPDATE_CURRENT` alias them and buttons would
-    fire each other's action. Icons are stock `android.R.drawable.ic_media_*`
-    (`rew`/`ff` for chapters, `previous`/`next` for pages), so no assets needed.
+    fire each other's action. Icons were originally stock
+    `android.R.drawable.ic_media_*` (`rew`/`ff` for chapters, `previous`/`next`
+    for pages) — see the icon-consistency fix below for why that changed.
+  - **Lock-screen icon consistency fixed 2026-08-04 (owner-reported: the four
+    buttons "aren't the same format" — two rendered as clean white outlines,
+    two as filled grey-and-white).** Root cause: `ic_media_previous`/
+    `ic_media_next` and `ic_media_rew`/`ic_media_ff` are two DIFFERENT stock
+    Android icon families that were never designed to appear together — old
+    framework bitmap-style glyphs, visually inconsistent by nature, not a
+    theming bug. Also relevant: **only the two CUSTOM actions (chapter
+    prev/next) are actually app-controlled on the real lock-screen MediaSession
+    widget** — its skip-previous/skip-next icons for `ACTION_SKIP_TO_PREVIOUS`/
+    `ACTION_SKIP_TO_NEXT` are drawn entirely by Android's own System UI and
+    can't be overridden by any resource we supply, which is why the two skip
+    icons in the screenshot already looked clean/uniform (system-drawn) while
+    the two chapter icons looked mismatched (our old stock drawables). Fixed
+    by replacing all four with **our own vector drawables**
+    (`ic_skip_previous`/`ic_skip_next`/`ic_fast_rewind`/`ic_fast_forward` in
+    `android/app/src/main/res/drawable/`), built from the authoritative
+    Material Icons SVG path data (fetched from `google/material-design-icons`
+    on GitHub, not guessed — the notification small-icon saga below already
+    burned one mistake on a guessed/assumed icon design). Wired into both the
+    `PlaybackStateCompat` custom actions (the two that actually matter on the
+    lock-screen widget) and the notification's own `NotificationCompat.Action`
+    list (for consistency in that secondary view too, even though its
+    skip-icons there ARE app-controlled, unlike the lock-screen widget's).
+    Not device-verified — no visual confirmation possible without a real
+    device, same caveat as the small-icon design below.
   - **Notification small icon (badge) is `R.drawable.ic_notification`, a
     DEDICATED bitmap — not `android.R.drawable.ic_media_play`, and not
     `R.mipmap.ic_launcher` either. Took THREE attempts, two of them wrong,
