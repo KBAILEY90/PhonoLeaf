@@ -322,18 +322,24 @@
         // bug to introduce while fixing this one.
         private val downloadExecutor = Executors.newSingleThreadExecutor()
 
-        /** packStatus({model}) -> {downloaded, approxBytes}. Bundled models (not
-         *  in VOICE_PACKS, e.g. "us") always report downloaded=true. Lets the
-         *  Settings UI show pack size before download and reflect current state
-         *  without duplicating a flag in JS storage — the filesystem marker is
-         *  the single source of truth. */
+        /** packStatus({model}) -> {downloaded, approxBytes}. "us" reports its
+         *  REAL filesDir state now that it's removable (see deletePack) — it's
+         *  the one model whose ensureReady() can transparently regenerate
+         *  "downloaded=false" for free (re-copy from assets), so this can
+         *  legitimately go false and back to true without ever downloading
+         *  anything. Any other model unknown to VOICE_PACKS (shouldn't happen
+         *  in practice — the JS catalog only ever asks about real entries)
+         *  falls back to reporting itself as always present, harmlessly. Lets
+         *  the Settings UI show pack size before download and reflect current
+         *  state without duplicating a flag in JS storage — the filesystem
+         *  marker is the single source of truth. */
         @PluginMethod
         fun packStatus(call: PluginCall) {
             val model = call.getString("model")
             if (model.isNullOrEmpty()) { call.reject("model required"); return }
             val info = VOICE_PACKS[model]
             val ret = JSObject()
-            if (info == null) {
+            if (info == null && model != "us") {
                 ret.put("downloaded", true)
                 ret.put("approxBytes", 0)
                 call.resolve(ret)
@@ -341,7 +347,7 @@
             }
             val dest = File(context.filesDir, folderFor(model))
             ret.put("downloaded", File(dest, ".ready-$MODEL_VERSION").exists())
-            ret.put("approxBytes", info.approxBytes)
+            ret.put("approxBytes", info?.approxBytes ?: 0)
             call.resolve(ret)
         }
 
@@ -359,6 +365,19 @@
             if (info == null) { call.reject("no such voice pack: $model"); return }
             val stamp = bumpDownloadEpoch(model)
             downloadExecutor.execute {
+                // Fires the MOMENT this task actually starts running — i.e. once
+                // downloadExecutor has dequeued it, not when downloadPack() was
+                // called. A download queued behind another gets NO packProgress
+                // event until its turn comes, so the JS side can tell "queued,
+                // hasn't started" (no event yet) apart from "started, 0 bytes so
+                // far" (this event) — otherwise both looked identical as
+                // "Downloading… 0%", which read as frozen while queued.
+                if (stamp == currentDownloadEpoch(model)) {
+                    val started = JSObject()
+                    started.put("model", model); started.put("downloaded", 0L)
+                    started.put("total", info.approxBytes); started.put("pct", 0)
+                    notifyListeners("packProgress", started)
+                }
                 val folder = folderFor(model)
                 val dest = File(context.filesDir, folder)
                 // Extract into a scratch dir first, swap in only on full success —
@@ -443,13 +462,22 @@
             call.resolve()
         }
 
-        /** deletePack({model}) — reclaim the space a downloaded pack uses. Only
-         *  valid for models in VOICE_PACKS (never the bundled "us" model). */
+        /** deletePack({model}) — reclaim the space a pack uses. Valid for any
+         *  model in VOICE_PACKS, PLUS "us" (owner request 2026-08-04): even
+         *  though the US model ships in the APK's assets, ensureReady() keeps a
+         *  SEPARATE full copy in filesDir (native code needs real filesystem
+         *  paths for espeak-ng-data/etc, not an AssetManager stream) — deleting
+         *  that filesDir copy genuinely frees ~78 MB of device storage, even
+         *  though the asset copy baked into the APK itself can't be freed
+         *  without uninstalling. Safe to remove: it's NOT a real download, so
+         *  ensureReady()/prepare() just re-copies it from assets again the next
+         *  time a US voice is used — no network, no PACK_NOT_DOWNLOADED (that
+         *  exception is only thrown for models actually in VOICE_PACKS). */
         @PluginMethod
         fun deletePack(call: PluginCall) {
             val model = call.getString("model")
             if (model.isNullOrEmpty()) { call.reject("model required"); return }
-            if (!VOICE_PACKS.containsKey(model)) { call.reject("not a removable pack: $model"); return }
+            if (model != "us" && !VOICE_PACKS.containsKey(model)) { call.reject("not a removable pack: $model"); return }
             synchronized(lock) {
                 if (loadedModel == model) { tts = null; loadedModel = null }
             }

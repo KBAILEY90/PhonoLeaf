@@ -1807,7 +1807,10 @@ const VoicePacks = {
     p.addListener('packProgress', data => {
       if (!data || !data.model) return;
       if (data.pct >= 100) delete this._progress[data.model];
-      else this._progress[data.model] = { pct: data.pct };
+      // `started` distinguishes "actively downloading" from "still queued
+      // behind another pack" (see download()) — any real event from the
+      // native side means the download has actually begun.
+      else this._progress[data.model] = { pct: data.pct, started: true };
       this._notify();
     });
   },
@@ -1829,7 +1832,29 @@ const VoicePacks = {
   async download(model) {
     const p = this._plugin();
     if (!p) return;
-    this._progress[model] = { pct: 0 };
+    // "us" isn't a real download — it's the bundled model's filesDir copy,
+    // which may have been removed (see remove()) to free space. Reinstalling
+    // it is just re-copying from the APK's own assets (prepare() triggers
+    // ensureReady()'s copy path), so there's no packProgress/percent to show.
+    if (model === 'us') {
+      this._progress[model] = { installing: true };
+      this._notify();
+      try {
+        await p.prepare({ model: 'us' });
+        this._status[model] = { downloaded: true, approxBytes: 0 };
+        toast('Voice reinstalled');
+      } catch (e) {
+        toast('Reinstall failed: ' + ((e && e.message) || 'try again'));
+      }
+      delete this._progress[model];
+      this._notify();
+      return;
+    }
+    // started:false until the native side confirms it's actually running
+    // (see the packProgress listener) — while false, the row shows "Queued…"
+    // instead of a misleading "Downloading… 0%" for a pack still waiting
+    // behind another one on the native download queue.
+    this._progress[model] = { pct: 0, started: false };
     this._notify();
     try {
       await p.downloadPack({ model });
@@ -1867,24 +1892,37 @@ const VoicePacks = {
   available() { return !!this._plugin(); },
 
   // One row's markup for the Language Packs modal — label, status, and
-  // whichever action (Download / Cancel / Remove) applies right now. "us" is
-  // the one bundled-not-downloaded model: always shown as Included, with no
-  // Remove button — it's required for the app to function at all, and
-  // deletePack() rejects it server-side anyway (VOICE_PACKS has no "us" key).
+  // whichever action (Download / Cancel / Remove / Reinstall) applies right
+  // now. "us" is removable like any other entry (owner request 2026-08-04 —
+  // see deletePack's Kotlin comment), but worded differently since it's not a
+  // real download: "Included"/"Not installed" instead of "Downloaded"/size,
+  // and "Reinstall" (a local asset re-copy, no percent to show) instead of
+  // "Download".
   rowHTML({ model, label, approxMB }) {
-    const removable = model !== 'us';
+    const isUs = model === 'us';
     const st = this._status[model];
     const prog = this._progress[model];
     let sub, right;
     if (prog) {
-      sub = `Downloading… ${prog.pct}%`;
-      right = `<button class="set-link" onclick="VoicePacks.cancel('${model}')">Cancel</button>`;
+      if (prog.installing) {
+        sub = 'Installing…';
+        right = '';
+      } else if (!prog.started) {
+        sub = 'Queued…';
+        right = `<button class="set-link" onclick="VoicePacks.cancel('${model}')">Cancel</button>`;
+      } else {
+        sub = `Downloading… ${prog.pct}%`;
+        right = `<button class="set-link" onclick="VoicePacks.cancel('${model}')">Cancel</button>`;
+      }
     } else if (!st) {
       sub = 'Checking…';
       right = '';
     } else if (st.downloaded) {
-      sub = removable ? 'Downloaded' : 'Included';
-      right = removable ? `<button class="set-link danger" onclick="VoicePacks.remove('${model}')">Remove</button>` : '';
+      sub = isUs ? 'Included' : 'Downloaded';
+      right = `<button class="set-link danger" onclick="VoicePacks.remove('${model}')">Remove</button>`;
+    } else if (isUs) {
+      sub = 'Not installed';
+      right = `<button class="set-link" onclick="VoicePacks.download('${model}')">Reinstall</button>`;
     } else {
       const mb = Math.round((st.approxBytes || approxMB * 1024 * 1024) / (1024 * 1024));
       sub = `${mb} MB`;
@@ -4781,31 +4819,32 @@ const VoiceModal = {
     if (TTS._engineNow() === 'kokoro') {
       const cat = TTS._nativeCatalog();
       const cur = localStorage.getItem(TTS._voiceKey()) || cat[0][0];
-      // Voices whose accent pack isn't downloaded (PIPER_VOICES' 4th field,
-      // e.g. "gb") can't be selected yet — show them locked with a way to
-      // start the download, instead of letting a tap fail mid-read later
-      // (see the PACK_NOT_DOWNLOADED handling in TTS._playAudio).
+      // Listing every voice here — including locked, not-yet-downloaded ones —
+      // got convoluted as more languages were added (owner feedback
+      // 2026-08-04). Now this only shows voices that actually work right now;
+      // a trailing "Get more voices" row links to the Language Packs popup
+      // instead of managing downloads inline. "us" is always treated as
+      // available even if its filesDir copy was removed to free space
+      // (Settings → Language packs → Remove) — ensureReady() just re-copies it
+      // from the APK's own assets the next time it's used, so there's no real
+      // failure mode to gate on, unlike a genuinely undownloaded pack.
       VoicePacks.refresh();
-      document.getElementById('voice-list').innerHTML = cat.map(([id, label, sid, model]) => {
+      const available = cat.filter(([, , , model]) => {
         const m = model || 'us';
-        const locked = m !== 'us' && !(VoicePacks._status[m] && VoicePacks._status[m].downloaded);
-        if (locked) {
-          const dl = VoicePacks._progress[m];
-          return `<div class="voice-item" style="opacity:.6" onclick="VoiceModal.downloadFor('${m}')" data-vname="${esc(id)}">
+        return m === 'us' || (VoicePacks._status[m] && VoicePacks._status[m].downloaded);
+      });
+      document.getElementById('voice-list').innerHTML =
+        available.map(([id, label, sid]) => `
+          <div class="voice-item ${cur === id ? 'active' : ''}" onclick="VoiceModal.selectNative(this.dataset.vname)" data-vname="${esc(id)}">
             <div>
               <div class="voice-name">${esc(label)} <span class="voice-badge">&#10024; Natural</span></div>
-              <div class="voice-lang">${dl ? `Downloading&hellip; ${dl.pct}%` : 'Needs download &mdash; tap to get it'}</div>
+              <div class="voice-lang">speaker ${sid}</div>
             </div>
-          </div>`;
-        }
-        return `<div class="voice-item ${cur === id ? 'active' : ''}" onclick="VoiceModal.selectNative(this.dataset.vname)" data-vname="${esc(id)}">
-          <div>
-            <div class="voice-name">${esc(label)} <span class="voice-badge">&#10024; Natural</span></div>
-            <div class="voice-lang">speaker ${sid}</div>
-          </div>
-          ${cur === id ? '<span class="voice-check">&#10003;</span>' : ''}
+            ${cur === id ? '<span class="voice-check">&#10003;</span>' : ''}
+          </div>`).join('') +
+        `<div class="voice-item" onclick="VoiceModal.openLangPacks()">
+          <div><div class="voice-name">Get more voices</div><div class="voice-lang">Download language packs</div></div>
         </div>`;
-      }).join('');
       document.getElementById('voice-modal').classList.add('open');
       return;
     }
@@ -4822,12 +4861,11 @@ const VoiceModal = {
     document.getElementById('voice-modal').classList.add('open');
   },
 
-  // Tapping a locked (pack-not-downloaded) voice starts the download instead
-  // of selecting it; VoicePacks re-renders this modal as progress comes in
-  // (see VoicePacks._notify), so the row updates itself and unlocks in place.
-  downloadFor(model) {
-    if (VoicePacks._progress[model]) return; // already downloading
-    VoicePacks.download(model);
+  // The voice list's trailing "Get more voices" row — close this modal and
+  // open the Language Packs one instead of managing downloads inline here.
+  openLangPacks() {
+    this.close();
+    LangPacksModal.open();
   },
 
   // Native voice selection (Kokoro or Piper — key + catalog per model type);

@@ -232,11 +232,47 @@ renders them with epub.js, and reads the text using the browser's Web Speech
   against Commons Compress's documented `TarArchiveInputStream`/
   `BZip2CompressorInputStream` API but not compiled.
   **Labels renamed 2026-08-04 (owner request):** "British English"/no US
-  entry → **`{model:'us', label:'English (US)'}`** added to `CATALOG` (always
-  renders "Included", no Remove button — `deletePack` rejects "us" server-side
-  anyway since it has no `VOICE_PACKS` entry) and `{model:'gb'}` relabeled to
-  **"English (UK)"**, so the popup shows the complete picture (bundled +
-  downloadable) rather than only the optional downloads.
+  entry → **`{model:'us', label:'English (US)'}`** added to `CATALOG` and
+  `{model:'gb'}` relabeled to **"English (UK)"**, so the popup shows the
+  complete picture (bundled + downloadable) rather than only the optional
+  downloads.
+  **US made removable the same day (owner request): "it should come in by
+  default, but the user can remove it to make some space if they don't use
+  it."** `deletePack` no longer special-cases "us" out — it's now allowed
+  alongside any real `VOICE_PACKS` entry. This is safe specifically because
+  "us" **isn't a real download**: the APK's `assets/kokoro/` copy is
+  unaffected (baked into the install, can't be freed without uninstalling),
+  but `ensureReady()` also keeps a SEPARATE full copy in `filesDir` (native
+  code needs real filesystem paths for espeak-ng-data etc., not an
+  AssetManager stream) — deleting THAT copy genuinely frees ~78 MB, and
+  `ensureReady()`/`prepare()` just silently re-copies it from assets again the
+  moment a US voice is next used (no network, no `PACK_NOT_DOWNLOADED` — that
+  exception is only thrown for models actually in `VOICE_PACKS`, which "us"
+  isn't). `packStatus` now checks "us"'s real `filesDir` marker too instead of
+  hardcoding `downloaded:true`. In the Language Packs popup this reads as
+  "Included"/"Remove" when present and "Not installed"/"Reinstall" when not
+  (`VoicePacks.download('us')` calls `prepare({model:'us'})` instead of
+  `downloadPack`, since there's no URL/percent for a local asset re-copy —
+  shown as "Installing…" with no Cancel button, since there's nothing
+  meaningful to interrupt).
+  **"Queued" vs "Downloading 0%" fixed the same day (owner-reported: with the
+  download queue from the concurrency fix above, a pack waiting its turn
+  looked identical to one stuck at 0%).** `downloadPack` now emits an initial
+  `packProgress` event the MOMENT its task actually starts running on
+  `downloadExecutor` (i.e. once dequeued) — a pack still waiting behind
+  another gets no event at all until its turn comes. JS tracks this as
+  `started: false` until that first event lands, and the Language Packs row
+  shows **"Queued…"** (with a working Cancel) instead of "Downloading… 0%"
+  until then.
+  **Voice picker simplified the same day (owner feedback: listing every
+  voice, including locked/undownloaded ones, "could get convoluted" as more
+  languages are added).** `VoiceModal`'s neural branch now filters to only
+  voices whose pack is actually downloaded (`"us"` is always treated as
+  available, per the auto-heal reasoning above) and appends one trailing
+  **"Get more voices"** row that closes the picker and opens
+  `LangPacksModal` — replacing the old per-voice locked state + inline
+  download that lived here before. `VoiceModal.downloadFor` was removed
+  (dead code once nothing calls it) in favor of `VoiceModal.openLangPacks`.
   **Concurrent-download bug fixed 2026-08-04 (owner-reported: downloading two
   packs at once froze both, then the first in line self-cancelled).** Root
   cause: `downloadEpoch` was a single `@Volatile Int` shared across EVERY

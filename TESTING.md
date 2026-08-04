@@ -225,12 +225,21 @@ model you place (Kokoro vs Piper), so switching is just a file swap.
    To test it: Run ▶ with only `assets\kokoro\` (US) present, then on the
    device/emulator (needs real internet — it downloads from the same
    sherpa-onnx GitHub release as step 2, ~65-80 MB depending on the language)
-   go to **Settings → Language packs → Downloads**, which lists all four with
-   Download/Remove per pack, or open the voice picker and tap any locked
-   voice — both paths call the same `PhonoLeafTts.downloadPack` and show live
-   progress. Once a pack finishes, its voices unlock and behave exactly like
-   the US ones. **Remove** in the Language Packs popup deletes it again if you
-   want to re-test the download flow.
+   go to **Settings → Language packs → Downloads**, which lists all five
+   (English (US)/English (UK)/French/German/Spanish) with Download/Remove per
+   pack — `PhonoLeafTts.downloadPack` streams the pack and shows live
+   progress, or **Queued…** if another download is already in flight (they
+   run one at a time by design — test this by starting two packs back to back
+   and confirming both complete in order instead of one erroring out). Once a
+   pack finishes, its voices unlock and behave exactly like the US ones. The
+   voice picker no longer lists locked/undownloaded voices at all (2026-08-04)
+   — it shows only what's already usable, plus a trailing **"Get more
+   voices"** row that opens this same Language Packs popup. **Remove** deletes
+   a pack again if you want to re-test the download flow — this now also
+   works on **English (US)** itself (owner request: it ships by default but
+   can be removed to free ~78 MB; picking a US voice afterward silently
+   re-installs it from the APK's own assets, no network needed, so this is
+   safe to test freely).
 
 5. **Build and run:** `npm run sync`, then Run ▶ in Android Studio.
 
