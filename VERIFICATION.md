@@ -432,15 +432,17 @@ you two weeks.
       the new JS origin is live and the full Google round trip succeeds on the
       new domain. (Storage is per-origin, so it behaves like a fresh install:
       signed out, no local progress, covers re-downloading. Expected, not a bug.)
-- [ ] **9. Record the demo video** — **shot list in the section above.**
-      ⚠️ **Revoke the app's access at
-      [Third-party access](https://myaccount.google.com/permissions) first**, or
-      the consent screen won't appear at all (sign-in passes an empty `prompt`,
-      so an existing grant is honoured silently) — that alone would fail the
-      review. Open on the Cloud Console credentials page so the client ID is
-      legible; the GIS popup's address bar can't be relied on for it.
-- [ ] **10. Submit for verification**, then tell me what Google says about
-      CASA so it can be recorded here.
+- [x] **9. Record the demo video** — recorded, uploaded **Unlisted to
+      YouTube**, and linked in the submission.
+- [x] **10. Submit for verification** — **submitted 2026-08-04.** Verification
+      Questionnaire completed (not personal/internal/dev-only, not a Gmail SMTP
+      plugin; both acknowledgements checked) and Submit clicked. **Now awaiting
+      Google's response** — this is what will finally answer the CASA question
+      below (AL1 ≈ $500 / AL2 ≈ $3–6k / possible no-backend exemption — see the
+      section above). Record the real answer here and in `CLAUDE.md`'s roadmap
+      item 2 the moment it arrives. Until then: don't toggle Testing↔Production
+      and avoid unnecessary consent-screen edits — the submission page warns
+      both can delay review.
       [How to submit](https://support.google.com/cloud/answer/13463073)
 
 ### Play Store track — can run in parallel

@@ -1683,8 +1683,21 @@ the working plan, not an exploration.
    screen for verification to learn the real tier/requirement from Google** (see
    the behavior note for links + caveats). Do this early — verification is not
    instant and gates public launch.
-   **STATUS 2026-07-26 — infrastructure DONE, submission still pending.**
-   Completed (all owner/Cowork console work, verified against the live site):
+   **STATUS 2026-08-04 — SUBMITTED FOR VERIFICATION.** The demo video was
+   recorded, uploaded Unlisted to YouTube, and linked in the submission; the
+   owner then completed the Verification Questionnaire (not personal-use, not
+   internal-only, not dev/test-only, not a Gmail SMTP plugin; both
+   acknowledgements — requirements met, CASA required for restricted scopes —
+   checked) and clicked **Submit for verification**. The app is now with
+   Google's review team. **This is the moment that answers the open CASA
+   question** (roadmap item 2's "ACTION" below) — whatever Google comes back
+   with (verified outright, AL1/AL2 CASA required, or something else) should
+   be recorded here and in `VERIFICATION.md` once known. No further action is
+   needed on our end until Google responds; do not change publish status
+   (Testing → Production) or make unnecessary consent-screen edits in the
+   meantime — the console's own submission page warns that both can delay
+   review.
+   Completed beforehand (all owner/Cowork console work, verified against the live site):
    - `phonoleaf.com` bought, DNS live at Cloudflare (grey-cloud), GitHub Pages
      custom domain set, **Enforce HTTPS on, certificate issued**.
    - **Google Search Console: `phonoleaf.com` verified as a DOMAIN property**
@@ -1719,10 +1732,9 @@ the working plan, not an exploration.
      `index.html` and the contact links in `home.html`/`privacy.html`/
      `terms.html` were switched to it the same day — see the Feedback/bug-
      report behavior note.
-   Remaining before submission: **record the demo video** (script in
-   `VERIFICATION.md`), then submit. **The app is still in Testing and must NOT
-   be submitted until the video exists** — owner's standing instruction.
-   The CASA question below is still unresolved and only submission answers it.
+   Submitted 2026-08-04 — see the STATUS note above. The CASA question below
+   remains unresolved until Google responds; this section should be updated
+   with the real answer once it arrives.
 
    **Original research (2026-07-26) — see `VERIFICATION.md` for the full plan.
    Two blockers were found, one a hard stop:**
