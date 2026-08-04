@@ -141,6 +141,59 @@ carries an explicit Limited Use commitment covering all of these (added
 
 ---
 
+## Adding iOS later — will that upset Google? (researched 2026-07-29)
+
+Owner question ahead of an eventual iOS build: does adding a third OAuth
+client (iOS) to an already-approved project, after this submission, risk
+re-verification trouble? **Decision: build iOS whenever it's engineering-ready
+— do not let it delay this submission.** Reasoning below.
+
+**What's clearly documented.** The list of changes requiring re-verification is
+specifically about the **consent screen's displayed elements** — app name,
+logo/icon, redirect URI, homepage link, privacy policy link — and Google's own
+wording calls this **"brand verification"**, a lighter, distinct process from
+full scope re-verification. Adding a new OAuth client isn't on that list, and
+no reports were found of it being treated as one — which would be a common
+complaint if true, since adding a platform to an existing multi-client Google
+Sign-In setup is a routine, extremely common developer action.
+
+**Where it's genuinely ambiguous — being honest about this, not glossing over
+it.** That list includes "redirect URI." Google's page doesn't clarify whether
+that means *editing* an existing client's redirect URI, or whether
+*registering a new client* (which necessarily has its own new redirect URI)
+counts too. Best-supported read: it refers to what's displayed on the consent
+screen itself, which doesn't enumerate per-client redirect URIs to the end
+user (those live under Credentials, not Branding) — but this isn't nailed down
+by a verbatim quote, and shouldn't be presented as settled.
+
+**Why it doesn't matter for timing regardless of how that resolves:**
+- **Annual re-verification is comprehensive by design, not a diff.** Google's
+  own text: *"We require the annual CASA security reassessment to be a
+  comprehensive test of your app, **regardless of any changes made to the
+  app**."* It's Google-initiated by email and evaluates the project as it
+  stands *at that time* — whatever clients exist when the email arrives get
+  covered then, iOS included. Same reasoning already applied to keeping
+  Android in the demo rather than deleting it.
+- **Resubmission isn't limited to once a year** — nothing stops a voluntary
+  resubmission sooner. Given the redirect-URI ambiguity above, the
+  belt-and-suspenders move once iOS ships: record a short supplementary
+  segment and proactively resubmit rather than waiting to be asked. Cheap
+  insurance against the one part of this that's genuinely unclear.
+
+**The practical case for "later" is strong on its own, independent of any of
+the above.** iOS isn't a config change — it's a real second mobile platform:
+a Capacitor iOS target, Apple Developer Program enrollment ($99/yr), a
+*different* native auth flow (`ASWebAuthenticationSession`, not the Android
+Custom Tab/PKCE plugin already built), a new native TTS plugin, and App Store
+review with its own privacy questionnaire. Weeks of work that has not started
+and has no version of "do it before this submission."
+
+**Action item for whenever iOS ships:** add a short iOS segment to the demo
+video and proactively resubmit, rather than waiting for the annual
+re-verification email.
+
+---
+
 ## Demo video — shot list (owner records)
 
 Google requires an unlisted-or-public video, **in English**, showing the OAuth
