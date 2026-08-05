@@ -2014,25 +2014,80 @@ the working plan, not an exploration.
    `drive.readonly`, which means **Google verification + likely a CASA
    assessment is now a REQUIRED launch step**, not an avoidable one.
    The good news: the "~$15k+/yr" figure previously recorded here was wrong —
-   actual reported costs are **AL1 ≈ $500 / AL2 ≈ $3–6k**, and a client-side app
-   with no backend *may* be exempt entirely. **ACTION: submit the OAuth consent
-   screen for verification to learn the real tier/requirement from Google** (see
-   the behavior note for links + caveats). Do this early — verification is not
-   instant and gates public launch.
+   actual reported costs are **AL1 ≈ $500 / AL2 ≈ $3–6k**.
+   **~~ACTION: submit for verification to learn the real CASA requirement~~ —
+   DONE, AND ANSWERED 2026-08-05.** Google's review email states it outright:
+   every app requesting restricted APIs **must** complete a third-party CASA
+   assessment before approval, **recertified annually**. The hoped-for
+   "client-side app with no backend may be exempt" reading is **dead** — no
+   such exemption was offered, and the email instead pitches `drive.file`
+   precisely *because* it avoids CASA. So the standing cost of `drive.readonly`
+   is CASA + annual recert, indefinitely. See the STATUS block below for the
+   full outcome and the decision taken.
    **STATUS 2026-08-04 — SUBMITTED FOR VERIFICATION.** The demo video was
    recorded, uploaded Unlisted to YouTube, and linked in the submission; the
    owner then completed the Verification Questionnaire (not personal-use, not
    internal-only, not dev/test-only, not a Gmail SMTP plugin; both
    acknowledgements — requirements met, CASA required for restricted scopes —
    checked) and clicked **Submit for verification**. The app is now with
-   Google's review team. **This is the moment that answers the open CASA
-   question** (roadmap item 2's "ACTION" below) — whatever Google comes back
-   with (verified outright, AL1/AL2 CASA required, or something else) should
-   be recorded here and in `VERIFICATION.md` once known. No further action is
-   needed on our end until Google responds; do not change publish status
-   (Testing → Production) or make unnecessary consent-screen edits in the
-   meantime — the console's own submission page warns that both can delay
-   review.
+   Google's review team.
+
+   **STATUS 2026-08-05 — FIRST REVIEW BACK. Two items failed; "Appropriate
+   data access" PASSED.** Email from the Third Party Data Safety Team
+   (api-oauth-dev-verification-reply@google.com) to both the personal address
+   and `support@phonoleaf.com`. Verification Center shows: ✅ Appropriate data
+   access · ❗ Privacy policy requirements · ❗ Request minimum scopes ·
+   ⋯ Homepage requirements and Additional requirements not yet reviewed.
+   1. **Privacy policy — "does not specify any data protection mechanisms for
+      sensitive data." FIXED + LIVE 2026-08-05** (commit `8167e8a`). Root
+      cause: `privacy.html` covered data *access*, *use* and *sharing*
+      thoroughly but never *protection*, which Google's own privacy-policy
+      guidance (`support.google.com/cloud/answer/13806988`) lists as a
+      required category alongside them, with examples like "security
+      procedures are in place to protect the confidentiality of your data"
+      and "we use encryption to protect your information". Added a **"How we
+      protect your data"** section citing measures that genuinely already
+      ship — HTTPS/TLS everywhere, the native app's Keystore-backed
+      `EncryptedSharedPreferences` token storage, no-backend/no-central-
+      database, the CSP, and user-controlled deletion. **One claim was
+      corrected before publishing**: the first draft said third-party
+      libraries are never fetched from CDNs at runtime, which is false —
+      jsDelivr still serves the `kokoro-js` module for the browser-WASM voice
+      fallback and GIS loads live from `accounts.google.com`. Reworded to
+      claim only what's true (the core epub-reading libs are vendored).
+      Verified live at `https://phonoleaf.com/privacy.html`, effective date
+      bumped to August 5, 2026.
+   2. **Minimum scopes — "does not appear to use the minimum scope(s)
+      necessary for functionality."** This is the standard `drive.file`
+      push-back, and the email is the long-form version: it argues
+      `drive.file` is non-sensitive, needs no verification, and — critically
+      — **needs no CASA and no annual recertification**.
+      **THIS EMAIL ANSWERS THE CASA QUESTION THAT HAS BEEN OPEN SINCE
+      2026-07-26.** Verbatim: *"all apps requesting access to restricted APIs
+      must complete a third-party CASA security assessment before the
+      restricted APIs can be approved; this assessment must also be
+      recertified annually in order for the app to maintain access to
+      restricted APIs."* So: **CASA is REQUIRED on `drive.readonly`, with
+      annual recert, and the hoped-for "no backend ⇒ exempt" reading is NOT
+      available.** Roadmap item 2's open ACTION is resolved — the answer is
+      "yes, CASA, every year, for as long as we hold a restricted scope."
+      **Owner decision 2026-08-05: push back (Option 2, "Unable to use
+      narrower scopes") rather than switch.** Reasoning: the technical case is
+      strong and already device-proven (see the `drive.file` note above —
+      `files.list` on a picked folder's children returns empty, so
+      connect-a-folder sync is impossible, not merely worse), and the downside
+      of trying is only review latency, since `drive.file` needs no
+      verification at all and could still be adopted later if Google refuses.
+      Risk accepted knowingly: Google explicitly warns *"UI preferences or
+      client library limitations alone are not valid policy exceptions"*, so
+      refusal is a real possibility, and approval commits the project to CASA
+      + annual recert. The reply text sent is recorded in `VERIFICATION.md`.
+      **Email rule: DO NOT remove any already-approved scope from the project
+      right now** — the email says so explicitly.
+
+   Do not change publish status (Testing → Production) or make unnecessary
+   consent-screen edits while review is open — the console's own submission
+   page warns that both can delay review.
    Completed beforehand (all owner/Cowork console work, verified against the live site):
    - `phonoleaf.com` bought, DNS live at Cloudflare (grey-cloud), GitHub Pages
      custom domain set, **Enforce HTTPS on, certificate issued**.

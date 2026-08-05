@@ -89,7 +89,26 @@ risk for no verification benefit, since reviewers use the URL you supply.
 
 ---
 
-## CASA security assessment — genuinely unresolved until you submit
+## CASA — RESOLVED 2026-08-05: it IS required, and recertified annually
+
+> **This section's original premise ("genuinely unresolved until you submit")
+> was correct — and submitting answered it.** Google's first review email
+> (2026-08-05) states verbatim: *"all apps requesting access to restricted APIs
+> must complete a third-party CASA security assessment before the restricted
+> APIs can be approved; this assessment must also be recertified annually in
+> order for the app to maintain access to restricted APIs."*
+>
+> **The "no backend ⇒ maybe exempt" reading below is dead.** No exemption was
+> offered on those grounds. Google's email instead recommends `drive.file`
+> *specifically because* it is non-sensitive and therefore skips CASA and the
+> annual recert entirely — which is itself confirmation that the restricted
+> path does not skip them.
+>
+> Budget accordingly if staying on `drive.readonly`: **AL1 ≈ $500 / AL2 ≈
+> $3–6k, recurring yearly.** Everything below is kept as the original research
+> record; read it knowing the outcome.
+
+## CASA security assessment — original research (superseded, see above)
 
 Google's rule: *"Every app that requests access to Google users' restricted data
 **and has the ability to access data from or through a third-party server** must
@@ -436,13 +455,62 @@ you two weeks.
       YouTube**, and linked in the submission.
 - [x] **10. Submit for verification** — **submitted 2026-08-04.** Verification
       Questionnaire completed (not personal/internal/dev-only, not a Gmail SMTP
-      plugin; both acknowledgements checked) and Submit clicked. **Now awaiting
-      Google's response** — this is what will finally answer the CASA question
-      below (AL1 ≈ $500 / AL2 ≈ $3–6k / possible no-backend exemption — see the
-      section above). Record the real answer here and in `CLAUDE.md`'s roadmap
-      item 2 the moment it arrives. Until then: don't toggle Testing↔Production
-      and avoid unnecessary consent-screen edits — the submission page warns
-      both can delay review.
+      plugin; both acknowledgements checked) and Submit clicked.
+- [x] **11. First review returned 2026-08-05.** ✅ Appropriate data access
+      passed. ❗ Privacy policy · ❗ Minimum scopes failed. Homepage and
+      Additional requirements not reviewed yet.
+- [x] **11a. Privacy policy — FIXED, LIVE.** Added a "How we protect your
+      data" section to `privacy.html` (commit `8167e8a`, live and verified at
+      `https://phonoleaf.com/privacy.html`, effective 2026-08-05). Google's
+      requirement doc: `support.google.com/cloud/answer/13806988`.
+- [ ] **11b. Minimum scopes — reply sent / to send.** Decision: **Option 2,
+      "Unable to use narrower scopes"** (owner, 2026-08-05). Reply text below.
+      **Do NOT remove any already-approved scope from the project meanwhile** —
+      the email says so explicitly.
+- [ ] **12. Await Google's response to the reply.** If they accept the
+      justification, CASA follows (Google initiates it — see the CASA section;
+      AL1 ≈ $500 / AL2 ≈ $3–6k, annual). If they refuse, the fallback is
+      switching to `drive.file`, which needs no verification and no CASA at
+      all, so it can ship quickly — at the cost of folder auto-sync.
+
+### The reply sent for 11b (2026-08-05)
+
+> **Unable to use narrower scopes**
+>
+> PhonoLeaf reads a user's existing ebook library aloud. Its core function is
+> to stay continuously in sync with one Drive folder the user nominates —
+> books added later (from a Kobo export, Calibre, or a purchase) must appear
+> automatically, without further action.
+>
+> We implemented and tested the `drive.file` scope on a physical device in
+> July 2026 and confirmed it cannot support this. Under `drive.file`,
+> selecting a folder grants access to the folder resource itself, but
+> `files.list` with `'<folderId>' in parents` returns an empty result — the
+> folder's contents are not accessible. The library rendered zero books
+> despite the folder resolving correctly. We reverted to `drive.readonly` the
+> same day.
+>
+> This is not a UI preference or a client-library limitation. Under
+> `drive.file` the app cannot enumerate a library at all; the only compatible
+> design is re-picking individual files each time a book is added, which
+> eliminates the automatic-sync capability that is the app's core function.
+>
+> Scope of access is minimised in every other respect:
+> - Access is strictly **read-only**. The app never creates, modifies, moves,
+>   or deletes anything in Drive.
+> - The app reads only the single folder the user selects, and only `.epub`
+>   files within it.
+> - **There is no backend server.** File content passes directly between the
+>   user's device and Google's APIs. We never receive, store, or process user
+>   file data.
+> - Files are parsed and converted to speech entirely on-device; no book
+>   content is transmitted to any third party.
+> - Use complies with the Limited Use requirements, as disclosed at
+>   https://phonoleaf.com/privacy.html
+>
+> We have also updated our privacy policy to include explicit data-protection
+> disclosures, addressing the other item raised:
+> https://phonoleaf.com/privacy.html
       [How to submit](https://support.google.com/cloud/answer/13463073)
 
 ### Play Store track — can run in parallel
