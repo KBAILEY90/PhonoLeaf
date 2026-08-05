@@ -381,6 +381,19 @@ renders them with epub.js, and reads the text using the browser's Web Speech
     is real and not something this fix addresses; a genuine fix would mean
     bridging Android's own `android.speech.tts.TextToSpeech` into a fallback
     path, which is a new native plugin surface, not attempted here.
+    **First reply wrongly claimed this doesn't block reading ("the device
+    voice keeps going regardless") — owner tested it and confirmed the
+    opposite: "the reader won't work without a voice," and removed the
+    "Continue reading" button that promised otherwise.** The follow-up
+    softened the wording (title/body honest about playback having stopped,
+    button renamed to "Not now") but kept a dismiss button — **owner pushed
+    back again: "it's not a wording issue... leave the Download a voice
+    button and nothing else."** Since dismissing leads nowhere useful (native
+    genuinely cannot read without a pack), a dismiss option was pointless
+    UI, not a courtesy. `#novoice-modal` now shows exactly one button,
+    **"Download a voice"**; the backdrop-tap-to-close behavior in
+    `NoVoiceModal.close(e)` was left as-is (not asked to change) as the only
+    remaining way to back out without downloading.
     Verified in a browser harness: the toast's rendered bounding box stays
     within a 375px viewport for the exact message that was reported cropped;
     the modal opens exactly once across 5 consecutive simulated chunks with
