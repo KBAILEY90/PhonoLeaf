@@ -267,22 +267,52 @@ renders them with epub.js, and reads the text using the browser's Web Speech
   `VoicePacks.download('us')` calls `reinstallPack`, not `prepare` /
   `downloadPack` — shown as "Installing…" with no Cancel button, since a local
   asset re-copy has no percent/URL and nothing meaningful to interrupt.
-  **Owner follow-up (still 2026-08-04): "the English (US) doesn't get removed
-  like the others," citing the "Reinstall" (not "Download") label and the
-  missing percentage as proof.** Investigated and this is **NOT the auto-heal
-  bug recurring** — `deletePack('us')` runs the identical delete-the-folder +
-  write-`removedMarkerFile` code path as any other pack, no special-casing, so
-  the actual removal (freeing ~78 MB) works the same way underneath. The two
-  cited differences are real but are consequences of "us" being asset-backed,
-  not network-backed, and were already deliberate: there's no `Content-Length`
-  to show a percent of, and "Reinstall" was chosen over "Download" because
-  nothing is actually being fetched from a URL. **Not yet resolved: whether
-  this asymmetry should be smoothed over for consistency** (e.g. unifying the
-  wording, or synthesizing a fake progress indicator for the local copy) —
-  flagged for a future pass rather than changed now, since the owner moved on
-  to non-engineering work before deciding. If revisited, the actual test of
-  "did removal work" should be Android's per-app storage usage before/after,
-  not the button label — the label was never evidence either way.
+  **THE REAL CONSTRAINT — the US model is stored TWICE, and only one copy is
+  deletable (surfaced 2026-08-04 after the owner pushed back twice on "US
+  doesn't get removed like the others").** Two earlier replies explained the
+  *symptom* (the "Reinstall" label, the missing percentage) without stating
+  the underlying architecture, which is the part that actually matters:
+  - **Copy A — `assets/kokoro/` inside the installed APK, ~78.5 MB.** Stored
+    uncompressed (`noCompress += ['onnx','bin']`). **The app can NEVER delete
+    this** — it's part of the install package; only uninstalling removes it.
+  - **Copy B — `filesDir/kokoro/`, ~78.5 MB.** `ensureReady()` copies A→B on
+    first use because the native engine needs real filesystem paths (espeak-ng
+    in particular uses ordinary file I/O and cannot read through
+    `AssetManager`). **This is the only copy `deletePack` can remove.**
+  So a US-only install sits at **~157 MB**, and "Remove" frees ~78 MB of that
+  — real, but only half. The remaining ~78.5 MB is stuck for the life of the
+  install. `deletePack('us')` is NOT broken and does not special-case "us";
+  the asymmetric UI is a *consequence* of this, not the cause: there's no
+  `Content-Length` to show a percent against, and "Reinstall" was chosen over
+  "Download" because nothing is fetched from a URL.
+  **Owner's own diagnosis was the right one: "can't we delete one of them and
+  redirect processes to the remaining one?"** Yes — but only in one direction:
+  - Drop Copy B, run from Copy A → **fails**, both technically (espeak-ng
+    can't read from assets) and on intent (assets are undeletable, so the
+    feature the owner wants disappears entirely).
+  - **Drop Copy A — i.e. stop bundling the US model in the APK and make "us" a
+    real `VOICE_PACKS` entry** pointing at the same GitHub release URL the
+    other four already use (`vits-piper-en_US-libritts_r-medium.tar.bz2`,
+    82038311 bytes). Then there is exactly ONE copy, in `filesDir`, and it is
+    fully deletable — identical Download/Remove/% UI to every other pack.
+    `removedMarkerFile`/`reinstallPack` and all the "us" special-casing in
+    `VoicePacks`/`VoiceModal` would be **deleted**, not extended.
+  Cost: a fresh install ships with no voice, so first launch downloads ~80 MB.
+  **In practice this is not a new constraint** — the app already requires
+  network on first run (Google sign-in, Drive listing, downloading the book
+  itself), and the device voice already covers any gap via the existing
+  fallback. Play Store download would drop from ~80 MB to roughly 15 MB.
+  **Alternative worth revisiting once actually on Play: Play Asset Delivery.**
+  A `fast-follow`/`on-demand` asset pack is extracted to a real filesystem
+  path (so no duplicate copy AND no `AssetManager` problem), installs
+  automatically alongside the app, and **is** deletable via
+  `AssetPackManager.removePack()` — the only option that gets "ships with the
+  app" *and* "fully deletable" *and* "no first-run wait" simultaneously. Not
+  chosen now because asset packs only work for Play-installed builds (the
+  current sideload/debug flow can't properly test them) and it needs a
+  separate Gradle asset-pack module plus a different API.
+  **STATUS: unbundling was proposed and NOT yet approved** — the owner moved
+  to the business side of the project before deciding. Nothing was changed.
   **"Queued" vs "Downloading 0%" fixed the same day (owner-reported: with the
   download queue from the concurrency fix above, a pack waiting its turn
   looked identical to one stuck at 0%).** `downloadPack` now emits an initial
