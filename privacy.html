@@ -68,7 +68,7 @@
   </a>
 
   <h1>Privacy Policy</h1>
-  <div class="updated">Effective July 22, 2026</div>
+  <div class="updated">Effective August 5, 2026</div>
 
   <p>PhonoLeaf ("the app", "we", "our") turns epub books stored in your Google Drive into read-aloud audio, on your own device. This policy explains what data the app touches, why, and — just as importantly — what it never does.</p>
 
@@ -108,6 +108,15 @@
     <b>Limited Use commitment</b>
     PhonoLeaf's use and transfer of information received from Google APIs to any other app will adhere to the <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" rel="noopener">Google API Services User Data Policy</a>, including the <strong>Limited Use</strong> requirements. Specifically: Google user data is used only to provide the user-facing reading features described on this page; it is never transferred to anyone except as those features require on your own device; it is never sold, and never used for advertising, ad targeting, or credit assessment; no human ever reads it; and it is never used to train any AI or machine-learning model.
   </div>
+
+  <h2>How we protect your data</h2>
+  <ul>
+    <li><strong>Encrypted in transit.</strong> Every connection the app makes — to Google, to Open Library for book metadata, to download a natural-voice model — goes over HTTPS/TLS. Nothing the app sends or receives travels in plain text.</li>
+    <li><strong>Your Google sign-in is encrypted at rest on the Android app.</strong> The native app stores the long-lived authorization that keeps you signed in in the device's Android Keystore-backed encrypted storage (<code>EncryptedSharedPreferences</code>), not in plain app storage. The web version uses a short-lived (~1 hour) access token instead of a long-lived one; it lives only in your own browser profile and is never transmitted anywhere except directly to Google.</li>
+    <li><strong>No server means no central database to breach.</strong> PhonoLeaf has no backend, so there is no server-side store of your books, reading progress, or stats that could ever be exposed in a server breach — it all exists only on your own device.</li>
+    <li><strong>A locked-down app.</strong> The app enforces a Content Security Policy that limits which sites it can ever load code from or send data to, to a short, explicit list (Google, Open Library, and the specific CDNs the natural-voice model needs). The core epub-reading code is bundled directly into the app rather than pulled from a third-party CDN at runtime, so a compromised CDN there has nothing to inject into.</li>
+    <li><strong>You control deletion, on your schedule.</strong> See <a href="#your-rights">Your rights over your data</a> below for how to erase everything stored on your device, including revoking the app's access to your Google account, at any time.</li>
+  </ul>
 
   <h2>What we never do</h2>
   <ul>
