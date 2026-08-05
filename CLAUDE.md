@@ -267,6 +267,22 @@ renders them with epub.js, and reads the text using the browser's Web Speech
   `VoicePacks.download('us')` calls `reinstallPack`, not `prepare` /
   `downloadPack` — shown as "Installing…" with no Cancel button, since a local
   asset re-copy has no percent/URL and nothing meaningful to interrupt.
+  **Owner follow-up (still 2026-08-04): "the English (US) doesn't get removed
+  like the others," citing the "Reinstall" (not "Download") label and the
+  missing percentage as proof.** Investigated and this is **NOT the auto-heal
+  bug recurring** — `deletePack('us')` runs the identical delete-the-folder +
+  write-`removedMarkerFile` code path as any other pack, no special-casing, so
+  the actual removal (freeing ~78 MB) works the same way underneath. The two
+  cited differences are real but are consequences of "us" being asset-backed,
+  not network-backed, and were already deliberate: there's no `Content-Length`
+  to show a percent of, and "Reinstall" was chosen over "Download" because
+  nothing is actually being fetched from a URL. **Not yet resolved: whether
+  this asymmetry should be smoothed over for consistency** (e.g. unifying the
+  wording, or synthesizing a fake progress indicator for the local copy) —
+  flagged for a future pass rather than changed now, since the owner moved on
+  to non-engineering work before deciding. If revisited, the actual test of
+  "did removal work" should be Android's per-app storage usage before/after,
+  not the button label — the label was never evidence either way.
   **"Queued" vs "Downloading 0%" fixed the same day (owner-reported: with the
   download queue from the concurrency fix above, a pack waiting its turn
   looked identical to one stuck at 0%).** `downloadPack` now emits an initial
