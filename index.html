@@ -1689,9 +1689,14 @@ const Scrub = {
       if (!book || !book.locations || !book.locations.length()) return { ch: '', pg: Math.round(pct) + '%' };
       const cfi = book.locations.cfiFromPercentage(pct / 100);
       const sec = book.spine.get(cfi);
-      const href = sec && sec.href;
-      const toc = href && State.toc.find(t => href.includes((t.href || '').split('#')[0]));
-      const ch = (toc && toc.label && toc.label.trim()) || (sec ? `Section ${sec.index + 1}` : '');
+      // Uses the SAME resolver as the reader's top bar / lock-screen metadata
+      // (chapterLabelFor — flattens the full TOC incl. subitems, with a
+      // spine-index fallback). This used to do its own ad-hoc lookup
+      // (top-level State.toc only, plain substring match, no fallback), which
+      // could disagree with the hamburger menu's ChapterModal for the exact
+      // same chapter (owner-reported mismatch, ChapterModal is the source of
+      // truth since it lists flattenToc() directly).
+      const ch = sec ? chapterLabelFor(sec.href, sec.index) : '';
       return { ch, pg: `p. ${book.locations.locationFromCfi(cfi)} / ${book.locations.length()}` };
     } catch (_) { return { ch: '', pg: Math.round(pct) + '%' }; }
   },
@@ -4845,17 +4850,21 @@ const KOKORO_VOICES = [
 const PIPER_VOICES = [
   // US (libritts_r) — finalized from audition round 1 (genders corrected).
   // 92 & 600 were also good US males if you'd rather swap those in.
-  ['us40',  'Ava · US female',  40,  'us'],
-  ['us160', 'Nora · US female', 160, 'us'],
-  ['us16',  'Ben · US male',    16,  'us'],
-  ['us520', 'Jack · US male',   520, 'us'],
+  // Labels use "English (US)"/"English (UK)" to match the Language Packs
+  // popup's naming (VoicePacks.CATALOG) rather than the bare "US"/"UK" used
+  // before — owner request 2026-08-05, so the picker and the pack list read
+  // as the same language, not two different names for it.
+  ['us40',  'Ava · English (US) female',  40,  'us'],
+  ['us160', 'Nora · English (US) female', 160, 'us'],
+  ['us16',  'Ben · English (US) male',    16,  'us'],
+  ['us520', 'Jack · English (US) male',   520, 'us'],
   // UK (vctk) — owner-picked keepers. Amelia's gender is confirmed; the other
   // three are labelled to match their placeholder names — correct if a voice's
   // gender doesn't match its label.
-  ['gb0',  'Amelia · UK female', 0,  'gb'],
-  ['gb85', 'Ruby · UK female',   85, 'gb'],
-  ['gb70', 'Sam · UK male',      70, 'gb'],
-  ['gb20', 'Max · UK male',      20, 'gb'],
+  ['gb0',  'Amelia · English (UK) female', 0,  'gb'],
+  ['gb85', 'Ruby · English (UK) female',   85, 'gb'],
+  ['gb70', 'Sam · English (UK) male',      70, 'gb'],
+  ['gb20', 'Max · English (UK) male',      20, 'gb'],
   // French/German/Spanish (2026-08-04) — each a SINGLE-speaker model (siwis /
   // thorsten / davefx, the standard community Piper voice per language), so
   // sid is always 0 — no audition needed to pick among speakers, unlike US/GB.

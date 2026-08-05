@@ -1095,6 +1095,26 @@ Google login); verify by inspection + the owner testing on device.
   `visibilitychange`(hidden)/`pagehide`/`Reader.close()` so abrupt PWA exits
   don't lose the spot.
 - **Reader overlay top bar (`.reader-top`)** shows: `[← back]` · `[chapter · Page X/Y center]` · `[≡ chapters]`. A single `#rs-chapter` element (`.reader-top-info`, `0.7rem`) displays the combined string `"Chapter Name  ·  Page X / Y"`. `_onRelocated` populates it by flattening the full TOC tree (including `subitems`) and matching by basename — TOC hrefs are often bare filenames while `loc.start.href` has a path prefix (`xhtml/ch.xhtml`). If no direct match, falls back to the nearest preceding TOC entry by spine index (handles flat TOCs where sub-chapters aren't listed individually). **The overlay and the `ChapterModal` share the module-level `flattenToc()`** (subitems inline, with depth) so their chapter names match exactly — the modal used to list only top-level `State.toc` while the overlay could show a subitem name. The bottom `reader-meta` shows only `{pct}% through the book` (`#tts-chapter`). `applyReadTheme()` measures `.reader-top` and `.reader-bottom` `offsetHeight` and uses those as pixel padding for the epub `body`, so text isn't hidden under either overlay.
+- **Seek scrubber's chapter name now matches the hamburger menu (fixed
+  2026-08-05, owner-reported: "the chapters on the reader's scrollbar are
+  different than the ones in the hamburger icon").** `Scrub._info(pct)` had
+  its own ad-hoc chapter lookup — `State.toc.find(t => href.includes(...))`,
+  a plain substring match against ONLY top-level TOC entries, with no
+  fallback — a second, separately-written version of exactly the logic
+  `chapterLabelFor()` (see the Lock-screen controls note below) already
+  solves correctly and shares with the reader's top bar and lock-screen
+  metadata. Any chapter nested under a `subitems` parent (the common case —
+  see the `ChapterModal`/overlay note above) was invisible to Scrub's lookup,
+  so dragging the scrubber into one of those showed "Section N" or the
+  *parent's* title instead of the real chapter name, while the hamburger menu
+  (which lists `flattenToc()` directly) showed it correctly — hence the
+  mismatch. Fixed by having `Scrub._info` call `chapterLabelFor(sec.href,
+  sec.index)` instead of reimplementing the lookup, so there are now three
+  places (top bar, lock-screen, scrubber) all resolving through the one
+  function and unable to disagree. Verified in a browser harness with a
+  synthetic nested TOC: `chapterLabelFor` resolves a subitem chapter that the
+  old lookup would have missed, and `Scrub._info` end-to-end returns the same
+  label `ChapterModal`'s own `flattenToc()` listing shows for that entry.
 - **Chapter jump** (`ChapterModal`): TOC hrefs can be relative to the nav doc
   and/or carry a `#fragment` that won't match epub.js's spine lookup, so passing
   the raw href to `display()` silently fails. `_resolveHref()` resolves it to a
@@ -1198,7 +1218,38 @@ Google login); verify by inspection + the owner testing on device.
     males if a swap is ever wanted; **UK** (vctk) Amelia 0 / Ruby 85 female,
     Sam 70 / Max 20 male. Rejected along the way: US 0/256/400, UK 10/50/92.
     First entry (Ava, us/sid 40) = default. The picker still prints `speaker N`
-    under each voice — drop that once the UK genders are confirmed. The on-screen `#tts-dbg` timing
+    under each voice — drop that once the UK genders are confirmed.
+    **Labels say "English (US)"/"English (UK)", not "US"/"UK" (owner request
+    2026-08-05)** — e.g. "Ben · English (US) male" — so the voice picker
+    names languages the same way the Language Packs popup does
+    (`VoicePacks.CATALOG`'s labels), rather than two different names for the
+    same thing. The French/German/Spanish single-voice placeholders
+    (`'French voice'` etc.) were left as-is for now — they're expected to be
+    replaced wholesale once real 2-male/2-female picks exist for those
+    languages, so relabeling them to match the same pattern first would just
+    be thrown away.
+    **PENDING (owner, 2026-08-05): expand French/German/Spanish (and
+    presumably UK/US too) to a real 2-male/2-female audition set, like US/UK
+    already have** — owner is providing the specific picks. **Real
+    architectural question to resolve once picks arrive, not yet answered**:
+    `fr`/`de`/`es` currently each point at a SINGLE-SPEAKER Piper model
+    (siwis/thorsten/davefx — see `VOICE_PACKS` in `PhonoLeafTtsPlugin.kt`), so
+    unlike US (libritts_r, 904 speakers) and UK (vctk, multiple speakers),
+    there is only ONE voice to select via `sid` — getting to 4 needs either
+    (a) a genuinely multi-speaker Piper model for that language, if a suitable
+    one exists in the same sherpa-onnx release, or (b) bundling multiple
+    single-speaker models together under one language pack, which is a
+    bigger change (today's `VOICE_PACKS` map is one model/one URL per
+    language). Worth checking eagerly once picks arrive: the release's
+    `fr_FR-upmc-medium` (80422639 bytes) and `es_ES-sharvard-medium`
+    (80318184 bytes) are notably larger than the other single-speaker models
+    for their languages (~67 MB) — the same size signature multi-speaker
+    US/UK models show (82038311 / 80488085 bytes) — suggesting they may be
+    multi-speaker corpora (UPMC French is known to have 2 speakers; Spanish
+    Harvard recordings plausibly too), but this is an inference from file size
+    only, NOT verified by inspecting the model or listening to it. No
+    equivalent size outlier was found for German in the fetched asset list.
+    The on-screen `#tts-dbg` timing
     readout was removed once Piper proved gapless. The Kotlin plugin
     (`PhonoLeafTtsPlugin.kt`) is model-agnostic:
     it only sets the optional `dataDir`/`dictDir`/`lexicon` paths that actually
