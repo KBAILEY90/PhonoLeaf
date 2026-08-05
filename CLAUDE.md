@@ -1284,11 +1284,28 @@ Google login); verify by inspection + the owner testing on device.
     MUST change too, or it silently keeps serving the old file** — this is
     exactly the same class of bug the "us" unbundling note warned about in
     the other direction (keep the tag when the file is genuinely the same;
-    change it when the file genuinely isn't). Not device-verified — the
-    ONNX-level verification above is as far as this environment can confirm
-    without a phone; the actual fix (whether the re-download now correctly
-    triggers and produces two distinct voices in the app) still needs a real
-    device test.
+    change it when the file genuinely isn't). **DEVICE-VERIFIED 2026-08-05
+    — fix confirmed working: all packs and genders now sound correct.**
+    **Same device test surfaced a new, separate issue: voices "mumbling"
+    (garbled, not just slow) whenever a pack is downloading in the
+    background.** Not a correctness bug in synthesis itself — genuine CPU
+    contention. `downloadExecutor` runs on its own thread (separate from
+    `genExecutor`, which runs TTS inference) specifically so a download can't
+    block synthesis, but being on a different thread doesn't stop the two
+    from competing for the SAME CPU cores, and bzip2-decompressing a ~70+ MB
+    archive is genuinely heavy work. Fixed by running the download thread at
+    Android's own `THREAD_PRIORITY_BACKGROUND` (a real scheduler nice-value
+    hint via `android.os.Process.setThreadPriority` — NOT the JVM's
+    `Thread.priority`, which Android's CFS scheduler largely ignores), set
+    once via a custom `ThreadFactory` the first time the (single, reused)
+    download thread runs. This makes the OS consistently favor TTS
+    inference/audio playback over pack downloads whenever both want CPU at
+    once, without touching `genExecutor`'s priority — that side was never
+    reported as a problem on its own, only when a download competed with it.
+    Not yet device-verified — this exact fix was written in response to the
+    same test session's report, after the model-swap fix above was already
+    confirmed; needs its own follow-up device test (download a pack while
+    reading and confirm playback stays clean throughout, not just before/after).
     The on-screen `#tts-dbg` timing
     readout was removed once Piper proved gapless. The Kotlin plugin
     (`PhonoLeafTtsPlugin.kt`) is model-agnostic:

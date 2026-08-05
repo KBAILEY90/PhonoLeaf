@@ -352,7 +352,24 @@
         // synthesize() call behind it, freezing audio playback while a
         // download is in flight, which is unrelated but would be an easy new
         // bug to introduce while fixing this one.
-        private val downloadExecutor = Executors.newSingleThreadExecutor()
+        // Being on a SEPARATE thread from genExecutor isn't enough on its own,
+        // though — the two threads still compete for the same CPU cores, and
+        // bzip2 decompression is genuinely CPU-heavy. Owner-reported: voices
+        // "mumbling" (garbled, not just slow) while a pack downloads in the
+        // background. Fixed by running this thread at Android's own
+        // THREAD_PRIORITY_BACKGROUND (a real scheduler nice-value hint, not
+        // just the JVM's Thread.priority, which Android's CFS scheduler
+        // mostly ignores) — set once, the first (and only, it's a
+        // single-thread pool) time this thread runs, so the OS consistently
+        // favors TTS inference and audio playback over pack downloads
+        // whenever both want CPU at once.
+        private val downloadExecutor: java.util.concurrent.ExecutorService =
+            Executors.newSingleThreadExecutor { runnable ->
+                Thread {
+                    android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_BACKGROUND)
+                    runnable.run()
+                }
+            }
 
         /** packStatus({model}) -> {downloaded, approxBytes}. Uniform for every
          *  model now that nothing is bundled — the `.ready-${modelVersion(model)}`
