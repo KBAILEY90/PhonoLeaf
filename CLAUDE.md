@@ -2123,9 +2123,21 @@ the working plan, not an exploration.
      `index.html` and the contact links in `home.html`/`privacy.html`/
      `terms.html` were switched to it the same day — see the Feedback/bug-
      report behavior note.
-   Submitted 2026-08-04 — see the STATUS note above. The CASA question below
-   remains unresolved until Google responds; this section should be updated
-   with the real answer once it arrives.
+     **DEFERRED TASK (owner, 2026-08-05): replace this forward with a real,
+     separate mailbox** — right now every support email lands directly in the
+     owner's personal Gmail, which they've flagged as clutter. Candidates:
+     Google Workspace (paid, gives a proper `@phonoleaf.com` Gmail inbox) or a
+     cheaper custom-domain option (e.g. Zoho Mail's free tier). **Deliberately
+     not done now** — the owner asked to hold off until OAuth verification
+     finishes, since this domain/DNS is exactly what's under active Google
+     review and the standing rule is no unnecessary changes while that's
+     open. Revisit once verification is fully resolved (approved or the
+     `drive.file` fallback taken).
+   Submitted 2026-08-04 — see the STATUS note above. **CASA question ANSWERED
+   2026-08-05** — see the STATUS block above and `VERIFICATION.md`'s CASA
+   section: it is required, with annual recertification, for as long as the
+   project holds a restricted scope. Currently awaiting Google's response to
+   the "Unable to use narrower scopes" reply sent 2026-08-05.
 
    **Original research (2026-07-26) — see `VERIFICATION.md` for the full plan.
    Two blockers were found, one a hard stop:**
