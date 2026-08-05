@@ -220,6 +220,21 @@ model and why German is the odd one out.
    the same way the US/UK set was curated. The picker no longer shows a raw
    `speaker N` line under each voice (dropped 2026-08-05 — not useful once
    voices have real names).
+   **Critical regression check if this device already had French or Spanish
+   downloaded from before 2026-08-05**: both languages switched from
+   single-speaker models to genuine 2-speaker ones that day, but a bug meant
+   an already-downloaded pack never got re-fetched, so both "voices" played
+   as the same one stale speaker (owner caught this on-device). Fixed by
+   giving `fr`/`es` their own version tags instead of one shared across all
+   models — **Settings → Language packs should now show French/Spanish as
+   "Not downloaded" again** (not stuck reporting "Downloaded" from the old
+   pack) the first time this build runs on a device that had them before.
+   Confirm: (a) it actually shows not-downloaded, (b) downloading fetches a
+   fresh ~77 MB file (not skipped), and (c) Aline vs Pierre / Mateo vs Sofía
+   audibly sound like different people afterward — that last part is the
+   real test, since everything else about this fix was only verifiable by
+   inspecting the ONNX model directly (config, graph inputs, embedding
+   weights, differential inference) in this environment, not by listening.
 
 Notes:
 - **Upgrading an existing install must NOT re-download.** A device that ran

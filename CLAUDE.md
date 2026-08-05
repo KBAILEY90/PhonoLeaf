@@ -1255,7 +1255,40 @@ Google login); verify by inspection + the owner testing on device.
     request: "if we don't need speaker IDs anymore, let's remove them") — not
     useful once every voice has a real name; each `voice-item` now shows just
     the label.
-    Not device-verified — same caveat as every native change in this file.
+    **First real device test found a genuine bug: "both French voices are the
+    same female voice. Same for Spanish being the same male voice."** Root
+    cause was NOT the model — verified that thoroughly first (downloaded the
+    actual sherpa-onnx-packaged `.tar.bz2`, not just the HuggingFace copy;
+    confirmed via `onnx`/`onnxruntime` in Python that the graph has a real
+    `sid` input identical in shape to the known-working GB model, that the
+    `emb_g.weight` speaker-embedding table has 2 genuinely distinct rows
+    (cosine similarity −0.34, not near-duplicate), and that running inference
+    with `sid=0` vs `sid=1` produces different-length, uncorrelated output).
+    The real bug: **`MODEL_VERSION` was a single hardcoded string shared by
+    every model**, used to name the `.ready-$MODEL_VERSION` marker file that
+    `ensureReady()`/`packStatus()` check to decide "is this pack already
+    downloaded." Switching `fr`/`es` to different underlying files (siwis→upmc,
+    davefx→sharvard) changed the download URL but not this marker name — so a
+    device that had already downloaded the OLD single-speaker pack still had a
+    marker that matched, and `ensureReady()` never re-fetched anything. The
+    stale single-speaker file stayed loaded; asking it for `sid=1` when it only
+    has one speaker just silently returns that same one speaker again — exactly
+    matching "both voices sound the same." Fixed with a **per-model version
+    map** (`MODEL_VERSIONS`/`modelVersion(model)`) instead of one shared
+    constant: `fr`/`es` got new tags (`piper-fr-upmc-medium-2spk` /
+    `piper-es-sharvard-medium-2spk`) so any device with the old pack correctly
+    re-downloads once; `us`/`gb`/`de` deliberately keep their original tag
+    unchanged, since their underlying files never changed and bumping them
+    too would force a pointless ~78 MB re-download for everyone. **Lesson for
+    any future model swap on an existing `VOICE_PACKS` key: the version tag
+    MUST change too, or it silently keeps serving the old file** — this is
+    exactly the same class of bug the "us" unbundling note warned about in
+    the other direction (keep the tag when the file is genuinely the same;
+    change it when the file genuinely isn't). Not device-verified — the
+    ONNX-level verification above is as far as this environment can confirm
+    without a phone; the actual fix (whether the re-download now correctly
+    triggers and produces two distinct voices in the app) still needs a real
+    device test.
     The on-screen `#tts-dbg` timing
     readout was removed once Piper proved gapless. The Kotlin plugin
     (`PhonoLeafTtsPlugin.kt`) is model-agnostic:

@@ -99,11 +99,28 @@
         // live at once; a ring of 8 means a slot is never reused while still playing.
         private var fileCounter = 0
         private val RING = 8
-        // Bump when the bundled model changes — the copied filesDir/kokoro is cached
-        // behind this marker, so a new asset model won't be picked up otherwise
-        // (was a real gotcha swapping kokoro-multi-lang-v1_1 → kokoro-en-v0_19 →
-        // kokoro-int8-en-v0_19).
-        private val MODEL_VERSION = "piper-libritts-r-medium"
+        // Per-model version tag for the ".ready-$tag" marker file. MUST be
+        // per-model, not a single shared string — a single shared constant was
+        // the actual bug behind "both French/Spanish voices sound identical"
+        // (owner-reported 2026-08-05): fr/es were switched from single-speaker
+        // models (siwis/davefx) to genuine 2-speaker ones (upmc/sharvard), but
+        // since the marker didn't encode WHICH model was downloaded, a device
+        // that already had the old pack saw its marker still present and
+        // never re-fetched — so it kept using the stale single-speaker file,
+        // where a second "voice" is just the same lone speaker again. Bump
+        // ONLY the entry for a model whose underlying file actually changes;
+        // us/gb/de are unchanged and must keep their original tag, or every
+        // install would needlessly re-download ~78 MB it already has (the
+        // exact thing keeping the "kokoro" folder name constant was meant to
+        // avoid — see VOICE_PACKS's "us" comment).
+        private val MODEL_VERSIONS = mapOf(
+            "us" to "piper-libritts-r-medium",
+            "gb" to "piper-libritts-r-medium",
+            "fr" to "piper-fr-upmc-medium-2spk",
+            "de" to "piper-libritts-r-medium",
+            "es" to "piper-es-sharvard-medium-2spk",
+        )
+        private fun modelVersion(model: String) = MODEL_VERSIONS[model] ?: "piper-libritts-r-medium"
         @Volatile private var tts: OfflineTts? = null
         // Which model key is currently loaded ("us"|"gb"). Voices from a different
         // accent live in a separate model folder; switching reloads (one model at
@@ -142,9 +159,10 @@
         private val VOICE_PACKS = mapOf(
             // Folder stays "kokoro" (NOT "kokoro-us") deliberately: an existing
             // install that already has the old asset-copied model in
-            // filesDir/kokoro keeps its valid `.ready-$MODEL_VERSION` marker, so
-            // packStatus reports it as already downloaded and nobody has to
-            // re-fetch ~80 MB just because it stopped being bundled.
+            // filesDir/kokoro keeps its valid `.ready-${modelVersion("us")}`
+            // marker (unchanged tag — see MODEL_VERSIONS), so packStatus
+            // reports it as already downloaded and nobody has to re-fetch
+            // ~80 MB just because it stopped being bundled.
             "us" to VoicePackInfo(
                 folder = ASSET_DIR,
                 url = "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-en_US-libritts_r-medium.tar.bz2",
@@ -201,7 +219,7 @@
                 val ctx = context
                 val folder = folderFor(model)
                 val dest = File(ctx.filesDir, folder)
-                val marker = File(dest, ".ready-$MODEL_VERSION")
+                val marker = File(dest, ".ready-${modelVersion(model)}")
                 if (!marker.exists()) {
                     // Nothing ships in assets any more — every model, including
                     // "us", has to come through downloadPack() first. Throwing
@@ -337,7 +355,7 @@
         private val downloadExecutor = Executors.newSingleThreadExecutor()
 
         /** packStatus({model}) -> {downloaded, approxBytes}. Uniform for every
-         *  model now that nothing is bundled — the `.ready-$MODEL_VERSION`
+         *  model now that nothing is bundled — the `.ready-${modelVersion(model)}`
          *  marker in the pack's filesDir folder is the single source of truth,
          *  so nothing has to be mirrored into JS storage. An unknown key
          *  (shouldn't happen; the JS catalog only asks about real entries)
@@ -350,7 +368,7 @@
             val info = VOICE_PACKS[model]
             val dest = File(context.filesDir, folderFor(model))
             val ret = JSObject()
-            ret.put("downloaded", info != null && File(dest, ".ready-$MODEL_VERSION").exists())
+            ret.put("downloaded", info != null && File(dest, ".ready-${modelVersion(model)}").exists())
             ret.put("approxBytes", info?.approxBytes ?: 0)
             call.resolve(ret)
         }
@@ -454,7 +472,7 @@
                         dest.deleteRecursively()
                         if (!tmp.renameTo(dest)) throw IOException("could not install pack")
                     }
-                    File(dest, ".ready-$MODEL_VERSION").createNewFile()
+                    File(dest, ".ready-${modelVersion(model)}").createNewFile()
                     val p = JSObject(); p.put("model", model); p.put("downloaded", downloaded); p.put("total", downloaded); p.put("pct", 100)
                     notifyListeners("packProgress", p)
                     call.resolve()
