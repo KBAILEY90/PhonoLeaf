@@ -169,6 +169,9 @@ renders them with epub.js, and reads the text using the browser's Web Speech
   install is a bad first impression regardless of whether it technically fits.
   Every future language would add another ~75–80 MB — this does NOT amortise
   the way the web model does (see below).
+  **SUPERSEDED 2026-08-04 — NOTHING is bundled now, not even US. See "FULLY
+  UNBUNDLED" below;** the decision recorded next (ship US, download the rest)
+  was the first step and lasted less than a day.
   **DECISION (owner, 2026-07-29): ship US ONLY in the store build; GB and any
   future languages become in-app downloadable voice packs. IMPLEMENTED
   2026-08-04** (started right after OAuth verification was submitted, per the
@@ -311,8 +314,55 @@ renders them with epub.js, and reads the text using the browser's Web Speech
   chosen now because asset packs only work for Play-installed builds (the
   current sideload/debug flow can't properly test them) and it needs a
   separate Gradle asset-pack module plus a different API.
-  **STATUS: unbundling was proposed and NOT yet approved** — the owner moved
-  to the business side of the project before deciding. Nothing was changed.
+  **FULLY UNBUNDLED — APPROVED AND IMPLEMENTED 2026-08-04.** The owner chose
+  the "drop Copy A" option above ("let's do the unbundling, and add a step to
+  the onboarding"). `assets/kokoro/` is no longer shipped or read; **"us" is
+  now an ordinary `VOICE_PACKS` entry** (`vits-piper-en_US-libritts_r-medium.tar.bz2`,
+  82038311 bytes) and behaves exactly like every other pack.
+  - **Folder key stays `kokoro`, NOT `kokoro-us`, deliberately** — an existing
+    install that already has the old asset-copied model in `filesDir/kokoro`
+    keeps its valid `.ready-$MODEL_VERSION` marker, so `packStatus` reports it
+    already downloaded and nobody re-fetches ~80 MB just because bundling
+    stopped. `MODEL_VERSION` was likewise left alone for the same reason.
+  - **Net deletion, not addition:** `removedMarkerFile()`, `reinstallPack()`,
+    `copyAssetDir()`, the `AssetManager` import, the "explicitly removed"
+    branch in `ensureReady()`, and every `model === 'us'` / `isUs` special case
+    in `VoicePacks`/`VoiceModal`/`rowHTML` are all **gone**. `ensureReady()`
+    now simply throws `PackNotDownloadedException` whenever the marker is
+    missing, for any model.
+  - **There is no longer an always-available voice.** `VoiceModal` gates every
+    voice on its pack (no `us` exemption) and shows a "No natural voices
+    installed yet" empty state above the "Get more voices" row. The
+    `PACK_NOT_DOWNLOADED` handler in `TTS._playAudio` no longer assumes it can
+    fall back to "the model's first voice": it now switches to a voice from a
+    pack that is *actually downloaded*, and if none is, leaves the choice
+    alone and points at Settings → Language packs. The device-voice fallback
+    still covers playback either way, and this path still must NOT touch
+    `_kstrikes`/`_kokoroDead`.
+  - **Onboarding step (owner request, same change):** `VoicePacks.maybeOnboard()`
+    fires ~400 ms after `setFolder()` — i.e. as the last step of first-run
+    setup, right after the Drive folder is picked — and opens `LangPacksModal`
+    with an explanatory header. It **awaits `refresh()` before deciding**
+    (`refresh()` now returns a promise): opening a popup whose rows all still
+    read "Checking…" looks broken, and an install that already has a pack
+    (notably one upgrading from the bundled build) must not be prompted at
+    all. Guarded once-ever by `pl_packs_onboarded`, which is **only consumed
+    on native** — the web build returns before setting it, so a later native
+    install still gets its prompt. `LangPacksModal._onboarding` is sticky so
+    `_notify()` re-renders during a download keep the header, and is cleared
+    by `close()` so opening it later from Settings shows no header.
+  - Verified in a browser harness with the native plugin mocked: onboarding
+    opens once and not again; US renders as a real Download with a size and
+    Remove/Download round-trips; queued-vs-downloading wording; the voice
+    picker's empty state, and that it lists US voices only after that pack is
+    installed; the no-pack-installed fallback keeping the voice choice vs
+    switching to an installed pack's voice; and the web build still hiding the
+    row, no-op'ing onboarding, and leaving the flag unconsumed. **The Kotlin
+    is NOT device-verified** — no JDK/Android SDK here, as ever.
+  - **First real device test must include:** a genuine `downloadPack('us')`
+    against the live GitHub URL, and confirming an EXISTING install (which
+    still has the old asset-copied `filesDir/kokoro`) is reported as already
+    downloaded rather than being asked to re-download.
   **"Queued" vs "Downloading 0%" fixed the same day (owner-reported: with the
   download queue from the concurrency fix above, a pack waiting its turn
   looked identical to one stuck at 0%).** `downloadPack` now emits an initial
@@ -2041,19 +2091,26 @@ the working plan, not an exploration.
      - Stage 5 — Play Console ($25 one-time), internal testing track, store
        listing + privacy policy (item 4), then production rollout. iOS
        (Apple $99/yr) after Android is proven.
-       **APK-size blocker — RESOLVED 2026-08-04.** The bundled Piper models
-       were ~185 MB uncompressed (US 78.5 + GB 77 + espeak data), at/over
-       Play's ~200 MB app-bundle ceiling before app code. **Decided
-       2026-07-29, implemented 2026-08-04: ship US only, GB + future
-       languages as in-app downloadable voice packs** — see the model-sizes
-       note in the Tech-stack "Native TTS plugin" section for what shipped
-       (`VOICE_PACKS`/`downloadPack`/Commons Compress on the native side, the
-       `VoicePacks` module + Settings UI + `VoiceModal` gating on the JS
-       side). Store build now bundles only the US model (~78.5 MB), matching
-       the original goal. Still not device-verified — no JDK/Android SDK in
-       this environment; needs a real build + device test (including an
-       actual `downloadPack` run against the live GitHub release URL) before
+       **APK-size blocker — RESOLVED 2026-08-04, then over-delivered the same
+       day.** The bundled Piper models were ~185 MB uncompressed (US 78.5 +
+       GB 77 + espeak data), at/over Play's ~200 MB app-bundle ceiling before
+       app code. First fix (decided 2026-07-29): ship US only, everything else
+       downloadable. Then the owner pushed further — a bundled model is stored
+       TWICE on device (undeletable APK asset + the filesDir copy the engine
+       actually needs), so even US-only sat at ~157 MB installed with only
+       half of it reclaimable — and approved **fully unbundling**: the store
+       build now contains **no voice model at all**, and every language,
+       including US, is downloaded on first run (prompted during onboarding,
+       right after Drive folder setup). See the model-sizes and "FULLY
+       UNBUNDLED" notes in the Tech-stack "Native TTS plugin" section.
+       Still not device-verified — no JDK/Android SDK in this environment;
+       needs a real build + device test (including an actual `downloadPack`
+       run against the live GitHub release URL, and confirming an upgraded
+       install isn't asked to re-download the model it already has) before
        this can be marked done for real.
+       **Worth revisiting once actually on Play: Play Asset Delivery**, the
+       only approach that gets "ships with the app" + "no first-run wait" +
+       "fully deletable" at once. Can't be tested until published.
 4. ~~**Privacy policy + ToS**~~ — **DONE (2026-07-22).** `privacy.html` /
    `terms.html` at the repo root, live at
    `kbailey90.github.io/PhonoLeaf/privacy.html` (and `/terms.html`) — same

@@ -3,7 +3,6 @@
     import android.app.ActivityManager
     import android.content.Context
     import android.content.Intent
-    import android.content.res.AssetManager
     import android.util.Log
     import com.getcapacitor.JSObject
     import com.getcapacitor.Plugin
@@ -49,19 +48,20 @@
      * main thread) and sherpa's internal thread count is capped so ONNX inference
      * can't starve the UI/render threads.
      *
-     * Model files: the owner drops the extracted Kokoro model into
-     *   android/app/src/main/assets/kokoro/   (gitignored — see TESTING.md).
-     * On first use we copy that folder to filesDir once (espeak-ng-data / dict /
-     * lexicon files must be opened by native code via real filesystem paths, not
-     * through the AssetManager), then load from disk.
+     * Model files: NOTHING is bundled in the APK any more (unbundled
+     * 2026-08-04) — every voice model, including the US default, is a
+     * downloadable pack fetched straight into filesDir on demand via
+     * downloadPack(). See VOICE_PACKS for the catalog and for why bundling was
+     * dropped (it stored the US model twice on device, ~157 MB total, with only
+     * the filesDir half ever reclaimable). ensureReady() throws a
+     * distinguishable PackNotDownloadedException until a pack has been
+     * downloaded; packStatus() lets the UI check that state up front, and the
+     * onboarding flow prompts for a first download right after folder setup.
      *
-     * Not every model is bundled this way. Accents beyond the store build's US
-     * default (currently "gb") ship nothing in assets at all — see VOICE_PACKS —
-     * and are instead fetched straight into filesDir on demand via
-     * downloadPack(), to keep the store APK to one model's size (~78 MB) rather
-     * than growing per language. ensureReady() throws a distinguishable
-     * PackNotDownloadedException for these until downloadPack() has run once;
-     * packStatus() lets the Settings UI check/show that state up front.
+     * Models must live on the real filesystem rather than being read from the
+     * APK directly: espeak-ng-data (and dict/lexicon for some models) are
+     * opened by native code with ordinary file I/O, which cannot go through
+     * AssetManager. That constraint is what made bundling cost double.
      */
     @CapacitorPlugin(name = "PhonoLeafTts")
     class PhonoLeafTtsPlugin : Plugin() {
@@ -120,31 +120,36 @@
         // placed files. Surfaced to the readout so we can confirm which engine ran.
         @Volatile private var activeModelType = "?"
     
-        // Marks that a NON-VOICE_PACKS model (i.e. "us") was explicitly removed
-        // via deletePack(), so ensureReady() knows not to silently re-copy it
-        // from assets — see the "explicitly removed" check there. Only
-        // reinstallPack() clears this; ordinary ensureReady()/prepare() calls
-        // (including the implicit one at TTS startup) must never clear it
-        // themselves, or a deliberate removal would get silently undone the
-        // next time the app tries to detect the model type.
-        private fun removedMarkerFile(model: String) = File(context.filesDir, ".removed-$model")
-
-        // Asset/filesDir subfolder for a model key: looked up from VOICE_PACKS
-        // for anything downloadable; "us"/anything else falls back to the
-        // bundled `kokoro` folder.
+        // filesDir subfolder for a model key. Every model is downloadable now, so
+        // this always resolves from VOICE_PACKS; ASSET_DIR remains only as a
+        // defensive fallback for an unknown key.
         private fun folderFor(model: String) = VOICE_PACKS[model]?.folder ?: ASSET_DIR
 
-        // Voice packs NOT bundled in the APK's assets — fetched on demand via
-        // downloadPack() into filesDir instead. Keeps the store build's install
-        // size to just the US model (see CLAUDE.md's "MODEL SIZES" note: bundling
-        // every accent/language doesn't scale, ~65-80 MB each). Source is the
-        // SAME public sherpa-onnx GitHub release the US model already ships
-        // from (TESTING.md §3.6) — no separate hosting to maintain. Sizes are
-        // the exact `.tar.bz2` asset sizes from that release (checked
-        // 2026-08-04 via `gh release view tts-models --repo k2-fsa/sherpa-onnx`),
-        // not estimates.
+        // ALL voice packs are fetched on demand into filesDir — nothing ships in
+        // the APK's assets any more (unbundled 2026-08-04). Previously the US
+        // model was bundled, which meant it existed TWICE on device: once in the
+        // APK's assets (undeletable — part of the install package) and once as
+        // the filesDir copy the native engine actually needs (espeak-ng uses
+        // ordinary file I/O and can't read through AssetManager). That put a
+        // US-only install at ~157 MB and made "Remove" able to reclaim only half
+        // of it. Downloading it like every other pack leaves exactly ONE copy,
+        // fully deletable, and drops the store download to app code only.
+        // Source is the same public sherpa-onnx GitHub release for all of them
+        // (TESTING.md §3.6) — no separate hosting to maintain. Sizes are the
+        // exact `.tar.bz2` asset sizes from that release (checked 2026-08-04 via
+        // `gh release view tts-models --repo k2-fsa/sherpa-onnx`), not estimates.
         private data class VoicePackInfo(val folder: String, val url: String, val approxBytes: Long)
         private val VOICE_PACKS = mapOf(
+            // Folder stays "kokoro" (NOT "kokoro-us") deliberately: an existing
+            // install that already has the old asset-copied model in
+            // filesDir/kokoro keeps its valid `.ready-$MODEL_VERSION` marker, so
+            // packStatus reports it as already downloaded and nobody has to
+            // re-fetch ~80 MB just because it stopped being bundled.
+            "us" to VoicePackInfo(
+                folder = ASSET_DIR,
+                url = "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-en_US-libritts_r-medium.tar.bz2",
+                approxBytes = 82038311L,
+            ),
             "gb" to VoicePackInfo(
                 folder = "kokoro-gb",
                 url = "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-en_GB-vctk-medium.tar.bz2",
@@ -194,28 +199,12 @@
                 val dest = File(ctx.filesDir, folder)
                 val marker = File(dest, ".ready-$MODEL_VERSION")
                 if (!marker.exists()) {
-                    if (VOICE_PACKS.containsKey(model)) {
-                        // Not shipped in assets — must go through downloadPack()
-                        // first. Don't fall through to copyAssetDir: there's
-                        // nothing in assets to copy, so it would just throw a
-                        // less specific "no *.onnx" error below.
-                        throw PackNotDownloadedException(model)
-                    }
-                    if (removedMarkerFile(model).exists()) {
-                        // "us" (the only asset-backed, non-VOICE_PACKS model)
-                        // was EXPLICITLY removed via deletePack() — do not
-                        // silently re-copy it from assets here. Without this
-                        // check, the very next synth() call after tapping
-                        // Remove would auto-heal it straight back, making
-                        // removal look broken (owner-reported: "still doesn't
-                        // get removed"). It must stay gone, exactly like a
-                        // real pack would, until reinstallPack() explicitly
-                        // clears this marker and re-copies it.
-                        throw PackNotDownloadedException(model)
-                    }
-                    dest.deleteRecursively() // clear any older model copy
-                    copyAssetDir(ctx.assets, folder, dest)
-                    marker.createNewFile()
+                    // Nothing ships in assets any more — every model, including
+                    // "us", has to come through downloadPack() first. Throwing
+                    // the distinguishable exception lets the JS layer prompt for
+                    // the download instead of treating this like an engine
+                    // failure and striking out the natural voice entirely.
+                    throw PackNotDownloadedException(model)
                 }
                 val base = dest.absolutePath
                 // Only set optional paths that actually exist — the English-only
@@ -343,31 +332,21 @@
         // bug to introduce while fixing this one.
         private val downloadExecutor = Executors.newSingleThreadExecutor()
 
-        /** packStatus({model}) -> {downloaded, approxBytes}. "us" reports its
-         *  REAL filesDir state now that it's removable (see deletePack) — it's
-         *  the one model whose ensureReady() can transparently regenerate
-         *  "downloaded=false" for free (re-copy from assets), so this can
-         *  legitimately go false and back to true without ever downloading
-         *  anything. Any other model unknown to VOICE_PACKS (shouldn't happen
-         *  in practice — the JS catalog only ever asks about real entries)
-         *  falls back to reporting itself as always present, harmlessly. Lets
-         *  the Settings UI show pack size before download and reflect current
-         *  state without duplicating a flag in JS storage — the filesystem
-         *  marker is the single source of truth. */
+        /** packStatus({model}) -> {downloaded, approxBytes}. Uniform for every
+         *  model now that nothing is bundled — the `.ready-$MODEL_VERSION`
+         *  marker in the pack's filesDir folder is the single source of truth,
+         *  so nothing has to be mirrored into JS storage. An unknown key
+         *  (shouldn't happen; the JS catalog only asks about real entries)
+         *  reports not-downloaded with no size rather than pretending it's
+         *  present. */
         @PluginMethod
         fun packStatus(call: PluginCall) {
             val model = call.getString("model")
             if (model.isNullOrEmpty()) { call.reject("model required"); return }
             val info = VOICE_PACKS[model]
-            val ret = JSObject()
-            if (info == null && model != "us") {
-                ret.put("downloaded", true)
-                ret.put("approxBytes", 0)
-                call.resolve(ret)
-                return
-            }
             val dest = File(context.filesDir, folderFor(model))
-            ret.put("downloaded", File(dest, ".ready-$MODEL_VERSION").exists())
+            val ret = JSObject()
+            ret.put("downloaded", info != null && File(dest, ".ready-$MODEL_VERSION").exists())
             ret.put("approxBytes", info?.approxBytes ?: 0)
             call.resolve(ret)
         }
@@ -483,52 +462,22 @@
             call.resolve()
         }
 
-        /** deletePack({model}) — reclaim the space a pack uses. Valid for any
-         *  model in VOICE_PACKS, PLUS "us" (owner request 2026-08-04): even
-         *  though the US model ships in the APK's assets, ensureReady() keeps a
-         *  SEPARATE full copy in filesDir (native code needs real filesystem
-         *  paths for espeak-ng-data/etc, not an AssetManager stream) — deleting
-         *  that filesDir copy genuinely frees ~78 MB of device storage, even
-         *  though the asset copy baked into the APK itself can't be freed
-         *  without uninstalling.
-         *  For "us" this ALSO writes removedMarkerFile() — without it,
-         *  ensureReady() would silently re-copy "us" from assets on the very
-         *  next synth() call (it has no download to fail, so nothing would
-         *  otherwise stop it from just healing itself back), which made
-         *  Remove look like it did nothing (owner-reported). With the marker,
-         *  "us" now stays removed exactly like a real pack would, until
-         *  reinstallPack() is called. */
+        /** deletePack({model}) — reclaim the space a pack uses. Every model is a
+         *  real download now (including "us"), so there is exactly ONE copy on
+         *  disk and deleting it frees the full ~65-80 MB. No special cases, and
+         *  no "removed" sentinel needed: ensureReady() has nothing to fall back
+         *  to, so a removed pack simply stays removed until downloadPack() runs
+         *  again. */
         @PluginMethod
         fun deletePack(call: PluginCall) {
             val model = call.getString("model")
             if (model.isNullOrEmpty()) { call.reject("model required"); return }
-            if (model != "us" && !VOICE_PACKS.containsKey(model)) { call.reject("not a removable pack: $model"); return }
+            if (!VOICE_PACKS.containsKey(model)) { call.reject("not a removable pack: $model"); return }
             synchronized(lock) {
                 if (loadedModel == model) { tts = null; loadedModel = null }
             }
             File(context.filesDir, folderFor(model)).deleteRecursively()
-            if (!VOICE_PACKS.containsKey(model)) removedMarkerFile(model).createNewFile()
             call.resolve()
-        }
-
-        /** reinstallPack({model}) — explicit user action to bring back an
-         *  asset-backed model (currently only "us") after deletePack() removed
-         *  it. Deliberately NOT the same as prepare(): prepare() is also called
-         *  implicitly at TTS startup to detect the loaded model's family, and
-         *  must NEVER silently undo a deliberate removal just because playback
-         *  started — only this explicit call may clear removedMarkerFile(). */
-        @PluginMethod
-        fun reinstallPack(call: PluginCall) {
-            val model = call.getString("model")
-            if (model.isNullOrEmpty()) { call.reject("model required"); return }
-            if (VOICE_PACKS.containsKey(model)) { call.reject("use downloadPack for network packs"); return }
-            try {
-                removedMarkerFile(model).delete()
-                ensureReady(model)
-                call.resolve()
-            } catch (e: Throwable) {
-                call.reject(e.message ?: "reinstall failed", e as? Exception ?: RuntimeException(e))
-            }
         }
 
         // Thin InputStream wrapper that reports bytes read as they're consumed —
@@ -704,19 +653,6 @@
                     call.reject(e.message ?: "synth failed", e as? Exception ?: RuntimeException(e))
                 }
             }
-        }
-    
-        // Recursively copy an assets subtree to a filesystem dir. AssetManager.list
-        // returns an empty array for a leaf file, a non-empty one for a directory.
-        private fun copyAssetDir(am: AssetManager, src: String, dst: File) {
-            val children = am.list(src) ?: emptyArray()
-            if (children.isEmpty()) {
-                dst.parentFile?.mkdirs()
-                am.open(src).use { input -> dst.outputStream().use { out -> input.copyTo(out) } }
-                return
-            }
-            dst.mkdirs()
-            for (name in children) copyAssetDir(am, "$src/$name", File(dst, name))
         }
     
         // Write a mono 16-bit PCM WAV into cacheDir and return the file. Filenames

@@ -1769,13 +1769,12 @@ const VoiceHelp = {
 // of truth (packStatus() re-derives it, nothing here is persisted to
 // localStorage), so a fresh install / cleared app data can't disagree with it.
 const VoicePacks = {
-  // Kept in sync with PhonoLeafTtsPlugin.kt's VOICE_PACKS map, PLUS "us" —
-  // the one bundled model, listed here too (as always-"Included", not
-  // removable — see rowHTML) so the popup shows the complete picture rather
-  // than only the optional downloads. approxMB is only the fallback shown
-  // before packStatus() resolves a real size.
+  // Kept in sync with PhonoLeafTtsPlugin.kt's VOICE_PACKS map. Every entry is
+  // a real download now — nothing ships in the APK — so they're all uniform
+  // here: same Download/Remove UI, same progress, no special cases. approxMB
+  // is only the fallback shown before packStatus() resolves a real size.
   CATALOG: [
-    { model: 'us', label: 'English (US)', approxMB: 0 },
+    { model: 'us', label: 'English (US)', approxMB: 78 },
     { model: 'gb', label: 'English (UK)', approxMB: 77 },
     { model: 'fr', label: 'French', approxMB: 64 },
     { model: 'de', label: 'German', approxMB: 64 },
@@ -1818,41 +1817,41 @@ const VoicePacks = {
   // Kicks off a background packStatus() check for every catalog entry not yet
   // known. Settings.render() reads whatever's cached synchronously (showing
   // "Checking…" until the first check resolves) and calls this again itself,
-  // so it's safe/cheap to call on every render.
+  // so it's safe/cheap to call on every render. Returns a promise that settles
+  // once every outstanding check has landed, for callers that must not act on
+  // a half-known picture (see maybeOnboard) — render paths just ignore it.
   refresh() {
     const p = this._plugin();
-    if (!p) return; // web build — nothing to manage
+    if (!p) return Promise.resolve(); // web build — nothing to manage
     this._bindListener();
-    for (const { model } of this.CATALOG) {
-      if (this._status[model]) continue;
-      p.packStatus({ model }).then(r => { this._status[model] = r; this._notify(); }).catch(() => {});
-    }
+    return Promise.all(this.CATALOG.map(({ model }) => {
+      if (this._status[model]) return Promise.resolve();
+      return p.packStatus({ model })
+        .then(r => { this._status[model] = r; this._notify(); })
+        .catch(() => {});
+    }));
+  },
+
+  // First-run prompt, fired once right after the Drive folder is chosen (see
+  // setFolder): nothing is bundled any more, so a brand-new install has NO
+  // natural voice until the user downloads a pack, and the best moment to say
+  // so is while they're already in setup rather than mid-chapter later.
+  // Deliberately resolves real status FIRST — opening a popup where every row
+  // still reads "Checking…" looks broken, and an install that already has a
+  // pack (e.g. upgraded from the old bundled build, which leaves a valid
+  // filesDir copy behind) must not be nagged at all.
+  async maybeOnboard() {
+    if (!this.available()) return;
+    try { if (localStorage.getItem('pl_packs_onboarded')) return; } catch (_) { return; }
+    await this.refresh();
+    try { localStorage.setItem('pl_packs_onboarded', '1'); } catch (_) {}
+    if (this.CATALOG.some(c => this._status[c.model] && this._status[c.model].downloaded)) return;
+    LangPacksModal.open(true);
   },
 
   async download(model) {
     const p = this._plugin();
     if (!p) return;
-    // "us" isn't a real download — it's the bundled model's filesDir copy,
-    // which may have been removed (see remove()) to free space. Reinstalling
-    // it is just re-copying from the APK's own assets, so there's no
-    // packProgress/percent to show. Deliberately calls reinstallPack, NOT
-    // prepare() — prepare() is also called implicitly at TTS startup to
-    // detect the loaded model family, and must never silently undo a
-    // deliberate removal; only this explicit user action may do that.
-    if (model === 'us') {
-      this._progress[model] = { installing: true };
-      this._notify();
-      try {
-        await p.reinstallPack({ model: 'us' });
-        this._status[model] = { downloaded: true, approxBytes: 0 };
-        toast('Voice reinstalled');
-      } catch (e) {
-        toast('Reinstall failed: ' + ((e && e.message) || 'try again'));
-      }
-      delete this._progress[model];
-      this._notify();
-      return;
-    }
     // started:false until the native side confirms it's actually running
     // (see the packProgress listener) — while false, the row shows "Queued…"
     // instead of a misleading "Downloading… 0%" for a pack still waiting
@@ -1895,37 +1894,23 @@ const VoicePacks = {
   available() { return !!this._plugin(); },
 
   // One row's markup for the Language Packs modal — label, status, and
-  // whichever action (Download / Cancel / Remove / Reinstall) applies right
-  // now. "us" is removable like any other entry (owner request 2026-08-04 —
-  // see deletePack's Kotlin comment), but worded differently since it's not a
-  // real download: "Included"/"Not installed" instead of "Downloaded"/size,
-  // and "Reinstall" (a local asset re-copy, no percent to show) instead of
-  // "Download".
+  // whichever action (Download / Cancel / Remove) applies right now. Fully
+  // uniform across every pack since the US model stopped being bundled: no
+  // "Included"/"Reinstall" special case, and removing any pack frees its
+  // whole footprint.
   rowHTML({ model, label, approxMB }) {
-    const isUs = model === 'us';
     const st = this._status[model];
     const prog = this._progress[model];
     let sub, right;
     if (prog) {
-      if (prog.installing) {
-        sub = 'Installing…';
-        right = '';
-      } else if (!prog.started) {
-        sub = 'Queued…';
-        right = `<button class="set-link" onclick="VoicePacks.cancel('${model}')">Cancel</button>`;
-      } else {
-        sub = `Downloading… ${prog.pct}%`;
-        right = `<button class="set-link" onclick="VoicePacks.cancel('${model}')">Cancel</button>`;
-      }
+      sub = prog.started ? `Downloading… ${prog.pct}%` : 'Queued…';
+      right = `<button class="set-link" onclick="VoicePacks.cancel('${model}')">Cancel</button>`;
     } else if (!st) {
       sub = 'Checking…';
       right = '';
     } else if (st.downloaded) {
-      sub = isUs ? 'Included' : 'Downloaded';
+      sub = 'Downloaded';
       right = `<button class="set-link danger" onclick="VoicePacks.remove('${model}')">Remove</button>`;
-    } else if (isUs) {
-      sub = 'Not installed';
-      right = `<button class="set-link" onclick="VoicePacks.download('${model}')">Reinstall</button>`;
     } else {
       const mb = Math.round((st.approxBytes || approxMB * 1024 * 1024) / (1024 * 1024));
       sub = `${mb} MB`;
@@ -1944,15 +1929,31 @@ const VoicePacks = {
 // without adding a Settings row per language — unlike VoiceModal (which gates
 // individual VOICES on their pack), this is purely pack management.
 const LangPacksModal = {
-  open() {
+  // onboarding=true adds a short explainer at the top (first run, straight
+  // after folder setup — see VoicePacks.maybeOnboard). Re-renders in place
+  // when VoicePacks._notify fires, so the flag is remembered rather than
+  // passed again on every refresh.
+  open(onboarding) {
+    if (onboarding !== undefined) this._onboarding = !!onboarding;
     VoicePacks.refresh();
+    const intro = this._onboarding
+      ? `<div class="voice-item" style="cursor:default">
+           <div><div class="voice-name">Pick a voice to download</div>
+           <div class="voice-lang">PhonoLeaf reads aloud with a natural voice that runs entirely on your
+           device. Choose the language you want &mdash; you can add or remove others any time in
+           Settings.</div></div>
+         </div>`
+      : '';
     document.getElementById('langpacks-list').innerHTML =
-      VoicePacks.CATALOG.map(c => VoicePacks.rowHTML(c)).join('');
+      intro + VoicePacks.CATALOG.map(c => VoicePacks.rowHTML(c)).join('');
     document.getElementById('langpacks-modal').classList.add('open');
   },
+  _onboarding: false,
   close(e) {
-    if (!e || e.target.classList.contains('modal-backdrop'))
+    if (!e || e.target.classList.contains('modal-backdrop')) {
       document.getElementById('langpacks-modal').classList.remove('open');
+      this._onboarding = false; // reopening from Settings is not onboarding
+    }
   },
 };
 
@@ -2178,6 +2179,12 @@ function setFolder(id, name) {
   Settings.render();
   toast(`Loading "${name || 'folder'}"…`);
   Library.load();
+  // Onboarding step: with no voice model bundled, a fresh install has nothing
+  // to read with until a language pack is downloaded. Prompt for it here —
+  // the user is already in setup, and this is the last step of it. Fires at
+  // most once ever (guarded inside), and the short delay lets the folder
+  // browser finish closing first so the two modals don't overlap.
+  setTimeout(() => VoicePacks.maybeOnboard(), 400);
 }
 
 // Custom folder browser — themed to the app (CSS vars) and sorted by name.
@@ -4499,22 +4506,31 @@ const TTS = {
       if (n) this._preSynth = { key: gen + ':' + (this.idx + 1), p: this._synth(n.text).catch(() => null) };
     } catch (e) {
       if (!this.active || gen !== this._gen) return;
-      // The selected voice's accent pack isn't downloaded yet (PhonoLeafTts
+      // The selected voice's language pack isn't downloaded (PhonoLeafTts
       // throws a message prefixed like this — see PackNotDownloadedException).
       // This is NOT a sign the natural voice itself is broken, so it must NOT
-      // feed the strike-out below — that would wrongly disable Kokoro entirely
-      // for the whole session (including the always-available US voice) over a
-      // missing GB pack. Fall back to the device voice for this chunk, point
-      // the user at Settings, and switch the persisted choice back to the
-      // model's first (always-bundled) voice so later chunks don't keep
-      // hitting the same missing pack and re-toasting every chunk.
+      // feed the strike-out below — that would wrongly disable the neural
+      // engine for the whole session over one missing pack. Read this chunk
+      // with the device voice instead.
+      // If some OTHER pack is downloaded, switch the persisted choice to a
+      // voice from it so later chunks don't keep hitting the same wall and
+      // re-toasting every sentence. Since nothing is bundled any more there
+      // may be NO installed pack at all (fresh install, onboarding skipped) —
+      // in that case leave the choice alone and just point at the downloads.
       const msg = String((e && e.message) || e || '');
       const missingModel = msg.startsWith('PACK_NOT_DOWNLOADED:') ? msg.slice('PACK_NOT_DOWNLOADED:'.length) : null;
       if (missingModel) {
         const cat = this._nativeCatalog();
-        const fallback = cat.find(v => (v[3] || 'us') !== missingModel) || cat[0];
-        if (fallback) localStorage.setItem(this._voiceKey(), fallback[0]);
-        toast('That voice needs its language pack downloaded — see Settings → Voice packs. Using the standard voice for now.');
+        const usable = cat.find(v => {
+          const m = v[3] || 'us';
+          return m !== missingModel && VoicePacks._status[m] && VoicePacks._status[m].downloaded;
+        });
+        if (usable) {
+          localStorage.setItem(this._voiceKey(), usable[0]);
+          toast('That voice’s language pack isn’t installed — switched to ' + usable[1] + '.');
+        } else {
+          toast('No language pack installed — using the standard voice. Get one in Settings → Language packs.');
+        }
         this.updateVoiceLabel();
         this._speakWeb(chunk, gen);
         return;
@@ -4826,25 +4842,28 @@ const VoiceModal = {
       // got convoluted as more languages were added (owner feedback
       // 2026-08-04). Now this only shows voices that actually work right now;
       // a trailing "Get more voices" row links to the Language Packs popup
-      // instead of managing downloads inline. "us" is always treated as
-      // available even if its filesDir copy was removed to free space
-      // (Settings → Language packs → Remove) — ensureReady() just re-copies it
-      // from the APK's own assets the next time it's used, so there's no real
-      // failure mode to gate on, unlike a genuinely undownloaded pack.
+      // instead of managing downloads inline. Every model is gated the same
+      // way since the US voice stopped being bundled — there is no
+      // always-available fallback voice any more, so the list can legitimately
+      // be empty on a fresh install that skipped the onboarding download.
       VoicePacks.refresh();
       const available = cat.filter(([, , , model]) => {
         const m = model || 'us';
-        return m === 'us' || (VoicePacks._status[m] && VoicePacks._status[m].downloaded);
+        return VoicePacks._status[m] && VoicePacks._status[m].downloaded;
       });
       document.getElementById('voice-list').innerHTML =
-        available.map(([id, label, sid]) => `
+        (available.length ? available.map(([id, label, sid]) => `
           <div class="voice-item ${cur === id ? 'active' : ''}" onclick="VoiceModal.selectNative(this.dataset.vname)" data-vname="${esc(id)}">
             <div>
               <div class="voice-name">${esc(label)} <span class="voice-badge">&#10024; Natural</span></div>
               <div class="voice-lang">speaker ${sid}</div>
             </div>
             ${cur === id ? '<span class="voice-check">&#10003;</span>' : ''}
-          </div>`).join('') +
+          </div>`).join('')
+          : `<div class="voice-item" style="cursor:default">
+              <div><div class="voice-name" style="color:var(--text-dim)">No natural voices installed yet</div>
+              <div class="voice-lang">Download one below to use the natural voice</div></div>
+            </div>`) +
         `<div class="voice-item" onclick="VoiceModal.openLangPacks()">
           <div><div class="voice-name">Get more voices</div><div class="voice-lang">Download language packs</div></div>
         </div>`;

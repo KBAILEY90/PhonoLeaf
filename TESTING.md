@@ -149,11 +149,11 @@ Guide: https://developer.chrome.com/docs/devtools/remote-debugging/
   verified this app" warning first (expected pre-launch — the drive.readonly
   scope needs formal verification eventually; for now click Advanced →
   Continue).
-- **Stage 2b (done — needs the one-time model placement in §3.6):** the native
-  Kokoro plugin (sherpa-onnx). Once the model files are in place, the app reads
-  with on-device neural Kokoro at native speed — gapless, the whole point of
-  going native. Without the model files it still works, just falling back to
-  the device voice.
+- **Stage 2b (done — no setup needed, see §3.6):** the native neural TTS
+  plugin (sherpa-onnx / Piper). The app downloads its voice model itself on
+  first run (prompted during onboarding), then reads on-device at native
+  speed — gapless, the whole point of going native. Before a pack is
+  installed it still works, just falling back to the device voice.
 
 Reference: the Android OAuth client is "PhonoLeaf Android (debug)" in
 [Cloud Console → Credentials](https://console.cloud.google.com/apis/credentials),
@@ -161,106 +161,67 @@ package `com.phonoleaf.app`, tied to this PC's debug-keystore SHA-1. A Play
 Store release build is signed differently and will need its own SHA-1 added
 to the same client later (Play App Signing shows it in the Play Console).
 
-### 3.6 Stage 2b one-time setup: place the voice model (~10 min)
+### 3.6 Voice models: nothing to place any more (was a ~10 min manual step)
 
-The neural voice model is too big for git, so you download it once and drop it
-into the app. The sherpa-onnx native library (the code that runs it) IS
-committed, so this is the only manual piece. The app **auto-detects** which
-model you place (Kokoro vs Piper), so switching is just a file swap.
+**This section used to walk through downloading a model and dropping it into
+`android\app\src\main\assets\kokoro\`. That step is GONE as of 2026-08-04 —
+do not do it.** Every voice model, including the US default, is now a
+**language pack the app downloads itself at runtime** into its own storage.
+Nothing model-related ships in the APK, and nothing needs placing in a fresh
+clone.
 
-> **Now using `vits-piper-en_US-libritts_r-medium` — a Piper model.** Kokoro-82M
-> proved too heavy for the Pixel 7 (1.36× realtime even tuned — not gapless).
-> Piper is a lighter neural model that runs *well* under realtime on phones, so
-> it should be genuinely gapless. Quality is a step below Kokoro but clearly
-> natural (far above robotic system voices). **Delete the old
-> `...\assets\kokoro\` folder first** (the folder name stays `kokoro` even
-> though it now holds a Piper model — the plugin detects the type from the
-> files, not the folder name).
+Why it changed: a bundled model was stored **twice** on device — once in the
+APK's assets (which the app can never delete) and once as the filesDir copy
+the native engine actually requires (espeak-ng uses ordinary file I/O and
+can't read through Android's AssetManager). That put a US-only install at
+~157 MB and meant "Remove" could only ever reclaim half of it. Downloading it
+like every other pack leaves exactly one, fully deletable copy — and drops
+the store download to app code only. See CLAUDE.md's "FULLY UNBUNDLED" note.
 
-1. **Delete the old model folder:**
-   ```
-   rmdir /s /q C:\Repo\phonoleaf\android\app\src\main\assets\kokoro
-   ```
-   (The app caches a copy on the phone too, but it re-copies automatically when
-   the model changes — no need to touch the phone.)
+**Current catalog** (all from the same public sherpa-onnx GitHub release):
+English (US) `us` and English (UK) `gb` — multi-speaker, 4 owner-auditioned
+voices each; French `fr`, German `de`, Spanish `es` — single-speaker models
+(siwis/thorsten/davefx, the standard community Piper voice per language),
+**not yet owner-audited for quality/gender** (see the `PIPER_VOICES` comment
+in `index.html`).
 
-2. **Download + extract into the app's model folder** — from a terminal
-   (Windows 11 has `tar` built in):
-   ```
-   cd C:\Repo\phonoleaf\android\app\src\main\assets
-   curl -L -o k.tar.bz2 https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-en_US-libritts_r-medium.tar.bz2
-   tar -xf k.tar.bz2
-   ren vits-piper-en_US-libritts_r-medium kokoro
-   del k.tar.bz2
-   ```
+1. **Build and run:** `npm run sync`, then Run ▶ in Android Studio. No model
+   setup first — it builds and installs with no voice data at all.
 
-3. **Verify the layout** — the `.onnx` file must sit DIRECTLY in the `kokoro`
-   folder, not in a nested subfolder:
-   ```
-   android\app\src\main\assets\kokoro\en_US-libritts_r-medium.onnx
-   android\app\src\main\assets\kokoro\tokens.txt
-   android\app\src\main\assets\kokoro\espeak-ng-data\...
-   ```
-   (Piper has NO `voices.bin` — that's exactly how the plugin knows it's a Piper
-   model rather than Kokoro.)
+2. **First run does the download.** Sign in, pick your Drive folder, and the
+   **Language Packs** popup appears automatically as the last onboarding step
+   (fires once ever, guarded by `pl_packs_onboarded`). Pick a language and it
+   downloads (~65–80 MB, needs real internet). Until a pack is installed the
+   app falls back to the device's own robotic voice, so reading still works —
+   it just won't sound natural.
 
-4. **Every accent/language beyond US is NOT placed manually any more (changed
-   2026-08-04, expanded from British-only the same day).** It used to be a
-   second bundled asset folder (`kokoro-gb`), same as US — but that's what
-   pushed the debug/store APK to ~185 MB total for just ONE extra language
-   (see CLAUDE.md's "MODEL SIZES" note), so every non-US model is now a
-   downloadable **language pack**, fetched by the app itself into the phone's
-   storage on demand rather than shipped in assets. Current catalog: British
-   English (`gb`, multi-speaker, 4 audition-picked voices), French (`fr`),
-   German (`de`), Spanish (`es`) — the latter three are single-speaker models
-   (siwis/thorsten/davefx, the standard community Piper voice per language),
-   picked from the same GitHub release's asset list but **not yet owner-
-   audited for quality/gender** (no device in this environment — see the
-   `PIPER_VOICES` comment in `index.html`). **Do NOT create
-   `assets\kokoro-gb\`, `kokoro-fr\`, `kokoro-de\`, or `kokoro-es\` any more —
-   the plugin no longer looks there for any of them** (`ensureReady()` treats
-   every model key in `VOICE_PACKS` as download-only and throws even if you
-   place files there manually, so the old manual-place step is now a silent
-   no-op, not just redundant).
-   To test it: Run ▶ with only `assets\kokoro\` (US) present, then on the
-   device/emulator (needs real internet — it downloads from the same
-   sherpa-onnx GitHub release as step 2, ~65-80 MB depending on the language)
-   go to **Settings → Language packs → Downloads**, which lists all five
-   (English (US)/English (UK)/French/German/Spanish) with Download/Remove per
-   pack — `PhonoLeafTts.downloadPack` streams the pack and shows live
-   progress, or **Queued…** if another download is already in flight (they
-   run one at a time by design — test this by starting two packs back to back
-   and confirming both complete in order instead of one erroring out). Once a
-   pack finishes, its voices unlock and behave exactly like the US ones. The
-   voice picker no longer lists locked/undownloaded voices at all (2026-08-04)
-   — it shows only what's already usable, plus a trailing **"Get more
-   voices"** row that opens this same Language Packs popup. **Remove** deletes
-   a pack again if you want to re-test the download flow — this now also
-   works on **English (US)** itself (owner request: it ships by default but
-   can be removed to free ~78 MB; picking a US voice afterward silently
-   re-installs it from the APK's own assets, no network needed, so this is
-   safe to test freely).
+3. **Managing packs later:** **Settings → Language packs → Downloads** lists
+   all five with Download/Remove each. Things worth exercising here:
+   - **Remove works on every pack including English (US)** — it frees the
+     whole ~78 MB now, and re-downloading it is a normal download with a real
+     percentage (not the old "Reinstall" special case, which is gone).
+   - **Queueing:** start two packs back-to-back. The second shows **Queued…**
+     until the first finishes — they run one at a time by design. Both should
+     complete in order; neither should error out or freeze.
+   - **Cancel** mid-download, then re-download, and confirm the pack still
+     installs cleanly (a cancelled download must leave nothing half-written).
 
-5. **Build and run:** `npm run sync`, then Run ▶ in Android Studio.
-
-6. **Test:** open a book and play — it should be gapless. Open the voice
-   picker: 4 US voices (Ava/Nora/Ben/Jack) always available, plus 4 UK voices
-   (Amelia/Ruby/Sam/Max) and one voice each for French/German/Spanish once
-   their packs are downloaded (step 4). Picking a voice previews it mid-read —
-   this is also the first real chance to confirm the French/German/Spanish
-   voices' quality and gender and relabel them from the generic "French
-   voice"/"German voice"/"Spanish voice" placeholders, the same way the
-   US/UK audition set was originally curated.
+4. **Voice picker** (reader → voice button): lists only voices whose pack is
+   installed, plus a trailing **"Get more voices"** row that opens the same
+   Language Packs popup. With no pack installed it shows an empty state rather
+   than a list of unusable voices. Picking a voice previews it mid-read — this
+   is the first real chance to judge the French/German/Spanish voices and
+   relabel them from the generic "French voice"/"German voice"/"Spanish voice"
+   placeholders, the same way the US/UK set was curated.
 
 Notes:
-- The `assets\kokoro\` model folder is gitignored — it never gets committed,
-  and each fresh clone re-does step 1-3 for the bundled US model. Every other
-  language pack isn't a repo/assets concern at all any more — it lives purely
-  in the app's own storage on the test device, fetched at runtime.
-- The US model is bundled into the debug APK; the store build ships US only
-  (Stage 5) so the store download stays small. British English, French,
-  German, Spanish (and any future language) are all downloadable-pack models
-  going forward — don't bundle a second accent/language as an asset again.
+- **Upgrading an existing install must NOT re-download.** A device that ran
+  the old bundled build already has `filesDir/kokoro` with a valid
+  `.ready-` marker; the pack folder key was deliberately left as `kokoro` (not
+  `kokoro-us`) so that copy is recognised as already installed. Worth
+  confirming explicitly on the first device test after this change.
+- `assets\kokoro*\` stays gitignored purely so a stale local copy can't get
+  committed by accident — the plugin ignores those paths entirely now.
 - The readout header shows `cores=N type/provider` (e.g. `vits/cpu`) and each
   line is `gGEN aAUDIO rRATIO`. `r` under 1.0 = faster than realtime = gapless.
 
