@@ -357,11 +357,30 @@ renders them with epub.js, and reads the text using the browser's Web Speech
        **`NoVoiceModal`**, a proper darkened `.confirm-backdrop` overlay
        (matches `VoiceInfo`'s pattern) shown **once per session**
        (`TTS._noVoiceShown`), with a "Download a voice" button straight into
-       `LangPacksModal`. It does not block reading — the device voice keeps
-       going regardless, same as before — it's purely informational, and only
-       needs saying once. The "switched to an installed pack instead" case is
+       `LangPacksModal`. The "switched to an installed pack instead" case is
        unaffected (still a toast — it only ever fires once per switch anyway,
        since subsequent chunks succeed on the newly-installed pack).
+    **First cut wrongly claimed this doesn't block reading ("the device voice
+    keeps going regardless") — owner tested it and confirmed the opposite:
+    "the reader won't work without a voice," and removed the "Continue
+    reading" button that promised otherwise.** Correct and important:
+    `_speakWeb`'s device-voice fallback (`window.speechSynthesis`) **only
+    exists on the web build** — Android's WebView has no Web Speech API at
+    all, so `_speakWeb` on native hits `if (!window.speechSynthesis) {
+    this.stop(); return; }` and stops immediately. Since `NoVoiceModal` is
+    only ever triggered by the native plugin's `PACK_NOT_DOWNLOADED` (the web
+    build uses browser-WASM Kokoro / Web Speech directly and never throws it),
+    "reading will continue with the standard voice" was **never true** in the
+    context this modal appears — playback has already genuinely stopped by
+    the time it shows. Fixed the copy and buttons to be honest about that:
+    title "A voice is needed to read aloud," body states playback has
+    stopped, and the dismiss button is **"Not now"** (closes only — makes no
+    claim about reading continuing) instead of the misleading "Continue
+    reading." No functional/architecture change — the underlying gap (no
+    device-voice fallback exists on native at all until a pack is installed)
+    is real and not something this fix addresses; a genuine fix would mean
+    bridging Android's own `android.speech.tts.TextToSpeech` into a fallback
+    path, which is a new native plugin surface, not attempted here.
     Verified in a browser harness: the toast's rendered bounding box stays
     within a 375px viewport for the exact message that was reported cropped;
     the modal opens exactly once across 5 consecutive simulated chunks with

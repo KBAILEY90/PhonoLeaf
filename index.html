@@ -1136,14 +1136,13 @@
 <!-- ============== NO VOICE PACK INSTALLED ============== -->
 <div class="confirm-backdrop" id="novoice-modal" onclick="NoVoiceModal.close(event)">
   <div class="confirm-box" onclick="event.stopPropagation()" style="text-align:left">
-    <p class="confirm-msg" style="font-weight:600;margin-bottom:0.5rem">No natural voice installed</p>
+    <p class="confirm-msg" style="font-weight:600;margin-bottom:0.5rem">A voice is needed to read aloud</p>
     <p class="confirm-msg" style="font-size:0.85rem">
-      PhonoLeaf's natural voice needs a language pack downloaded to your device first.
-      Reading will continue right now using your device's standard voice, which sounds
-      more robotic.
+      PhonoLeaf needs a language pack downloaded to your device before it can read to you.
+      Playback has stopped &mdash; download one below, then press play again.
     </p>
     <div class="confirm-btns">
-      <button class="confirm-cancel" onclick="NoVoiceModal.close()">Continue reading</button>
+      <button class="confirm-cancel" onclick="NoVoiceModal.close()">Not now</button>
       <button class="confirm-ok" onclick="NoVoiceModal.getVoice()">Download a voice</button>
     </div>
   </div>
@@ -4543,15 +4542,18 @@ const TTS = {
       // throws a message prefixed like this — see PackNotDownloadedException).
       // This is NOT a sign the natural voice itself is broken, so it must NOT
       // feed the strike-out below — that would wrongly disable the neural
-      // engine for the whole session over one missing pack. Read this chunk
-      // with the device voice instead.
+      // engine for the whole session over one missing pack.
       // If some OTHER pack is downloaded, switch the persisted choice to a
-      // voice from it so later chunks don't keep hitting the same wall and
-      // re-toasting every sentence. Since nothing is bundled any more there
-      // may be NO installed pack at all (fresh install, onboarding skipped) —
-      // that case genuinely never resolves itself (every chunk keeps hitting
-      // the same missing model), so it gets the one-time NoVoiceModal instead
-      // of a toast repeated for every single sentence in the book.
+      // voice from it so this chunk (and later ones) can actually be read —
+      // _speakWeb below only works as a fallback on the WEB build
+      // (window.speechSynthesis doesn't exist in Android's WebView), so on
+      // native there is no device voice to fall back to and this call just
+      // stops playback. Since nothing is bundled any more there may be NO
+      // installed pack at all (fresh install, onboarding skipped) — that case
+      // genuinely never resolves itself (every chunk keeps hitting the same
+      // missing model AND has nothing to read it with), so it gets the
+      // one-time NoVoiceModal, which is honest that playback has stopped
+      // rather than implying it'll keep going.
       const msg = String((e && e.message) || e || '');
       const missingModel = msg.startsWith('PACK_NOT_DOWNLOADED:') ? msg.slice('PACK_NOT_DOWNLOADED:'.length) : null;
       if (missingModel) {
@@ -5039,14 +5041,20 @@ const VoiceInfo = {
 };
 
 // Darkened one-time heads-up for "no language pack installed at all" (native
-// only — the web build's Kokoro fallback has no such gap). Replaces what used
-// to be a toast on this exact condition: that toast (a) could be clipped
-// off-screen since it was a full sentence in a nowrap pill, and (b) had no
-// way to stop re-firing every single chunk for as long as nothing was
-// installed, since the underlying condition never resolves itself
-// (owner-reported: message looked alarming and unreadable, cut off on both
-// edges). This still doesn't block reading — the device voice keeps going
-// regardless — it's purely informational, shown once per session via
+// only — the web build's Kokoro fallback has no such gap; PACK_NOT_DOWNLOADED
+// is only ever thrown by the native plugin). Replaces what used to be a toast
+// on this exact condition: that toast (a) could be clipped off-screen since
+// it was a full sentence in a nowrap pill, and (b) had no way to stop
+// re-firing every single chunk for as long as nothing was installed, since
+// the underlying condition never resolves itself (owner-reported: message
+// looked alarming and unreadable, cut off on both edges).
+// NOT purely informational — playback has genuinely already stopped by the
+// time this shows (owner-reported: "the reader won't work without a voice").
+// _speakWeb's device-voice fallback only exists on the web build:
+// window.speechSynthesis is undefined in Android's WebView, so on native
+// there is nothing to fall back to and _speakWeb calls stop() immediately.
+// Wording/buttons must not imply reading continues if dismissed — an earlier
+// "Continue reading" button did exactly that. Shown once per session via
 // TTS._noVoiceShown.
 const NoVoiceModal = {
   open() { document.getElementById('novoice-modal').classList.add('open'); },
