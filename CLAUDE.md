@@ -335,10 +335,38 @@ renders them with epub.js, and reads the text using the browser's Web Speech
     installed yet" empty state above the "Get more voices" row. The
     `PACK_NOT_DOWNLOADED` handler in `TTS._playAudio` no longer assumes it can
     fall back to "the model's first voice": it now switches to a voice from a
-    pack that is *actually downloaded*, and if none is, leaves the choice
-    alone and points at Settings → Language packs. The device-voice fallback
-    still covers playback either way, and this path still must NOT touch
-    `_kstrikes`/`_kokoroDead`.
+    pack that is *actually downloaded*, and if none is installed, shows
+    **`NoVoiceModal`** — see the follow-up fix below for why that's a modal and
+    not a toast. The device-voice fallback still covers playback either way,
+    and this path still must NOT touch `_kstrikes`/`_kokoroDead`.
+  - **Owner-reported the same day, reading with no pack installed: "a message
+    that seemed to imply it can't work... cropped on the left and right, I
+    couldn't see the whole message."** Two separate bugs, both in how that
+    condition was surfaced:
+    1. **`#toast` had `white-space: nowrap` and no width cap.** Built for
+       short pills ("Voice: Ava"), it silently ran off both edges of the
+       screen for any longer sentence — and several existing toasts (e.g. the
+       Kokoro strike-out message) were already long enough to be at risk, this
+       was just the one that got noticed. Fixed generally: `white-space:
+       normal` + `max-width: min(88vw, 22rem)`, so every toast in the app wraps
+       and stays on-screen instead of only patching this one message.
+    2. **The message could also repeat every single chunk.** Nothing about
+       "no pack installed" resolves itself between sentences, so the toast
+       fired on every chunk for as long as playback continued — a wall of
+       identical toasts, not just one cropped one. Replaced with
+       **`NoVoiceModal`**, a proper darkened `.confirm-backdrop` overlay
+       (matches `VoiceInfo`'s pattern) shown **once per session**
+       (`TTS._noVoiceShown`), with a "Download a voice" button straight into
+       `LangPacksModal`. It does not block reading — the device voice keeps
+       going regardless, same as before — it's purely informational, and only
+       needs saying once. The "switched to an installed pack instead" case is
+       unaffected (still a toast — it only ever fires once per switch anyway,
+       since subsequent chunks succeed on the newly-installed pack).
+    Verified in a browser harness: the toast's rendered bounding box stays
+    within a 375px viewport for the exact message that was reported cropped;
+    the modal opens exactly once across 5 consecutive simulated chunks with
+    the same missing pack; "Download a voice" closes it and opens
+    `LangPacksModal`. Not device-verified.
   - **Onboarding step (owner request, same change):** `VoicePacks.maybeOnboard()`
     fires ~400 ms after `setFolder()` — i.e. as the last step of first-run
     setup, right after the Drive folder is picked — and opens `LangPacksModal`

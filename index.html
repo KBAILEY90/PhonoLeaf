@@ -538,7 +538,16 @@
       z-index: 999;
       opacity: 0; pointer-events: none;
       transition: opacity 0.25s;
-      white-space: nowrap;
+      /* A short toast ("Voice: Ava") should still read as a snug pill, but a
+         long one (some of these are full sentences) must never run off both
+         edges of the screen — nowrap with no width cap did exactly that
+         (owner-reported: message cropped left/right, unreadable). Wrapping is
+         allowed and width is capped relative to the viewport; text stays
+         centered either way. */
+      white-space: normal;
+      max-width: min(88vw, 22rem);
+      width: max-content;
+      text-align: center;
       backdrop-filter: blur(8px);
     }
     #toast.show { opacity: 1; }
@@ -1120,6 +1129,22 @@
     <div class="confirm-btns">
       <button class="confirm-cancel" onclick="VoiceHelp.close()">Close</button>
       <button class="confirm-ok" id="vh-action" onclick="VoiceHelp.action()">Open</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============== NO VOICE PACK INSTALLED ============== -->
+<div class="confirm-backdrop" id="novoice-modal" onclick="NoVoiceModal.close(event)">
+  <div class="confirm-box" onclick="event.stopPropagation()" style="text-align:left">
+    <p class="confirm-msg" style="font-weight:600;margin-bottom:0.5rem">No natural voice installed</p>
+    <p class="confirm-msg" style="font-size:0.85rem">
+      PhonoLeaf's natural voice needs a language pack downloaded to your device first.
+      Reading will continue right now using your device's standard voice, which sounds
+      more robotic.
+    </p>
+    <div class="confirm-btns">
+      <button class="confirm-cancel" onclick="NoVoiceModal.close()">Continue reading</button>
+      <button class="confirm-ok" onclick="NoVoiceModal.getVoice()">Download a voice</button>
     </div>
   </div>
 </div>
@@ -3374,6 +3399,7 @@ const TTS = {
   _kid: 0,          // worker request id counter
   _kstrikes: 0,     // consecutive neural synthesis failures
   _kokoroDead: false, // 2 strikes or a slow speed-probe → device voice for the session
+  _noVoiceShown: false, // NoVoiceModal shown once per session (no pack installed at all)
   // Loaded native model family ("vits"|"kokoro"), reported by prepare()/synthesize.
   // CACHED in localStorage and restored synchronously at parse time: prepare() is
   // async, so without this the picker + the first synth briefly used the WRONG
@@ -4523,7 +4549,9 @@ const TTS = {
       // voice from it so later chunks don't keep hitting the same wall and
       // re-toasting every sentence. Since nothing is bundled any more there
       // may be NO installed pack at all (fresh install, onboarding skipped) —
-      // in that case leave the choice alone and just point at the downloads.
+      // that case genuinely never resolves itself (every chunk keeps hitting
+      // the same missing model), so it gets the one-time NoVoiceModal instead
+      // of a toast repeated for every single sentence in the book.
       const msg = String((e && e.message) || e || '');
       const missingModel = msg.startsWith('PACK_NOT_DOWNLOADED:') ? msg.slice('PACK_NOT_DOWNLOADED:'.length) : null;
       if (missingModel) {
@@ -4535,8 +4563,9 @@ const TTS = {
         if (usable) {
           localStorage.setItem(this._voiceKey(), usable[0]);
           toast('That voice’s language pack isn’t installed — switched to ' + usable[1] + '.');
-        } else {
-          toast('No language pack installed — using the standard voice. Get one in Settings → Language packs.');
+        } else if (!this._noVoiceShown) {
+          this._noVoiceShown = true;
+          NoVoiceModal.open();
         }
         this.updateVoiceLabel();
         this._speakWeb(chunk, gen);
@@ -5007,6 +5036,28 @@ const ConfirmModal = {
 const VoiceInfo = {
   open()  { document.getElementById('voiceinfo-modal').classList.add('open'); },
   close() { document.getElementById('voiceinfo-modal').classList.remove('open'); },
+};
+
+// Darkened one-time heads-up for "no language pack installed at all" (native
+// only — the web build's Kokoro fallback has no such gap). Replaces what used
+// to be a toast on this exact condition: that toast (a) could be clipped
+// off-screen since it was a full sentence in a nowrap pill, and (b) had no
+// way to stop re-firing every single chunk for as long as nothing was
+// installed, since the underlying condition never resolves itself
+// (owner-reported: message looked alarming and unreadable, cut off on both
+// edges). This still doesn't block reading — the device voice keeps going
+// regardless — it's purely informational, shown once per session via
+// TTS._noVoiceShown.
+const NoVoiceModal = {
+  open() { document.getElementById('novoice-modal').classList.add('open'); },
+  close(e) {
+    if (!e || e.target.classList.contains('confirm-backdrop'))
+      document.getElementById('novoice-modal').classList.remove('open');
+  },
+  getVoice() {
+    document.getElementById('novoice-modal').classList.remove('open');
+    LangPacksModal.open();
+  },
 };
 
 // --- Your data: export + erase -------------------------------------------
