@@ -365,19 +365,6 @@
             if (info == null) { call.reject("no such voice pack: $model"); return }
             val stamp = bumpDownloadEpoch(model)
             downloadExecutor.execute {
-                // Fires the MOMENT this task actually starts running — i.e. once
-                // downloadExecutor has dequeued it, not when downloadPack() was
-                // called. A download queued behind another gets NO packProgress
-                // event until its turn comes, so the JS side can tell "queued,
-                // hasn't started" (no event yet) apart from "started, 0 bytes so
-                // far" (this event) — otherwise both looked identical as
-                // "Downloading… 0%", which read as frozen while queued.
-                if (stamp == currentDownloadEpoch(model)) {
-                    val started = JSObject()
-                    started.put("model", model); started.put("downloaded", 0L)
-                    started.put("total", info.approxBytes); started.put("pct", 0)
-                    notifyListeners("packProgress", started)
-                }
                 val folder = folderFor(model)
                 val dest = File(context.filesDir, folder)
                 // Extract into a scratch dir first, swap in only on full success —
@@ -386,6 +373,22 @@
                 val tmp = File(context.filesDir, "$folder-tmp")
                 var conn: HttpURLConnection? = null
                 try {
+                    // Cancelled while still QUEUED behind another download —
+                    // bail before opening a connection. Without this the task
+                    // happily downloaded the whole archive anyway and only
+                    // noticed at the first tar-entry check.
+                    if (stamp != currentDownloadEpoch(model)) throw InterruptedIOException("cancelled")
+                    // Fires the MOMENT this task actually starts running — i.e. once
+                    // downloadExecutor has dequeued it, not when downloadPack() was
+                    // called. A download queued behind another gets NO packProgress
+                    // event until its turn comes, so the JS side can tell "queued,
+                    // hasn't started" (no event yet) apart from "started, 0 bytes so
+                    // far" (this event) — otherwise both looked identical as
+                    // "Downloading… 0%", which read as frozen while queued.
+                    val started = JSObject()
+                    started.put("model", model); started.put("downloaded", 0L)
+                    started.put("total", info.approxBytes); started.put("pct", 0)
+                    notifyListeners("packProgress", started)
                     tmp.deleteRecursively(); tmp.mkdirs()
                     conn = (URL(info.url).openConnection() as HttpURLConnection).apply {
                         connectTimeout = 15000
@@ -398,10 +401,21 @@
                     val total = conn.contentLengthLong.let { if (it > 0) it else info.approxBytes }
                     var downloaded = 0L
                     var lastEmit = 0L
-                    val progressIn = ProgressInputStream(conn.inputStream) { n ->
+                    val progressIn = ProgressInputStream(
+                        conn.inputStream,
+                        // Checked on EVERY buffer read, which is what actually
+                        // makes Cancel responsive. The per-tar-entry check below
+                        // is far too coarse on its own: model.onnx is a single
+                        // ~70 MB entry, so a cancel during it wasn't noticed
+                        // until the whole archive had finished streaming — and
+                        // because downloads share one queue, every pack behind
+                        // it stayed stuck on "Queued…" for minutes
+                        // (owner-reported).
+                        isCancelled = { stamp != currentDownloadEpoch(model) }
+                    ) { n ->
                         downloaded += n
                         val now = System.currentTimeMillis()
-                        if (now - lastEmit >= 200 && stamp == currentDownloadEpoch(model)) {
+                        if (now - lastEmit >= 200) {
                             lastEmit = now
                             val p = JSObject()
                             p.put("model", model); p.put("downloaded", downloaded); p.put("total", total)
@@ -480,19 +494,33 @@
             call.resolve()
         }
 
-        // Thin InputStream wrapper that reports bytes read as they're consumed —
-        // used to drive download progress events without buffering the whole
-        // response in memory first.
+        // Thin InputStream wrapper that (a) reports bytes read as they're
+        // consumed, driving progress events without buffering the whole
+        // response in memory, and (b) aborts the read as soon as the download
+        // is cancelled.
+        //
+        // (b) is the load-bearing half: cancellation used to be checked only
+        // between tar ENTRIES, and one entry (model.onnx) is most of the
+        // archive, so a cancel during it did nothing until the entire download
+        // had finished — blocking every queued pack behind it on the shared
+        // single-thread executor. Throwing from here stops within one buffer
+        // read (a few KB) instead.
         private class ProgressInputStream(
             private val wrapped: InputStream,
+            private val isCancelled: () -> Boolean,
             private val onBytes: (Int) -> Unit,
         ) : InputStream() {
+            private fun abortIfCancelled() {
+                if (isCancelled()) throw InterruptedIOException("cancelled")
+            }
             override fun read(): Int {
+                abortIfCancelled()
                 val b = wrapped.read()
                 if (b >= 0) onBytes(1)
                 return b
             }
             override fun read(b: ByteArray, off: Int, len: Int): Int {
+                abortIfCancelled()
                 val n = wrapped.read(b, off, len)
                 if (n > 0) onBytes(n)
                 return n

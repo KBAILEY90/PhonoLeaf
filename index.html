@@ -1863,7 +1863,13 @@ const VoicePacks = {
       this._status[model] = { downloaded: true, approxBytes: (this._status[model] || {}).approxBytes || 0 };
       toast('Voice pack downloaded');
     } catch (e) {
-      toast('Download failed: ' + ((e && e.message) || 'check your connection and try again'));
+      // A cancel rejects this promise too (native throws InterruptedIOException
+      // "cancelled"), but the user asked for that — reporting it as a failure
+      // would be wrong, and cancel() has already toasted.
+      const msg = (e && e.message) || '';
+      if (!/cancel/i.test(msg)) {
+        toast('Download failed: ' + (msg || 'check your connection and try again'));
+      }
     }
     delete this._progress[model];
     this._notify();
@@ -1874,6 +1880,7 @@ const VoicePacks = {
     if (!p) return;
     try { await p.cancelDownload({ model }); } catch (_) {}
     delete this._progress[model];
+    toast('Download cancelled');
     this._notify();
   },
 

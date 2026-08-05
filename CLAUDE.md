@@ -372,11 +372,38 @@ renders them with epub.js, and reads the text using the browser's Web Speech
   `started: false` until that first event lands, and the Language Packs row
   shows **"Queued…"** (with a working Cancel) instead of "Downloading… 0%"
   until then.
+  **Cancel didn't actually cancel — queue wedged behind it (owner-reported
+  2026-08-04: started three packs, cancelled the running one, "the other two
+  remained at Queue and never started").** Root cause: cancellation was only
+  checked **once per tar ENTRY**, and `model.onnx` is a single ~70 MB entry —
+  i.e. nearly the whole archive. `tar.copyTo(os)` streams that one entry from
+  the network with no cancellation check inside it, so a cancel mid-entry did
+  nothing until the *entire* download had finished. The cancelled task kept
+  occupying the single-thread `downloadExecutor`, so every queued pack behind
+  it stayed on "Queued…" for minutes. (The per-entry check wasn't wrong, just
+  uselessly coarse for this archive shape.) Fixed by moving the real check
+  **into `ProgressInputStream`**, which now takes an `isCancelled` lambda and
+  throws `InterruptedIOException` from `read()` — so a cancel aborts within
+  one buffer read (a few KB) and the executor frees immediately. Two related
+  fixes in the same pass: a task **cancelled while still queued now bails
+  before opening the connection at all** (it previously skipped only the
+  "started" event, then downloaded the whole thing anyway before throwing at
+  the first entry check); and JS no longer reports a user-initiated cancel as
+  a failure — `download()` suppresses the "Download failed" toast when the
+  rejection message matches `/cancel/i`, and `cancel()` toasts "Download
+  cancelled" instead. Verified in a browser harness that models the real
+  design (single-thread queue + per-model epoch + per-chunk cancel check):
+  cancelling the RUNNING pack immediately starts the next queued one;
+  cancelling a QUEUED pack never downloads it and doesn't disturb the running
+  one; progress state drains and only the one intended toast fires. Not
+  device-verified.
   **Voice picker simplified the same day (owner feedback: listing every
   voice, including locked/undownloaded ones, "could get convoluted" as more
   languages are added).** `VoiceModal`'s neural branch now filters to only
-  voices whose pack is actually downloaded (`"us"` is always treated as
-  available, per the auto-heal reasoning above) and appends one trailing
+  voices whose pack is actually downloaded (originally with a `"us"` exemption,
+  **removed once nothing was bundled** — every model is gated identically now,
+  and an empty list gets its own "No natural voices installed yet" state) and
+  appends one trailing
   **"Get more voices"** row that closes the picker and opens
   `LangPacksModal` — replacing the old per-voice locked state + inline
   download that lived here before. `VoiceModal.downloadFor` was removed
