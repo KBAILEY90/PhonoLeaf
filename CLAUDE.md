@@ -1217,38 +1217,45 @@ Google login); verify by inspection + the owner testing on device.
     Nora 160 female, Ben 16 / Jack 520 male — speakers 92 & 600 were also good
     males if a swap is ever wanted; **UK** (vctk) Amelia 0 / Ruby 85 female,
     Sam 70 / Max 20 male. Rejected along the way: US 0/256/400, UK 10/50/92.
-    First entry (Ava, us/sid 40) = default. The picker still prints `speaker N`
-    under each voice — drop that once the UK genders are confirmed.
+    First entry (Ava, us/sid 40) = default.
     **Labels say "English (US)"/"English (UK)", not "US"/"UK" (owner request
     2026-08-05)** — e.g. "Ben · English (US) male" — so the voice picker
     names languages the same way the Language Packs popup does
     (`VoicePacks.CATALOG`'s labels), rather than two different names for the
-    same thing. The French/German/Spanish single-voice placeholders
-    (`'French voice'` etc.) were left as-is for now — they're expected to be
-    replaced wholesale once real 2-male/2-female picks exist for those
-    languages, so relabeling them to match the same pattern first would just
-    be thrown away.
-    **PENDING (owner, 2026-08-05): expand French/German/Spanish (and
-    presumably UK/US too) to a real 2-male/2-female audition set, like US/UK
-    already have** — owner is providing the specific picks. **Real
-    architectural question to resolve once picks arrive, not yet answered**:
-    `fr`/`de`/`es` currently each point at a SINGLE-SPEAKER Piper model
-    (siwis/thorsten/davefx — see `VOICE_PACKS` in `PhonoLeafTtsPlugin.kt`), so
-    unlike US (libritts_r, 904 speakers) and UK (vctk, multiple speakers),
-    there is only ONE voice to select via `sid` — getting to 4 needs either
-    (a) a genuinely multi-speaker Piper model for that language, if a suitable
-    one exists in the same sherpa-onnx release, or (b) bundling multiple
-    single-speaker models together under one language pack, which is a
-    bigger change (today's `VOICE_PACKS` map is one model/one URL per
-    language). Worth checking eagerly once picks arrive: the release's
-    `fr_FR-upmc-medium` (80422639 bytes) and `es_ES-sharvard-medium`
-    (80318184 bytes) are notably larger than the other single-speaker models
-    for their languages (~67 MB) — the same size signature multi-speaker
-    US/UK models show (82038311 / 80488085 bytes) — suggesting they may be
-    multi-speaker corpora (UPMC French is known to have 2 speakers; Spanish
-    Harvard recordings plausibly too), but this is an inference from file size
-    only, NOT verified by inspecting the model or listening to it. No
-    equivalent size outlier was found for German in the fetched asset list.
+    same thing.
+    **French/Spanish upgraded to 2-speaker models the same day (owner: "I
+    would at least like to ship 1 man 1 woman voice per language").**
+    A file-size hunch (that `fr_FR-upmc-medium`/`es_ES-sharvard-medium` might
+    be multi-speaker, matching US/GB's size signature) was **confirmed, not
+    assumed** — each
+    model's own `config.json` was fetched and its `speaker_id_map` read
+    directly: `upmc` is `{"jessica":0,"pierre":1}`, `sharvard` is
+    `{"M":0,"F":1}`. `VOICE_PACKS`' `fr`/`es` entries were switched from the
+    single-speaker siwis/davefx to these, so each language now yields a real
+    male + female voice from ONE download instead of needing a second pack —
+    no change to the download/pack architecture (`fr`/`es` folder keys
+    unchanged) was needed once a genuinely multi-speaker model existed.
+    Display names: **Aline** (jessica, owner's pick) / **Pierre** (already a
+    real French name, kept as-is) for French; **Mateo** / **Sofía** invented
+    for Spanish since `sharvard`'s map is bare `M`/`F` with no names.
+    **German stays single-speaker (`thorsten`) — genuinely no good option
+    exists in the catalog, not a shortcut.** Checked and ruled out:
+    `thorsten_emotional` (80 MB, the one same-size-signature candidate) is
+    confirmed via its own config to be **8 emotions of the same single
+    speaker** (amused/angry/disgusted/drunk/neutral/sleepy/surprised/whisper),
+    not other people. The only female-sounding German Piper voices in the
+    release (`eva_k`, `ramona`, `kerstin`) are all `low`/`x_low` quality — a
+    real step down from every other voice in this app, all `medium`. Left
+    male-only rather than ship a quality-mismatched pair; revisit if a better
+    German voice appears on the release, or if the owner decides the quality
+    drop is acceptable. "Thorsten" isn't an invented display name — it's the
+    real name of the person who recorded the corpus (Thorsten Müller), used
+    directly rather than relabeled, same reasoning as keeping "Pierre".
+    The picker's `speaker N` sub-line was **removed** (2026-08-05, owner
+    request: "if we don't need speaker IDs anymore, let's remove them") — not
+    useful once every voice has a real name; each `voice-item` now shows just
+    the label.
+    Not device-verified — same caveat as every native change in this file.
     The on-screen `#tts-dbg` timing
     readout was removed once Piper proved gapless. The Kotlin plugin
     (`PhonoLeafTtsPlugin.kt`) is model-agnostic:

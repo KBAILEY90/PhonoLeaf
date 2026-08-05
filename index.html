@@ -1804,9 +1804,12 @@ const VoicePacks = {
   CATALOG: [
     { model: 'us', label: 'English (US)', approxMB: 78 },
     { model: 'gb', label: 'English (UK)', approxMB: 77 },
-    { model: 'fr', label: 'French', approxMB: 64 },
+    // fr/es sizes updated 2026-08-05 — both switched to 2-speaker models
+    // (~77 MB) to get a real male + female voice per language; see the
+    // PIPER_VOICES comment for details.
+    { model: 'fr', label: 'French', approxMB: 77 },
     { model: 'de', label: 'German', approxMB: 64 },
-    { model: 'es', label: 'Spanish', approxMB: 64 },
+    { model: 'es', label: 'Spanish', approxMB: 77 },
   ],
   _status: {},   // model -> {downloaded, approxBytes}, once known
   _progress: {}, // model -> {pct}, while a download is in flight
@@ -4865,15 +4868,33 @@ const PIPER_VOICES = [
   ['gb85', 'Ruby · English (UK) female',   85, 'gb'],
   ['gb70', 'Sam · English (UK) male',      70, 'gb'],
   ['gb20', 'Max · English (UK) male',      20, 'gb'],
-  // French/German/Spanish (2026-08-04) — each a SINGLE-speaker model (siwis /
-  // thorsten / davefx, the standard community Piper voice per language), so
-  // sid is always 0 — no audition needed to pick among speakers, unlike US/GB.
-  // Gender/quality are NOT owner-confirmed by ear yet (no device here) —
-  // labelled by language only until that happens; relabel with a name +
-  // gender once audited, same as US/GB were.
-  ['fr0', 'French voice',  0, 'fr'],
-  ['de0', 'German voice',  0, 'de'],
-  ['es0', 'Spanish voice', 0, 'es'],
+  // French/Spanish (2026-08-05): switched from single-speaker models to
+  // genuine 2-speaker Piper models on the same release, confirmed via each
+  // model's own config.json (speaker_id_map) rather than assumed from file
+  // size — gets a real male + female voice per language from ONE download
+  // instead of needing a second pack. VOICE_PACKS' url/size updated to match
+  // (PhonoLeafTtsPlugin.kt) — same "fr"/"es" model keys, different underlying
+  // model, so nothing else about the pack plumbing changes.
+  // fr_FR-upmc-medium: speaker_id_map {"jessica":0,"pierre":1} — Jessica named
+  // "Aline" (owner's pick), Pierre kept as-is (already a real French name).
+  ['fr0', 'Aline · French female',  0, 'fr'],
+  ['fr1', 'Pierre · French male',   1, 'fr'],
+  // es_ES-sharvard-medium: speaker_id_map {"M":0,"F":1} (bare gender labels,
+  // not names — Mateo/Sofía are our own picks, not from the dataset).
+  ['es0', 'Mateo · Spanish male',   0, 'es'],
+  ['es1', 'Sofía · Spanish female', 1, 'es'],
+  // German (2026-08-05): still a single voice — de_DE-thorsten-medium is
+  // genuinely single-speaker (confirmed via config: the only other "medium"
+  // German model, thorsten_emotional, has 8 speaker_id_map entries but they're
+  // EMOTIONS of this same speaker — amused/angry/disgusted/etc — not other
+  // people). "Thorsten" isn't an invented name: it's Thorsten Müller's own
+  // real name (he recorded the corpus himself), so it's used directly rather
+  // than relabeled. NO matching-quality female German voice exists in the
+  // catalog yet — the only female-sounding options (eva_k, ramona, kerstin)
+  // are all "low"/"x_low" quality, a real step down from every other voice
+  // here, which is "medium". Left as male-only pending either a better
+  // catalog option or an owner decision to accept the quality mismatch.
+  ['de0', 'Thorsten · German male', 0, 'de'],
 ];
 // --- Voice Modal ------------------------------------------
 const VoiceModal = {
@@ -4898,11 +4919,10 @@ const VoiceModal = {
         return VoicePacks._status[m] && VoicePacks._status[m].downloaded;
       });
       document.getElementById('voice-list').innerHTML =
-        (available.length ? available.map(([id, label, sid]) => `
+        (available.length ? available.map(([id, label]) => `
           <div class="voice-item ${cur === id ? 'active' : ''}" onclick="VoiceModal.selectNative(this.dataset.vname)" data-vname="${esc(id)}">
             <div>
               <div class="voice-name">${esc(label)} <span class="voice-badge">&#10024; Natural</span></div>
-              <div class="voice-lang">speaker ${sid}</div>
             </div>
             ${cur === id ? '<span class="voice-check">&#10003;</span>' : ''}
           </div>`).join('')

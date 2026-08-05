@@ -155,16 +155,20 @@
                 url = "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-en_GB-vctk-medium.tar.bz2",
                 approxBytes = 80488085L,
             ),
-            // Single-speaker models (unlike US/GB's multi-speaker libritts_r/vctk)
-            // — no speaker-id audition needed, sid is always 0. Picked as the
-            // most standard/well-known community Piper voice per language
-            // (siwis/thorsten/davefx), NOT owner-audited for quality or gender —
-            // see the PIPER_VOICES comment in index.html.
+            // fr/es switched 2026-08-05 to genuine 2-speaker Piper models
+            // (confirmed via each model's own config.json speaker_id_map, not
+            // assumed from file size) so each language gets a real male +
+            // female voice from ONE download, matching US/GB — see the
+            // PIPER_VOICES comment in index.html for the exact speaker_id_map
+            // and the resulting sid→voice assignment.
             "fr" to VoicePackInfo(
                 folder = "kokoro-fr",
-                url = "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-fr_FR-siwis-medium.tar.bz2",
-                approxBytes = 67207459L,
+                url = "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-fr_FR-upmc-medium.tar.bz2",
+                approxBytes = 80422639L,
             ),
+            // German still single-speaker (thorsten) — no matching-quality
+            // multi-speaker or second single-speaker female voice was found in
+            // the catalog; see the PIPER_VOICES comment in index.html.
             "de" to VoicePackInfo(
                 folder = "kokoro-de",
                 url = "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-de_DE-thorsten-medium.tar.bz2",
@@ -172,8 +176,8 @@
             ),
             "es" to VoicePackInfo(
                 folder = "kokoro-es",
-                url = "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-es_ES-davefx-medium.tar.bz2",
-                approxBytes = 67184952L,
+                url = "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-es_ES-sharvard-medium.tar.bz2",
+                approxBytes = 80318184L,
             ),
         )
 

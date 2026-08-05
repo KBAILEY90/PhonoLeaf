@@ -180,10 +180,15 @@ the store download to app code only. See CLAUDE.md's "FULLY UNBUNDLED" note.
 
 **Current catalog** (all from the same public sherpa-onnx GitHub release):
 English (US) `us` and English (UK) `gb` — multi-speaker, 4 owner-auditioned
-voices each; French `fr`, German `de`, Spanish `es` — single-speaker models
-(siwis/thorsten/davefx, the standard community Piper voice per language),
-**not yet owner-audited for quality/gender** (see the `PIPER_VOICES` comment
-in `index.html`).
+voices each. French `fr` (`upmc`) and Spanish `es` (`sharvard`) — each a
+genuine 2-speaker Piper model (confirmed via the model's own `config.json`
+`speaker_id_map`, not assumed), giving a named male + female voice per
+language: Aline/Pierre (French), Mateo/Sofía (Spanish). German `de`
+(`thorsten`) is still single-speaker — no matching-quality second voice was
+found in the catalog (the only female-sounding German options are all
+low/x_low quality, a step down from every other voice here). See the
+`PIPER_VOICES` comment in `index.html` for the exact speaker_id_map per
+model and why German is the odd one out.
 
 1. **Build and run:** `npm run sync`, then Run ▶ in Android Studio. No model
    setup first — it builds and installs with no voice data at all.
@@ -210,9 +215,11 @@ in `index.html`).
    installed, plus a trailing **"Get more voices"** row that opens the same
    Language Packs popup. With no pack installed it shows an empty state rather
    than a list of unusable voices. Picking a voice previews it mid-read — this
-   is the first real chance to judge the French/German/Spanish voices and
-   relabel them from the generic "French voice"/"German voice"/"Spanish voice"
-   placeholders, the same way the US/UK set was curated.
+   is the first real chance to confirm Aline/Pierre/Mateo/Sofía/Thorsten
+   actually sound like their assigned gender and are reasonable quality,
+   the same way the US/UK set was curated. The picker no longer shows a raw
+   `speaker N` line under each voice (dropped 2026-08-05 — not useful once
+   voices have real names).
 
 Notes:
 - **Upgrading an existing install must NOT re-download.** A device that ran
