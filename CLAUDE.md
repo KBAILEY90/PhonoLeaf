@@ -2511,6 +2511,34 @@ the working plan, not an exploration.
      iOS hardware acquisition (owner: "I will also start the business portion
      in parallel"). No specific backend/payments work done yet — this is a
      status marker for whenever that thread picks up, not a completed step.
+   - **PRICING DECIDED (2026-08): Monthly $5.99 / Annual $49.99 (~30% off,
+     eff. $4.17/mo) / 7-day free trial / limited Founding-Member Lifetime $129
+     (first ~500 buyers, time-boxed).** Priced on value (privacy/offline), not to
+     undercut — on-device TTS makes margin near-total (~$48 net per annual web
+     sub after Stripe; blended net ARPU modeled ~$42/yr; break-even ~25–70 subs).
+     Full rationale, unit economics, competitor pricing (verified 2026-08), GTM,
+     and the 3/6/12-month plan live in **`BUSINESS.md`** (repo root) — the
+     business source of truth; keep it and this note in sync.
+   - **ToS pricing/lifetime clauses added to `terms.html` — DONE 2026-08-05.**
+     Plans, free-trial auto-conversion, auto-renewal, cancellation, refunds
+     (web = 14-day money-back window; store = via store), lifetime = "life of
+     the PRODUCT not the person" + non-transferable + Google-account-tied,
+     30-day price-change notice, taxes, discontinuation + 12-month
+     lifetime-refund window, app-store-purchase carve-out — all as drafted in
+     `BUSINESS.md` §3, with a `TODO: lawyer review` comment left in the HTML.
+     Currency (USD) and the three time-window values are Cowork's suggested
+     defaults, not owner/lawyer-confirmed yet — see `BUSINESS.md`'s roadmap
+     item 4 for what's still open. **Still not lawyer-reviewed** — flag for
+     legal review before launch; jurisdiction still to set (likely Ontario,
+     Canada), though it isn't referenced by the new pricing clauses
+     specifically. `home.html`'s CTA note changed from "Free" to "Free 7-day
+     trial"; `sw.js` bumped to `phonoleaf-v14` and `www/` re-staged.
+   - **Lifetime = launch capital, not a core offer:** keep it capped +
+     time-boxed; implement as a one-time NON-CONSUMABLE IAP on the stores (not a
+     subscription) + one-time Stripe charge on web; store entitlement durably
+     against the Google account so a backend change can't revoke a paid lifetime;
+     keep a cash reserve against refunds + ongoing obligations (CASA recert,
+     Apple fee) rather than booking lifetime revenue as pure profit.
    - **Audio ads were considered and advised against (2026-07-28.)** Spotify
      inserts ads into its OWN licensed catalog; PhonoLeaf would be inserting
      them into the user's private files, which is a different proposition.
