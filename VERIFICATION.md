@@ -463,15 +463,20 @@ you two weeks.
       data" section to `privacy.html` (commit `8167e8a`, live and verified at
       `https://phonoleaf.com/privacy.html`, effective 2026-08-05). Google's
       requirement doc: `support.google.com/cloud/answer/13806988`.
-- [ ] **11b. Minimum scopes — reply sent / to send.** Decision: **Option 2,
+- [x] **11b. Minimum scopes — reply sent.** Decision: **Option 2,
       "Unable to use narrower scopes"** (owner, 2026-08-05). Reply text below.
-      **Do NOT remove any already-approved scope from the project meanwhile** —
-      the email says so explicitly.
-- [ ] **12. Await Google's response to the reply.** If they accept the
-      justification, CASA follows (Google initiates it — see the CASA section;
-      AL1 ≈ $500 / AL2 ≈ $3–6k, annual). If they refuse, the fallback is
-      switching to `drive.file`, which needs no verification and no CASA at
-      all, so it can ship quickly — at the cost of folder auto-sync.
+- [x] **12. Google's response: APPROVED.** Google did not push back on
+      `drive.readonly` again — it moved straight to the CASA requirement
+      instead, which is the confirmation the pushback worked. **AL1 CASA is
+      now due by November 3, 2026.** See the CASA section at the top of this
+      file for the full email and what it means.
+- [ ] **13. Complete the AL1 CASA assessment before Nov 3, 2026.** AL1 only
+      (not AL2 — that tier is for Google Workspace Marketplace badging, not
+      relevant here). Status: **outreach sent to Eydle 2026-08-05, awaiting
+      response** — see below. Nothing paid or started yet.
+- [ ] **14. Once CASA is complete, reply to Google's email to confirm** — the
+      email requires a direct reply after addressing the requirement, not
+      just completing it silently.
 
 ### The reply sent for 11b (2026-08-05)
 
@@ -511,7 +516,62 @@ you two weeks.
 > We have also updated our privacy policy to include explicit data-protection
 > disclosures, addressing the other item raised:
 > https://phonoleaf.com/privacy.html
-      [How to submit](https://support.google.com/cloud/answer/13463073)
+
+### CASA lab research (2026-08-05)
+
+Two labs researched so far, both ADA-authorized, both pricing "per
+application" (a hint — not a confirmation — that one assessment may cover
+every platform of an app if done together):
+
+- **TAC Security** (`casa.tacsecurity.com`) — Google's named preferred
+  partner, discounted rate. AL1 tiers: **Basic $675 / Premium $855 /
+  Enterprise $3,600**. No email sent here yet; researched for pricing only.
+- **Eydle** (`eydle.com/ada`) — found independently by the owner. AL1: **$300
+  to $800**. AL2: **$3,000 to $6,000**. Their site frames **CASA as "Web
+  Applications" and MASA as "Mobile Applications (Android, iOS)"** — but this
+  does NOT mean PhonoLeaf needs both. MASA is a separate, unrelated ADA
+  program tied to the Google Play Store's optional "Independent Security
+  Review" listing badge — nothing to do with OAuth scope verification. Google's
+  own email named "ADA-CASA AL1" specifically; that's the only one required.
+
+**Neither lab's site states what happens if a platform (e.g. iOS) is added to
+an app AFTER its CASA assessment is already complete** — whether that needs a
+whole new assessment or can extend the existing one at lower cost. Asked
+directly in the outreach below rather than assumed.
+
+**Decision: do not wait for iOS to start CASA.** iOS has no Mac, no device
+acquired yet (as of this decision), no Capacitor iOS target, no ported auth
+flow, no ported TTS plugin — genuinely not close to ready. Nov 3, 2026 is a
+real, dated requirement; the possible savings from bundling iOS in is a few
+hundred dollars at most, and uncertain even at that. Not worth the risk of
+missing the deadline outright.
+
+### Outreach sent to Eydle (2026-08-05) — awaiting response
+
+Via their contact form (`eydle.com/ada`), ~872 characters, under their
+1000-char limit:
+
+> I'd like to start an ADA-CASA AL1 assessment for my app, PhonoLeaf (Cloud
+> project ID: phonoleaf, project number: 88179965472), requested by Google's
+> OAuth verification team ahead of a November 3, 2026 deadline.
+>
+> Quick context: no backend server, requests only the drive.readonly scope
+> (read-only, one Drive folder), ships as a web app and native Android app
+> (Capacitor, shared codebase). iOS is planned but not yet built.
+>
+> Questions before starting:
+> 1. Your AL1 pricing spans $300 to $800. What's included at each tier, and
+>    which fits an app this size?
+> 2. Does one assessment cover an app as a whole across platforms, or does
+>    adding iOS later need a new assessment versus extending this one?
+> 3. Google says extension requests must go through our selected lab. Can you
+>    confirm typical AL1 turnaround and whether you support that process?
+>
+> What do you need from us to begin?
+
+**Nothing paid or scheduled yet.** Update this section with their response —
+pricing confirmation, the platform-bundling answer, and turnaround time —
+once it arrives, and record the final go/no-go on TAC vs Eydle.
 
 ### Play Store track — can run in parallel
 

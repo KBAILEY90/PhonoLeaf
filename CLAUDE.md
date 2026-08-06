@@ -2191,6 +2191,49 @@ the working plan, not an exploration.
       **Email rule: DO NOT remove any already-approved scope from the project
       right now** — the email says so explicitly.
 
+   **STATUS 2026-08-05 (same day) — GOOGLE APPROVED `drive.readonly`. The
+   "Unable to use narrower scopes" pushback worked.** Google's reply didn't
+   ask for `drive.file` again — instead it moved straight to the CASA
+   requirement: **"You are required to complete an ADA-CASA AL1 (formerly
+   Tier 2) security assessment... by the following date: Nov 3, 2026."** This
+   is the FINAL confirmation of what the earlier email already implied: CASA
+   is mandatory on this scope, annually, for as long as the project holds it —
+   and it's now a hard dated requirement, not a future maybe.
+   - **AL1, not AL2** — the email offers both, but AL2 only matters for
+     Google Workspace Marketplace badging, which doesn't apply here. AL1 is
+     the correct and sufficient tier.
+   - **CASA, not MASA** — the owner found a lab (Eydle) offering both and
+     asked whether both are needed. They are NOT: CASA is the OAuth
+     restricted-scope program (what Google's email names by name), MASA is a
+     *separate*, unrelated ADA program tied to the Google Play Store's
+     optional "Independent Security Review" listing badge. Only CASA is
+     required now; MASA would only be worth revisiting once actually live on
+     Play, purely for the trust badge.
+   - **Extensions exist but require a "selected lab" first**: the email
+     states due-date extensions must be requested *through* the chosen
+     ADA-authorized lab, not directly from Google. This is why the owner is
+     engaging a lab now rather than waiting for iOS to be ready and risking
+     the Nov 3 date with zero lab contact — being "in process" with a lab is
+     what unlocks the extension path if needed, not something available from
+     a cold start.
+   - **iOS bundling question — genuinely unresolved, asked directly to a
+     lab rather than assumed.** Both labs researched price "per application"
+     (TAC: $675 Basic AL1 / $855 Premium / $3600 Enterprise; Eydle: $300–800
+     AL1 / $3000–6000 AL2), which hints a single assessment might cover
+     Web+Android+iOS together if done at once — but neither site states what
+     happens if a platform is added *after* an assessment is already done.
+     **Decision: don't wait for iOS to find out** — it isn't remotely ready
+     (no Mac, no device had at the time, no Capacitor iOS target, no auth
+     port, no TTS port), and gambling the live Nov 3 deadline against an
+     uncertain few-hundred-dollar savings was judged not worth it. **Outreach
+     sent 2026-08-05 to Eydle** (`eydle.com/ada`, via their contact form,
+     ~872-char message under their 1000-char limit) asking: what's included
+     at their $300 vs $800 tier; whether one assessment covers an app across
+     platforms and what adding iOS later would cost; whether they support
+     Google's extension-request process; and what's needed to start.
+     **Awaiting response** — no assessment has been paid for or started yet.
+   Full reply text and lab research are in `VERIFICATION.md`.
+
    Do not change publish status (Testing → Production) or make unnecessary
    consent-screen edits while review is open — the console's own submission
    page warns that both can delay review.
@@ -2371,6 +2414,51 @@ the working plan, not an exploration.
        **Worth revisiting once actually on Play: Play Asset Delivery**, the
        only approach that gets "ships with the app" + "no first-run wait" +
        "fully deletable" at once. Can't be tested until published.
+     - **iOS planning started 2026-08-05 (owner: "I will also start the
+       business portion in parallel").** Not yet building — this is the
+       roadmap + hardware acquisition phase. A detailed 10-step plan was
+       written covering: buy hardware; enroll in the Apple Developer Program
+       ($99/yr — start early, approval isn't instant); set up Xcode +
+       CocoaPods; `npx cap add ios` and confirm the Simulator boots (note:
+       `capacitor.config.json` and `scripts/stage-www.js` are ALREADY
+       platform-agnostic — only `package.json`'s npm scripts are hardcoded to
+       `android`, so there's minimal iOS-specific setup friction there);
+       create an iOS OAuth client in Cloud Console (bundle ID
+       `com.phonoleaf.app`, no SHA-1 needed unlike Android); port native auth
+       to `ASWebAuthenticationSession` + Keychain (replacing the Android
+       Custom-Tab/PKCE + `EncryptedSharedPreferences` pattern —
+       `SecureStoragePlugin.kt`'s Swift equivalent); build the sherpa-onnx iOS
+       framework (**confirmed it supports iOS via an official Swift example
+       in the k2-fsa repo, but there is no prebuilt framework — it must be
+       compiled from source**, budget real time for this); port
+       `PhonoLeafTtsPlugin.kt` to Swift (**same class of gotcha as Commons
+       Compress on Android**: Swift has no built-in bzip2/tar support for the
+       `.tar.bz2` pack downloads, needs SWCompression or libarchive — also
+       port the `MODEL_VERSIONS` per-model marker system and the
+       background-priority download thread, both hard-won fixes from
+       real bugs, and re-measure thread-count tuning rather than copying
+       Android's `cores-4` value, since iOS CPU characteristics differ from
+       Android's big.LITTLE); background audio via `AVAudioSession` +
+       `MPNowPlayingInfoCenter` + `MPRemoteCommandCenter` (the iOS analogue of
+       `PlaybackService.kt`'s foreground service + lock-screen media session
+       work — no equivalent of the `ForegroundServiceDidNotStartInTimeException`
+       saga expected, iOS's model is simpler here); device testing (Simulator
+       cannot validate TTS performance or background audio — both are
+       exactly the two hardest things this app solves, and both are known to
+       behave unreliably or unrepresentatively in Simulator); then TestFlight.
+       **Hardware being acquired**: a free **iPhone XR** (A12 Bionic, offered
+       by a contact) — deliberately kept despite being a few years old,
+       matching the "test on a realistic mid-tier device, not the newest
+       flagship" reasoning already used for the Pixel 7 on Android — and a
+       **MacBook Air (M1, 2020, 8 GB/256 GB, macOS Sequoia 15.6.1 already,
+       90% battery)** for ~$600 CAD. Two other machines were considered and
+       rejected first: a **2015 MacBook** (caps at macOS Monterey; current
+       Xcode needs Sequoia 15.6+ — a hard wall, not a "slow but workable"
+       situation) and an **Apple A18 Pro-chip "MacBook"** (works, since it's
+       Apple Silicon, but has half the performance cores of an M-series chip,
+       which matters specifically for compiling sherpa-onnx from source).
+       No engineering has started; next concrete step is Apple Developer
+       Program enrollment, which can run in parallel with hardware delivery.
 4. ~~**Privacy policy + ToS**~~ — **DONE (2026-07-22).** `privacy.html` /
    `terms.html` at the repo root, live at
    `kbailey90.github.io/PhonoLeaf/privacy.html` (and `/terms.html`) — same
@@ -2403,12 +2491,26 @@ the working plan, not an exploration.
    - **Tie entitlement to the Google account id, do NOT build a password
      system.** Sign-in already provides stable identity, so `home.html`'s "no
      separate account to create" claim stays true even once paid.
-   - **Sequencing: submit for OAuth verification BEFORE the backend exists.**
-     The CASA trigger is "ability to access data from or through a third-party
-     server"; today the honest answer is a clean no. A payments backend that
-     never touches Drive data shouldn't change that, but submitting first means
-     being judged on the simpler architecture. Keep payment infrastructure
-     strictly segregated from Google user data so the answer stays no.
+   - **Sequencing: submit for OAuth verification BEFORE the backend exists —
+     DONE, and the underlying reasoning is now PARTLY SUPERSEDED, corrected
+     here so it doesn't mislead later.** This originally hoped a no-backend
+     architecture might exempt the project from CASA entirely. **That hope is
+     now confirmed false** — Google's 2026-08-05 email states CASA is
+     required for every app on a restricted scope, with no backend-related
+     exemption offered (see roadmap item 2's STATUS blocks). The sequencing
+     itself was still the right call for a different reason that still holds:
+     assurance levels are dynamic and can be re-evaluated at each annual
+     recert based on "changes in data-handling practices" (see
+     `VERIFICATION.md`'s CASA section) — so building payments infrastructure
+     only AFTER this first AL1 assessment avoids it influencing THIS
+     assessment's scope/level, for whatever that's worth. Keep payment
+     infrastructure strictly segregated from Google user data regardless, on
+     general security-hygiene grounds, not because it changes whether CASA
+     applies.
+   - **STATUS 2026-08-05: business-side planning begun**, in parallel with
+     iOS hardware acquisition (owner: "I will also start the business portion
+     in parallel"). No specific backend/payments work done yet — this is a
+     status marker for whenever that thread picks up, not a completed step.
    - **Audio ads were considered and advised against (2026-07-28.)** Spotify
      inserts ads into its OWN licensed catalog; PhonoLeaf would be inserting
      them into the user's private files, which is a different proposition.
