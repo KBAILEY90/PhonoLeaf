@@ -1302,10 +1302,8 @@ Google login); verify by inspection + the owner testing on device.
     inference/audio playback over pack downloads whenever both want CPU at
     once, without touching `genExecutor`'s priority — that side was never
     reported as a problem on its own, only when a download competed with it.
-    Not yet device-verified — this exact fix was written in response to the
-    same test session's report, after the model-swap fix above was already
-    confirmed; needs its own follow-up device test (download a pack while
-    reading and confirm playback stays clean throughout, not just before/after).
+    **DEVICE-VERIFIED 2026-08-05 — owner confirmed: downloading a pack while
+    another voice reads no longer causes any garbling.**
     The on-screen `#tts-dbg` timing
     readout was removed once Piper proved gapless. The Kotlin plugin
     (`PhonoLeafTtsPlugin.kt`) is model-agnostic:

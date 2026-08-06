@@ -231,10 +231,9 @@ model and why German is the odd one out.
    the download's bzip2 decompression and TTS inference/playback, not a
    correctness bug — fixed by dropping the download thread to Android's
    `THREAD_PRIORITY_BACKGROUND` so the OS favors audio over downloads when
-   both want CPU. **Not yet device-verified — test this specifically**:
-   start playback of an already-installed voice, then start downloading a
-   different language pack, and confirm audio stays clean (no
-   garbling/mumbling) for the whole download, not just before/after it.
+   both want CPU. **CONFIRMED FIXED on device 2026-08-05** — owner tested
+   downloading a pack while a different voice was actively reading; playback
+   stayed clean throughout.
 
 Notes:
 - **Upgrading an existing install must NOT re-download.** A device that ran
