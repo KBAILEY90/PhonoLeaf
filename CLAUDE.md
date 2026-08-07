@@ -2125,6 +2125,64 @@ Google login); verify by inspection + the owner testing on device.
   names, chapter titles) with `esc()` before putting them in `innerHTML`. Prefer
   passing indices to inline handlers over interpolating raw values.
 - Match the existing terse, dependency-free style. No frameworks, no build.
+- **Clickable rows built as `<div onclick=...>` need `role="button"
+  tabindex="0"`** (a plain `<div>` isn't keyboard-focusable or announced by a
+  screen reader as interactive). A single delegated `keydown` listener (added
+  2026-08-07, right after the `input`/`change` scrubber listeners) makes
+  Enter/Space activate any element with `role="button"` by calling `.click()`
+  on it — add the two attributes to a new row and it works for free, no
+  per-row keyboard handler needed. Real `<button>`s and inputs don't need this.
+
+## Accessibility (audited 2026-08-07)
+
+BACKLOG.md section F asked for a pass on screen-reader support, respecting
+system text-size/motion settings, and tap target size. Findings and fixes:
+- **Pinch-to-zoom was disabled app-wide** (`user-scalable=no,
+  maximum-scale=1.0` in the viewport meta) — a WCAG 1.4.4/1.4.10 failure that
+  blocked the one thing most likely to actually help a low-vision user, on
+  top of the 74 already-`rem`-based font sizes doing nothing for anyone who
+  couldn't zoom in the first place. Removed. The one real reason it might
+  have been there — the reader's double-tap-to-play gesture racing the
+  browser's own double-tap-to-zoom — is handled surgically instead via
+  `touch-action: manipulation` on `#reader-touch` (kills double-tap-zoom
+  there specifically; pinch-zoom still works everywhere, including in the
+  reader).
+- **No `prefers-reduced-motion` support anywhere.** Added one blanket
+  `@media (prefers-reduced-motion: reduce)` override (clamps every
+  `animation`/`transition` duration to ~0 via `!important`) rather than
+  auditing each of the app's ~20 individual transitions — confirmed safe
+  first: nothing in the app listens for `transitionend`/`animationend`, so no
+  functionality depends on an animation actually taking time.
+- **Most gesture-only actions already had labelled button equivalents**
+  (page turn: `.reader-edge`/`.ctrl-btn.nav`; play/pause: `#play-btn`; both
+  already carried `aria-label`s) — the swipe/double-tap gesture surface was
+  never the only way to do either. What was missing: several **clickable
+  `<div>`/`<a>` rows with no keyboard/screen-reader semantics at all** — book
+  cards, the Home "jump back in" cards and its "See all" link, the Home
+  stats tile, chapter-jump rows, the folder browser's rows and breadcrumbs,
+  and the voice picker's rows. Fixed with `role="button" tabindex="0"` (see
+  the Conventions note above for the shared keydown handler) plus
+  `aria-label`s where the visible text alone wouldn't say what gets opened
+  (e.g. a bare cover image), and `aria-current="true"` on the voice picker's
+  currently-selected row. Left alone: modal backdrops (tap-to-dismiss is a
+  convenience on top of a real Cancel/close button, not the only way to
+  close anything) and the Stats page's non-interactive tiles.
+- One real icon-only control had no accessible name at all: Library's
+  refresh button only had a `title` (unreliable on touch/screen readers, no
+  hover to trigger it) — added `aria-label="Refresh library"`.
+- Existing tap targets were already reasonable (`.ctrl-btn` 40–50px,
+  `.tab` a full flex column, `.icon-btn` ~35px effective with its padding) —
+  no changes made there.
+- **Not done, flagged as a bigger feature per BACKLOG.md**: follow-along
+  word/sentence highlighting while reading aloud. Genuinely useful for
+  dyslexia/ADHD but a real build (needs word-level timing from the TTS
+  engine), not part of this pass.
+- Verified in a browser harness: the delegated keydown listener fires
+  `.click()` on Enter for a `role="button"` element; the sign-in screen
+  renders with no console errors after the viewport/CSS changes; the
+  `touch-action` and viewport values are exactly as intended. Not
+  device-verified — same caveat as any native-adjacent claim in this file,
+  though nothing in this pass touches native code.
 
 ## Productization roadmap (ACTIVE — production-bound as of 2026-07-03)
 

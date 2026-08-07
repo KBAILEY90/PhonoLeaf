@@ -2,7 +2,13 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <!-- user-scalable=no/maximum-scale=1.0 were removed (accessibility audit,
+       2026-08) — they blocked pinch-to-zoom entirely, a WCAG 1.4.4/1.4.10
+       failure. The reader's own double-tap-to-play gesture is protected from
+       the browser's native double-tap-to-zoom separately, via
+       touch-action:manipulation on #reader-touch (see its CSS rule), so nothing
+       here needs to re-disable zoom app-wide to keep that gesture working. -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#F4F1E8" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#0F1310" media="(prefers-color-scheme: dark)">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -718,7 +724,11 @@
     /* Reader gesture layer: a transparent overlay over the page that catches
        taps (toggle chrome) and swipes (turn page) — touches inside the epub
        iframe don't reach the parent, so we capture them here. */
-    .reader-touch { position: absolute; inset: 0; z-index: 4; }
+    /* touch-action:manipulation, not "none" — it kills the browser's native
+       double-tap-to-zoom (which would otherwise race the app's own
+       double-tap-to-play gesture) while still allowing pinch-zoom, so text
+       zoom keeps working everywhere the viewport meta now permits it. */
+    .reader-touch { position: absolute; inset: 0; z-index: 4; touch-action: manipulation; }
 
     /* Page-turn slide animation */
     @keyframes pageNext { 0%{transform:translateX(0);opacity:1} 45%{transform:translateX(-34px);opacity:.18} 55%{transform:translateX(34px);opacity:.18} 100%{transform:translateX(0);opacity:1} }
@@ -759,6 +769,21 @@
     .fb-name { flex: 1; min-width: 0; font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .fb-empty { color: var(--text-dim); font-size: 0.82rem; padding: 1rem 0.4rem; text-align: center; }
     .fb-use { width: 100%; background: var(--accent); color: #fff; border: none; border-radius: 10px; padding: 0.75rem; font: 500 0.9rem var(--font-ui); cursor: pointer; }
+
+    /* Respect the system's reduced-motion setting (vestibular disorders etc.)
+       — a single blanket override rather than touching each of the app's
+       ~20 individual transitions/animations one by one. No animation here is
+       load-bearing (nothing listens for transitionend/animationend), so
+       clamping durations to near-zero is safe: it removes the motion without
+       removing any functionality. */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.001ms !important;
+        scroll-behavior: auto !important;
+      }
+    }
   </style>
   <script>
     /* One-time key migration (2026-07-06 rebrand): kba_* -> pl_* so nothing
@@ -893,8 +918,8 @@
     </div>
     <div class="home-title" id="home-title">Home</div>
     <div id="home-continue"></div>
-    <div class="stat-row" id="home-stats" onclick="Nav.go('stats')" style="cursor:pointer"></div>
-    <div class="sec-label">Jump back in <a onclick="Nav.go('library')">See all</a></div>
+    <div class="stat-row" id="home-stats" onclick="Nav.go('stats')" style="cursor:pointer" role="button" tabindex="0" aria-label="Open Stats"></div>
+    <div class="sec-label">Jump back in <a onclick="Nav.go('library')" role="button" tabindex="0">See all</a></div>
     <div class="cover-row" id="home-recent"></div>
   </div>
 </div>
@@ -904,7 +929,7 @@
   <div class="lib-header">
     <h2>Library</h2>
     <div class="header-actions">
-      <button class="icon-btn" onclick="Library.refresh()" title="Refresh">&#8634;</button>
+      <button class="icon-btn" onclick="Library.refresh()" title="Refresh" aria-label="Refresh library">&#8634;</button>
     </div>
   </div>
   <div class="lib-search">
@@ -1049,7 +1074,7 @@
   </div>
 
   <div class="reader-touch" id="reader-touch"></div>
-  <div id="tap-fb"></div>
+  <div id="tap-fb" aria-hidden="true"></div>
   <button class="reader-edge re-left" onclick="Reader.turnPage(-1)" aria-label="Previous page">
     <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
   </button>
@@ -1646,7 +1671,7 @@ const Home = {
       .slice(0, 20);
     document.getElementById('home-recent').innerHTML = recent.map(({ b, i }) => {
       const t = b.name.replace(/\.epub$/i, ''), cov = Covers.urls[b.id];
-      return `<div class="cr-item" onclick="Player.play(${i})">
+      return `<div class="cr-item" onclick="Player.play(${i})" role="button" tabindex="0" aria-label="Continue ${esc(t)}">
         <div class="cr-cover" style="${cov ? `background-image:url('${esc(cov)}')` : ''}"></div>
         <div class="cr-title">${esc(t)}</div></div>`;
     }).join('') || '<div class="home-empty">Books you’ve started will appear here.</div>';
@@ -1726,6 +1751,19 @@ document.addEventListener('input', e => {
 });
 document.addEventListener('change', e => {
   if (e.target.classList && e.target.classList.contains('scrub')) { Scrub._drag = false; Scrub.hide(); Scrub.seek(+e.target.value / 10); }
+});
+// Accessibility: rows like book cards, voice picks and chapter jumps are
+// clickable <div>s (styled to look like list rows, not real <button>s), so
+// they're invisible to keyboard/switch navigation and TalkBack/VoiceOver's
+// standard "activate" gesture without this — role="button" + tabindex="0" on
+// each one makes them focusable and announced as buttons; this one delegated
+// listener is what makes Enter/Space on any of them actually fire the same
+// onclick a pointer tap would, without repeating a handler on every row.
+document.addEventListener('keydown', e => {
+  if ((e.key === 'Enter' || e.key === ' ') && e.target.getAttribute && e.target.getAttribute('role') === 'button') {
+    e.preventDefault();
+    e.target.click();
+  }
 });
 
 // --- Diagnostics (page-turn debug log, viewable in Settings) ---------------
@@ -2273,9 +2311,12 @@ const FolderBrowser = {
   },
   _cur() { return this._stack[this._stack.length - 1]; },
   _render() {
-    document.getElementById('fb-crumbs').innerHTML = this._stack.map((c, i) =>
-      `<span class="${i === this._stack.length - 1 ? 'cur' : ''}" onclick="FolderBrowser.crumb(${i})">${esc(c.name)}</span>`
-    ).join('<i>›</i>');
+    document.getElementById('fb-crumbs').innerHTML = this._stack.map((c, i) => {
+      const isCur = i === this._stack.length - 1;
+      // The current (last) crumb is a no-op when tapped (see crumb()'s
+      // guard) — only mark the earlier, actually-navigable ones as buttons.
+      return `<span class="${isCur ? 'cur' : ''}" onclick="FolderBrowser.crumb(${i})"${isCur ? '' : ' role="button" tabindex="0"'}>${esc(c.name)}</span>`;
+    }).join('<i>›</i>');
     const u = document.getElementById('fb-use'); if (u) u.textContent = `Use “${this._cur().name}”`;
   },
   crumb(i) { if (i < this._stack.length - 1) { this._stack = this._stack.slice(0, i + 1); this._render(); this._load(); } },
@@ -2290,7 +2331,7 @@ const FolderBrowser = {
       });
       this._items = d.files || [];
       list.innerHTML = this._items.length ? this._items.map((f, i) =>
-        `<div class="fb-row" onclick="FolderBrowser.enter(${i})">
+        `<div class="fb-row" onclick="FolderBrowser.enter(${i})" role="button" tabindex="0" aria-label="Open folder ${esc(f.name)}">
            <svg class="fb-ico" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
            <span class="fb-name">${esc(f.name)}</span>
            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--text-dim);flex-shrink:0"><path d="M9 6l6 6-6 6"/></svg>
@@ -2758,7 +2799,7 @@ const Library = {
       const cover = Covers.urls[b.id]
         || (b.thumbnailLink ? b.thumbnailLink.replace('s220', 's400') : '');
       return `
-        <div class="book-card" onclick="Reader.open(${i})">
+        <div class="book-card" onclick="Reader.open(${i})" role="button" tabindex="0" aria-label="Open ${esc(title)}">
           <div class="book-cover" data-book-id="${esc(b.id)}">
             <span class="cover-fallback">&#128214;</span>
             ${cover
@@ -4988,7 +5029,7 @@ const VoiceModal = {
       document.getElementById('voice-list').innerHTML =
         slowNote +
         (available.length ? available.map(([id, label]) => `
-          <div class="voice-item ${cur === id ? 'active' : ''}" onclick="VoiceModal.selectNative(this.dataset.vname)" data-vname="${esc(id)}">
+          <div class="voice-item ${cur === id ? 'active' : ''}" onclick="VoiceModal.selectNative(this.dataset.vname)" data-vname="${esc(id)}" role="button" tabindex="0" aria-current="${cur === id}">
             <div>
               <div class="voice-name">${esc(label)} <span class="voice-badge">&#10024; Natural</span></div>
             </div>
@@ -4998,7 +5039,7 @@ const VoiceModal = {
               <div><div class="voice-name" style="color:var(--text-dim)">No natural voices installed yet</div>
               <div class="voice-lang">Download one below to use the natural voice</div></div>
             </div>`) +
-        `<div class="voice-item" onclick="VoiceModal.openLangPacks()">
+        `<div class="voice-item" onclick="VoiceModal.openLangPacks()" role="button" tabindex="0">
           <div><div class="voice-name">Get more voices</div><div class="voice-lang">Download language packs</div></div>
         </div>`;
       document.getElementById('voice-modal').classList.add('open');
@@ -5007,7 +5048,7 @@ const VoiceModal = {
     this._list = TTS.allVoices();
     if (!this._list.length) { toast('No voices available yet — try again in a moment'); return; }
     document.getElementById('voice-list').innerHTML = this._list.map(v => `
-      <div class="voice-item ${TTS.voice?.name === v.name ? 'active' : ''}" onclick="VoiceModal.selectNamed(this.dataset.vname)" data-vname="${esc(v.name)}">
+      <div class="voice-item ${TTS.voice?.name === v.name ? 'active' : ''}" onclick="VoiceModal.selectNamed(this.dataset.vname)" data-vname="${esc(v.name)}" role="button" tabindex="0" aria-current="${TTS.voice?.name === v.name}">
         <div>
           <div class="voice-name">${esc(v.name)}${TTS._isNatural(v) ? ' <span class="voice-badge">&#10024; Natural</span>' : ''}</div>
           <div class="voice-lang">${esc(v.lang)}${v.localService ? ' &middot; Local' : ' &middot; Online'}</div>
@@ -5065,7 +5106,7 @@ const ChapterModal = {
     if (!flat.length) { toast('No chapter list available'); return; }
     this._flat = flat;
     document.getElementById('chapter-list').innerHTML = flat.map(({ item, depth }, i) => `
-      <div class="chapter-item" onclick="ChapterModal.jump(${i})" style="padding-left:${12 + depth * 16}px">
+      <div class="chapter-item" onclick="ChapterModal.jump(${i})" style="padding-left:${12 + depth * 16}px" role="button" tabindex="0">
         <span class="chapter-num">${depth ? '' : (i + 1)}</span>
         <span class="chapter-label">${esc(item.label?.trim() || 'Chapter ' + (i + 1))}</span>
       </div>`).join('');

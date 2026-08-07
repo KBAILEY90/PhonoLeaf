@@ -3,7 +3,7 @@
 // Drive at runtime and are intentionally NOT cached (they can be very large and
 // require a live auth token).
 
-const CACHE = 'phonoleaf-v15';
+const CACHE = 'phonoleaf-v16';
 const SHELL = [
   './',
   './index.html',
