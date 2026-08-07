@@ -1181,6 +1181,34 @@ Google login); verify by inspection + the owner testing on device.
     Piper/VITS model (`vits-piper-en_US-libritts_r-medium`, should run <1× on
     phones = gapless). Kokoro to return later as a PREMIUM voice auto-enabled
     only on capable devices (flagships/iPhones) via the ratio measurement.**
+    **SUPERSEDED 2026-08-07: the "Kokoro returns as a premium voice, chosen
+    per device" plan above was never built (confirmed by code audit in
+    `BACKLOG.md` section H — native has shipped Piper only, with no device
+    capability check anywhere, since 2026-07-06) and the owner decided not to
+    build it now** — shipping a second native engine (model packaging, a
+    benchmark step, switching logic in the Kotlin plugin) to offer a voice
+    that already failed the realtime bar on a representative mid-tier phone
+    isn't worth it. **What shipped instead is much smaller: `TTS._nativeBench`**,
+    a one-time proactive speed check for the ONE native engine (Piper) that
+    already exists. It reuses `_synthNative` on a fixed throwaway sentence
+    right after the first voice pack ever finishes downloading (see
+    `VoicePacks.download`) — the earliest point a model exists to time, and it
+    lands while the user is very likely still on the onboarding screen — and
+    caches a `{model, ratio, t}` verdict in `pl_native_bench`
+    (`TTS._nativeSlow` = `ratio > 1`, restored synchronously at parse time so
+    a warm boot doesn't flash the fast-path text). Unlike `_kokoroBench`
+    (web), a slow verdict here never disables the natural voice — Piper is
+    still expected to be close to realtime, so this is a soft, informational
+    label, not a hard fallback: it appends "(may run slower than real time
+    here)" to Settings' always-visible Natural voice row, adds a note above
+    the list in `LangPacksModal` (onboarding and later visits) and in
+    `VoiceModal`'s neural branch. Since every voice in a downloaded pack
+    shares one underlying model file, this is necessarily a device-level
+    note, not a per-voice ranking — there is nothing to measure before a pack
+    exists to time, so a true onboarding-time "pick from a list ranked by
+    speed" was never possible without first downloading something. Not
+    device-verified — same caveat as every other native-adjacent change in
+    this file; the bench call itself is untested on real hardware.
     The plugin **auto-detects the model family** from the placed files
     (`voices.bin` present → Kokoro config; else → VITS/Piper config), so
     switching engines is just a model-file swap. cancel() bounds the

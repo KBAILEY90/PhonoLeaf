@@ -1893,6 +1893,7 @@ const VoicePacks = {
       await p.downloadPack({ model });
       this._status[model] = { downloaded: true, approxBytes: (this._status[model] || {}).approxBytes || 0 };
       toast('Voice pack downloaded');
+      TTS._nativeBench(model); // one-time proactive speed check — see TTS._nativeBench
     } catch (e) {
       // A cancel rejects this promise too (native throws InterruptedIOException
       // "cancelled"), but the user asked for that — reporting it as a failure
@@ -1982,8 +1983,19 @@ const LangPacksModal = {
            Settings.</div></div>
          </div>`
       : '';
+    // TTS._nativeSlow is set once, right after the first pack ever downloads
+    // (see TTS._nativeBench) — every voice in a downloaded pack shares the
+    // same underlying model, so this is a device-level note, not a per-voice
+    // ranking; there's nothing to measure before a pack exists to time.
+    const speedNote = TTS._nativeSlow
+      ? `<div class="voice-item" style="cursor:default">
+           <div><div class="voice-name" style="color:var(--text-dim)">Natural voice may run slower than real time here</div>
+           <div class="voice-lang">You can still use it &mdash; playback may occasionally pause to catch up.
+           Your device's built-in voice is always available as a faster alternative in Settings.</div></div>
+         </div>`
+      : '';
     document.getElementById('langpacks-list').innerHTML =
-      intro + VoicePacks.CATALOG.map(c => VoicePacks.rowHTML(c)).join('');
+      intro + speedNote + VoicePacks.CATALOG.map(c => VoicePacks.rowHTML(c)).join('');
     document.getElementById('langpacks-modal').classList.add('open');
   },
   _onboarding: false,
@@ -2009,7 +2021,7 @@ const Settings = {
     const nsub = document.getElementById('neural-sub');
     if (nsub) nsub.textContent = dead
       ? 'Unavailable on this device — using the standard voice'
-      : 'On — generated on your device';
+      : (TTS._nativeSlow ? 'On — generated on your device (may run slower than real time here)' : 'On — generated on your device');
     const nst = document.getElementById('neural-status'); if (nst) nst.style.display = dead ? 'none' : '';
     const nrt = document.getElementById('neural-retry'); if (nrt) nrt.style.display = dead ? '' : 'none';
     // "Better device voices" only helps while we're actually using the device
@@ -4723,6 +4735,53 @@ const TTS = {
       Settings.render();
     }
   },
+  _nativeBenchCached() {
+    try { return JSON.parse(localStorage.getItem('pl_native_bench') || 'null'); } catch (_) { return null; }
+  },
+  // Restored synchronously at parse time (same pattern as _modelType) so the
+  // very first render after a warm boot already reflects a prior session's
+  // verdict instead of flashing the fast-path text for a moment.
+  _nativeSlow: (() => {
+    try { const b = JSON.parse(localStorage.getItem('pl_native_bench') || 'null'); return !!(b && b.ratio > 1); }
+    catch (_) { return false; }
+  })(),
+  // One-time proactive speed check for the native (Piper) engine, triggered by
+  // VoicePacks.download(model) right after a voice pack finishes — passing
+  // the model explicitly matters: _voiceSid()/_voiceModel() fall back to the
+  // catalog's first ("us") entry whenever nothing is persisted yet, which is
+  // WRONG here if the user's first-ever download was a different language —
+  // synthesizing against an undownloaded "us" model would just throw and
+  // this would silently retry forever. Resolving the sid directly from the
+  // downloaded model's own catalog entry avoids that. Runs once, at the
+  // earliest point a model actually exists to time, while the user is very
+  // likely still looking at onboarding. Piper was specifically chosen to run
+  // under realtime on phones (see CLAUDE.md's "Voice engine" note), so unlike
+  // _kokoroBench a slow verdict here never disables the natural voice
+  // outright — it only labels the onboarding note, the voice picker, and the
+  // Settings status row, since being close to (not wildly over) 1.0 still
+  // leaves prefetch some room to work with.
+  async _nativeBench(model) {
+    if (this._nativeBenchCached()) return;
+    const nat = this._nativeTts();
+    if (!nat) return;
+    try {
+      await this._modelReady();
+      const cat = this._nativeCatalog();
+      const entry = cat.find(v => (v[3] || 'us') === model) || cat[0];
+      const t0 = performance.now();
+      const r = await nat.synthesize({
+        text: 'The quick brown fox jumps over the lazy dog near the quiet river bank.',
+        sid: entry[2], speed: 1.0, model,
+      });
+      if (!r || !r.durationMs) return;
+      const genMs = performance.now() - t0;
+      const bench = { model, ratio: +(genMs / r.durationMs).toFixed(2), t: Date.now() };
+      try { localStorage.setItem('pl_native_bench', JSON.stringify(bench)); } catch (_) {}
+      this._nativeSlow = bench.ratio > 1;
+      Diag.push({ e: 'nbench', m: bench.model, r: bench.ratio });
+      VoicePacks._notify(); // re-render Settings + whichever picker is open
+    } catch (_) { /* informational only — never blocks onboarding or playback */ }
+  },
   _synthKokoro(text) {
     if (this._kokoroDead) return Promise.reject(new Error('kokoro-dead'));
     const w = this._kokoroWorkerEl();
@@ -4918,7 +4977,16 @@ const VoiceModal = {
         const m = model || 'us';
         return VoicePacks._status[m] && VoicePacks._status[m].downloaded;
       });
+      // Native only — see TTS._nativeBench. Every voice here shares the same
+      // underlying (already downloaded) model, so this is one device-level
+      // note above the list, not a per-voice speed label.
+      const slowNote = (TTS._nativeTts() && TTS._nativeSlow)
+        ? `<div class="voice-item" style="cursor:default">
+            <div><div class="voice-name" style="color:var(--text-dim)">May run slower than real time on this device</div></div>
+          </div>`
+        : '';
       document.getElementById('voice-list').innerHTML =
+        slowNote +
         (available.length ? available.map(([id, label]) => `
           <div class="voice-item ${cur === id ? 'active' : ''}" onclick="VoiceModal.selectNative(this.dataset.vname)" data-vname="${esc(id)}">
             <div>
