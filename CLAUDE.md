@@ -2537,9 +2537,10 @@ the working plan, not an exploration.
      Currency (USD) and the three time-window values are Cowork's suggested
      defaults, not owner/lawyer-confirmed yet — see `BUSINESS.md`'s roadmap
      item 4 for what's still open. **Still not lawyer-reviewed** — flag for
-     legal review before launch; jurisdiction still to set (likely Ontario,
-     Canada), though it isn't referenced by the new pricing clauses
-     specifically. `home.html`'s CTA note changed from "Free" to "Free 7-day
+     legal review before launch; jurisdiction is **Québec, Canada** (owner in
+     Longueuil) — Québec adds French-language (Bill 96), Consumer Protection Act,
+     and GST/QST obligations (French Terms/Privacy/marketing, Québec governing
+     law, GST+QST, REQ registration); see `BUSINESS.md` "Québec compliance". `home.html`'s CTA note changed from "Free" to "Free 7-day
      trial"; `sw.js` bumped to `phonoleaf-v14` and `www/` re-staged.
    - **Lifetime = launch capital, not a core offer:** keep it capped +
      time-boxed; implement as a one-time NON-CONSUMABLE IAP on the stores (not a

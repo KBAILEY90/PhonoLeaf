@@ -10,13 +10,46 @@ GTM, risks, 3/6/12-month plan) is the separate `PhonoLeaf_Business_Plan.docx`.
 > start from and are **not lawyer-reviewed**. Subscription auto-renewal disclosure,
 > free-trial-to-paid conversion, and refund rights are regulated differently by
 > jurisdiction (US state ARL / FTC "click-to-cancel"; EU/UK 14-day withdrawal;
-> Canada provincial consumer-protection & future-performance rules). Owner is
-> likely in **Ontario, Canada** — set `[JURISDICTION]` and confirm local rules
-> with a lawyer/accountant before launch. Fill every `[BRACKET]`.
+> Canada provincial consumer-protection & future-performance rules). **Owner is
+> in Longueuil, Québec, Canada**, so `[JURISDICTION]` = Québec, Canada — and
+> Québec adds obligations most of Canada lacks: French-language law (Bill 96), a
+> strict Consumer Protection Act, and GST+QST. See "Québec compliance" below and
+> confirm with a Québec lawyer/accountant before launch.
 
-Placeholders: `[JURISDICTION]`, `[CURRENCY]=USD`, `[REFUND_WINDOW]=14 days`,
-`[PRICE_CHANGE_NOTICE]=30 days`, `[LIFETIME_REFUND_WINDOW]=12 months`.
-Support: `support@phonoleaf.com`.
+Placeholders (CONFIRMED by owner 2026-08): `[JURISDICTION]=Québec, Canada`,
+`[CURRENCY]=USD`, `[REFUND_WINDOW]=14 days`, `[PRICE_CHANGE_NOTICE]=30 days`,
+`[LIFETIME_REFUND_WINDOW]=12 months`. Support: `support@phonoleaf.com`.
+
+### Québec compliance (owner is in Québec — don't skip)
+
+Running a consumer app from Québec triggers obligations most of Canada lacks.
+Confirm all of this with a Québec lawyer/accountant; recorded here so it isn't missed:
+
+- **French-language law (Bill 96 / Charter of the French Language).** A business
+  with an establishment in Québec serving Québec consumers must provide a French
+  version of consumer-facing content — **including the Terms and Privacy policy
+  (contracts of adhesion), marketing, and store listings** — on terms at least as
+  favourable as English, and adhesion contracts should be **French-first** (other
+  languages only at the customer's request). Practical impact: `terms.html`,
+  `privacy.html`, `home.html`, and the Play/App Store listings need French
+  versions, and the app should be usable in French for Québec users. (The app
+  already ships a French TTS voice pack, but that's the reading voice, not the
+  UI/legal text.) This is real work to schedule before public launch, not a
+  placeholder.
+- **Governing law = Québec, and it can't be contracted away for Québec consumers.**
+  Under the Consumer Protection Act a Québec consumer generally can't be forced to
+  another jurisdiction's law/courts, and broad liability caps or class-action /
+  arbitration waivers may be unenforceable against them. The ToS governing-law
+  clause should name **Québec**; have the lawyer pressure-test the liability +
+  discontinuation clauses against the CPA.
+- **Tax: GST + QST.** Digital subscriptions to Québec consumers attract GST (5%,
+  CRA) and QST (9.975%, Revenu Québec). Register once over the small-supplier
+  threshold (or voluntarily); Stripe Tax / the app stores can compute, but
+  registration and remittance are on you.
+- **Business registration = Registraire des entreprises du Québec (REQ).**
+  Operating under the name "PhonoLeaf" (not your own legal name) requires
+  registering with the REQ, whether sole proprietor or incorporated (Québec or
+  federal).
 
 ---
 
@@ -51,15 +84,17 @@ Ordered by what gates revenue or has a deadline. "Code" = implementable in the r
 1. **Google OAuth verification — CASA AL1 assessment.** Hard deadline **Nov 3,
    2026**; nothing goes public without it. Engage the lab (Eydle), get "in
    process." *(Owner; see `VERIFICATION.md`.)*
-2. **Register the business + money basics.** Structure (sole prop vs incorporate)
-   + jurisdiction (likely Ontario, Canada); register the name; business bank
-   account; digital-goods sales tax (GST/HST; EU VAT & US state tax largely
-   handled by Stripe Tax / the app stores). Needed **before** taking payments.
-   *(Owner + accountant.)*
+2. **Register the business + money basics.** Structure (sole prop vs incorporate);
+   register the "PhonoLeaf" name with the **Registraire des entreprises du Québec
+   (REQ)**; business bank account; register for **GST (CRA) + QST (Revenu
+   Québec)** for digital sales (Stripe Tax / the app stores compute; you register
+   & remit). Needed **before** taking payments. *(Owner + accountant; see "Québec
+   compliance".)*
 3. **Payments + paywall backend.** Cloudflare Worker + Stripe (web), Play Billing
    (Android); 7-day trial; entitlement tied to Google account; lifetime as
    non-consumable. Fold in the deferred bug-report photo-upload endpoint here
-   (roadmap item 5). *(Code.)*
+   (roadmap item 5). **Full architecture + endpoints + build order in
+   `PAYMENTS_SPEC.md`.** *(Code.)*
 4. **Finalize legal docs.** ~~Apply the Terms clauses in §3~~ — **DONE
    2026-08-05**: `terms.html`'s old one-paragraph "Pricing" section replaced
    with the full "Pricing & Payments" section from §3 (plans, free trial,
@@ -73,12 +108,16 @@ Ordered by what gates revenue or has a deadline. "Code" = implementable in the r
    Payments block, but is still open in this ToS's existing generic
    liability section from before. `home.html`'s CTA note changed from
    "Free" to "Free 7-day trial"; `sw.js` CACHE bumped to `phonoleaf-v14` and
-   `www/` re-staged. **Still gating launch**: currency/window confirmation,
-   jurisdiction, and the actual lawyer review.
+   `www/` re-staged. **JURISDICTION confirmed 2026-08: Québec, Canada** (Longueuil); currency USD
+   and the 14/30/12 windows all confirmed. **Still gating launch**: French
+   versions of Terms/Privacy/marketing (Québec Bill 96), a Québec-CPA review of
+   the liability + discontinuation clauses, and the overall lawyer review — see
+   "Québec compliance".
 
 ### Launch
 5. **Play Store release** — listing, ASO, screenshots, internal→closed→production.
-   *(Owner + Code for assets/copy.)*
+   **Listing copy (EN + FR-CA) in `STORE_LISTINGS.md`.** *(Owner + Code for
+   assets/copy.)*
 6. **Landing + marketing foundation** — phonoleaf.com marketing/SEO pages,
    analytics, Product Hunt / Show HN, seed communities (r/kobo, r/ebooks,
    r/Calibre, r/audiobooks, r/dyslexia, MobileRead). Can start now (organic).
@@ -99,6 +138,13 @@ Match `terms.html`'s existing heading/paragraph markup + light/dark styling. Lea
 ("free 7-day trial, then a subscription"; keep "no separate account — sign in with
 Google"); add a payments-processor line to `privacy.html` once Stripe is live; bump
 `sw.js` CACHE + re-run `scripts/stage-www.js` when `terms.html`/`home.html` change.
+
+**Québec add-ons (see `LEGAL_FR.md`):** add the **Governing-law (Québec)** clause
+to `terms.html` (after "Limitation of liability"), and — required by Bill 96 —
+create French versions of the Terms, Privacy, and landing pages. The full French
+translations plus the governing-law clause (English & French) are in
+`LEGAL_FR.md`, with instructions for wiring in `terms-fr.html` / `privacy-fr.html`
+/ `home-fr.html` and a language toggle.
 
 ```html
 <h2>Pricing &amp; Payments</h2>
