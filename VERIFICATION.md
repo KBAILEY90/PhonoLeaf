@@ -569,9 +569,49 @@ Via their contact form (`eydle.com/ada`), ~872 characters, under their
 >
 > What do you need from us to begin?
 
-**Nothing paid or scheduled yet.** Update this section with their response —
-pricing confirmation, the platform-bundling answer, and turnaround time —
-once it arrives, and record the final go/no-go on TAC vs Eydle.
+### Eydle's response (2026-08-06)
+
+From Birendra Jha (co-founder, Eydle):
+
+> Adding iOS later does not require a new assessment.
+>
+> Pricing (Time to Initial LOV, Number of Retesting)
+> - USD 770 (3 weeks, Unlimited)
+>
+> 10% off for startups (less than 1 million USD raised), nonprofits, indie
+> developers and multiple assessments.
+>
+> Relevant Notes:
+> - Authorized lab submits Letter of Validation (LOV) to Google/Platform/ADA.
+> - Lab will retest after the developer fixes issues. Retests must be done
+>   within 3 months.
+> - In AL2, the lab collects most of the evidence. In AL1, the developer
+>   collects the evidence.
+> - Onboarding includes signing Letter of Engagement, completing Evidence
+>   Questionnaire and setting up Test Environment (details will be provided).
+
+**This answers the platform-bundling question that motivated reaching out
+before Nov 3: iOS does NOT need a separate assessment if added later.** The
+"don't wait for iOS" decision was correct in both directions — no deadline
+risk from starting now, and no double-payment risk from not bundling iOS in.
+
+**Key implications, not just the price:**
+- **$770**, not the $300 low end of their advertised range. **A 10% "indie
+  developer" discount was offered but not yet requested** — PhonoLeaf
+  qualifies; ask before signing anything (→ $693).
+- **3 weeks to initial LOV** — fits before Nov 3 if started reasonably soon,
+  not something to leave indefinitely.
+- **AL1 means the developer (not the lab) collects most of the evidence** —
+  this is NOT a hands-off pay-and-wait process. An "Evidence Questionnaire"
+  and a "Test Environment" setup are coming once engaged; budget real owner
+  time for this, not just money.
+- **Unlimited retesting, but only within 3 months** of the initial
+  assessment — a real clock on resolving any findings, not indefinite room.
+
+**Status: nothing paid or signed yet.** Decision pending: proceed with Eydle
+(ask about the discount first), or get a comparable quote from TAC first for
+comparison — TAC's pricing was researched ($675/$855/$3600 tiers) but no
+outreach was sent to them.
 
 ### Play Store track — can run in parallel
 

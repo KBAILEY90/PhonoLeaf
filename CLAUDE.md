@@ -2231,7 +2231,15 @@ the working plan, not an exploration.
      at their $300 vs $800 tier; whether one assessment covers an app across
      platforms and what adding iOS later would cost; whether they support
      Google's extension-request process; and what's needed to start.
-     **Awaiting response** — no assessment has been paid for or started yet.
+     **Eydle replied 2026-08-06 — the key question is answered: adding iOS
+     later does NOT require a new assessment.** AL1 quoted at **$770** (a 10%
+     "indie developer" discount was offered but not yet claimed → $693 if
+     asked for before signing), 3 weeks to initial Letter of Validation,
+     unlimited retesting within 3 months. **Real implication beyond price**:
+     in AL1 the developer (not the lab) collects most of the evidence, so
+     this needs real owner time once engaged, not just payment. **Nothing
+     paid or signed yet** — decision pending on Eydle vs. getting a
+     comparable quote from TAC first.
    Full reply text and lab research are in `VERIFICATION.md`.
 
    Do not change publish status (Testing → Production) or make unnecessary
