@@ -704,6 +704,12 @@
     .ath { color: var(--text-dim); font-size: 0.72rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em; }
     .ath span:not(:first-child), .arow span:not(:first-child) { text-align: right; min-width: 3rem; }
     .aname { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    /* Empty/loading-state sentences reuse .arow's 4-column grid but aren't a
+       real data cell — .aname's nowrap+ellipsis (sized right for a short
+       author/book name) was silently truncating these full sentences
+       ("No author data yet — press play to start tracking.") to a few words
+       on any normal phone width. Span every column and allow wrapping. */
+    .aname-msg { grid-column: 1 / -1; white-space: normal; overflow: visible; text-overflow: clip; }
     .srow { display: flex; justify-content: space-between; gap: 1rem; padding: 0.6rem 0.2rem; border-bottom: 0.5px solid var(--line); font-size: 0.86rem; }
     .srow span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .srow-n { color: var(--text-dim); flex-shrink: 0; }
@@ -2207,7 +2213,7 @@ const StatsPage = {
         const t = tiers.find(x => pg >= x.lo && pg < x.hi) || tiers[tiers.length - 1];
         const a = agg[t.k]; a.n++; a.m += mins(b.id); if (read(b.id)) a.rd++;
       }
-      if (!known) return `<div class="arow"><span class="aname" style="color:var(--text-dim)">Page counts are loading in the background — check back in a moment.</span><span></span><span></span><span></span></div>`;
+      if (!known) return `<div class="arow"><span class="aname aname-msg" style="color:var(--text-dim)">Page counts are loading in the background — check back in a moment.</span><span></span><span></span><span></span></div>`;
       const rows = tiers.filter(t => agg[t.k].n > 0);
       if (!rows.length) return this._emptyBreak('length');
       return head('Length', 'Books', 'Min read', 'Finished') +
@@ -2230,7 +2236,7 @@ const StatsPage = {
       rows.map(([a, v]) => row(a, dash(v.m), dash(v.st), dash(v.rd))).join('');
   },
   _emptyBreak(label) {
-    return `<div class="arow"><span class="aname" style="color:var(--text-dim)">No ${label} data yet — press play to start tracking.</span><span></span><span></span><span></span></div>`;
+    return `<div class="arow"><span class="aname aname-msg" style="color:var(--text-dim)">No ${label} data yet — press play to start tracking.</span><span></span><span></span><span></span></div>`;
   },
   setGroup(v) {
     this._group = v;
@@ -2779,13 +2785,28 @@ const Library = {
   },
 
   _q: '',
-  filter(q) { this._q = (q || '').toLowerCase().trim(); this.render(); },
+  // Drive filenames commonly use "." or "_" where a real title has a space
+  // (e.g. "The_Anthropocene_Reviewed.epub"), so a literal substring search
+  // for "the anth" (typed with a space) missed it even though the book was
+  // right there (owner-reported 2026-08-08). Normalizing separators to
+  // spaces on both sides fixes that regardless of which separator style a
+  // given file happens to use.
+  _normalize(s) { return (s || '').toLowerCase().replace(/[._-]+/g, ' ').replace(/\s+/g, ' ').trim(); },
+  filter(q) { this._q = this._normalize(q); this.render(); },
 
   render() {
     const grid = document.getElementById('books-grid');
     const items = State.books
       .map((b, i) => ({ b, i }))
-      .filter(({ b }) => !this._q || b.name.toLowerCase().includes(this._q));
+      .filter(({ b }) => {
+        if (!this._q) return true;
+        // Also search the epub's own captured title/author (Meta) when known
+        // — the raw Drive filename doesn't always match the real title's
+        // word order (e.g. "Reviewed, The Anthropocene - John Green.epub").
+        const m = Meta.get(b.id);
+        const hay = this._normalize(`${b.name} ${m?.title || ''} ${m?.author || ''}`);
+        return hay.includes(this._q);
+      });
     if (!items.length) {
       grid.innerHTML = `<div class="empty"><p>No books match "${esc(this._q)}".</p></div>`;
       return;
@@ -3150,7 +3171,11 @@ const Reader = {
       pct = Math.round(State.epubBook.locations.percentageFromCfi(loc.start.cfi) * 100);
     } catch(_) {}
     document.getElementById('tts-prog').style.width = pct + '%';
-    document.getElementById('tts-chapter').textContent = pct ? ` · ${pct}%` : '';
+    // Just "{pct}% through the book" — no leading separator. This element has
+    // no partner text to its left (unlike #rs-chapter in the top bar, which
+    // legitimately joins "Chapter Name  ·  Page X / Y"), so a bare " · 45%"
+    // read as a stray dot with nothing before it (owner-reported 2026-08-08).
+    document.getElementById('tts-chapter').textContent = pct ? `${pct}% through the book` : '';
     Scrub.setPct(pct);
 
     // Persist (incl. chapter + timestamp so Home's "Continue" can use it).
@@ -5263,6 +5288,18 @@ const MyData = {
       for (const k of Object.keys(localStorage)) if (this._isOurs(k)) localStorage.removeItem(k);
     } catch (_) {}
     try { indexedDB.deleteDatabase('phonoleaf'); } catch (_) {}
+    // Also remove any downloaded native voice packs — otherwise "delete all my
+    // data" quietly leaves 70-300+ MB of voice models on disk, AND breaks the
+    // onboarding prompt on next sign-in: VoicePacks.maybeOnboard() correctly
+    // skips prompting when a pack is already downloaded (by design, so an
+    // install that legitimately still has a voice isn't nagged), so a pack
+    // that survived the "wipe everything" silently prevented onboarding from
+    // ever asking again (owner-reported 2026-08-08: re-onboarded after
+    // deleting data and was never prompted to download a voice).
+    const p = VoicePacks._plugin();
+    if (p) {
+      try { await Promise.all(VoicePacks.CATALOG.map(({ model }) => p.deletePack({ model }).catch(() => {}))); } catch (_) {}
+    }
     toast('All local data deleted');
     setTimeout(() => location.reload(), 900);
   },

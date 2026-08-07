@@ -2184,6 +2184,54 @@ system text-size/motion settings, and tap target size. Findings and fixes:
   device-verified — same caveat as any native-adjacent claim in this file,
   though nothing in this pass touches native code.
 
+## Bug fixes (2026-08-08, owner device testing)
+
+- **"Delete my data" didn't actually delete voice packs — and that silently
+  broke onboarding too.** `MyData.deleteAll()` only ever cleared `pl_*`
+  localStorage keys and the `phonoleaf` IndexedDB; it never touched the
+  native plugin's downloaded voice models (Android filesDir, entirely outside
+  that scope). So after wiping data and signing back in, a previously
+  downloaded pack (e.g. "us") was still on disk, and
+  `VoicePacks.maybeOnboard()` correctly (by its own, still-valid logic for
+  the upgrade case) saw a pack already downloaded and skipped the
+  onboarding prompt — which from the owner's side looked like "I went
+  through onboarding again and was never asked to download a voice."
+  Fixed: `deleteAll()` now also calls the native plugin's `deletePack` for
+  every `VoicePacks.CATALOG` entry (harmless no-op for ones that aren't
+  downloaded — confirmed in `PhonoLeafTtsPlugin.kt`'s `deletePack`, a
+  `deleteRecursively()` on a folder that doesn't exist just returns false).
+  `privacy.html`/`privacy-fr.html`'s "Erasure" bullet updated to say so —
+  it previously only mentioned local storage and cached covers.
+- **Stats' empty-state and "loading" sentences were being clipped to a few
+  words** ("No author data yet - press pl..."). Root cause: both reused
+  `.aname`, a class sized for a short author/book/genre name in a 4-column
+  data-row grid (`nowrap` + `ellipsis`), for a full sentence that has no
+  data to share the row with. Added `.aname-msg` (`grid-column: 1 / -1`,
+  `white-space: normal`) and applied it alongside `.aname` on both
+  `StatsPage._emptyBreak()` and the "Page counts are loading in the
+  background…" row. Verified in a browser harness at a 375px viewport: the
+  full sentence now renders unclipped and stays inside the viewport.
+- **The reader's bottom progress readout showed a bare "· 45%" with nothing
+  to its left.** `Reader._onRelocated` set `#tts-chapter`'s text to
+  `` ` · ${pct}%` `` — a leading separator with no partner text, unlike
+  `#rs-chapter` in the top bar which legitimately joins
+  "Chapter Name  ·  Page X / Y". Fixed to `` `${pct}% through the book` ``,
+  matching what this element was already documented elsewhere in this file
+  as showing.
+- **Library search missed real matches** (typing "The anth" didn't find
+  "The Anthropocene Reviewed"). `Library.filter` did a literal substring
+  match against the raw Drive filename, which commonly uses `.`/`_` where a
+  typed query uses a space (e.g. `The_Anthropocene_Reviewed.epub`), so a
+  query with a space never matched a filename without one. Added
+  `Library._normalize()` (lowercases, collapses `.`/`_`/`-` runs to a single
+  space) applied to both the query and the search haystack, and broadened
+  the haystack to also include the epub's captured `Meta` title/author when
+  known — covers both the separator mismatch and the case where a Drive
+  filename's word order doesn't match the real title (also makes author-name
+  search work as a side effect). Verified in an isolated harness across
+  underscore/dot-separated filenames, a Meta-title-only match, and a
+  no-match case.
+
 ## Productization roadmap (ACTIVE — production-bound as of 2026-07-03)
 
 The owner has decided this will ship as a product "very soon"; this section is
