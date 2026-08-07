@@ -845,14 +845,14 @@
         <div class="si-num">1</div>
         <div>
           <div class="si-step-t">Connect a Drive folder</div>
-          <div class="si-step-s">Pick the folder your epubs are in — that's the only one PhonoLeaf reads.</div>
+          <div class="si-step-s">Pick the folder your ebooks are in — that's the only one PhonoLeaf reads.</div>
         </div>
       </div>
       <div class="si-step">
         <div class="si-num">2</div>
         <div>
           <div class="si-step-t">Your library appears</div>
-          <div class="si-step-s">Every epub in that folder, with its real cover art. Add more later and they show up on their own.</div>
+          <div class="si-step-s">Every ebook in that folder, with its real cover art. Add more later and they show up on their own.</div>
         </div>
       </div>
       <div class="si-step">
@@ -2704,14 +2704,14 @@ const Library = {
       if (!fid && folder) fid = await Drive.findFolder(folder);
       if (!fid) {
         State.books = []; State.ready = true;
-        grid.innerHTML = `<div class="empty"><p>Choose the Google Drive folder<br>your epubs live in to get started.</p>${this._pickBtn()}</div>`;
+        grid.innerHTML = `<div class="empty"><p>Choose the Google Drive folder<br>your ebooks live in to get started.</p>${this._pickBtn()}</div>`;
         Home.render();
         return;
       }
       State.books = await Drive.listEpubs(fid);
       State.ready = true;
       if (!State.books.length) {
-        grid.innerHTML = `<div class="empty"><p>No epub files found in<br><strong>"${esc(folder)}"</strong>.</p>${this._pickBtn()}</div>`;
+        grid.innerHTML = `<div class="empty"><p>No ebooks found in<br><strong>"${esc(folder)}"</strong>.</p>${this._pickBtn()}</div>`;
         Home.render();
         return;
       }

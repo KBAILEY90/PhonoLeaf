@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#3E8E6B">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%233E8E6B'/%3E%3Cpath d='M50 24 C68 38 68 66 50 82 C32 66 32 38 50 24 Z' fill='%23F4F1E8'/%3E%3Cpath d='M50 82 L50 90' stroke='%23F4F1E8' stroke-width='3.2' stroke-linecap='round'/%3E%3Cpath d='M35 53 Q40 42 45 53 T55 53 T65 53' fill='none' stroke='%233E8E6B' stroke-width='3.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<title>Politique de confidentialité · PhonoLeaf</title>
+<link rel="alternate" hreflang="en" href="https://phonoleaf.com/privacy.html">
+<link rel="alternate" hreflang="fr-ca" href="https://phonoleaf.com/privacy-fr.html">
+<link rel="alternate" hreflang="x-default" href="https://phonoleaf.com/privacy.html">
+<script>
+(function () {
+  try {
+    var saved = localStorage.getItem('pl_lang');
+    if (saved === 'en') { location.replace('privacy.html'); }
+  } catch (e) {}
+})();
+</script>
+<style>
+  :root {
+    --bg:        #F4F1E8;
+    --surface:   #FBF9F2;
+    --card:      #FFFFFF;
+    --accent:    #3E8E6B;
+    --accent2:   #C98A3C;
+    --text:      #1E2A22;
+    --text-dim:  #6E7A70;
+    --line:      #E6E1D3;
+    --font-ui:   'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg:#0F1310; --surface:#161B14; --card:#1D241B;
+      --accent:#6FC598; --accent2:#E0A857;
+      --text:#E8ECE1; --text-dim:#97A290; --line:#2A3225;
+    }
+  }
+  @font-face {
+    font-family:'Manrope'; font-style:normal; font-weight:100 900;
+    font-display:swap; src:url('fonts/manrope.woff2') format('woff2');
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 400 1rem/1.65 var(--font-ui);
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 2.5rem 1.5rem 5rem; }
+  .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2rem; }
+  .brand { display: flex; align-items: center; gap: 0.6rem; text-decoration: none; color: var(--text); }
+  .brand svg { flex-shrink: 0; }
+  .brand span { font-weight: 800; font-size: 1.15rem; letter-spacing: -0.01em; }
+  .langswitch { font-size: 0.8rem; }
+  .langswitch a, .langswitch b { text-decoration: none; padding: 0.2rem 0.4rem; }
+  .langswitch a { color: var(--text-dim); }
+  .langswitch b { color: var(--text); }
+  h1 { font-size: 1.7rem; font-weight: 800; margin: 0 0 0.3rem; letter-spacing: -0.01em; }
+  .updated { color: var(--text-dim); font-size: 0.85rem; margin-bottom: 2.2rem; }
+  h2 { font-size: 1.15rem; font-weight: 700; margin: 2.2rem 0 0.7rem; color: var(--accent); }
+  p, li { color: var(--text); }
+  p { margin: 0 0 1rem; }
+  ul { margin: 0 0 1rem; padding-left: 1.3rem; }
+  li { margin-bottom: 0.45rem; }
+  strong { font-weight: 700; }
+  a { color: var(--accent); }
+  .card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+    padding: 1.2rem 1.4rem; margin: 1.4rem 0; font-size: 0.92rem;
+  }
+  .card b { display: block; margin-bottom: 0.3rem; }
+  table { width: 100%; border-collapse: collapse; margin: 1rem 0 1.5rem; font-size: 0.92rem; }
+  th, td { text-align: left; padding: 0.6rem 0.7rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--text-dim); font-weight: 600; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.02em; }
+  .foot { margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid var(--line); color: var(--text-dim); font-size: 0.82rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <a class="brand" href="home-fr.html">
+      <svg width="30" height="30" viewBox="0 0 100 100"><rect width="100" height="100" rx="22" fill="#3E8E6B"/><path d="M50 24 C68 38 68 66 50 82 C32 66 32 38 50 24 Z" fill="#F4F1E8"/><path d="M50 82 L50 90" stroke="#F4F1E8" stroke-width="3.2" stroke-linecap="round"/><path d="M35 53 Q40 42 45 53 T55 53 T65 53" fill="none" stroke="#3E8E6B" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span>PhonoLeaf</span>
+    </a>
+    <div class="langswitch">
+      <a href="privacy.html" onclick="try{localStorage.setItem('pl_lang','en')}catch(e){}">EN</a> ·
+      <b>FR</b>
+    </div>
+  </div>
+
+  <h1>Politique de confidentialité</h1>
+  <div class="updated">En vigueur le 5 août 2026</div>
+
+  <p>PhonoLeaf (« l'application », « nous ») transforme les livres epub stockés dans
+  votre Google Drive en lecture audio, sur votre propre appareil. La présente
+  politique explique quelles données l'application touche, pourquoi, et, tout aussi
+  important, ce qu'elle ne fait jamais.</p>
+
+  <div class="card">
+    <b>La version courte</b>
+    PhonoLeaf n'a aucun serveur. Vos données ne circulent nulle part ailleurs
+    qu'entre votre appareil et les services de Google. Nous (la personne qui
+    développe l'application) ne recevons, ne voyons ni ne stockons jamais vos livres,
+    le contenu de votre Drive ou votre activité d'écoute où que ce soit.
+  </div>
+
+  <div class="card">
+    <b>« PhonoLeaf stocke-t-elle mes données, oui ou non ? »</b>
+    Les deux sont vrais à la fois, et la distinction tient simplement au
+    <em>lieu</em> : <strong>l'application enregistre bel et bien des choses</strong>,
+    votre position de lecture, vos statistiques d'écoute, vos réglages et les
+    couvertures de livres mises en cache, et tout cela est écrit sur
+    <strong>votre propre appareil</strong>, comme un navigateur enregistre un
+    signet. <strong>Rien de tout cela ne nous est jamais transmis.</strong> PhonoLeaf
+    n'a ni serveur, ni base de données, ni compte utilisateur; il n'existe donc
+    aucun endroit, de notre côté, où une copie pourrait se trouver. C'est aussi
+    pourquoi vous pouvez tout exporter ou tout effacer vous-même depuis les
+    Paramètres, sans nous le demander et sans attendre, voir
+    <a href="#your-rights">Vos droits sur vos données</a> ci-dessous.
+  </div>
+
+  <h2>Ce à quoi l'application accède, et pourquoi</h2>
+  <table>
+    <tr><th>Donnée</th><th>Pourquoi</th><th>Où elle va</th></tr>
+    <tr><td>Accès à Google Drive (lecture seule)</td><td>Pour lister et télécharger
+        les fichiers epub du dossier que vous choisissez</td><td>Directement entre
+        votre appareil et Google, jamais par notre intermédiaire</td></tr>
+    <tr><td>Votre nom d'affichage Google</td><td>Pour le message « Bonjour, {nom} »
+        sur l'écran d'accueil</td><td>Stocké uniquement sur votre appareil</td></tr>
+    <tr><td>Titres et auteurs des livres</td><td>Pour rechercher le genre et le
+        nombre de pages</td><td>Envoyés à Open Library (openlibrary.org), une base de
+        données de livres publique et tierce, aucune donnée personnelle ou de compte
+        n'y est incluse</td></tr>
+    <tr><td>Progression de lecture, statistiques, réglages, choix de voix</td>
+        <td>Pour que l'application se souvienne de votre position et de vos
+        préférences</td><td>Stockés uniquement sur votre appareil (stockage du
+        navigateur / de l'application), jamais transmis où que ce soit</td></tr>
+    <tr><td>Couvertures de livres</td><td>Mises en cache pour ne pas les
+        retélécharger chaque fois</td><td>Stockées uniquement sur votre
+        appareil</td></tr>
+  </table>
+
+  <h2>L'accès à Google Drive, précisément</h2>
+  <p>PhonoLeaf demande un accès en <strong>lecture seule</strong> à Google Drive
+  (la portée <code>drive.readonly</code>). Il s'agit d'une portée large, classée
+  « restreinte » par Google, plus large que ce dont l'application a strictement
+  besoin pour le seul dossier que vous connectez, choisie parce que c'est la seule
+  façon de permettre « connectez un dossier une fois, les nouveaux livres
+  apparaissent automatiquement » sans que vous ayez à resélectionner des fichiers
+  chaque fois. En raison de cette portée, PhonoLeaf doit se soumettre au processus de
+  vérification des applications de Google; voir l'explication de Google sur ce que
+  couvre cet examen à <a href="https://support.google.com/cloud/answer/13463737"
+  target="_blank" rel="noopener">support.google.com/cloud/answer/13463737</a>.</p>
+  <p>L'application ne modifie, ne supprime ni ne téléverse jamais quoi que ce soit
+  dans votre Drive. Elle ne fait que lister et télécharger les fichiers epub du seul
+  dossier que vous choisissez.</p>
+
+  <div class="card">
+    <b>Engagement d'utilisation limitée (« Limited Use »)</b>
+    L'utilisation et le transfert par PhonoLeaf des renseignements reçus des API de
+    Google vers toute autre application respecteront la
+    <a href="https://developers.google.com/terms/api-services-user-data-policy"
+    target="_blank" rel="noopener">Politique relative aux données utilisateur des
+    services d'API Google</a>, y compris les exigences d'<strong>utilisation
+    limitée</strong>. Plus précisément : les données utilisateur Google ne servent
+    qu'à fournir les fonctions de lecture décrites sur cette page; elles ne sont
+    jamais transférées à quiconque, sauf dans la mesure où ces fonctions l'exigent
+    sur votre propre appareil; elles ne sont jamais vendues, ni utilisées à des fins
+    de publicité, de ciblage publicitaire ou d'évaluation de crédit; aucun humain ne
+    les lit; et elles ne servent jamais à entraîner un modèle d'intelligence
+    artificielle ou d'apprentissage automatique.
+  </div>
+
+  <h2>Comment nous protégeons vos données</h2>
+  <ul>
+    <li><strong>Chiffrées en transit.</strong> Chaque connexion établie par
+        l'application, vers Google, vers Open Library pour les métadonnées, pour
+        télécharger un modèle de voix naturelle, passe par HTTPS/TLS. Rien de ce que
+        l'application envoie ou reçoit ne circule en clair.</li>
+    <li><strong>Votre connexion Google est chiffrée au repos dans l'application
+        Android.</strong> L'application native stocke l'autorisation de longue durée
+        qui vous garde connecté dans le stockage chiffré adossé au Keystore d'Android
+        (<code>EncryptedSharedPreferences</code>), et non dans un stockage en clair.
+        La version Web utilise plutôt un jeton d'accès de courte durée (~1 heure); il
+        ne réside que dans votre propre profil de navigateur et n'est jamais transmis
+        ailleurs que directement à Google.</li>
+    <li><strong>Aucun serveur signifie aucune base de données centrale à
+        compromettre.</strong> PhonoLeaf n'a aucune infrastructure dorsale; il
+        n'existe donc aucun stockage côté serveur de vos livres, de votre progression
+        ou de vos statistiques qui pourrait être exposé lors d'une atteinte à un
+        serveur, tout n'existe que sur votre propre appareil.</li>
+    <li><strong>Une application verrouillée.</strong> L'application applique une
+        politique de sécurité du contenu (CSP) qui limite les sites depuis lesquels
+        elle peut charger du code ou vers lesquels elle peut envoyer des données à une
+        courte liste explicite (Google, Open Library et les CDN précis dont le modèle
+        de voix naturelle a besoin). Le code central de lecture d'epub est intégré
+        directement à l'application plutôt que chargé depuis un CDN tiers à
+        l'exécution.</li>
+    <li><strong>Vous contrôlez la suppression, à votre rythme.</strong> Voir
+        <a href="#your-rights">Vos droits sur vos données</a> ci-dessous pour savoir
+        comment tout effacer de votre appareil, y compris révoquer l'accès de
+        l'application à votre compte Google, à tout moment.</li>
+  </ul>
+
+  <h2>Ce que nous ne faisons jamais</h2>
+  <ul>
+    <li>Nous n'exploitons aucun serveur, et aucune version de l'application n'envoie
+        vos livres, le contenu de votre Drive, votre activité de lecture ou vos
+        données personnelles à nous ou à un serveur que nous contrôlons.</li>
+    <li>Nous ne vendons, ne louons ni ne partageons vos données avec des annonceurs
+        ou des courtiers en données. Il n'y a aucune publicité dans l'application.</li>
+    <li>Nous n'utilisons pas vos données pour entraîner un modèle d'IA ou
+        d'apprentissage automatique.</li>
+    <li>La voix de synthèse fonctionne entièrement sur votre appareil (ou, à défaut,
+        via le moteur vocal intégré de votre appareil). Le texte des livres n'est
+        jamais envoyé à un service vocal infonuagique.</li>
+  </ul>
+
+  <h2>Les tiers avec lesquels l'application communique</h2>
+  <p>Comme PhonoLeaf n'a pas d'infrastructure dorsale, votre appareil communique
+  directement avec une courte liste fixe de services externes :</p>
+  <ul>
+    <li><strong>Google</strong> (accounts.google.com, googleapis.com), connexion et
+        accès à Drive. Régi par la
+        <a href="https://policies.google.com/privacy" target="_blank"
+        rel="noopener">Politique de confidentialité de Google</a>.</li>
+    <li><strong>Open Library</strong> (openlibrary.org), une API publique et
+        gratuite de métadonnées de livres exploitée par l'Internet Archive, utilisée
+        uniquement pour rechercher le genre et le nombre de pages à partir d'un titre
+        et d'un auteur.</li>
+    <li><strong>jsDelivr / Hugging Face</strong> (cdn.jsdelivr.net, huggingface.co),
+        uniquement si votre appareil se rabat sur le modèle de voix neuronale dans le
+        navigateur, ce qui télécharge les fichiers (non personnels) du modèle de
+        voix.</li>
+  </ul>
+
+  <h2>Données stockées sur votre appareil</h2>
+  <p>Tout le reste, votre progression de lecture, vos statistiques d'écoute, votre
+  choix de thème, votre préférence de voix et le dossier que vous avez connecté, est
+  stocké localement dans le stockage de votre navigateur ou de l'application. Cela ne
+  quitte jamais votre appareil. Désinstaller l'application, effacer les données du
+  site ou utiliser « Réinitialiser les données d'écoute » dans les Paramètres le
+  supprime.</p>
+
+  <h2>Déconnexion</h2>
+  <p>La déconnexion révoque l'accès de l'application à votre compte Google. Dans
+  l'application native, cela révoque aussi l'autorisation Google sous-jacente, et pas
+  seulement la session locale.</p>
+
+  <h2 id="your-rights">Vos droits sur vos données</h2>
+  <p>Comme PhonoLeaf n'a pas d'infrastructure dorsale, aucun compte à vous ne se
+  trouve sur un serveur que nous pourrions remettre ou effacer, tout est sur votre
+  propre appareil, et vous pouvez agir directement, sans nous le demander et sans
+  attendre :</p>
+  <ul>
+    <li><strong>Accès / portabilité.</strong> <em>Paramètres → Exporter mes
+        données</em> télécharge tout ce que l'application a enregistré <em>sur cet
+        appareil</em> sous forme de fichier JSON lisible : progression de lecture,
+        statistiques d'écoute, métadonnées de livres et réglages. Les jetons de
+        connexion sont volontairement exclus du fichier, car leur copie donnerait à
+        quiconque les détient l'accès à votre Drive.</li>
+    <li><strong>Effacement.</strong> <em>Paramètres → Supprimer mes données</em>
+        efface tout de cet appareil, le stockage local et les images de couverture en
+        cache, et déconnecte votre compte Google en révoquant l'accès de PhonoLeaf
+        chez Google. Vos livres numériques dans Google Drive ne sont pas touchés.</li>
+    <li><strong>Effacement partiel.</strong> <em>Statistiques → Réinitialiser les
+        données d'écoute</em> efface uniquement votre historique d'écoute et votre
+        progression, sans toucher aux réglages.</li>
+  </ul>
+  <p>Si vous avez une question à laquelle l'application elle-même ne peut répondre,
+  communiquez avec nous à l'adresse ci-dessous.</p>
+
+  <h2>Vie privée des enfants</h2>
+  <p>PhonoLeaf ne s'adresse pas aux enfants de moins de 13 ans, et nous ne recueillons
+  pas sciemment de données auprès d'enfants. Comme PhonoLeaf n'a pas d'infrastructure
+  dorsale, elle ne recueille de données auprès de personne, quel que soit son âge,
+  sur aucun serveur que nous exploitons.</p>
+
+  <h2>Modifications de la présente politique</h2>
+  <p>Si la présente politique change, la version mise à jour sera publiée à la même
+  adresse avec une nouvelle date d'entrée en vigueur.</p>
+
+  <h2>Contact</h2>
+  <p>Questions au sujet de la présente politique :
+  <a href="mailto:support@phonoleaf.com">support@phonoleaf.com</a></p>
+
+  <div class="foot">
+    <a href="terms-fr.html">Conditions d'utilisation</a> · <a href="home-fr.html">Accueil PhonoLeaf</a>
+  </div>
+
+</div>
+</body>
+</html>

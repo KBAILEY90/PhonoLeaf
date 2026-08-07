@@ -1,7 +1,7 @@
 {
-  "name": "PhonoLeaf",
+  "name": "PhonoLeaf: Ebook to Audiobook",
   "short_name": "PhonoLeaf",
-  "description": "Reads your Google Drive ebook library aloud",
+  "description": "Turn any ebook into an audiobook, read aloud from your Google Drive.",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#0F1310",

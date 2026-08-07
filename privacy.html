@@ -6,6 +6,20 @@
 <meta name="theme-color" content="#3E8E6B">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%233E8E6B'/%3E%3Cpath d='M50 24 C68 38 68 66 50 82 C32 66 32 38 50 24 Z' fill='%23F4F1E8'/%3E%3Cpath d='M50 82 L50 90' stroke='%23F4F1E8' stroke-width='3.2' stroke-linecap='round'/%3E%3Cpath d='M35 53 Q40 42 45 53 T55 53 T65 53' fill='none' stroke='%233E8E6B' stroke-width='3.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <title>Privacy Policy · PhonoLeaf</title>
+<link rel="alternate" hreflang="en" href="https://phonoleaf.com/privacy.html">
+<link rel="alternate" hreflang="fr-ca" href="https://phonoleaf.com/privacy-fr.html">
+<link rel="alternate" hreflang="x-default" href="https://phonoleaf.com/privacy.html">
+<script>
+(function () {
+  try {
+    var saved = localStorage.getItem('pl_lang');
+    var prefersFr = (navigator.languages || [navigator.language || 'en'])
+      .some(function (l) { return /^fr/i.test(l); });
+    var wantFr = saved ? saved === 'fr' : prefersFr;
+    if (wantFr) { location.replace('privacy-fr.html'); }
+  } catch (e) {}
+})();
+</script>
 <style>
   :root {
     --bg:        #F4F1E8;
@@ -36,9 +50,14 @@
     -webkit-font-smoothing: antialiased;
   }
   .wrap { max-width: 720px; margin: 0 auto; padding: 2.5rem 1.5rem 5rem; }
-  .brand { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 2rem; text-decoration: none; color: var(--text); }
+  .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2rem; }
+  .brand { display: flex; align-items: center; gap: 0.6rem; text-decoration: none; color: var(--text); }
   .brand svg { flex-shrink: 0; }
   .brand span { font-weight: 800; font-size: 1.15rem; letter-spacing: -0.01em; }
+  .langswitch { font-size: 0.8rem; }
+  .langswitch a, .langswitch b { text-decoration: none; padding: 0.2rem 0.4rem; }
+  .langswitch a { color: var(--text-dim); }
+  .langswitch b { color: var(--text); }
   h1 { font-size: 1.7rem; font-weight: 800; margin: 0 0 0.3rem; letter-spacing: -0.01em; }
   .updated { color: var(--text-dim); font-size: 0.85rem; margin-bottom: 2.2rem; }
   h2 { font-size: 1.15rem; font-weight: 700; margin: 2.2rem 0 0.7rem; color: var(--accent); }
@@ -62,10 +81,16 @@
 <body>
 <div class="wrap">
 
-  <a class="brand" href="home.html">
-    <svg width="30" height="30" viewBox="0 0 100 100"><rect width="100" height="100" rx="22" fill="#3E8E6B"/><path d="M50 24 C68 38 68 66 50 82 C32 66 32 38 50 24 Z" fill="#F4F1E8"/><path d="M50 82 L50 90" stroke="#F4F1E8" stroke-width="3.2" stroke-linecap="round"/><path d="M35 53 Q40 42 45 53 T55 53 T65 53" fill="none" stroke="#3E8E6B" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-    <span>PhonoLeaf</span>
-  </a>
+  <div class="topbar">
+    <a class="brand" href="home.html">
+      <svg width="30" height="30" viewBox="0 0 100 100"><rect width="100" height="100" rx="22" fill="#3E8E6B"/><path d="M50 24 C68 38 68 66 50 82 C32 66 32 38 50 24 Z" fill="#F4F1E8"/><path d="M50 82 L50 90" stroke="#F4F1E8" stroke-width="3.2" stroke-linecap="round"/><path d="M35 53 Q40 42 45 53 T55 53 T65 53" fill="none" stroke="#3E8E6B" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span>PhonoLeaf</span>
+    </a>
+    <div class="langswitch">
+      <b>EN</b> ·
+      <a href="privacy-fr.html" onclick="try{localStorage.setItem('pl_lang','fr')}catch(e){}">FR</a>
+    </div>
+  </div>
 
   <h1>Privacy Policy</h1>
   <div class="updated">Effective August 5, 2026</div>

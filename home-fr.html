@@ -1,41 +1,20 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#3E8E6B">
-<meta name="description" content="PhonoLeaf turns the ebooks in your Google Drive into audiobooks, with a natural on device voice, background playback and lock screen controls.">
+<meta name="description" content="PhonoLeaf transforme les livres numériques de votre Google Drive en livres audio, avec une voix naturelle sur votre appareil, la lecture en arrière-plan et des commandes sur l'écran de verrouillage.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%233E8E6B'/%3E%3Cpath d='M50 24 C68 38 68 66 50 82 C32 66 32 38 50 24 Z' fill='%23F4F1E8'/%3E%3Cpath d='M50 82 L50 90' stroke='%23F4F1E8' stroke-width='3.2' stroke-linecap='round'/%3E%3Cpath d='M35 53 Q40 42 45 53 T55 53 T65 53' fill='none' stroke='%233E8E6B' stroke-width='3.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
-<title>PhonoLeaf: Turn any ebook into an audiobook</title>
-<link rel="canonical" href="https://phonoleaf.com/home.html">
+<title>PhonoLeaf : transformez vos livres en livres audio</title>
 <link rel="alternate" hreflang="en" href="https://phonoleaf.com/home.html">
 <link rel="alternate" hreflang="fr-ca" href="https://phonoleaf.com/home-fr.html">
 <link rel="alternate" hreflang="x-default" href="https://phonoleaf.com/home.html">
-<meta property="og:type" content="website">
-<meta property="og:title" content="Turn any ebook into an audiobook — PhonoLeaf">
-<meta property="og:description" content="Listen to the ebooks in your Google Drive, read in a natural on device voice. Private, offline, background playback.">
-<meta property="og:url" content="https://phonoleaf.com/home.html">
-<meta name="twitter:card" content="summary_large_image">
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "SoftwareApplication",
-  "name": "PhonoLeaf",
-  "applicationCategory": "BookApplication",
-  "operatingSystem": "Android, Web",
-  "description": "PhonoLeaf turns the ebooks in your Google Drive into audiobooks, read aloud in a natural on device voice. Private, offline, background playback.",
-  "url": "https://phonoleaf.com/",
-  "offers": { "@type": "Offer", "price": "5.99", "priceCurrency": "USD" }
-}
-</script>
 <script>
 (function () {
   try {
     var saved = localStorage.getItem('pl_lang');
-    var prefersFr = (navigator.languages || [navigator.language || 'en'])
-      .some(function (l) { return /^fr/i.test(l); });
-    var wantFr = saved ? saved === 'fr' : prefersFr;
-    if (wantFr) { location.replace('home-fr.html'); }
+    if (saved === 'en') { location.replace('home.html'); }
   } catch (e) {}
 })();
 </script>
@@ -132,13 +111,13 @@
 <div class="wrap">
 
   <div class="topbar">
-    <a class="brand" href="home.html">
+    <a class="brand" href="home-fr.html">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="28" height="28" aria-hidden="true"><rect width="100" height="100" rx="22" fill="#3E8E6B"/><path d="M50 24 C68 38 68 66 50 82 C32 66 32 38 50 24 Z" fill="#F4F1E8"/><path d="M50 82 L50 90" stroke="#F4F1E8" stroke-width="3.2" stroke-linecap="round"/><path d="M35 53 Q40 42 45 53 T55 53 T65 53" fill="none" stroke="#3E8E6B" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
       <span>PhonoLeaf</span>
     </a>
     <div class="langswitch">
-      <b>EN</b> ·
-      <a href="home-fr.html" onclick="try{localStorage.setItem('pl_lang','fr')}catch(e){}">FR</a>
+      <a href="home.html" onclick="try{localStorage.setItem('pl_lang','en')}catch(e){}">EN</a> ·
+      <b>FR</b>
     </div>
   </div>
 
@@ -146,96 +125,113 @@
     <div class="mark">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="76" height="76" aria-hidden="true"><rect width="100" height="100" rx="22" fill="#3E8E6B"/><path d="M50 24 C68 38 68 66 50 82 C32 66 32 38 50 24 Z" fill="#F4F1E8"/><path d="M50 82 L50 90" stroke="#F4F1E8" stroke-width="3.2" stroke-linecap="round"/><path d="M35 53 Q40 42 45 53 T55 53 T65 53" fill="none" stroke="#3E8E6B" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
     </div>
-    <h1>Turn any ebook into an audiobook</h1>
-    <div class="tagline">A voice for every page</div>
+    <h1>Transformez vos livres en livres audio</h1>
+    <div class="tagline">Une voix pour chaque page</div>
     <p class="lede">
-      PhonoLeaf uses the ebooks already sitting in your Google Drive to build
-      an audiobook library. Connect a folder once, and every ebook in it becomes
-      something you can listen to, on a walk, doing the dishes, or on the commute.
+      PhonoLeaf utilise les livres numériques qui dorment déjà dans votre Google
+      Drive pour bâtir une bibliothèque audio. Connectez un dossier une seule fois,
+      et chaque livre qu'il contient devient quelque chose que vous pouvez écouter,
+      en marchant, en faisant la vaisselle ou dans les transports.
     </p>
-    <a class="cta" href="index.html">Open PhonoLeaf</a>
-    <span class="cta-note">Free 7-day trial · Sign in with Google · Nothing to install</span>
+    <a class="cta" href="index.html">Ouvrir PhonoLeaf</a>
+    <span class="cta-note">Essai gratuit de 7 jours · Connexion avec Google · Rien à installer</span>
   </div>
 
-  <h2>How it works</h2>
+  <h2>Comment ça fonctionne</h2>
   <ol class="steps">
     <li>
-      <b>Sign in with Google</b>
-      <span>Used only to reach the ebook files in your own Drive. PhonoLeaf has no separate account to create.</span>
+      <b>Connectez-vous avec Google</b>
+      <span>Utilisé uniquement pour accéder aux fichiers de livres de votre propre
+      Drive. PhonoLeaf n'a aucun compte distinct à créer.</span>
     </li>
     <li>
-      <b>Choose the Drive folder your ebooks live in</b>
-      <span>Browse your Drive inside the app and pick a folder. Add more ebooks to it later and they simply appear — no re-picking.</span>
+      <b>Choisissez le dossier Drive où se trouvent vos livres</b>
+      <span>Parcourez votre Drive dans l'application et choisissez un dossier.
+      Ajoutez-y d'autres epubs plus tard et ils apparaissent tout simplement, sans
+      resélection.</span>
     </li>
     <li>
-      <b>Press play</b>
-      <span>Pick a book and listen. PhonoLeaf remembers exactly where you stopped, in every book.</span>
+      <b>Appuyez sur lecture</b>
+      <span>Choisissez un livre et écoutez. PhonoLeaf se souvient exactement de
+      l'endroit où vous vous êtes arrêté, dans chaque livre.</span>
     </li>
   </ol>
 
-  <h2>What it does</h2>
+  <h2>Ce que fait l'application</h2>
   <div class="grid">
     <div class="feat">
-      <b>Natural speech</b>
-      <span>A neural voice that runs entirely on your device, with a choice of accents and voices. Falls back to your system voice where that isn't available.</span>
+      <b>Voix naturelle</b>
+      <span>Une voix neuronale qui fonctionne entièrement sur votre appareil, avec un
+      choix d'accents et de voix. Se rabat sur la voix de votre système lorsque ce
+      n'est pas disponible.</span>
     </div>
     <div class="feat">
-      <b>Keeps reading with the screen off</b>
-      <span>Playback continues when your phone is locked, with play/pause, page and chapter controls on the lock screen.</span>
+      <b>Continue la lecture, écran éteint</b>
+      <span>La lecture se poursuit lorsque votre téléphone est verrouillé, avec les
+      commandes lecture/pause, page et chapitre sur l'écran de verrouillage.</span>
     </div>
     <div class="feat">
-      <b>Picks up where you left off</b>
-      <span>Your position is saved per book, down to the paragraph — across pauses, chapters and restarts.</span>
+      <b>Reprend là où vous vous êtes arrêté</b>
+      <span>Votre position est enregistrée pour chaque livre, jusqu'au paragraphe,
+      malgré les pauses, les chapitres et les redémarrages.</span>
     </div>
     <div class="feat">
-      <b>Your library, as a library</b>
-      <span>Real cover art pulled from each ebook, search, chapter jumping and adjustable reading speed from 0.5× to 2×.</span>
+      <b>Votre bibliothèque, comme une bibliothèque</b>
+      <span>Les vraies couvertures tirées de chaque epub, la recherche, le saut de
+      chapitre et une vitesse de lecture réglable de 0,5× à 2×.</span>
     </div>
     <div class="feat">
-      <b>Listening stats</b>
-      <span>Hours listened, a day streak, and a breakdown by author, book, genre or book length.</span>
+      <b>Statistiques d'écoute</b>
+      <span>Heures écoutées, une série de jours consécutifs, et une répartition par
+      auteur, livre, genre ou longueur de livre.</span>
     </div>
     <div class="feat">
-      <b>Light and dark</b>
-      <span>A warm paper theme by day, a dim forest one by night, or follow your system setting.</span>
+      <b>Clair et sombre</b>
+      <span>Un thème papier chaud le jour, un thème forêt tamisé la nuit, ou suivez le
+      réglage de votre système.</span>
     </div>
   </div>
 
-  <h2>How PhonoLeaf uses your Google Drive data</h2>
+  <h2>Comment PhonoLeaf utilise vos données Google Drive</h2>
   <p>
-    PhonoLeaf asks for <strong>read-only</strong> access to Google Drive (the
-    <code>drive.readonly</code> scope). It uses that access for exactly one purpose:
-    to list the ebook files (EPUB) in the folder you choose and download them so
-    they can be rendered and read aloud.
+    PhonoLeaf demande un accès en <strong>lecture seule</strong> à Google Drive (la
+    portée <code>drive.readonly</code>). Elle utilise cet accès dans un seul but :
+    lister les fichiers epub du dossier que vous choisissez et les télécharger afin
+    de pouvoir les afficher et les lire à voix haute.
   </p>
   <div class="card">
-    <b>What PhonoLeaf never does</b>
+    <b>Ce que PhonoLeaf ne fait jamais</b>
     <ul>
-      <li>Never creates, edits, moves or deletes anything in your Drive — the access it holds is read-only.</li>
-      <li>Never sends your files or your Drive data to any server of ours. <strong>PhonoLeaf has no backend</strong>: your books travel from Google straight to your device.</li>
-      <li>Never uses your data for advertising, and never sells or transfers it.</li>
-      <li>Never reads anything outside the folder you connect, in normal use.</li>
+      <li>Ne crée, ne modifie, ne déplace ni ne supprime jamais quoi que ce soit dans
+          votre Drive, l'accès qu'elle détient est en lecture seule.</li>
+      <li>N'envoie jamais vos fichiers ou vos données Drive à un serveur qui nous
+          appartient. <strong>PhonoLeaf n'a aucune infrastructure dorsale</strong> :
+          vos livres vont de Google directement à votre appareil.</li>
+      <li>N'utilise jamais vos données à des fins publicitaires, et ne les vend ni ne
+          les transfère jamais.</li>
+      <li>Ne lit jamais rien en dehors du dossier que vous connectez, en usage
+          normal.</li>
     </ul>
   </div>
   <p>
-    Your reading position, listening stats and settings are stored locally on your
-    own device, not in an account. Signing out revokes PhonoLeaf's access to your
-    Google account. Full detail is in the
-    <a href="privacy.html">Privacy Policy</a>.
+    Votre position de lecture, vos statistiques d'écoute et vos réglages sont stockés
+    localement sur votre propre appareil, et non dans un compte. La déconnexion
+    révoque l'accès de PhonoLeaf à votre compte Google. Tous les détails se trouvent
+    dans la <a href="privacy-fr.html">Politique de confidentialité</a>.
   </p>
 
-  <h2>Where you can use it</h2>
+  <h2>Où vous pouvez l'utiliser</h2>
   <p>
-    PhonoLeaf runs in the browser on phones, tablets and desktops, and can be
-    installed to your home screen as an app. An Android build is currently in
-    private testing.
+    PhonoLeaf fonctionne dans le navigateur sur téléphones, tablettes et ordinateurs,
+    et peut être installée sur votre écran d'accueil comme une application. Une
+    version Android est actuellement en test privé.
   </p>
 
   <div class="foot">
-    <a href="privacy.html">Privacy Policy</a> ·
-    <a href="terms.html">Terms of Service</a> ·
-    <a href="index.html">Open the app</a><br><br>
-    Contact: <a href="mailto:support@phonoleaf.com">support@phonoleaf.com</a>
+    <a href="privacy-fr.html">Politique de confidentialité</a> ·
+    <a href="terms-fr.html">Conditions d'utilisation</a> ·
+    <a href="index.html">Ouvrir l'application</a><br><br>
+    Contact : <a href="mailto:support@phonoleaf.com">support@phonoleaf.com</a>
   </div>
 
 </div>
