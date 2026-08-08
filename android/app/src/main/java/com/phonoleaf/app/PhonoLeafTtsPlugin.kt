@@ -273,16 +273,7 @@
                 val lexicon = listOf("lexicon-us-en.txt", "lexicon-gb-en.txt", "lexicon-zh.txt")
                     .map { File(dest, it) }.filter { it.exists() }
                     .joinToString(",") { it.absolutePath }
-                val cores = Runtime.getRuntime().availableProcessors()
-                // big.LITTLE tuning (measured on the owner's 8-core phone):
-                //   cores-1 (7 threads) → ratio ~2.4x realtime (little cores drag)
-                //   2 threads           → ratio ~1.6x
-                // Modern 8-core phones have ~4 fast cores (prime+performance) + ~4
-                // efficiency cores. Use up to 4 threads to fill the fast cores
-                // WITHOUT spilling onto the slow ones — ~2x the compute of 2
-                // threads, aiming for ratio < 1 (gapless). Capped at 4 so bigger
-                // phones don't start using little cores.
-                val threads = maxOf(2, minOf(4, cores - 4))
+                val threads = inferenceThreads()
                 // Auto-detect the model FAMILY from the files present, so the same
                 // plugin runs either engine (Piper baseline now; Kokoro later as a
                 // premium voice on capable devices — just swap the model files):
@@ -325,6 +316,118 @@
             }
         }
     
+        // Thread count for ONNX inference, shared by ensureReady() and
+        // deviceBench() so the benchmark exercises exactly the parallelism the
+        // real engine will get.
+        // big.LITTLE tuning (measured on the owner's 8-core phone):
+        //   cores-1 (7 threads) → ratio ~2.4x realtime (little cores drag)
+        //   2 threads           → ratio ~1.6x
+        // Modern 8-core phones have ~4 fast cores (prime+performance) + ~4
+        // efficiency cores. Use up to 4 threads to fill the fast cores WITHOUT
+        // spilling onto the slow ones — ~2x the compute of 2 threads, aiming
+        // for ratio < 1 (gapless). Capped at 4 so bigger phones don't start
+        // using little cores.
+        private fun inferenceThreads(): Int {
+            val cores = Runtime.getRuntime().availableProcessors()
+            return maxOf(2, minOf(4, cores - 4))
+        }
+
+        // Kept only so the JIT can't eliminate the benchmark's inner loop as
+        // dead code. The value is meaningless; races on it are harmless.
+        @Volatile private var benchSink = 0f
+
+        /** deviceBench() -> { gflops, ms, threads, cores }
+         *
+         *  A pure-CPU matrix-multiply benchmark, used to decide BEFORE
+         *  downloading anything whether this device can likely sustain the
+         *  heavier Kokoro model in realtime (see VoicePacks.screenDevice in
+         *  index.html). Nothing is fetched and no model is needed — it's ~0.5s
+         *  of arithmetic, so onboarding can screen the device behind a brief
+         *  loading screen instead of downloading a model just to time it.
+         *
+         *  WHY SYNTHETIC RATHER THAN A LOOKUP TABLE OR AN OS API: Android's own
+         *  performance-class API is OEM-declared (frequently absent) and its
+         *  criteria are media-pipeline oriented, not CPU inference — the Pixel 7
+         *  rates highly there yet cannot run Kokoro in realtime, so it would
+         *  give the wrong answer on the one device we have real data for.
+         *  Public benchmark databases have no runtime API and would mean
+         *  maintaining a chipset table forever, missing exactly the new phones
+         *  most likely to qualify. Measuring the actual CPU is the only signal
+         *  that stays correct on hardware that doesn't exist yet.
+         *
+         *  CAVEAT: scalar JVM float math doesn't use the hand-tuned NEON kernels
+         *  onnxruntime does, so this correlates with real inference throughput
+         *  without matching it. It is deliberately only a SCREEN — anything it
+         *  green-lights is still verified by a real Kokoro synthesis before
+         *  being kept (TTS._benchKokoroGate), and the JS threshold errs toward
+         *  Piper because a wrong "yes" costs stuttering audio while a wrong
+         *  "no" only costs a missed upgrade.
+         */
+        @PluginMethod
+        fun deviceBench(call: PluginCall) {
+            genExecutor.execute {
+                try {
+                    val threads = inferenceThreads()
+                    val n = 160
+                    // Warm up: let the JIT compile the inner loop and let the
+                    // scheduler migrate these threads onto the big cores before
+                    // anything is timed.
+                    repeat(2) { matMulParallel(n, threads, 1) }
+                    // Best-of-3: any single run can land on a scheduling hiccup
+                    // or a thermal dip; the fastest is the most representative
+                    // of what the device can actually sustain.
+                    var bestMs = Long.MAX_VALUE
+                    val reps = 4
+                    repeat(3) {
+                        val t0 = System.nanoTime()
+                        matMulParallel(n, threads, reps)
+                        val ms = (System.nanoTime() - t0) / 1_000_000
+                        if (ms < bestMs) bestMs = ms
+                    }
+                    // Each worker does `reps` independent n x n multiplies;
+                    // one is 2*n^3 flops (a multiply and an add per term).
+                    val flops = 2.0 * n * n * n * reps * threads
+                    val gflops = flops / (maxOf(1L, bestMs) * 1e6)
+                    Log.i("PhonoLeafTts", "deviceBench threads=$threads ms=$bestMs gflops=${"%.2f".format(gflops)}")
+                    val ret = JSObject()
+                    ret.put("gflops", gflops)
+                    ret.put("ms", bestMs)
+                    ret.put("threads", threads)
+                    ret.put("cores", Runtime.getRuntime().availableProcessors())
+                    call.resolve(ret)
+                } catch (e: Throwable) {
+                    call.reject(e.message ?: "deviceBench failed", e as? Exception ?: RuntimeException(e))
+                }
+            }
+        }
+
+        // `threads` workers each run `repsPerThread` independent n x n float
+        // matrix multiplies in parallel, measuring aggregate throughput across
+        // the same cores inference would use. ikj loop order keeps the inner
+        // loop walking contiguous memory (the cache-friendly ordering).
+        private fun matMulParallel(n: Int, threads: Int, repsPerThread: Int) {
+            val workers = (0 until threads).map { w ->
+                Thread {
+                    val a = FloatArray(n * n) { ((it * 31 + w) % 17) * 0.06f }
+                    val b = FloatArray(n * n) { ((it * 17 + w) % 13) * 0.08f }
+                    val c = FloatArray(n * n)
+                    repeat(repsPerThread) {
+                        for (i in 0 until n) {
+                            val iN = i * n
+                            for (k in 0 until n) {
+                                val aik = a[iN + k]
+                                val kN = k * n
+                                for (j in 0 until n) c[iN + j] += aik * b[kN + j]
+                            }
+                        }
+                    }
+                    benchSink = c[(w * 7) % (n * n)]
+                }
+            }
+            workers.forEach { it.start() }
+            workers.forEach { it.join() }
+        }
+
         /** Warm the model (copy + load) ahead of first playback. Resolves with the
          *  detected model family so the web picker shows the right voice catalog
          *  before the first synth. */

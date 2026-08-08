@@ -2285,38 +2285,103 @@ writing code:
   variable expect.
 - **Owner correction mid-build: "the app should first determine the
   performance of your device BEFORE suggesting the models to use, NOT
-  default to Kokoro blindly."** The first draft of this design downloaded
-  Kokoro (~98 MB) FIRST on every English request and fell back to Piper only
-  if it measured slow — exactly the "blindly try the big one" pattern the
-  owner ruled out. Redesigned as a two-stage screen instead:
-  1. **`VoicePacks.downloadEnglish()`** installs Piper "us" first — the
-     mandatory, guaranteed-working baseline PhonoLeaf has always needed
-     regardless of Kokoro, so this costs nothing extra — and benchmarks it
-     for real (`TTS._nativeBench('us')`, **awaited** here rather than its
-     usual fire-and-forget, so the decision below sees a fresh result).
-  2. **`VoicePacks._maybeOfferKokoro()`** reads that measurement. Only if
-     Piper itself ran with real headroom (`ratio ≤ VoicePacks._KOKORO_SUGGEST_RATIO`,
-     0.6 — Kokoro is architecturally heavier, so "Piper barely keeps up" is
-     not evidence Kokoro would too) does it even mention Kokoro exists, via
-     a `ConfirmModal` prompt naming the real cost ("About 98 MB — replaces
-     the standard English voice"). No headroom ⇒ gate resolves to `'no'`
-     immediately, Piper stays, Kokoro is never downloaded or mentioned.
-  3. Only if the owner/user accepts does **`VoicePacks._tryKokoroUpgrade()`**
-     actually download Kokoro and run **its own real, separate benchmark**
-     (`TTS._benchKokoroGate()` — the Piper number above is a proxy from a
-     different, smaller model, not proof; Kokoro is what's being kept, so it
-     gets its own genuine measurement). Confirmed fast (`ratio ≤ 1`) ⇒
-     delete the now-redundant Piper "us" pack, gate → `'yes'`. Confirmed slow
-     ⇒ delete the Kokoro attempt, gate stays `'no'`, Piper untouched — the
-     device is no worse off than before it was asked.
-  - `pl_kokoro_gate` (`'pending'` | `'no'` | `'yes'`) is the persisted
-    verdict. **Settings → Retry** (`Settings.retryKokoroGate`, shown only
-    while gate is `'no'`) re-runs step 1–2 against the ALREADY-downloaded
-    Piper pack (no re-download needed to re-measure) — relevant on a new
-    device, after an OS update, or if the first check just didn't get a fair
-    shot; nothing to retry once already on Kokoro (`'yes'`) or before
-    anything's been checked at all (`'pending'` is the Language Packs flow's
-    job, not this button's).
+  default to Kokoro blindly."** The first draft downloaded Kokoro (~98 MB)
+  FIRST on every English request and fell back to Piper only if it measured
+  slow — exactly the "blindly try the big one" pattern that was ruled out.
+  The second draft screened by downloading and timing PIPER first, then
+  offering Kokoro. **Both are superseded — see "SCREEN FIRST" below**, which
+  removed the download-to-measure step entirely.
+- **SCREEN FIRST, DOWNLOAD ONCE (final design, same day).** Owner: *"verify
+  the speed of the device, and then, based on the result, display either a
+  list of Piper voice packs, or a list of Kokoro voice packs"* plus *"what I
+  want to avoid is for the user to have to test the Kokoro voices himself and
+  possibly spend time using voices that don't work — that would be a very bad
+  first impression."* The Piper-first draft technically never made the user
+  audition anything (the benchmark was automatic), but it still downloaded
+  ~82 MB of Piper purely as a speed proxy, interrupted with a ConfirmModal,
+  then downloaded ~98 MB of Kokoro and deleted the Piper — ~180 MB of
+  traffic to end up with 98 MB, on exactly the capable devices where wasting
+  a user's data is least excusable. Replaced with a **synthetic CPU
+  benchmark that needs no download at all**:
+  - **`PhonoLeafTtsPlugin.deviceBench()`** (new `@PluginMethod`) times a
+    parallel float matrix-multiply — ~0.5s of pure arithmetic, no model, no
+    network — using **`inferenceThreads()`**, extracted so the benchmark runs
+    at exactly the parallelism the real engine will get (the big.LITTLE
+    formula that was previously inline in `ensureReady`). Warms up first (JIT
+    + letting the scheduler migrate onto the big cores), then takes
+    best-of-3 to shrug off a scheduling hiccup or thermal dip. Returns
+    GFLOPS.
+  - **`VoicePacks.screenDevice()`** runs it and sets the gate. Anything that
+    goes wrong (no plugin, method missing, throws) resolves to `'no'` — the
+    always-safe Piper path is what any failure produces.
+  - **`VoicePacks.screenDeviceWithUI()`** wraps that in **`VoiceSetup`**, a
+    brief buttonless overlay ("Setting up your voice / Checking which voices
+    run best on your device…"), shown for a `MIN_MS` floor of 1.1s so a fast
+    benchmark reads as a deliberate setup step rather than a flicker. Fired
+    from `maybeOnboard()` right after the Drive folder is picked, **before the
+    catalog is ever rendered** — so the first list the user sees already
+    contains only voices their device can actually run.
+  - **One download, whichever engine won.** No ConfirmModal, no second
+    download, no discard. The chosen pack's size shows on its row like any
+    other language.
+- **The real measurement survives as a safety net, not a gate.**
+  **`VoicePacks._verifyKokoro()`** runs after ANY successful Kokoro download —
+  wired inside `download()` itself rather than at each call site, so the
+  catalog row, onboarding, and Settings → Retry are all covered by the same
+  check. The synthetic screen is scalar JVM math, not onnxruntime's NEON
+  kernels, so it can only correlate with real inference; the model actually
+  being kept therefore gets a genuine `TTS._benchKokoroGate()` synthesis
+  before we commit. Failing it is a normal handled outcome, not an error:
+  delete Kokoro, set gate `'no'`, **auto-download Piper** (the user would
+  otherwise be stranded mid-onboarding with no English voice at all) and say
+  so plainly — "That voice needs a faster device — installing the standard
+  one instead."
+  - **`_KOKORO_KEEP_RATIO` is 0.75, deliberately not 1.0.** "Technically
+    faster than realtime" is not good enough: this project already has
+    evidence that CPU contention bites in practice (voices audibly garbled
+    while a pack downloaded in the background, fixed 2026-08-05), and
+    prefetch needs slack to stay ahead across a whole chapter. A model that
+    only just keeps up in a quiet one-shot benchmark will stutter in real
+    reading — which is precisely the bad first impression this flow exists
+    to prevent.
+- **`_KOKORO_MIN_GFLOPS` (6.0) is PROVISIONAL and needs one real calibration
+  run.** Derivation: the Pixel 7 runs Kokoro at ~1.36x realtime, so a device
+  needs roughly 2x its throughput to land under the 0.75 margin; 6.0 GFLOPS
+  on this synthetic scale is an *estimate* of that bar, not a measurement.
+  **To calibrate: run the app on the Pixel 7, read the logged score** (Diag
+  `{e:'dbench'}`, and Logcat tag `PhonoLeafTts` line `deviceBench …
+  gflops=…`), then set this to ~1.8x that number. Until then the threshold
+  is a guess — but a deliberately conservative one, because the error costs
+  are asymmetric: a wrong `'yes'` means stuttering audio, a wrong `'no'`
+  only means a capable device gets the merely-good voice. **Err toward
+  Piper.**
+  - Why not an OS API or a lookup table (researched 2026-08-08, not
+    assumed): Android's own **performance class** API is OEM-declared and
+    frequently absent, and its criteria are media-pipeline oriented rather
+    than CPU-inference — **the Pixel 7 rates highly there and still can't
+    run Kokoro**, so it would give the wrong answer on the one device we have
+    real data for. Public benchmark databases (Geekbench et al.) have **no
+    runtime API**, so using them means shipping a chipset table to maintain
+    forever, which would be missing exactly the new phones most likely to
+    qualify. And **nobody has published "Kokoro real-time factor by device"** —
+    even a perfect score table would still need someone to calibrate
+    "score X ⇒ Kokoro runs under realtime" by running Kokoro on real
+    hardware. Measuring the CPU directly is the only signal that stays
+    correct on hardware that doesn't exist yet.
+- `pl_kokoro_gate` (`'pending'` | `'no'` | `'yes'`) is the persisted verdict.
+  **Settings → Retry** (`Settings.retryKokoroGate` → `VoicePacks.retryKokoro`,
+  shown only while gate is `'no'`) forces a fresh screen — **free, since
+  screening needs no download** — and installs Kokoro if the device now
+  qualifies. Relevant on a new device or after an OS update. Nothing to retry
+  once already on Kokoro.
+- **`refresh()` now checks `ALL_PACK_MODELS`, not `CATALOG`.** While the gate
+  is `'pending'` the catalog contains a VIRTUAL `"english"` row and no real
+  English pack, so checking only the catalog would both query a model the
+  plugin has never heard of and — the real bug — **miss an English pack
+  that's genuinely already on disk**, which is exactly what `maybeOnboard()`
+  keys off to decide whether to prompt at all. `maybeOnboard()`'s own
+  already-have-a-pack check was switched to `ALL_PACK_MODELS` for the same
+  reason.
 - **The Language Packs catalog is gate-aware.** `VoicePacks.CATALOG` became a
   getter: while `'pending'`, English shows as ONE row (nothing to split into
   US/UK until it's known which engine will serve it); once `'yes'`, still one
@@ -2383,19 +2448,31 @@ writing code:
   `· Standard` for Piper) so a device with both engines downloaded (English
   via Kokoro, another language via Piper) can tell them apart at a glance.
 - **Everything above is verified in Node-based harnesses (mocked plugin +
-  clock), NOT on real hardware** — same standing caveat as every native
-  change in this file, no JDK/Android SDK in this environment. Verified: the
-  full two-stage flow across a fast device (Piper screens well → Kokoro
-  offered → confirmed → Piper cleaned up → union catalog updated → voice
-  choice repointed), a borderline device (Piper works but shows no headroom →
-  Kokoro never even mentioned), a device where Piper looks fine but Kokoro's
-  OWN real bench fails (offered → attempted → correctly discarded, Piper
-  untouched), Retry re-offering after a fresh measurement, `MyData.deleteAll()`
-  wiping packs `CATALOG` alone would have hidden, the union picker showing a
-  Kokoro voice and a Piper voice simultaneously, the Settings label/Retry
-  visibility across all three gate states plus the slow-Piper sub-label, and
-  the Language Packs modal's virtual English row across its
-  download/checking/queued sub-states.
+  deterministic clock), NOT on real hardware** — same standing caveat as
+  every native change in this file, no JDK/Android SDK in this environment.
+  The Kotlin benchmark in particular has never been compiled or run, so its
+  absolute GFLOPS scale is unverified (which is the same reason
+  `_KOKORO_MIN_GFLOPS` needs the calibration run above). Verified in the
+  harness: a fast device screened as capable **before any download**, then
+  fetching exactly ONE pack (Kokoro) with no Piper round-trip; a slow device
+  resolved from the CPU screen alone, never shown Kokoro anywhere in the
+  catalog; a device that screens capable but whose REAL Kokoro measurement
+  fails (pack deleted, gate corrected, Piper auto-installed, user never left
+  without a voice); a *marginal* Kokoro at 0.9 correctly rejected for lack of
+  margin; a benchmark that throws falling back to Piper rather than Kokoro;
+  an install that already has a pack skipping screening entirely; and Retry
+  re-screening for free and cleaning up the redundant Piper pack. Plus, from
+  the earlier round and still passing: `MyData.deleteAll()` wiping packs
+  `CATALOG` alone would have hidden, the union picker showing a Kokoro voice
+  and a Piper voice simultaneously, the Settings label/Retry visibility
+  across all three gate states, and the Language Packs modal's virtual
+  English row across its sub-states. The `VoiceSetup` overlay was also
+  rendered in a real browser at 375px to confirm it reads correctly.
+- **First real device test should:** read the logged `deviceBench` GFLOPS off
+  the Pixel 7 and calibrate `_KOKORO_MIN_GFLOPS` (above), confirm the
+  overlay's timing feels deliberate rather than sluggish, and — since the
+  Pixel 7 is known to fail Kokoro — confirm it is screened onto Piper
+  *without* ever downloading Kokoro.
 
 ## Productization roadmap (ACTIVE — production-bound as of 2026-07-03)
 

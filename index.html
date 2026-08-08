@@ -1143,6 +1143,18 @@
   </div>
 </div>
 
+<!-- ============== VOICE SETUP (device screening) ==============
+     Deliberately has NO buttons and no backdrop-tap-to-close: it's on screen
+     for well under a second while the CPU screen runs, and dismissing it
+     early would just leave the catalog in an undecided state. -->
+<div class="confirm-backdrop" id="voicesetup-modal">
+  <div class="confirm-box" style="text-align:center">
+    <div class="spinner" style="margin:0.2rem auto 0.9rem"></div>
+    <p class="confirm-msg" style="font-weight:600;margin-bottom:0.35rem">Setting up your voice</p>
+    <p class="confirm-msg" style="font-size:0.85rem">Checking which voices run best on your device&hellip;</p>
+  </div>
+</div>
+
 <!-- ============== CHAPTER MODAL ============== -->
 <div class="modal-backdrop" id="chapter-modal" onclick="ChapterModal.close(event)">
   <div class="modal-sheet">
@@ -1846,22 +1858,35 @@ const VoicePacks = {
   // time) would miss one, e.g. wiping every possible pack on "Delete my
   // data" regardless of which the user currently has.
   ALL_PACK_MODELS: ['us', 'gb', 'fr', 'de', 'es', 'kokoro'],
-  // How much faster than realtime Piper itself needs to run before it's even
-  // worth trying Kokoro. Kokoro is a meaningfully bigger/slower model
-  // architecturally (this project's own history: Kokoro measured ~1.36x
-  // realtime on a Pixel 7, where Piper was specifically chosen because it
-  // runs comfortably under 1x there) — "Piper barely keeps up" isn't good
-  // enough evidence to spend another ~98 MB attempting something that would
-  // likely be worse. This is a screening heuristic only; _tryKokoroUpgrade
-  // still does a REAL Kokoro-specific measurement before keeping it.
-  _KOKORO_SUGGEST_RATIO: 0.6,
+  // Minimum deviceBench() score (see PhonoLeafTtsPlugin.kt) to even OFFER
+  // Kokoro voices. **PROVISIONAL — not yet calibrated against real hardware.**
+  // Derivation: the Pixel 7 runs Kokoro at ~1.36x realtime (measured
+  // 2026-07-06), so a device needs roughly 2x its throughput to land
+  // comfortably under the _KOKORO_KEEP_RATIO margin below. 6.0 GFLOPS on this
+  // synthetic scale is an ESTIMATE of that bar; the real number comes from
+  // running deviceBench() on the owner's Pixel 7 and reading the logged score
+  // (Diag 'dbench', plus Logcat tag PhonoLeafTts) — set this to ~1.8x
+  // whatever that device reports.
+  //
+  // Deliberately biased toward Piper: a wrong "yes" here means stuttering
+  // audio (the bad first impression this whole flow exists to prevent), while
+  // a wrong "no" only means a capable device gets the merely-good voice.
+  // The real Kokoro measurement in _verifyKokoro is the actual safety net.
+  _KOKORO_MIN_GFLOPS: 6.0,
+  // How comfortably a REAL Kokoro synthesis must beat realtime to be kept.
+  // Not 1.0: the app already has evidence that CPU contention bites in
+  // practice (voices audibly garbled while a pack downloaded in the
+  // background, fixed 2026-08-05 by de-prioritizing the download thread), and
+  // prefetch needs slack to stay ahead across a whole chapter. A model that
+  // only just keeps up in a quiet one-shot benchmark will stutter in real
+  // reading, so require 25% headroom.
+  _KOKORO_KEEP_RATIO: 0.75,
   // English gating verdict (owner, 2026-08-08: "the app should first
   // determine the performance of your device BEFORE suggesting the models
-  // to use, not default to Kokoro blindly") — 'pending' (never checked),
-  // 'no' (Piper confirmed as the English voice — either Piper itself showed
-  // no headroom, the user declined the upgrade offer, or a real Kokoro
-  // attempt didn't pan out), 'yes' (Kokoro confirmed and active). See
-  // downloadEnglish/retryKokoro for how this gets set.
+  // to use, not default to Kokoro blindly") — 'pending' (never screened),
+  // 'no' (Piper is the English voice — the device screen said so, or a real
+  // Kokoro attempt didn't hold up), 'yes' (Kokoro confirmed and active). See
+  // screenDevice/_verifyKokoro for how this gets set.
   _kokoroGate() { try { return localStorage.getItem('pl_kokoro_gate') || 'pending'; } catch (_) { return 'pending'; } },
   _setKokoroGate(v) { try { localStorage.setItem('pl_kokoro_gate', v); } catch (_) {} },
   // English is ONE row while ungated (nothing to split into US/UK until we
@@ -1936,7 +1961,12 @@ const VoicePacks = {
     const p = this._plugin();
     if (!p) return Promise.resolve(); // web build — nothing to manage
     this._bindListener();
-    return Promise.all(this.CATALOG.map(({ model }) => {
+    // ALL_PACK_MODELS, not CATALOG: while the gate is still 'pending' the
+    // catalog shows a VIRTUAL "english" row and no real English pack at all,
+    // so checking only the catalog would both query a model the plugin has
+    // never heard of and miss an English pack that's genuinely already on
+    // disk (which is exactly what maybeOnboard needs to know about).
+    return Promise.all(this.ALL_PACK_MODELS.map(model => {
       if (this._status[model]) return Promise.resolve();
       return p.packStatus({ model })
         .then(r => { this._status[model] = r; this._notify(); })
@@ -1957,16 +1987,19 @@ const VoicePacks = {
     try { if (localStorage.getItem('pl_packs_onboarded')) return; } catch (_) { return; }
     await this.refresh();
     try { localStorage.setItem('pl_packs_onboarded', '1'); } catch (_) {}
-    if (this.CATALOG.some(c => this._status[c.model] && this._status[c.model].downloaded)) return;
+    if (this.ALL_PACK_MODELS.some(m => this._status[m] && this._status[m].downloaded)) return;
+    // Screen the device BEFORE the catalog is ever shown, so the very first
+    // list the user sees already contains only voices their device can
+    // actually run well. Without this they'd be picking blind and could spend
+    // a long download discovering the answer the hard way.
+    await this.screenDeviceWithUI();
     LangPacksModal.open(true);
   },
 
-  // bench:false skips the automatic informational TTS._nativeBench call —
-  // used by downloadEnglish/_tryKokoroUpgrade, which each run their OWN
-  // dedicated, explicitly-awaited benchmark right after (the generic one is
-  // fire-and-forget, so relying on it there would race their own decision
-  // logic, and Kokoro's own confirm-bench makes the generic one redundant
-  // and potentially misleading for that specific download anyway).
+  // bench:false skips the automatic informational TTS._nativeBench call, for
+  // callers that run their own explicitly-awaited measurement right after
+  // (the generic one is fire-and-forget, so relying on it would race their
+  // decision logic).
   async download(model, { bench = true } = {}) {
     const p = this._plugin();
     if (!p) return;
@@ -1976,11 +2009,19 @@ const VoicePacks = {
     // behind another one on the native download queue.
     this._progress[model] = { pct: 0, started: false };
     this._notify();
+    let verify = false;
     try {
       await p.downloadPack({ model });
       this._status[model] = { downloaded: true, approxBytes: (this._status[model] || {}).approxBytes || 0 };
       toast('Voice pack downloaded');
       if (bench) TTS._nativeBench(model); // one-time proactive speed check — see TTS._nativeBench
+      // Verify HERE rather than at each call site so every route that can
+      // install Kokoro (catalog row, onboarding, Settings → Retry) is covered
+      // by the same real measurement. Deferred until after the progress state
+      // is cleared below, so the row isn't stuck showing a stale percentage
+      // while the check runs. No recursion risk: _verifyKokoro's fallback
+      // downloads 'us', never 'kokoro'.
+      if (model === 'kokoro') verify = true;
     } catch (e) {
       // A cancel rejects this promise too (native throws InterruptedIOException
       // "cancelled"), but the user asked for that — reporting it as a failure
@@ -1992,92 +2033,110 @@ const VoicePacks = {
     }
     delete this._progress[model];
     this._notify();
+    if (verify) await this._verifyKokoro();
   },
 
-  // Tap "Download" on the (still-ungated) English row: install the
-  // guaranteed-working Piper baseline first and measure it FOR REAL on this
-  // exact device — never assume Kokoro is worth trying before that
-  // measurement exists. Piper is the mandatory fallback anyway, so this
-  // costs nothing extra; Kokoro is only ever attempted afterward, and only
-  // as an explicit, separate offer (see _maybeOfferKokoro).
+  // Decide which engine's voices this device should be OFFERED, before
+  // downloading anything at all (owner, 2026-08-08: "verify the speed of the
+  // device, and then, based on the result, display either a list of Piper
+  // voice packs, or a list of Kokoro voice packs"). Runs the native CPU
+  // benchmark — no network, no model, ~0.5s — and records the verdict.
+  // Anything without a working plugin/benchmark falls to 'no', so the
+  // always-safe Piper path is what a failure produces.
+  async screenDevice() {
+    const p = this._plugin();
+    if (!p || !p.deviceBench) { this._setKokoroGate('no'); return 'no'; }
+    try {
+      const r = await p.deviceBench();
+      const gflops = (r && r.gflops) || 0;
+      // Logged so the owner's device test can read the real number off a
+      // known device and calibrate _KOKORO_MIN_GFLOPS against it.
+      Diag.push({ e: 'dbench', g: +gflops.toFixed(2), t: r && r.threads, c: r && r.cores });
+      const gate = gflops >= this._KOKORO_MIN_GFLOPS ? 'yes' : 'no';
+      this._setKokoroGate(gate);
+      return gate;
+    } catch (_) { this._setKokoroGate('no'); return 'no'; }
+  },
+
+  // Screen the device behind the brief loading overlay, so onboarding can go
+  // straight to a catalog that already shows the right voices instead of
+  // making the user find out by downloading. No-ops once already decided.
+  async screenDeviceWithUI() {
+    if (this._kokoroGate() !== 'pending') return this._kokoroGate();
+    VoiceSetup.open();
+    const gate = await this.screenDevice();
+    await VoiceSetup.close();
+    this._notify();
+    return gate;
+  },
+
+  // The virtual "English" row's Download button, for the case where the
+  // catalog is somehow still ungated when it's tapped (screening failed, or
+  // an install predating this flow opens Language Packs from Settings).
+  // Screens first, then downloads whichever engine that resolved to.
   async downloadEnglish() {
-    await this.download('us', { bench: false });
-    if (!(this._status.us && this._status.us.downloaded)) return; // failed/cancelled — stays 'pending'
-    this._setKokoroGate('no'); // Piper is the confirmed-working baseline from here on
-    this._notify();
-    await TTS._nativeBench('us'); // awaited (not fire-and-forget) so the check below sees a fresh result
-    this._notify();
-    await this._maybeOfferKokoro();
+    const gate = await this.screenDeviceWithUI();
+    await this.download(gate === 'yes' ? 'kokoro' : 'us');
   },
 
-  // Re-entry point once Piper is already installed (gate already 'no') —
-  // re-measures it (device/OS may have changed since the first check, or it
-  // simply never got a fair shot) and offers Kokoro again if it now
-  // qualifies. Shown in Settings only while on Piper — see Settings.render.
+  // Settings → Retry, shown only while on Piper. Re-screens the device (free,
+  // no download) and, if it now qualifies, downloads Kokoro — which verifies
+  // itself and cleans up the Piper pack via _verifyKokoro.
   async retryKokoro() {
-    if (!(this._status.us && this._status.us.downloaded)) return;
-    try { localStorage.removeItem('pl_native_bench'); } catch (_) {}
-    TTS._nativeSlow = false;
-    await TTS._nativeBench('us');
+    this._setKokoroGate('pending'); // force a fresh screen
+    const gate = await this.screenDeviceWithUI();
+    if (gate === 'yes') await this.download('kokoro');
+    else toast('This device runs best with the standard voice');
     this._notify();
-    await this._maybeOfferKokoro();
   },
 
-  // Shared decision point: read the just-measured Piper ratio and, only if
-  // it shows real headroom, ask before spending the extra download on
-  // Kokoro — a genuinely optional ~98 MB, not something to spend without
-  // asking.
-  async _maybeOfferKokoro() {
-    const bench = TTS._nativeBenchCached();
-    if (!bench || bench.ratio > this._KOKORO_SUGGEST_RATIO) return; // no evidence it's worth trying
-    ConfirmModal.show(
-      () => this._tryKokoroUpgrade(),
-      'Your device looks fast enough for our higher-quality natural voice. Download it? (About 98 MB — replaces the standard English voice.)',
-      'Download',
-    );
-  },
-
-  // The actual Kokoro attempt plus its own REAL confirm-or-fallback bench —
-  // separate from the Piper-based screening above, which is only a proxy
-  // (a different, smaller model). Kokoro is what's actually kept, so it
-  // gets its own genuine measurement before anything is decided for good.
-  async _tryKokoroUpgrade() {
-    await this.download('kokoro', { bench: false });
-    if (!(this._status.kokoro && this._status.kokoro.downloaded)) { this._notify(); return; } // failed/cancelled — stays on Piper
+  // Every Kokoro download ends here (called from download(), so it covers the
+  // catalog row, onboarding, and Retry alike). The CPU screen that green-lit
+  // this is only a proxy — scalar JVM math, not onnxruntime's NEON kernels —
+  // so the model that's actually being kept gets its own real measurement
+  // before we commit to it. Failing that check is a normal, handled outcome,
+  // not an error: drop Kokoro, fetch the Piper baseline, and say so plainly.
+  async _verifyKokoro() {
     this._checkingEnglish = true;
     this._notify();
     const ratio = await TTS._benchKokoroGate();
     this._checkingEnglish = false;
     const p = this._plugin();
-    if (ratio != null && ratio <= 1) {
-      // Confirmed — Kokoro covers both accents from this one pack, so the
-      // now-redundant Piper baseline can go.
-      try { await p.deletePack({ model: 'us' }); } catch (_) {}
-      this._status.us = { downloaded: false, approxBytes: 0 };
+    if (ratio != null && ratio <= this._KOKORO_KEEP_RATIO) {
       this._setKokoroGate('yes');
+      // Kokoro covers both accents from this one pack, so a Piper English
+      // pack left over from a previous run is now dead weight.
+      if (this._status.us && this._status.us.downloaded) {
+        try { await p.deletePack({ model: 'us' }); } catch (_) {}
+        this._status.us = { downloaded: false, approxBytes: 0 };
+      }
       // If the persisted voice choice was still the untouched default (a
       // Piper voice, since PIPER_VOICES comes first in the union — see
-      // TTS._allNativeVoices), it now points at a pack that no longer
-      // exists. Point it at a real Kokoro voice explicitly so the picker's
-      // "current" selection and the next synth call are correct immediately,
-      // rather than relying on the PACK_NOT_DOWNLOADED fallback search to
-      // paper over it with an unnecessary "switched to…" toast right after
-      // upgrading. Leaves an EXPLICIT prior Kokoro choice (e.g. from a
-      // previous install of this same pack) alone.
+      // TTS._allNativeVoices), it now points at a pack that may not exist.
+      // Point it at a real Kokoro voice explicitly so the picker's "current"
+      // selection and the next synth call are correct immediately, rather
+      // than relying on the PACK_NOT_DOWNLOADED fallback to paper over it
+      // with a needless "switched to…" toast right after upgrading. Leaves an
+      // EXPLICIT prior Kokoro choice (e.g. from an earlier install of this
+      // same pack) alone.
       try {
         const chosen = localStorage.getItem('pl_voice_native');
         if (!chosen || !KOKORO_VOICES.some(v => v[0] === chosen)) {
           localStorage.setItem('pl_voice_native', KOKORO_VOICES[0][0]);
         }
       } catch (_) {}
-      toast('Natural voice upgraded — high quality');
-    } else {
-      try { await p.deletePack({ model: 'kokoro' }); } catch (_) {}
-      this._status.kokoro = { downloaded: false, approxBytes: 0 };
-      toast('That didn’t run smoothly on your device — keeping the standard voice');
-      // gate stays 'no' — the Piper baseline is still installed, untouched.
+      this._notify();
+      return true;
     }
+    try { await p.deletePack({ model: 'kokoro' }); } catch (_) {}
+    this._status.kokoro = { downloaded: false, approxBytes: 0 };
+    this._setKokoroGate('no');
     this._notify();
+    // Auto-recover rather than leaving them with no English voice at all —
+    // they'd otherwise be stranded mid-onboarding with nothing to read with.
+    toast('That voice needs a faster device — installing the standard one instead', 5000);
+    await this.download('us');
+    return false;
   },
 
   async cancel(model) {
@@ -2171,6 +2230,25 @@ const VoicePacks = {
 // action, opened from Settings' "Language packs" row. Scales to more entries
 // without adding a Settings row per language — unlike VoiceModal (which gates
 // individual VOICES on their pack), this is purely pack management.
+// Brief overlay shown while VoicePacks.screenDevice() measures the CPU, so
+// the device screen reads as a deliberate setup step rather than a stall.
+// MIN_MS keeps it on screen long enough to be readable — the benchmark itself
+// can finish in a few hundred ms, and a panel that flashes past looks like a
+// glitch rather than something the app did on purpose.
+const VoiceSetup = {
+  MIN_MS: 1100,
+  _shownAt: 0,
+  open() {
+    this._shownAt = Date.now();
+    document.getElementById('voicesetup-modal').classList.add('open');
+  },
+  async close() {
+    const left = this.MIN_MS - (Date.now() - this._shownAt);
+    if (left > 0) await new Promise(r => setTimeout(r, left));
+    document.getElementById('voicesetup-modal').classList.remove('open');
+  },
+};
+
 const LangPacksModal = {
   // onboarding=true adds a short explainer at the top (first run, straight
   // after folder setup — see VoicePacks.maybeOnboard). Re-renders in place
@@ -5053,7 +5131,7 @@ const TTS = {
     } catch (_) { /* informational only — never blocks onboarding or playback */ }
   },
   // Real, synthesis-timed measurement specifically for the Kokoro upgrade
-  // decision (see VoicePacks._tryKokoroUpgrade) — separate from _nativeBench
+  // decision (see VoicePacks._verifyKokoro) — separate from _nativeBench
   // above, which only ever informationally labels whichever Piper pack the
   // user already has and never gates anything. Runs every time it's called
   // (no caching — it's about THIS one candidate pack, not a one-time device
@@ -5565,7 +5643,7 @@ const MyData = {
       // shows ONE English variant at a time, so it would miss whichever
       // pack (Piper "us"/"gb" or Kokoro) isn't currently in play, e.g. a
       // leftover Piper baseline kept around after a successful Kokoro
-      // upgrade (see _tryKokoroUpgrade).
+      // upgrade (see _verifyKokoro).
       try { await Promise.all(VoicePacks.ALL_PACK_MODELS.map(model => p.deletePack({ model }).catch(() => {}))); } catch (_) {}
     }
     toast('All local data deleted');
