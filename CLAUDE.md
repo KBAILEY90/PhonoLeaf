@@ -2131,13 +2131,15 @@ Google login); verify by inspection + the owner testing on device.
 - Use `100dvh` (not `100vh`) for full-height views so mobile browser chrome
   doesn't hide the bottom controls.
 
-## Localization (first pass 2026-08-08, Settings tab only)
+## Localization (2026-08-08 — Settings-only first pass, expanded to the whole app same day)
 
 BACKLOG.md section B: Bill 96 covers the app's own interface for Québec
 consumers, not only the marketing/legal pages (which already had French
-versions — `home-fr.html`/`terms-fr.html`/`privacy-fr.html`). Owner asked to
-start with the Settings tab specifically, as the first concrete slice of a
-mechanism meant to expand to every tab.
+versions — `home-fr.html`/`terms-fr.html`/`privacy-fr.html`). Shipped as a
+Settings-only pilot first; the owner tested it and pushed back the same day
+("many things remain in English, even if the app is switched to French...
+all text, static or popup, should be in French"), so it was expanded to
+cover the entire app in the same session.
 
 - **`STRINGS` (en/fr dictionary) + `I18n`** (`index.html`, right after
   `Theme`): `I18n.lang()` resolves from `pl_lang` — **the same key the
@@ -2146,39 +2148,62 @@ mechanism meant to expand to every tab.
   `navigator.languages` (`fr*` → French) when nothing's saved yet, matching
   the marketing pages' own auto-detect rule. `I18n.t(key, vars)` looks up the
   current language, falling back to English for a missing key; `{name}`-style
-  placeholders only, deliberately not a template engine.
-- **`data-i18n`/`data-i18n-title` attributes**, not a rewritten render
-  function. Settings' markup was already mostly-static HTML with targeted JS
-  updates (unlike Home/Library/Stats, which are JS-templated) — matching that
-  existing pattern, `I18n.apply(root)` walks `[data-i18n]` under a container
-  and sets `textContent` from the dictionary, called from `Settings.render()`
-  (already re-run on every tab visit, so no separate boot-time pass is
-  needed). This is the reusable piece for extending localization to other
-  tabs later: add the attributes, no per-tab i18n code.
-- **The dynamic strings** (natural-voice status, folder, account,
-  export/delete toasts, the delete-confirmation dialog) were switched from
-  hardcoded English to `I18n.t()` calls at their call sites — `data-i18n`
-  alone only covers the static default shown before JS first runs.
+  placeholders only, deliberately not a template engine. The dictionary grew
+  from ~25 Settings-only keys to ~150 covering sign-in, Home, Library, Stats,
+  the Reader chrome, the tab bar, and every modal.
+- **Two complementary mechanisms, matched to how each surface was already
+  built**, rather than converting everything to one style:
+  - **`data-i18n`/`data-i18n-title`/`data-i18n-placeholder` attributes** for
+    genuinely static markup (sign-in, the Home/Library/Reader/Settings
+    shells, the tab bar, every modal's fixed chrome — titles, labels, button
+    text, input placeholders). `I18n.apply(root)` walks a subtree and fills
+    them from the dictionary.
+  - **Direct `I18n.t()` calls inside template strings** for JS-generated
+    content (Library's grid and empty states, Stats' whole `render()` +
+    `_breakdown()`, `VoiceModal`/`LangPacksModal`/`ChapterModal`/
+    `FolderBrowser` rows, every `toast()` call). These re-render from scratch
+    on every call anyway, so there's nothing for `data-i18n` to attach to —
+    reusing it here would just mean writing `I18n.apply()` after every
+    `innerHTML =` for no benefit over calling `I18n.t()` directly in the
+    template.
+- **`I18n.setLang()` now sweeps the whole app, not just Settings**:
+  `I18n.apply(document.body)` (every static shell, whichever are hidden at
+  the moment) plus explicit re-renders of `Home`/`Library`/`StatsPage`/
+  `Settings`, each wrapped in its own `try/catch` — `Library.render()` has no
+  fallback for `State.books` being `undefined` (unlike Home/Stats, which
+  already default it to `[]`), so switching language before the library has
+  ever loaded must not throw.
+- **`window.addEventListener('load', ...)` now opens with
+  `I18n.apply(document.body)`**, before `App.init()` runs. Without this a
+  French-locale device would see an English sign-in screen — the only place
+  the language toggle exists is Settings, which is unreachable before
+  signing in, so device auto-detect previously had no effect until *after*
+  first login and a Settings visit.
+- **Genuine French elision bug caught in review, not by guessing**: the
+  Stats empty-state template was `'Aucune donnée de {type}...'` with
+  `type_author: 'auteur'`, producing the ungrammatical "donnée de auteur".
+  Moved the connector into each type value instead (`type_author:
+  'd’auteur'`, `type_book: 'de livre'`, ...) so the template itself carries
+  no connector — verified by rendering the actual breakdown table and
+  reading the output, not by inspecting the source strings alone.
 - **The language toggle lives in Settings** (`#lang-seg`, styled for free by
-  the existing generic `.seg`/`.seg button` rules — not `#theme-seg`-scoped),
-  calling `Settings.setLang` → `I18n.setLang`, which persists to `pl_lang`
-  and re-renders.
-- **Scope of this pass, explicitly**: only the Settings view's own content,
-  plus the confirmation dialog and toasts its own buttons trigger
-  (`MyData.confirmDelete/export/deleteAll`). Deliberately NOT covered:
-  the bottom tab bar labels, and every other modal Settings merely links to
-  (`VoiceModal`, `LangPacksModal`, `Feedback`, `BugReport`, `VoiceInfo`,
-  `VoiceHelp`) plus `ConfirmModal`'s own generic "Cancel" button — all still
-  English regardless of language choice. Switching to French today visibly
-  translates the Settings tab and nothing else; that's expected, not a bug,
-  until a follow-up pass extends `data-i18n` to Home/Library/Stats/Reader and
-  the shared modals.
-- Verified in a browser harness: renders correctly in both languages at a
-  375px viewport with no truncation, the language toggle round-trips
-  (EN→FR→EN) with the active button highlighted correctly each time,
-  `pl_lang` persists across `Settings.render()` calls, and the delete
-  confirmation dialog's body + its own "Supprimer" button translate (its
-  shared "Cancel" button does not, per the scope note above).
+  the existing generic `.seg`/`.seg button` rules — not `#theme-seg`-scoped).
+- **Still intentionally not covered**: the raw diagnostic text inside
+  `BugReport._diagnostics()` (device/build info folded into an email body,
+  not app UI) and `MyData.export()`'s JSON file `note` field (metadata
+  inside a downloaded file, read by whoever the user shares it with, not
+  displayed in the app). Both are content the app *produces* for an email or
+  a file, not interface text the user reads on screen.
+- Verified in a browser harness across languages and views: the sign-in
+  screen renders fully in French on a cold boot (no prior Settings visit)
+  purely from `navigator.languages` detection; Home, Library, and Stats
+  (including the breakdown table's headers and the elision fix) render
+  correctly with synthetic data; `pl_lang` persists and the toggle
+  round-trips; no new console errors (the one error present — a blocked
+  fetch to `accounts.google.com/gsi/client` — is the pre-existing, expected
+  result of no network access in this sandboxed environment, unrelated to
+  this change). Not device-verified — same caveat as everything native
+  in this file, though nothing here touches native code.
 
 ## Conventions
 

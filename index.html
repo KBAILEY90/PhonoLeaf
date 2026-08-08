@@ -874,28 +874,28 @@
     <div class="app-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="90" height="90" aria-hidden="true"><rect width="100" height="100" rx="22" fill="#3E8E6B"/><path d="M50 24 C68 38 68 66 50 82 C32 66 32 38 50 24 Z" fill="#F4F1E8"/><path d="M50 82 L50 90" stroke="#F4F1E8" stroke-width="3.2" stroke-linecap="round"/><path d="M35 53 Q40 42 45 53 T55 53 T65 53" fill="none" stroke="#3E8E6B" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
     <div class="app-name">PhonoLeaf</div>
     <div class="app-tagline">A voice for every page</div>
-    <p class="si-lede">Turn the ebooks already sitting in your Google Drive into an audiobook library.</p>
+    <p class="si-lede" data-i18n="si_lede">Turn the ebooks already sitting in your Google Drive into an audiobook library.</p>
 
     <div class="si-steps">
       <div class="si-step">
         <div class="si-num">1</div>
         <div>
-          <div class="si-step-t">Connect a Drive folder</div>
-          <div class="si-step-s">Pick the folder your ebooks are in — that's the only one PhonoLeaf reads.</div>
+          <div class="si-step-t" data-i18n="si_step1_t">Connect a Drive folder</div>
+          <div class="si-step-s" data-i18n="si_step1_s">Pick the folder your ebooks are in — that's the only one PhonoLeaf reads.</div>
         </div>
       </div>
       <div class="si-step">
         <div class="si-num">2</div>
         <div>
-          <div class="si-step-t">Your library appears</div>
-          <div class="si-step-s">Every ebook in that folder, with its real cover art. Add more later and they show up on their own.</div>
+          <div class="si-step-t" data-i18n="si_step2_t">Your library appears</div>
+          <div class="si-step-s" data-i18n="si_step2_s">Every ebook in that folder, with its real cover art. Add more later and they show up on their own.</div>
         </div>
       </div>
       <div class="si-step">
         <div class="si-num">3</div>
         <div>
-          <div class="si-step-t">Press play</div>
-          <div class="si-step-s">A natural voice reads aloud — even with the screen off — and remembers where you stopped.</div>
+          <div class="si-step-t" data-i18n="si_step3_t">Press play</div>
+          <div class="si-step-s" data-i18n="si_step3_s">A natural voice reads aloud — even with the screen off — and remembers where you stopped.</div>
         </div>
       </div>
     </div>
@@ -907,15 +907,15 @@
         <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
         <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
       </svg>
-      Sign in with Google
+      <span data-i18n="sign_in_google">Sign in with Google</span>
     </button>
 
     <p class="si-privacy">
-      <strong>Read-only access.</strong> PhonoLeaf never changes, uploads or deletes anything in your Drive.
-      There's no server — your books go from Google straight to your device.
+      <strong data-i18n="si_privacy_b">Read-only access.</strong> <span data-i18n="si_privacy">PhonoLeaf never changes, uploads or deletes anything in your Drive.
+      There's no server — your books go from Google straight to your device.</span>
     </p>
     <p class="si-links">
-      <a href="privacy.html">Privacy Policy</a> &middot; <a href="terms.html">Terms of Service</a>
+      <a href="privacy.html" data-i18n="privacy_policy">Privacy Policy</a> &middot; <a href="terms.html" data-i18n="terms_of_service">Terms of Service</a>
     </p>
   </div>
 </div>
@@ -927,10 +927,10 @@
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="42" height="42" aria-hidden="true"><rect width="100" height="100" rx="22" fill="#3E8E6B"/><path d="M50 24 C68 38 68 66 50 82 C32 66 32 38 50 24 Z" fill="#F4F1E8"/><path d="M50 82 L50 90" stroke="#F4F1E8" stroke-width="3.2" stroke-linecap="round"/><path d="M35 53 Q40 42 45 53 T55 53 T65 53" fill="none" stroke="#3E8E6B" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
       <span class="home-brand-name">PhonoLeaf</span>
     </div>
-    <div class="home-title" id="home-title">Home</div>
+    <div class="home-title" id="home-title" data-i18n="home_title">Home</div>
     <div id="home-continue"></div>
     <div class="stat-row" id="home-stats" onclick="Nav.go('stats')" style="cursor:pointer" role="button" tabindex="0" aria-label="Open Stats"></div>
-    <div class="sec-label">Jump back in <a onclick="Nav.go('library')" role="button" tabindex="0">See all</a></div>
+    <div class="sec-label"><span data-i18n="jump_back_in">Jump back in</span> <a onclick="Nav.go('library')" role="button" tabindex="0" data-i18n="see_all">See all</a></div>
     <div class="cover-row" id="home-recent"></div>
   </div>
 </div>
@@ -938,16 +938,16 @@
 <!-- ============== LIBRARY VIEW ============== -->
 <div id="library-view" class="view">
   <div class="lib-header">
-    <h2>Library</h2>
+    <h2 data-i18n="library_title">Library</h2>
     <div class="header-actions">
       <button class="icon-btn" onclick="Library.refresh()" title="Refresh" aria-label="Refresh library">&#8634;</button>
     </div>
   </div>
   <div class="lib-search">
-    <input id="lib-search" type="search" placeholder="Search your books" oninput="Library.filter(this.value)" aria-label="Search your books">
+    <input id="lib-search" type="search" placeholder="Search your books" data-i18n-placeholder="search_placeholder" oninput="Library.filter(this.value)" aria-label="Search your books">
   </div>
   <div class="books-grid scrolly" id="books-grid">
-    <div class="loading"><div class="spinner"></div><span>Loading your library...</span></div>
+    <div class="loading"><div class="spinner"></div><span data-i18n="library_loading">Loading your library...</span></div>
   </div>
 </div>
 
@@ -1067,7 +1067,7 @@
 <!-- ============== STATS VIEW ============== -->
 <div id="stats-view" class="view">
   <div class="scrolly">
-    <div class="home-title">Your stats</div>
+    <div class="home-title" data-i18n="stats_title">Your stats</div>
     <div id="stats-body"></div>
   </div>
 </div>
@@ -1087,7 +1087,7 @@
   <div id="viewer">
     <div id="reader-loading">
       <div class="spinner"></div>
-      <span style="color:var(--text-dim);font-size:0.9rem">Loading book...</span>
+      <span style="color:var(--text-dim);font-size:0.9rem" data-i18n="loading_book">Loading book...</span>
     </div>
   </div>
 
@@ -1124,16 +1124,16 @@
 <!-- ============== BOTTOM TAB BAR ============== -->
 <div class="tab-bar" id="tab-bar">
   <button class="tab" data-tab="home" onclick="Nav.go('home')">
-    <svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h5v-6h4v6h5V10"/></svg>Home
+    <svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h5v-6h4v6h5V10"/></svg><span data-i18n="tab_home">Home</span>
   </button>
   <button class="tab" data-tab="library" onclick="Nav.go('library')">
-    <svg viewBox="0 0 24 24"><path d="M5 4h5v16H5z"/><path d="M10 4h5v16h-5z"/><path d="M15 5l4 .8-2.6 14.5-4-.8"/></svg>Library
+    <svg viewBox="0 0 24 24"><path d="M5 4h5v16H5z"/><path d="M10 4h5v16h-5z"/><path d="M15 5l4 .8-2.6 14.5-4-.8"/></svg><span data-i18n="tab_library">Library</span>
   </button>
   <button class="tab" data-tab="stats" onclick="Nav.go('stats')">
-    <svg viewBox="0 0 24 24"><path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M2 20h20"/></svg>Stats
+    <svg viewBox="0 0 24 24"><path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M2 20h20"/></svg><span data-i18n="tab_stats">Stats</span>
   </button>
   <button class="tab" data-tab="settings" onclick="Nav.go('settings')">
-    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 13a7.6 7.6 0 0 0 0-2l2-1.5-2-3.4-2.3 1a7.6 7.6 0 0 0-1.7-1L15 3.4h-4l-.4 2.6a7.6 7.6 0 0 0-1.7 1l-2.3-1-2 3.4L6.6 11a7.6 7.6 0 0 0 0 2l-2 1.5 2 3.4 2.3-1a7.6 7.6 0 0 0 1.7 1l.4 2.6h4l.4-2.6a7.6 7.6 0 0 0 1.7-1l2.3 1 2-3.4z"/></svg>Settings
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 13a7.6 7.6 0 0 0 0-2l2-1.5-2-3.4-2.3 1a7.6 7.6 0 0 0-1.7-1L15 3.4h-4l-.4 2.6a7.6 7.6 0 0 0-1.7 1l-2.3-1-2 3.4L6.6 11a7.6 7.6 0 0 0 0 2l-2 1.5 2 3.4 2.3-1a7.6 7.6 0 0 0 1.7 1l.4 2.6h4l.4-2.6a7.6 7.6 0 0 0 1.7-1l2.3 1 2-3.4z"/></svg><span data-i18n="tab_settings">Settings</span>
   </button>
 </div>
 
@@ -1141,7 +1141,7 @@
 <div class="modal-backdrop" id="voice-modal" onclick="VoiceModal.close(event)">
   <div class="modal-sheet">
     <div class="modal-handle"></div>
-    <div class="modal-title">Choose Voice</div>
+    <div class="modal-title" data-i18n="choose_voice">Choose Voice</div>
     <div id="voice-list"></div>
   </div>
 </div>
@@ -1150,7 +1150,7 @@
 <div class="modal-backdrop" id="langpacks-modal" onclick="LangPacksModal.close(event)">
   <div class="modal-sheet">
     <div class="modal-handle"></div>
-    <div class="modal-title">Language Packs</div>
+    <div class="modal-title" data-i18n="language_packs_title">Language Packs</div>
     <div id="langpacks-list"></div>
   </div>
 </div>
@@ -1162,8 +1162,8 @@
 <div class="confirm-backdrop" id="voicesetup-modal">
   <div class="confirm-box" style="text-align:center">
     <div class="spinner" style="margin:0.2rem auto 0.9rem"></div>
-    <p class="confirm-msg" style="font-weight:600;margin-bottom:0.35rem">Setting up your voice</p>
-    <p class="confirm-msg" style="font-size:0.85rem">Checking which voices run best on your device&hellip;</p>
+    <p class="confirm-msg" style="font-weight:600;margin-bottom:0.35rem" data-i18n="voicesetup_title">Setting up your voice</p>
+    <p class="confirm-msg" style="font-size:0.85rem" data-i18n="voicesetup_body">Checking which voices run best on your device&hellip;</p>
   </div>
 </div>
 
@@ -1171,7 +1171,7 @@
 <div class="modal-backdrop" id="chapter-modal" onclick="ChapterModal.close(event)">
   <div class="modal-sheet">
     <div class="modal-handle"></div>
-    <div class="modal-title">Chapters</div>
+    <div class="modal-title" data-i18n="chapters_title">Chapters</div>
     <div id="chapter-list"></div>
   </div>
 </div>
@@ -1182,7 +1182,7 @@
     <p class="confirm-msg" id="vh-title" style="font-weight:600;margin-bottom:0.4rem">Get natural voices</p>
     <p class="confirm-msg" id="vh-steps" style="font-size:0.85rem"></p>
     <div class="confirm-btns">
-      <button class="confirm-cancel" onclick="VoiceHelp.close()">Close</button>
+      <button class="confirm-cancel" onclick="VoiceHelp.close()" data-i18n="close">Close</button>
       <button class="confirm-ok" id="vh-action" onclick="VoiceHelp.action()">Open</button>
     </div>
   </div>
@@ -1191,13 +1191,13 @@
 <!-- ============== NO VOICE PACK INSTALLED ============== -->
 <div class="confirm-backdrop" id="novoice-modal" onclick="NoVoiceModal.close(event)">
   <div class="confirm-box" onclick="event.stopPropagation()" style="text-align:left">
-    <p class="confirm-msg" style="font-weight:600;margin-bottom:0.5rem">A voice is needed to read aloud</p>
-    <p class="confirm-msg" style="font-size:0.85rem">
+    <p class="confirm-msg" style="font-weight:600;margin-bottom:0.5rem" data-i18n="novoice_title">A voice is needed to read aloud</p>
+    <p class="confirm-msg" style="font-size:0.85rem" data-i18n="novoice_body">
       PhonoLeaf needs a language pack downloaded to your device before it can read to you.
       Playback has stopped &mdash; download one below, then press play again.
     </p>
     <div class="confirm-btns">
-      <button class="confirm-ok" onclick="NoVoiceModal.getVoice()">Download a voice</button>
+      <button class="confirm-ok" onclick="NoVoiceModal.getVoice()" data-i18n="novoice_action">Download a voice</button>
     </div>
   </div>
 </div>
@@ -1205,13 +1205,13 @@
 <!-- ============== NATURAL VOICE EXPLAINER ============== -->
 <div class="confirm-backdrop" id="voiceinfo-modal" onclick="VoiceInfo.close()">
   <div class="confirm-box" onclick="event.stopPropagation()" style="text-align:left">
-    <p class="confirm-msg" style="font-weight:600;margin-bottom:0.5rem">About the natural voice</p>
-    <p class="confirm-msg" style="font-size:0.85rem">
+    <p class="confirm-msg" style="font-weight:600;margin-bottom:0.5rem" data-i18n="voiceinfo_title">About the natural voice</p>
+    <p class="confirm-msg" style="font-size:0.85rem" data-i18n="voiceinfo_p1">
       PhonoLeaf comes with its own natural-sounding voice that runs entirely on
       your device &mdash; nothing you read is sent to a server to be turned into
       speech.
     </p>
-    <p class="confirm-msg" style="font-size:0.85rem">
+    <p class="confirm-msg" style="font-size:0.85rem" data-i18n="voiceinfo_p2">
       To play without gaps it has to generate speech faster than you can listen
       to it. Most phones manage this comfortably; some slower or older devices,
       and some web browsers, can&rsquo;t keep up. When that happens PhonoLeaf
@@ -1219,11 +1219,11 @@
       reading never stops &mdash; it just sounds more robotic.
     </p>
     <p class="confirm-msg" style="font-size:0.85rem">
-      <b>Retry</b> re-tests this device, which is worth doing if it happened to
-      be busy the first time.
+      <b data-i18n="voiceinfo_p3_b">Retry</b><span data-i18n="voiceinfo_p3"> re-tests this device, which is worth doing if it happened to
+      be busy the first time.</span>
     </p>
     <div class="confirm-btns">
-      <button class="confirm-cancel" onclick="VoiceInfo.close()">Close</button>
+      <button class="confirm-cancel" onclick="VoiceInfo.close()" data-i18n="close">Close</button>
     </div>
   </div>
 </div>
@@ -1233,7 +1233,7 @@
   <div class="confirm-box" onclick="event.stopPropagation()">
     <p class="confirm-msg">Are you sure you want to reset your listening data? This cannot be undone.</p>
     <div class="confirm-btns">
-      <button class="confirm-cancel" onclick="ConfirmModal.close()">Cancel</button>
+      <button class="confirm-cancel" onclick="ConfirmModal.close()" data-i18n="cancel">Cancel</button>
       <button class="confirm-ok" onclick="ConfirmModal._ok()">Reset</button>
     </div>
   </div>
@@ -1243,7 +1243,7 @@
 <div class="modal-backdrop" id="browser-modal" onclick="FolderBrowser.close(event)">
   <div class="modal-sheet">
     <div class="modal-handle"></div>
-    <div class="modal-title">Choose your books folder</div>
+    <div class="modal-title" data-i18n="choose_books_folder">Choose your books folder</div>
     <div id="fb-current" style="text-align:center;color:var(--text-dim);font-size:0.72rem;margin:-0.3rem 0 0.7rem;line-height:1.45"></div>
     <div class="fb-crumbs" id="fb-crumbs"></div>
     <div id="fb-list"></div>
@@ -1255,10 +1255,10 @@
 <div class="modal-backdrop" id="folder-modal" onclick="FolderModal.close(event)">
   <div class="modal-sheet">
     <div class="modal-handle"></div>
-    <div class="modal-title">Choose your books folder</div>
-    <p style="font-size:0.82rem;color:var(--text-dim);margin:0 0 0.9rem">Please type which Google Drive folder to read from.</p>
-    <input id="folder-input" type="text" placeholder="Folder name" style="width:100%;background:var(--bg);color:var(--text);border:0.5px solid var(--line);border-radius:10px;padding:0.6rem 0.8rem;font:0.9rem var(--font-ui);outline:none;margin-bottom:0.9rem">
-    <button onclick="FolderModal.submit()" style="width:100%;background:var(--accent);color:#fff;border:none;border-radius:10px;padding:0.7rem;font:500 0.9rem var(--font-ui);cursor:pointer">Load folder</button>
+    <div class="modal-title" data-i18n="choose_books_folder">Choose your books folder</div>
+    <p style="font-size:0.82rem;color:var(--text-dim);margin:0 0 0.9rem" data-i18n="folder_type_prompt">Please type which Google Drive folder to read from.</p>
+    <input id="folder-input" type="text" placeholder="Folder name" data-i18n-placeholder="folder_name_placeholder" style="width:100%;background:var(--bg);color:var(--text);border:0.5px solid var(--line);border-radius:10px;padding:0.6rem 0.8rem;font:0.9rem var(--font-ui);outline:none;margin-bottom:0.9rem">
+    <button onclick="FolderModal.submit()" style="width:100%;background:var(--accent);color:#fff;border:none;border-radius:10px;padding:0.7rem;font:500 0.9rem var(--font-ui);cursor:pointer" data-i18n="load_folder">Load folder</button>
   </div>
 </div>
 
@@ -1266,13 +1266,13 @@
 <div class="modal-backdrop" id="feedback-modal" onclick="Feedback.close(event)">
   <div class="modal-sheet">
     <div class="modal-handle"></div>
-    <div class="modal-title">Send feedback</div>
-    <p style="font-size:0.82rem;color:var(--text-dim);margin:0 0 0.9rem">Ideas, requests, anything on your mind. This opens your email app with a draft ready to send.</p>
-    <div class="form-label">Your email <span style="font-weight:400">(so we can reply)</span></div>
-    <input id="fb-email" class="form-input" type="email" placeholder="you@example.com" inputmode="email">
-    <div class="form-label">Message</div>
-    <textarea id="fb-message" class="form-textarea" placeholder="What's on your mind?"></textarea>
-    <button class="form-submit" onclick="Feedback.send()">Send feedback</button>
+    <div class="modal-title" data-i18n="send_feedback">Send feedback</div>
+    <p style="font-size:0.82rem;color:var(--text-dim);margin:0 0 0.9rem" data-i18n="feedback_body">Ideas, requests, anything on your mind. This opens your email app with a draft ready to send.</p>
+    <div class="form-label"><span data-i18n="your_email_reply">Your email</span> <span style="font-weight:400" data-i18n="your_email_reply_note">(so we can reply)</span></div>
+    <input id="fb-email" class="form-input" type="email" placeholder="you@example.com" data-i18n-placeholder="email_placeholder" inputmode="email">
+    <div class="form-label" data-i18n="message_label">Message</div>
+    <textarea id="fb-message" class="form-textarea" placeholder="What's on your mind?" data-i18n-placeholder="message_placeholder"></textarea>
+    <button class="form-submit" onclick="Feedback.send()" data-i18n="send_feedback_btn">Send feedback</button>
   </div>
 </div>
 
@@ -1280,25 +1280,25 @@
 <div class="modal-backdrop" id="bugreport-modal" onclick="BugReport.close(event)">
   <div class="modal-sheet">
     <div class="modal-handle"></div>
-    <div class="modal-title">Report a bug</div>
-    <p style="font-size:0.82rem;color:var(--text-dim);margin:0 0 0.9rem">This opens your email app with your device details already filled in, so we can help faster.</p>
-    <div class="form-label">Your email</div>
-    <input id="bug-email" class="form-input" type="email" placeholder="you@example.com" inputmode="email">
-    <div class="form-label">What happened?</div>
-    <textarea id="bug-what" class="form-textarea" placeholder="What went wrong?"></textarea>
-    <div class="form-label">Steps to reproduce <span style="font-weight:400">(optional)</span></div>
+    <div class="modal-title" data-i18n="report_bug">Report a bug</div>
+    <p style="font-size:0.82rem;color:var(--text-dim);margin:0 0 0.9rem" data-i18n="bugreport_body">This opens your email app with your device details already filled in, so we can help faster.</p>
+    <div class="form-label" data-i18n="your_email_reply">Your email</div>
+    <input id="bug-email" class="form-input" type="email" placeholder="you@example.com" data-i18n-placeholder="email_placeholder" inputmode="email">
+    <div class="form-label" data-i18n="what_happened">What happened?</div>
+    <textarea id="bug-what" class="form-textarea" placeholder="What went wrong?" data-i18n-placeholder="what_went_wrong_placeholder"></textarea>
+    <div class="form-label"><span data-i18n="steps_to_reproduce">Steps to reproduce</span> <span style="font-weight:400" data-i18n="optional">(optional)</span></div>
     <textarea id="bug-steps" class="form-textarea" style="min-height:4rem" placeholder="1. …&#10;2. …&#10;3. …"></textarea>
-    <div class="form-label">Add a photo <span style="font-weight:400">(optional)</span></div>
+    <div class="form-label"><span data-i18n="add_photo">Add a photo</span> <span style="font-weight:400" data-i18n="optional">(optional)</span></div>
     <input id="bug-photo" type="file" accept="image/*" class="form-input" style="padding:0.4rem 0.6rem" onchange="BugReport.onPhotoChange(this)">
     <div class="form-hint" id="bug-photo-hint"></div>
-    <button class="form-submit" onclick="BugReport.send()">Send report</button>
+    <button class="form-submit" onclick="BugReport.send()" data-i18n="send_report">Send report</button>
   </div>
 </div>
 
 <!-- ============== TOAST ============== -->
 <div id="toast"></div>
 <div id="scrub-pop"></div>
-<div id="exit-hint"><div class="eh-box">Swipe again to leave</div></div>
+<div id="exit-hint"><div class="eh-box" data-i18n="swipe_again_to_leave">Swipe again to leave</div></div>
 
 <!-- ============== SCRIPTS ============== -->
 <!-- Self-hosted (not CDN): a compromised CDN could otherwise run arbitrary JS
@@ -1504,6 +1504,130 @@ const STRINGS = {
     app_language: 'App language', app_language_sub: 'Translates the Settings tab',
     footer_tagline: 'PhonoLeaf · A voice for every page',
     privacy_policy: 'Privacy Policy', terms_of_service: 'Terms of Service',
+
+    // Sign-in
+    si_lede: 'Turn the ebooks already sitting in your Google Drive into an audiobook library.',
+    si_step1_t: 'Connect a Drive folder', si_step1_s: 'Pick the folder your ebooks are in — that’s the only one PhonoLeaf reads.',
+    si_step2_t: 'Your library appears', si_step2_s: 'Every ebook in that folder, with its real cover art. Add more later and they show up on their own.',
+    si_step3_t: 'Press play', si_step3_s: 'A natural voice reads aloud — even with the screen off — and remembers where you stopped.',
+    sign_in_google: 'Sign in with Google',
+    si_privacy_b: 'Read-only access.', si_privacy: 'PhonoLeaf never changes, uploads or deletes anything in your Drive. There’s no server — your books go from Google straight to your device.',
+
+    // Tab bar
+    tab_home: 'Home', tab_library: 'Library', tab_stats: 'Stats', tab_settings: 'Settings',
+
+    // Home
+    greeting_morning: 'Good morning', greeting_afternoon: 'Good afternoon', greeting_evening: 'Good evening',
+    home_title: 'Home', now_playing: 'Now playing', continue_: 'Continue',
+    home_choose_folder: 'Choose your Google Drive books folder to get started.',
+    home_loading_library: 'Loading your library…',
+    stat_this_week: 'this week', stat_day_streak: 'day streak', stat_in_progress: 'in progress',
+    home_started_empty: 'Books you’ve started will appear here.',
+    jump_back_in: 'Jump back in', see_all: 'See all',
+
+    // Library
+    library_title: 'Library', search_placeholder: 'Search your books',
+    library_finding: 'Finding your books...', library_loading: 'Loading your library...',
+    library_choose_folder1: 'Choose the Google Drive folder', library_choose_folder2: 'your ebooks live in to get started.',
+    library_no_ebooks_in: 'No ebooks found in', library_no_match: 'No books match "{q}".',
+    library_error: 'Error: {msg}', choose_folder_btn: 'Choose folder',
+
+    // Stats
+    stats_title: 'Your stats',
+    stat_all_time: 'all time', stat_in_library: 'in library', stat_started: 'started', stat_finished: 'finished',
+    listening_last_14: 'Listening · last 14 days',
+    no_listening_yet: 'No listening yet — press play to start tracking.',
+    breakdown: 'Breakdown',
+    group_author: 'By author', group_book: 'By book', group_length: 'By book length', group_genre: 'By genre',
+    col_author: 'Author', col_book: 'Book', col_genre: 'Genre', col_length: 'Length',
+    col_min_read: 'Min read', col_pct: '%', col_read: 'Read', col_started: 'Started', col_finished: 'Finished', col_books: 'Books',
+    genre_loading: 'Genre data is loading in the background — check back in a moment.',
+    pages_loading: 'Page counts are loading in the background — check back in a moment.',
+    no_data_yet: 'No {type} data yet — press play to start tracking.',
+    type_author: 'author', type_book: 'book', type_genre: 'genre', type_length: 'length',
+    tier_under_300: '<300 pages', tier_300_499: '300–499 pages', tier_500_plus: '500+ pages',
+    reset_listening_data: 'Reset listening data', listening_data_reset: 'Listening data reset.',
+    chapter_n: 'Chapter {n}',
+
+    // Reader
+    loading_book: 'Loading book...', resuming: 'Resuming where you left off',
+    no_text_found: 'No text found to read', generating_audio: 'Generating audio…',
+    no_chapter_list: 'No chapter list available', could_not_open_chapter: 'Could not open chapter',
+    swipe_again_to_leave: 'Swipe again to leave',
+
+    // Voice modal
+    choose_voice: 'Choose Voice', no_natural_voices: 'No natural voices installed yet',
+    download_one_below: 'Download one below to use the natural voice',
+    get_more_voices: 'Get more voices', download_language_packs: 'Download language packs',
+    may_run_slower: 'May run slower than real time on this device',
+    no_voices_yet: 'No voices available yet — try again in a moment',
+    voice_tier_high: 'High', voice_tier_standard: 'Standard', voice_prefix: 'Voice: ',
+
+    // Language packs modal
+    language_packs_title: 'Language Packs',
+    pick_voice_title: 'Pick a voice to download',
+    pick_voice_body: 'PhonoLeaf reads aloud with a natural voice that runs entirely on your device. Choose the language you want — you can add or remove others any time in Settings.',
+    slow_note_title: 'Natural voice may run slower than real time here',
+    slow_note_body: 'You can still use it — playback may occasionally pause to catch up. Your device’s built-in voice is always available as a faster alternative in Settings.',
+    downloading_pct: 'Downloading… {pct}%', queued: 'Queued…', checking: 'Checking…', downloaded: 'Downloaded',
+    cancel: 'Cancel', remove: 'Remove', download: 'Download', mb: '{mb} MB',
+    checking_your_device: 'Checking your device…', downloading_hq_pct: 'Downloading the high quality voice… {pct}%',
+    lang_en_us: 'English (US)', lang_en_gb: 'English (UK)', lang_en: 'English',
+    lang_fr: 'French', lang_de: 'German', lang_es: 'Spanish',
+
+    // Voice help / info / no-voice modals
+    voicehelp_tip: 'Tip: free natural voices', voicehelp_get: 'Get natural device voices',
+    voicehelp_android: 'Tap the button below to open your phone’s voice installer, then download a higher-quality voice for your language (look for ones marked “natural”). It then appears in PhonoLeaf’s voice picker. (Manual path: Settings → General management → Text-to-speech output → Google Speech Services → gear → Install voice data.)',
+    voicehelp_ios: 'On your iPhone or iPad: Settings → Accessibility → Spoken Content → Voices → English → download an Enhanced or Premium voice (the Siri voices are the most natural). It then appears in PhonoLeaf’s voice picker.',
+    install_voice_data: 'Install voice data', close: 'Close',
+    novoice_title: 'A voice is needed to read aloud',
+    novoice_body: 'PhonoLeaf needs a language pack downloaded to your device before it can read to you. Playback has stopped — download one below, then press play again.',
+    novoice_action: 'Download a voice',
+    voiceinfo_title: 'About the natural voice',
+    voiceinfo_p1: 'PhonoLeaf comes with its own natural-sounding voice that runs entirely on your device — nothing you read is sent to a server to be turned into speech.',
+    voiceinfo_p2: 'To play without gaps it has to generate speech faster than you can listen to it. Most phones manage this comfortably; some slower or older devices, and some web browsers, can’t keep up. When that happens PhonoLeaf automatically switches to the standard voice built into your device, so reading never stops — it just sounds more robotic.',
+    voiceinfo_p3_b: 'Retry', voiceinfo_p3: ' re-tests this device, which is worth doing if it happened to be busy the first time.',
+    voicesetup_title: 'Setting up your voice', voicesetup_body: 'Checking which voices run best on your device…',
+
+    // Chapter / Folder / Confirm modals
+    chapters_title: 'Chapters',
+    reset_stats_confirm: 'Are you sure you want to reset your listening data? This cannot be undone.', reset: 'Reset',
+    choose_books_folder: 'Choose your books folder',
+    fb_currently: 'Currently: {folder} — open a folder to browse, then tap “Use this folder”.',
+    fb_open_to_browse: 'Open a folder to browse, then tap “Use this folder”.',
+    fb_use: 'Use “{name}”', fb_loading: 'Loading…',
+    fb_no_subfolders: 'No sub-folders here — tap the button below to use this folder.',
+    fb_load_failed: 'Couldn’t load folders. Try again.',
+    folder_type_prompt: 'Please type which Google Drive folder to read from.',
+    folder_name_placeholder: 'Folder name', load_folder: 'Load folder',
+
+    // Feedback / bug report
+    feedback_body: 'Ideas, requests, anything on your mind. This opens your email app with a draft ready to send.',
+    your_email_reply: 'Your email', your_email_reply_note: '(so we can reply)',
+    email_placeholder: 'you@example.com', message_label: 'Message', message_placeholder: 'What’s on your mind?',
+    send_feedback_btn: 'Send feedback', write_message_first: 'Write a message first',
+    bugreport_body: 'This opens your email app with your device details already filled in, so we can help faster.',
+    what_happened: 'What happened?', what_went_wrong_placeholder: 'What went wrong?',
+    steps_to_reproduce: 'Steps to reproduce', optional: '(optional)',
+    add_photo: 'Add a photo', selected_file: 'Selected: {name}',
+    send_report: 'Send report', describe_first: 'Describe what happened first',
+
+    // Toasts
+    voice_pack_downloaded: 'Voice pack downloaded', download_failed: 'Download failed: {msg}',
+    device_runs_best_standard: 'This device runs best with the standard voice',
+    installing_standard_instead: 'That voice needs a faster device — installing the standard one instead',
+    download_cancelled: 'Download cancelled', voice_pack_removed: 'Voice pack removed',
+    could_not_remove_pack: 'Could not remove pack: {msg}',
+    downloading_ellipsis: 'Downloading...',
+    pack_not_installed_switched: 'That voice’s language pack isn’t installed — switched to {voice}',
+    natural_voice_struggling: 'The natural voice is struggling on this device — using the standard voice for now',
+    device_cant_run_realtime: 'This device can’t run the natural voice in real time — using the standard voice.',
+    check_connection: 'check your connection and try again',
+    auth_loading: 'Auth loading, please wait...', sign_in_failed: 'Sign-in failed: {msg}',
+    sign_in_not_configured: 'Sign-in not configured for the app build yet',
+    sign_in_failed_retry: 'Sign-in failed — please try again',
+    sign_in_again_folder_remembered: 'Please sign in again — your saved folder is remembered',
+    loading_folder: 'Loading "{name}"…', folder_fallback: 'folder',
   },
   fr: {
     settings_title: 'Paramètres',
@@ -1534,6 +1658,130 @@ const STRINGS = {
     app_language: 'Langue de l’application', app_language_sub: 'Traduit l’onglet Paramètres',
     footer_tagline: 'PhonoLeaf · Une voix pour chaque page',
     privacy_policy: 'Politique de confidentialité', terms_of_service: 'Conditions d’utilisation',
+
+    // Connexion
+    si_lede: 'Transformez les livres numériques déjà présents dans votre Google Drive en bibliothèque audio.',
+    si_step1_t: 'Connectez un dossier Drive', si_step1_s: 'Choisissez le dossier où se trouvent vos livres — c’est le seul que PhonoLeaf lit.',
+    si_step2_t: 'Votre bibliothèque apparaît', si_step2_s: 'Chaque livre de ce dossier, avec sa vraie couverture. Ajoutez-en d’autres plus tard et ils apparaissent tout seuls.',
+    si_step3_t: 'Appuyez sur lecture', si_step3_s: 'Une voix naturelle lit à voix haute — même écran éteint — et se souvient d’où vous vous êtes arrêté.',
+    sign_in_google: 'Se connecter avec Google',
+    si_privacy_b: 'Accès en lecture seule.', si_privacy: 'PhonoLeaf ne modifie, ne téléverse ni ne supprime jamais rien dans votre Drive. Il n’y a aucun serveur — vos livres vont de Google directement à votre appareil.',
+
+    // Barre d’onglets
+    tab_home: 'Accueil', tab_library: 'Bibliothèque', tab_stats: 'Stats', tab_settings: 'Paramètres',
+
+    // Accueil
+    greeting_morning: 'Bonjour', greeting_afternoon: 'Bon après-midi', greeting_evening: 'Bonsoir',
+    home_title: 'Accueil', now_playing: 'En cours de lecture', continue_: 'Continuer',
+    home_choose_folder: 'Choisissez votre dossier de livres Google Drive pour commencer.',
+    home_loading_library: 'Chargement de votre bibliothèque…',
+    stat_this_week: 'cette semaine', stat_day_streak: 'jours consécutifs', stat_in_progress: 'en cours',
+    home_started_empty: 'Les livres que vous avez commencés apparaîtront ici.',
+    jump_back_in: 'Reprendre', see_all: 'Tout voir',
+
+    // Bibliothèque
+    library_title: 'Bibliothèque', search_placeholder: 'Rechercher vos livres',
+    library_finding: 'Recherche de vos livres...', library_loading: 'Chargement de votre bibliothèque...',
+    library_choose_folder1: 'Choisissez le dossier Google Drive', library_choose_folder2: 'où se trouvent vos livres pour commencer.',
+    library_no_ebooks_in: 'Aucun livre trouvé dans', library_no_match: 'Aucun livre ne correspond à « {q} ».',
+    library_error: 'Erreur : {msg}', choose_folder_btn: 'Choisir un dossier',
+
+    // Statistiques
+    stats_title: 'Vos statistiques',
+    stat_all_time: 'total', stat_in_library: 'dans la bibliothèque', stat_started: 'commencés', stat_finished: 'terminés',
+    listening_last_14: 'Écoute · 14 derniers jours',
+    no_listening_yet: 'Aucune écoute pour l’instant — appuyez sur lecture pour commencer le suivi.',
+    breakdown: 'Répartition',
+    group_author: 'Par auteur', group_book: 'Par livre', group_length: 'Par longueur', group_genre: 'Par genre',
+    col_author: 'Auteur', col_book: 'Livre', col_genre: 'Genre', col_length: 'Longueur',
+    col_min_read: 'Min lues', col_pct: '%', col_read: 'Lu', col_started: 'Commencés', col_finished: 'Terminés', col_books: 'Livres',
+    genre_loading: 'Les données de genre se chargent en arrière-plan — revenez dans un instant.',
+    pages_loading: 'Le nombre de pages se charge en arrière-plan — revenez dans un instant.',
+    no_data_yet: 'Aucune donnée {type} pour l’instant — appuyez sur lecture pour commencer le suivi.',
+    type_author: 'd’auteur', type_book: 'de livre', type_genre: 'de genre', type_length: 'de longueur',
+    tier_under_300: '<300 pages', tier_300_499: '300 à 499 pages', tier_500_plus: '500 pages et plus',
+    reset_listening_data: 'Réinitialiser les données d’écoute', listening_data_reset: 'Données d’écoute réinitialisées.',
+    chapter_n: 'Chapitre {n}',
+
+    // Lecteur
+    loading_book: 'Chargement du livre...', resuming: 'Reprise là où vous vous êtes arrêté',
+    no_text_found: 'Aucun texte à lire', generating_audio: 'Génération de l’audio…',
+    no_chapter_list: 'Aucune liste de chapitres disponible', could_not_open_chapter: 'Impossible d’ouvrir le chapitre',
+    swipe_again_to_leave: 'Balayez à nouveau pour quitter',
+
+    // Sélecteur de voix
+    choose_voice: 'Choisir une voix', no_natural_voices: 'Aucune voix naturelle installée',
+    download_one_below: 'Téléchargez-en une ci-dessous pour utiliser la voix naturelle',
+    get_more_voices: 'Obtenir plus de voix', download_language_packs: 'Télécharger des packs de langue',
+    may_run_slower: 'Peut être plus lente que le temps réel sur cet appareil',
+    no_voices_yet: 'Aucune voix disponible pour l’instant — réessayez dans un moment',
+    voice_tier_high: 'Haute', voice_tier_standard: 'Standard', voice_prefix: 'Voix : ',
+
+    // Packs de langue
+    language_packs_title: 'Packs de langue',
+    pick_voice_title: 'Choisir une voix à télécharger',
+    pick_voice_body: 'PhonoLeaf lit à voix haute avec une voix naturelle qui fonctionne entièrement sur votre appareil. Choisissez la langue voulue — vous pouvez en ajouter ou en retirer à tout moment dans les Paramètres.',
+    slow_note_title: 'La voix naturelle peut être plus lente que le temps réel ici',
+    slow_note_body: 'Vous pouvez tout de même l’utiliser — la lecture peut parfois marquer une pause pour rattraper son retard. La voix intégrée à votre appareil reste toujours disponible comme solution de rechange plus rapide, dans les Paramètres.',
+    downloading_pct: 'Téléchargement… {pct} %', queued: 'En attente…', checking: 'Vérification…', downloaded: 'Téléchargée',
+    cancel: 'Annuler', remove: 'Supprimer', download: 'Télécharger', mb: '{mb} Mo',
+    checking_your_device: 'Vérification de votre appareil…', downloading_hq_pct: 'Téléchargement de la voix haute qualité… {pct} %',
+    lang_en_us: 'Anglais (É.-U.)', lang_en_gb: 'Anglais (R.-U.)', lang_en: 'Anglais',
+    lang_fr: 'Français', lang_de: 'Allemand', lang_es: 'Espagnol',
+
+    // Aide voix / infos / aucune voix
+    voicehelp_tip: 'Astuce : voix naturelles gratuites', voicehelp_get: 'Obtenir des voix naturelles de l’appareil',
+    voicehelp_android: 'Appuyez sur le bouton ci-dessous pour ouvrir l’installateur de voix de votre téléphone, puis téléchargez une voix de meilleure qualité pour votre langue (cherchez celles marquées « naturelle »). Elle apparaîtra ensuite dans le sélecteur de voix de PhonoLeaf. (Chemin manuel : Paramètres → Gestion générale → Sortie de synthèse vocale → Google Speech Services → roue dentée → Installer les données vocales.)',
+    voicehelp_ios: 'Sur votre iPhone ou iPad : Réglages → Accessibilité → Contenu énoncé → Voix → Anglais → téléchargez une voix Enhanced ou Premium (les voix Siri sont les plus naturelles). Elle apparaîtra ensuite dans le sélecteur de voix de PhonoLeaf.',
+    install_voice_data: 'Installer les données vocales', close: 'Fermer',
+    novoice_title: 'Une voix est nécessaire pour la lecture à voix haute',
+    novoice_body: 'PhonoLeaf a besoin qu’un pack de langue soit téléchargé sur votre appareil avant de pouvoir vous faire la lecture. La lecture s’est arrêtée — téléchargez-en un ci-dessous, puis appuyez de nouveau sur lecture.',
+    novoice_action: 'Télécharger une voix',
+    voiceinfo_title: 'À propos de la voix naturelle',
+    voiceinfo_p1: 'PhonoLeaf est livrée avec sa propre voix au son naturel qui fonctionne entièrement sur votre appareil — rien de ce que vous lisez n’est envoyé à un serveur pour être transformé en parole.',
+    voiceinfo_p2: 'Pour lire sans interruption, l’appareil doit générer la parole plus vite que vous ne pouvez l’écouter. La plupart des téléphones y arrivent sans problème; certains appareils plus lents ou plus anciens, ainsi que certains navigateurs Web, n’y arrivent pas. Dans ce cas, PhonoLeaf bascule automatiquement vers la voix standard intégrée à votre appareil, afin que la lecture ne s’arrête jamais — elle sonne simplement un peu plus robotique.',
+    voiceinfo_p3_b: 'Réessayer', voiceinfo_p3: ' teste de nouveau cet appareil, ce qui vaut la peine si celui-ci était occupé la première fois.',
+    voicesetup_title: 'Configuration de votre voix', voicesetup_body: 'Vérification des voix qui fonctionnent le mieux sur votre appareil…',
+
+    // Chapitres / dossier / confirmation
+    chapters_title: 'Chapitres',
+    reset_stats_confirm: 'Voulez-vous vraiment réinitialiser vos données d’écoute ? Cette action est irréversible.', reset: 'Réinitialiser',
+    choose_books_folder: 'Choisissez votre dossier de livres',
+    fb_currently: 'Actuellement : {folder} — ouvrez un dossier pour le parcourir, puis touchez « Utiliser ce dossier ».',
+    fb_open_to_browse: 'Ouvrez un dossier pour le parcourir, puis touchez « Utiliser ce dossier ».',
+    fb_use: 'Utiliser « {name} »', fb_loading: 'Chargement…',
+    fb_no_subfolders: 'Aucun sous-dossier ici — touchez le bouton ci-dessous pour utiliser ce dossier.',
+    fb_load_failed: 'Impossible de charger les dossiers. Réessayez.',
+    folder_type_prompt: 'Veuillez indiquer le dossier Google Drive à utiliser.',
+    folder_name_placeholder: 'Nom du dossier', load_folder: 'Charger le dossier',
+
+    // Commentaires / signalement de problème
+    feedback_body: 'Idées, demandes, tout ce qui vous passe par la tête. Cela ouvre votre application de courriel avec un brouillon prêt à envoyer.',
+    your_email_reply: 'Votre courriel', your_email_reply_note: '(pour pouvoir vous répondre)',
+    email_placeholder: 'vous@exemple.com', message_label: 'Message', message_placeholder: 'Qu’avez-vous en tête ?',
+    send_feedback_btn: 'Envoyer', write_message_first: 'Écrivez d’abord un message',
+    bugreport_body: 'Cela ouvre votre application de courriel avec les détails de votre appareil déjà remplis, pour que nous puissions vous aider plus rapidement.',
+    what_happened: 'Que s’est-il passé ?', what_went_wrong_placeholder: 'Qu’est-ce qui n’a pas fonctionné ?',
+    steps_to_reproduce: 'Étapes pour reproduire', optional: '(facultatif)',
+    add_photo: 'Ajouter une photo', selected_file: 'Sélectionné : {name}',
+    send_report: 'Envoyer le signalement', describe_first: 'Décrivez d’abord ce qui s’est passé',
+
+    // Messages ponctuels
+    voice_pack_downloaded: 'Pack de voix téléchargé', download_failed: 'Échec du téléchargement : {msg}',
+    device_runs_best_standard: 'Cet appareil fonctionne mieux avec la voix standard',
+    installing_standard_instead: 'Cette voix nécessite un appareil plus rapide — installation de la voix standard à la place',
+    download_cancelled: 'Téléchargement annulé', voice_pack_removed: 'Pack de voix supprimé',
+    could_not_remove_pack: 'Impossible de supprimer le pack : {msg}',
+    downloading_ellipsis: 'Téléchargement...',
+    pack_not_installed_switched: 'Le pack de langue de cette voix n’est pas installé — remplacée par {voice}',
+    natural_voice_struggling: 'La voix naturelle peine sur cet appareil — utilisation de la voix standard pour l’instant',
+    device_cant_run_realtime: 'Cet appareil ne peut pas exécuter la voix naturelle en temps réel — utilisation de la voix standard.',
+    check_connection: 'vérifiez votre connexion et réessayez',
+    auth_loading: 'Chargement de l’authentification, veuillez patienter...', sign_in_failed: 'Échec de la connexion : {msg}',
+    sign_in_not_configured: 'La connexion n’est pas encore configurée pour cette version de l’application',
+    sign_in_failed_retry: 'Échec de la connexion — veuillez réessayer',
+    sign_in_again_folder_remembered: 'Veuillez vous reconnecter — votre dossier enregistré est mémorisé',
+    loading_folder: 'Chargement de « {name} »…', folder_fallback: 'dossier',
   },
 };
 const I18n = {
@@ -1547,10 +1795,24 @@ const I18n = {
     } catch (_) { return 'en'; }
   },
   lang() { try { return localStorage.getItem('pl_lang') || this._detect(); } catch (_) { return 'en'; } },
+  // Applied to the whole document (not just whichever view happens to be
+  // visible) so every static shell — sign-in, Home, Library, Reader, the tab
+  // bar, and every modal, most of them hidden at any given moment — is
+  // correct the instant the user switches, not just next time it's opened.
+  // Dynamic (JS-templated) views are then re-rendered explicitly, each
+  // guarded so switching language can never throw even from an unusual
+  // state (e.g. before the library has ever loaded, State.books is
+  // undefined and Library.render() has no fallback for that — unlike
+  // Home/Stats, which already default it to []).
   setLang(l) {
     try { localStorage.setItem('pl_lang', l); } catch (_) {}
-    this.apply(document.getElementById('settings-view'));
-    if (typeof Settings !== 'undefined') Settings.render();
+    this.apply(document.body);
+    for (const fn of [
+      () => Home.render(),
+      () => { if (State.books) Library.render(); },
+      () => StatsPage.render(),
+      () => Settings.render(),
+    ]) { try { fn(); } catch (_) {} }
   },
   // {name}-style placeholders only — deliberately not a full template
   // engine, this only ever needs to splice in one or two plain strings
@@ -1561,15 +1823,17 @@ const I18n = {
     if (vars) for (const k in vars) s = s.replace('{' + k + '}', vars[k]);
     return s;
   },
-  // Walks every [data-i18n] (textContent) and [data-i18n-title] (title attr,
+  // Walks every [data-i18n] (textContent), [data-i18n-title] (title attr,
   // for things like the theme segmented buttons where a shorter label reads
-  // better than reflowing the row) under `root` and fills it from the
-  // current language. Safe to call repeatedly — it's just textContent, so
-  // re-running it on every Settings.render() can't accumulate anything.
+  // better than reflowing the row), and [data-i18n-placeholder] (input/
+  // textarea placeholder text) under `root` and fills it from the current
+  // language. Safe to call repeatedly — it's just attribute/text updates, so
+  // re-running it on every render can't accumulate anything.
   apply(root) {
     if (!root) return;
     root.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = this.t(el.dataset.i18n); });
     root.querySelectorAll('[data-i18n-title]').forEach(el => { el.title = this.t(el.dataset.i18nTitle); });
+    root.querySelectorAll('[data-i18n-placeholder]').forEach(el => { el.placeholder = this.t(el.dataset.i18nPlaceholder); });
   },
 };
 
@@ -1765,7 +2029,7 @@ const Home = {
   render() {
     const books = State.books || [], prog = State.progress || {};
     const h = new Date().getHours();
-    const greeting = h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
+    const greeting = I18n.t(h < 12 ? 'greeting_morning' : h < 18 ? 'greeting_afternoon' : 'greeting_evening');
     document.getElementById('home-title').textContent = State.userName ? `${greeting}, ${State.userName}` : greeting;
 
     const hi = this._continueIndex();
@@ -1779,7 +2043,7 @@ const Home = {
         `<div class="home-hero">
           <div class="hh-cover" style="${cov ? `background-image:url('${esc(cov)}')` : ''}"></div>
           <div class="hh-info">
-            <div class="hh-k">${playing ? 'Now playing' : 'Continue'}</div>
+            <div class="hh-k">${playing ? I18n.t('now_playing') : I18n.t('continue_')}</div>
             <div class="hh-title">${esc(t)}</div>
             <div class="hh-sub">${esc(sub)}</div>
             <input type="range" class="scrub hh-scrub" min="0" max="1000" value="${Math.round((p.pct || 0) * 10)}" aria-label="Seek through book">
@@ -1791,15 +2055,15 @@ const Home = {
         </div>`;
     } else {
       contEl.innerHTML = books.length ? '' : (State.ready
-        ? `<div class="home-empty">Choose your Google Drive books folder to get started.</div>${Library._pickBtn()}`
-        : '<div class="home-empty">Loading your library…</div>');
+        ? `<div class="home-empty">${I18n.t('home_choose_folder')}</div>${Library._pickBtn()}`
+        : `<div class="home-empty">${I18n.t('home_loading_library')}</div>`);
     }
 
     const s = Stats.summary();
     document.getElementById('home-stats').innerHTML =
-      `<div class="stat"><b>${s.hours}</b><span>this week</span></div>
-       <div class="stat"><b>${s.streak}</b><span>day streak</span></div>
-       <div class="stat"><b>${s.books}</b><span>in progress</span></div>`;
+      `<div class="stat"><b>${s.hours}</b><span>${I18n.t('stat_this_week')}</span></div>
+       <div class="stat"><b>${s.streak}</b><span>${I18n.t('stat_day_streak')}</span></div>
+       <div class="stat"><b>${s.books}</b><span>${I18n.t('stat_in_progress')}</span></div>`;
 
     // Only books actually started, in the last 30 days, newest (left) → oldest.
     const cutoff = Date.now() - 30 * 864e5;
@@ -1812,7 +2076,7 @@ const Home = {
       return `<div class="cr-item" onclick="Player.play(${i})" role="button" tabindex="0" aria-label="Continue ${esc(t)}">
         <div class="cr-cover" style="${cov ? `background-image:url('${esc(cov)}')` : ''}"></div>
         <div class="cr-title">${esc(t)}</div></div>`;
-    }).join('') || '<div class="home-empty">Books you’ve started will appear here.</div>';
+    }).join('') || `<div class="home-empty">${I18n.t('home_started_empty')}</div>`;
   },
 };
 
@@ -1943,19 +2207,18 @@ const VoiceHelp = {
     // intent (activity not browsable on some OEMs), the embedded
     // browser_fallback_url sends them to the Google TTS engine on Play instead.
     android: {
-      steps: 'Tap the button below to open your phone’s voice installer, then download a higher-quality voice for your language (look for ones marked “natural”). It then appears in PhonoLeaf’s voice picker. (Manual path: Settings → General management → Text-to-speech output → Google Speech Services → gear → Install voice data.)',
-      action: 'Install voice data',
+      key: 'voicehelp_android',
       url: 'intent:#Intent;action=android.speech.tts.engine.INSTALL_TTS_DATA;S.browser_fallback_url=' + encodeURIComponent('https://play.google.com/store/apps/details?id=com.google.android.tts') + ';end',
     },
-    ios: { steps: 'On your iPhone or iPad: Settings → Accessibility → Spoken Content → Voices → English → download an Enhanced or Premium voice (the Siri voices are the most natural). It then appears in PhonoLeaf’s voice picker.' },
+    ios: { key: 'voicehelp_ios' },
   },
   open(onboard) {
     if (!this.available()) return;
     const p = this._steps[this._platform()];
-    document.getElementById('vh-title').textContent = onboard ? 'Tip: free natural voices' : 'Get natural device voices';
-    document.getElementById('vh-steps').textContent = p.steps;
+    document.getElementById('vh-title').textContent = I18n.t(onboard ? 'voicehelp_tip' : 'voicehelp_get');
+    document.getElementById('vh-steps').textContent = I18n.t(p.key);
     const b = document.getElementById('vh-action');
-    if (p.url) { b.style.display = ''; b.textContent = p.action; this._url = p.url; }
+    if (p.url) { b.style.display = ''; b.textContent = I18n.t('install_voice_data'); this._url = p.url; }
     else { b.style.display = 'none'; this._url = null; }
     document.getElementById('voicehelp-modal').classList.add('open');
   },
@@ -2028,10 +2291,10 @@ const VoicePacks = {
   _englishRows() {
     const gate = this._kokoroGate();
     if (gate === 'no') return [
-      { model: 'us', label: 'English (US)', approxMB: 78 },
-      { model: 'gb', label: 'English (UK)', approxMB: 77 },
+      { model: 'us', label: I18n.t('lang_en_us'), approxMB: 78 },
+      { model: 'gb', label: I18n.t('lang_en_gb'), approxMB: 77 },
     ];
-    return [{ model: gate === 'yes' ? 'kokoro' : 'english', label: 'English', approxMB: 78 }];
+    return [{ model: gate === 'yes' ? 'kokoro' : 'english', label: I18n.t('lang_en'), approxMB: 78 }];
   },
   // Kept in sync with PhonoLeafTtsPlugin.kt's VOICE_PACKS map. Every entry is
   // a real download now — nothing ships in the APK — so they're all uniform
@@ -2042,9 +2305,9 @@ const VoicePacks = {
       // fr/es sizes updated 2026-08-05 — both switched to 2-speaker models
       // (~77 MB) to get a real male + female voice per language; see the
       // PIPER_VOICES comment for details.
-      { model: 'fr', label: 'French', approxMB: 77 },
-      { model: 'de', label: 'German', approxMB: 64 },
-      { model: 'es', label: 'Spanish', approxMB: 77 },
+      { model: 'fr', label: I18n.t('lang_fr'), approxMB: 77 },
+      { model: 'de', label: I18n.t('lang_de'), approxMB: 64 },
+      { model: 'es', label: I18n.t('lang_es'), approxMB: 77 },
     ]);
   },
   _status: {},   // model -> {downloaded, approxBytes}, once known
@@ -2144,7 +2407,7 @@ const VoicePacks = {
     try {
       await p.downloadPack({ model });
       this._status[model] = { downloaded: true, approxBytes: (this._status[model] || {}).approxBytes || 0 };
-      toast('Voice pack downloaded');
+      toast(I18n.t('voice_pack_downloaded'));
       if (bench) TTS._nativeBench(model); // one-time proactive speed check — see TTS._nativeBench
       // Verify HERE rather than at each call site so every route that can
       // install Kokoro (catalog row, onboarding, Settings → Retry) is covered
@@ -2159,7 +2422,7 @@ const VoicePacks = {
       // would be wrong, and cancel() has already toasted.
       const msg = (e && e.message) || '';
       if (!/cancel/i.test(msg)) {
-        toast('Download failed: ' + (msg || 'check your connection and try again'));
+        toast(I18n.t('download_failed', { msg: msg || I18n.t('check_connection') }));
       }
     }
     delete this._progress[model];
@@ -2220,7 +2483,7 @@ const VoicePacks = {
     this._setKokoroGate('pending'); // force a fresh screen
     const gate = await this.screenDeviceWithUI();
     if (gate === 'yes') await this.download('kokoro');
-    else toast('This device runs best with the standard voice');
+    else toast(I18n.t('device_runs_best_standard'));
     this._notify();
   },
 
@@ -2268,7 +2531,7 @@ const VoicePacks = {
     this._notify();
     // Auto-recover rather than leaving them with no English voice at all —
     // they'd otherwise be stranded mid-onboarding with nothing to read with.
-    toast('That voice needs a faster device — installing the standard one instead', 5000);
+    toast(I18n.t('installing_standard_instead'), 5000);
     await this.download('us');
     return false;
   },
@@ -2278,7 +2541,7 @@ const VoicePacks = {
     if (!p) return;
     try { await p.cancelDownload({ model }); } catch (_) {}
     delete this._progress[model];
-    toast('Download cancelled');
+    toast(I18n.t('download_cancelled'));
     this._notify();
   },
 
@@ -2288,8 +2551,8 @@ const VoicePacks = {
     try {
       await p.deletePack({ model });
       this._status[model] = { downloaded: false, approxBytes: (this._status[model] || {}).approxBytes || 0 };
-      toast('Voice pack removed');
-    } catch (e) { toast('Could not remove pack: ' + ((e && e.message) || '')); }
+      toast(I18n.t('voice_pack_removed'));
+    } catch (e) { toast(I18n.t('could_not_remove_pack', { msg: (e && e.message) || '' })); }
     this._notify();
   },
 
@@ -2312,18 +2575,18 @@ const VoicePacks = {
     const prog = this._progress[model];
     let sub, right;
     if (prog) {
-      sub = prog.started ? `Downloading… ${prog.pct}%` : 'Queued…';
-      right = `<button class="set-link" onclick="VoicePacks.cancel('${model}')">Cancel</button>`;
+      sub = prog.started ? I18n.t('downloading_pct', { pct: prog.pct }) : I18n.t('queued');
+      right = `<button class="set-link" onclick="VoicePacks.cancel('${model}')">${I18n.t('cancel')}</button>`;
     } else if (!st) {
-      sub = 'Checking…';
+      sub = I18n.t('checking');
       right = '';
     } else if (st.downloaded) {
-      sub = 'Downloaded';
-      right = `<button class="set-link danger" onclick="VoicePacks.remove('${model}')">Remove</button>`;
+      sub = I18n.t('downloaded');
+      right = `<button class="set-link danger" onclick="VoicePacks.remove('${model}')">${I18n.t('remove')}</button>`;
     } else {
       const mb = Math.round((st.approxBytes || approxMB * 1024 * 1024) / (1024 * 1024));
-      sub = `${mb} MB`;
-      right = `<button class="set-link" onclick="VoicePacks.download('${model}')">Download</button>`;
+      sub = I18n.t('mb', { mb });
+      right = `<button class="set-link" onclick="VoicePacks.download('${model}')">${I18n.t('download')}</button>`;
     }
     return `<div class="voice-item" style="cursor:default">
       <div><div class="voice-name">${esc(label)}</div><div class="voice-lang">${esc(sub)}</div></div>
@@ -2338,19 +2601,19 @@ const VoicePacks = {
   _englishRowHTML(label, approxMB) {
     let sub, right;
     if (this._checkingEnglish) {
-      sub = 'Checking your device…';
+      sub = I18n.t('checking_your_device');
       right = '';
     } else if (this._progress.us) {
       const prog = this._progress.us;
-      sub = prog.started ? `Downloading… ${prog.pct}%` : 'Queued…';
-      right = `<button class="set-link" onclick="VoicePacks.cancel('us')">Cancel</button>`;
+      sub = prog.started ? I18n.t('downloading_pct', { pct: prog.pct }) : I18n.t('queued');
+      right = `<button class="set-link" onclick="VoicePacks.cancel('us')">${I18n.t('cancel')}</button>`;
     } else if (this._progress.kokoro) {
       const prog = this._progress.kokoro;
-      sub = prog.started ? `Downloading the high quality voice… ${prog.pct}%` : 'Queued…';
-      right = `<button class="set-link" onclick="VoicePacks.cancel('kokoro')">Cancel</button>`;
+      sub = prog.started ? I18n.t('downloading_hq_pct', { pct: prog.pct }) : I18n.t('queued');
+      right = `<button class="set-link" onclick="VoicePacks.cancel('kokoro')">${I18n.t('cancel')}</button>`;
     } else {
-      sub = `${approxMB} MB`;
-      right = `<button class="set-link" onclick="VoicePacks.downloadEnglish()">Download</button>`;
+      sub = I18n.t('mb', { mb: approxMB });
+      right = `<button class="set-link" onclick="VoicePacks.downloadEnglish()">${I18n.t('download')}</button>`;
     }
     return `<div class="voice-item" style="cursor:default">
       <div><div class="voice-name">${esc(label)}</div><div class="voice-lang">${esc(sub)}</div></div>
@@ -2393,10 +2656,8 @@ const LangPacksModal = {
     VoicePacks.refresh();
     const intro = this._onboarding
       ? `<div class="voice-item" style="cursor:default">
-           <div><div class="voice-name">Pick a voice to download</div>
-           <div class="voice-lang">PhonoLeaf reads aloud with a natural voice that runs entirely on your
-           device. Choose the language you want &mdash; you can add or remove others any time in
-           Settings.</div></div>
+           <div><div class="voice-name">${I18n.t('pick_voice_title')}</div>
+           <div class="voice-lang">${I18n.t('pick_voice_body')}</div></div>
          </div>`
       : '';
     // TTS._nativeSlow is set once, right after the first pack ever downloads
@@ -2405,9 +2666,8 @@ const LangPacksModal = {
     // ranking; there's nothing to measure before a pack exists to time.
     const speedNote = TTS._nativeSlow
       ? `<div class="voice-item" style="cursor:default">
-           <div><div class="voice-name" style="color:var(--text-dim)">Natural voice may run slower than real time here</div>
-           <div class="voice-lang">You can still use it &mdash; playback may occasionally pause to catch up.
-           Your device's built-in voice is always available as a faster alternative in Settings.</div></div>
+           <div><div class="voice-name" style="color:var(--text-dim)">${I18n.t('slow_note_title')}</div>
+           <div class="voice-lang">${I18n.t('slow_note_body')}</div></div>
          </div>`
       : '';
     document.getElementById('langpacks-list').innerHTML =
@@ -2540,23 +2800,23 @@ const StatsPage = {
     const tile = (b, l) => `<div class="stat"><b>${esc(b)}</b><span>${esc(l)}</span></div>`;
 
     document.getElementById('stats-body').innerHTML =
-      `<div class="stat-row">${tile(fmtH(total / 3600), 'all time')}${tile(sum.hours, 'this week')}${tile(sum.streak, 'day streak')}</div>
-       <div class="stat-row">${tile(books.length, 'in library')}${tile(started, 'started')}${tile(finished, 'finished')}</div>
-       <div class="sec-label">Listening &middot; last 14 days</div>
+      `<div class="stat-row">${tile(fmtH(total / 3600), I18n.t('stat_all_time'))}${tile(sum.hours, I18n.t('stat_this_week'))}${tile(sum.streak, I18n.t('stat_day_streak'))}</div>
+       <div class="stat-row">${tile(books.length, I18n.t('stat_in_library'))}${tile(started, I18n.t('stat_started'))}${tile(finished, I18n.t('stat_finished'))}</div>
+       <div class="sec-label">${I18n.t('listening_last_14')}</div>
        ${anyListening
           ? `<div class="bars">${bars.map(b => { const fp = b.s ? Math.max(4, Math.round((b.s / maxSec) * 92)) : 0; return `<div class="bar" onclick="StatsPage.tapBar(this)" title="${esc(b.label)}"><span class="bar-val" style="bottom:${Math.min(fp + 3, 72)}px">${esc(fmtMin(b.s))}</span><div class="bar-fill" style="height:${fp}px"></div></div>`; }).join('')}</div>`
-          : `<div class="bars-empty">No listening yet — press play to start tracking.</div>`}
+          : `<div class="bars-empty">${I18n.t('no_listening_yet')}</div>`}
        ${books.length ? `
-         <div class="sec-label">Breakdown
+         <div class="sec-label">${I18n.t('breakdown')}
            <select class="set-select" onchange="StatsPage.setGroup(this.value)" aria-label="Group breakdown by">
-             <option value="author"${this._group === 'author' ? ' selected' : ''}>By author</option>
-             <option value="book"${this._group === 'book' ? ' selected' : ''}>By book</option>
-             <option value="length"${this._group === 'length' ? ' selected' : ''}>By book length</option>
-             <option value="genre"${this._group === 'genre' ? ' selected' : ''}>By genre</option>
+             <option value="author"${this._group === 'author' ? ' selected' : ''}>${I18n.t('group_author')}</option>
+             <option value="book"${this._group === 'book' ? ' selected' : ''}>${I18n.t('group_book')}</option>
+             <option value="length"${this._group === 'length' ? ' selected' : ''}>${I18n.t('group_length')}</option>
+             <option value="genre"${this._group === 'genre' ? ' selected' : ''}>${I18n.t('group_genre')}</option>
            </select>
          </div>
          <div class="atable">${this._breakdown(this._group, books, bookSecs, prog)}</div>` : ''}
-       <button class="stats-reset-btn" onclick="StatsPage.resetConfirm()">Reset listening data</button>`;
+       <button class="stats-reset-btn" onclick="StatsPage.resetConfirm()">${I18n.t('reset_listening_data')}</button>`;
   },
   // Breakdown table for the selected grouping (author / book / length buckets).
   _breakdown(g, books, bookSecs, prog) {
@@ -2574,7 +2834,7 @@ const StatsPage = {
         .sort((a, z) => z.m - a.m)
         .slice(0, 8);
       if (!rows.length) return this._emptyBreak('book');
-      return head('Book', 'Min read', '%', 'Read') +
+      return head(I18n.t('col_book'), I18n.t('col_min_read'), I18n.t('col_pct'), I18n.t('col_read')) +
         rows.map(r => row(r.name, dash(r.m), r.pct != null ? r.pct + '%' : '—', r.rd ? '✓' : '—')).join('');
     }
 
@@ -2593,20 +2853,20 @@ const StatsPage = {
         const a = (map[genre] || (map[genre] = { n: 0, m: 0, rd: 0 }));
         a.n++; a.m += mins(b.id); if (read(b.id)) a.rd++;
       }
-      if (!known) return `<div class="arow"><span class="aname" style="color:var(--text-dim)">Genre data is loading in the background — check back in a moment.</span><span></span><span></span><span></span></div>`;
+      if (!known) return `<div class="arow"><span class="aname aname-msg" style="color:var(--text-dim)">${I18n.t('genre_loading')}</span><span></span><span></span><span></span></div>`;
       const rows = Object.entries(map).sort((a, z) =>
         a[0] === 'Other' ? 1 : z[0] === 'Other' ? -1 : z[1].m - a[1].m // Other always last
       ).slice(0, 8);
       if (!rows.length) return this._emptyBreak('genre');
-      return head('Genre', 'Books', 'Min read', 'Finished') +
+      return head(I18n.t('col_genre'), I18n.t('col_books'), I18n.t('col_min_read'), I18n.t('col_finished')) +
         rows.map(([g2, v]) => row(g2, v.n, dash(v.m), dash(v.rd))).join('');
     }
 
     if (g === 'length') {
       const tiers = [
-        { k: '<300 pages', lo: 0, hi: 300 },
-        { k: '300–499 pages', lo: 300, hi: 500 },
-        { k: '500+ pages', lo: 500, hi: Infinity },
+        { k: I18n.t('tier_under_300'), lo: 0, hi: 300 },
+        { k: I18n.t('tier_300_499'), lo: 300, hi: 500 },
+        { k: I18n.t('tier_500_plus'), lo: 500, hi: Infinity },
       ];
       const agg = {};
       tiers.forEach(t => { agg[t.k] = { n: 0, m: 0, rd: 0 }; });
@@ -2619,10 +2879,10 @@ const StatsPage = {
         const t = tiers.find(x => pg >= x.lo && pg < x.hi) || tiers[tiers.length - 1];
         const a = agg[t.k]; a.n++; a.m += mins(b.id); if (read(b.id)) a.rd++;
       }
-      if (!known) return `<div class="arow"><span class="aname aname-msg" style="color:var(--text-dim)">Page counts are loading in the background — check back in a moment.</span><span></span><span></span><span></span></div>`;
+      if (!known) return `<div class="arow"><span class="aname aname-msg" style="color:var(--text-dim)">${I18n.t('pages_loading')}</span><span></span><span></span><span></span></div>`;
       const rows = tiers.filter(t => agg[t.k].n > 0);
       if (!rows.length) return this._emptyBreak('length');
-      return head('Length', 'Books', 'Min read', 'Finished') +
+      return head(I18n.t('col_length'), I18n.t('col_books'), I18n.t('col_min_read'), I18n.t('col_finished')) +
         rows.map(t => { const a = agg[t.k]; return row(t.k, a.n, dash(a.m), dash(a.rd)); }).join('');
     }
 
@@ -2638,11 +2898,11 @@ const StatsPage = {
       .sort((a, z) => (z[1].m - a[1].m) || ((z[1].st + z[1].rd) - (a[1].st + a[1].rd)))
       .slice(0, 8);
     if (!rows.length) return this._emptyBreak('author');
-    return head('Author', 'Min read', 'Started', 'Read') +
+    return head(I18n.t('col_author'), I18n.t('col_min_read'), I18n.t('col_started'), I18n.t('col_read')) +
       rows.map(([a, v]) => row(a, dash(v.m), dash(v.st), dash(v.rd))).join('');
   },
   _emptyBreak(label) {
-    return `<div class="arow"><span class="aname aname-msg" style="color:var(--text-dim)">No ${label} data yet — press play to start tracking.</span><span></span><span></span><span></span></div>`;
+    return `<div class="arow"><span class="aname aname-msg" style="color:var(--text-dim)">${esc(I18n.t('no_data_yet', { type: I18n.t('type_' + label) }))}</span><span></span><span></span><span></span></div>`;
   },
   setGroup(v) {
     this._group = v;
@@ -2656,7 +2916,7 @@ const StatsPage = {
       State.progress = {}; State.saveProgress();
       this.render();
       Home.render();
-      toast('Listening data reset.');
+      toast(I18n.t('listening_data_reset'));
     });
   },
   // Tap a bar (mobile) to reveal its minutes; desktop uses :hover. Tapping a bar
@@ -2677,7 +2937,7 @@ function setFolder(id, name) {
     if (name) localStorage.setItem('pl_folder', name);
   } catch (_) {}
   Settings.render();
-  toast(`Loading "${name || 'folder'}"…`);
+  toast(I18n.t('loading_folder', { name: name || I18n.t('folder_fallback') }));
   Library.load();
   // Onboarding step: with no voice model bundled, a fresh install has nothing
   // to read with until a language pack is downloaded. Prompt for it here —
@@ -2715,8 +2975,8 @@ const FolderBrowser = {
     const hint = document.getElementById('fb-current');
     if (hint) {
       hint.textContent = cur
-        ? `Currently: ${cur} — open a folder to browse, then tap “Use this folder”.`
-        : 'Open a folder to browse, then tap “Use this folder”.';
+        ? I18n.t('fb_currently', { folder: cur })
+        : I18n.t('fb_open_to_browse');
     }
     document.getElementById('browser-modal').classList.add('open');
     this._render(); this._load();
@@ -2729,13 +2989,13 @@ const FolderBrowser = {
       // guard) — only mark the earlier, actually-navigable ones as buttons.
       return `<span class="${isCur ? 'cur' : ''}" onclick="FolderBrowser.crumb(${i})"${isCur ? '' : ' role="button" tabindex="0"'}>${esc(c.name)}</span>`;
     }).join('<i>›</i>');
-    const u = document.getElementById('fb-use'); if (u) u.textContent = `Use “${this._cur().name}”`;
+    const u = document.getElementById('fb-use'); if (u) u.textContent = I18n.t('fb_use', { name: this._cur().name });
   },
   crumb(i) { if (i < this._stack.length - 1) { this._stack = this._stack.slice(0, i + 1); this._render(); this._load(); } },
   enter(i) { const f = this._items[i]; if (!f) return; this._stack.push({ id: f.id, name: f.name }); this._render(); this._load(); },
   async _load() {
     const list = document.getElementById('fb-list');
-    list.innerHTML = '<div class="fb-empty">Loading…</div>';
+    list.innerHTML = `<div class="fb-empty">${I18n.t('fb_loading')}</div>`;
     try {
       const d = await Drive.get('files', {
         q: `'${this._cur().id}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`,
@@ -2748,8 +3008,8 @@ const FolderBrowser = {
            <span class="fb-name">${esc(f.name)}</span>
            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--text-dim);flex-shrink:0"><path d="M9 6l6 6-6 6"/></svg>
          </div>`).join('')
-        : '<div class="fb-empty">No sub-folders here — tap the button below to use this folder.</div>';
-    } catch (e) { console.error('folder list failed', e); list.innerHTML = '<div class="fb-empty">Couldn’t load folders. Try again.</div>'; }
+        : `<div class="fb-empty">${I18n.t('fb_no_subfolders')}</div>`;
+    } catch (e) { console.error('folder list failed', e); list.innerHTML = `<div class="fb-empty">${I18n.t('fb_load_failed')}</div>`; }
   },
   useCurrent() { const c = this._cur(); this.close(); setFolder(c.id, c.name); },
   close(e) { if (!e || e.target.classList.contains('modal-backdrop')) document.getElementById('browser-modal').classList.remove('open'); },
@@ -2962,12 +3222,12 @@ const App = {
 
   async signIn() {
     if (this.isNative()) { this._nativeSignIn(); return; }
-    if (!this._client) { toast('Auth loading, please wait...'); return; }
+    if (!this._client) { toast(I18n.t('auth_loading')); return; }
     try {
       await this.getToken('');
       this._enterApp();
     } catch (e) {
-      toast('Sign-in failed: ' + e.message);
+      toast(I18n.t('sign_in_failed', { msg: e.message }));
     }
   },
 
@@ -2982,7 +3242,7 @@ const App = {
       CONFIG.ANDROID_CLIENT_ID.replace('.apps.googleusercontent.com', '') + ':/oauth2redirect';
   },
   async _nativeSignIn() {
-    if (!CONFIG.ANDROID_CLIENT_ID) { toast('Sign-in not configured for the app build yet'); return; }
+    if (!CONFIG.ANDROID_CLIENT_ID) { toast(I18n.t('sign_in_not_configured')); return; }
     try {
       const rnd = n => { const b = new Uint8Array(n); crypto.getRandomValues(b); return this._b64url(b); };
       const verifier = rnd(32);
@@ -3000,7 +3260,7 @@ const App = {
         state,
       });
       await this._plugin('Browser').open({ url: 'https://accounts.google.com/o/oauth2/v2/auth?' + q });
-    } catch (e) { toast('Sign-in failed: ' + e.message); }
+    } catch (e) { toast(I18n.t('sign_in_failed', { msg: e.message })); }
   },
   async _onDeepLink(url) {
     if (!url || url.indexOf(':/oauth2redirect') === -1) return;
@@ -3016,8 +3276,8 @@ const App = {
       const m = url.match(/[?&]code=([^&]+)/); code = m ? decodeURIComponent(m[1]) : '';
       const s = url.match(/[?&]state=([^&]+)/); state = s ? decodeURIComponent(s[1]) : '';
     }
-    if (err) { toast('Sign-in failed: ' + err); return; }
-    if (!code || !pk || state !== pk.state) { toast('Sign-in failed — please try again'); return; }
+    if (err) { toast(I18n.t('sign_in_failed', { msg: err })); return; }
+    if (!code || !pk || state !== pk.state) { toast(I18n.t('sign_in_failed_retry')); return; }
     try {
       const t = await this._tokenRequest({
         grant_type: 'authorization_code',
@@ -3030,7 +3290,7 @@ const App = {
       State.token = t.access_token;
       this._saveAuth(t.access_token, t.expires_in);
       this._enterApp();
-    } catch (e) { toast('Sign-in failed: ' + e.message); }
+    } catch (e) { toast(I18n.t('sign_in_failed', { msg: e.message })); }
   },
   // Google's token endpoint sends no CORS headers, so a WebView fetch would be
   // blocked — go through Capacitor's NATIVE http bridge instead. Data is
@@ -3066,7 +3326,7 @@ const App = {
     this._pending = null;
     if (r.error) {
       if (p) p.reject(new Error(r.error));
-      else toast('Sign-in failed: ' + r.error);
+      else toast(I18n.t('sign_in_failed', { msg: r.error }));
       return;
     }
     State.token = r.access_token;
@@ -3162,21 +3422,21 @@ const Drive = {
 const Library = {
   async load() {
     const grid = document.getElementById('books-grid');
-    grid.innerHTML = '<div class="loading"><div class="spinner"></div><span>Finding your books...</span></div>';
+    grid.innerHTML = `<div class="loading"><div class="spinner"></div><span>${I18n.t('library_finding')}</span></div>`;
     try {
       const folder = activeFolder();
       let fid = activeFolderId();
       if (!fid && folder) fid = await Drive.findFolder(folder);
       if (!fid) {
         State.books = []; State.ready = true;
-        grid.innerHTML = `<div class="empty"><p>Choose the Google Drive folder<br>your ebooks live in to get started.</p>${this._pickBtn()}</div>`;
+        grid.innerHTML = `<div class="empty"><p>${I18n.t('library_choose_folder1')}<br>${I18n.t('library_choose_folder2')}</p>${this._pickBtn()}</div>`;
         Home.render();
         return;
       }
       State.books = await Drive.listEpubs(fid);
       State.ready = true;
       if (!State.books.length) {
-        grid.innerHTML = `<div class="empty"><p>No ebooks found in<br><strong>"${esc(folder)}"</strong>.</p>${this._pickBtn()}</div>`;
+        grid.innerHTML = `<div class="empty"><p>${I18n.t('library_no_ebooks_in')}<br><strong>"${esc(folder)}"</strong>.</p>${this._pickBtn()}</div>`;
         Home.render();
         return;
       }
@@ -3186,7 +3446,7 @@ const Library = {
       Meta.fetchAll(State.books); // fetch Open Library genre + page counts in background
     } catch (e) {
       console.error(e);
-      grid.innerHTML = `<div class="empty"><p style="color:var(--accent)">Error: ${esc(e.message)}</p><button onclick="Library.load()" style="margin-top:1rem;padding:0.5rem 1rem;background:var(--accent);color:white;border:none;border-radius:8px;cursor:pointer">Retry</button></div>`;
+      grid.innerHTML = `<div class="empty"><p style="color:var(--accent)">${esc(I18n.t('library_error', { msg: e.message }))}</p><button onclick="Library.load()" style="margin-top:1rem;padding:0.5rem 1rem;background:var(--accent);color:white;border:none;border-radius:8px;cursor:pointer">${I18n.t('retry')}</button></div>`;
     }
   },
 
@@ -3214,7 +3474,7 @@ const Library = {
         return hay.includes(this._q);
       });
     if (!items.length) {
-      grid.innerHTML = `<div class="empty"><p>No books match "${esc(this._q)}".</p></div>`;
+      grid.innerHTML = `<div class="empty"><p>${esc(I18n.t('library_no_match', { q: this._q }))}</p></div>`;
       return;
     }
     grid.innerHTML = items.map(({ b, i }) => {
@@ -3245,7 +3505,7 @@ const Library = {
   refresh() { this.load(); },
 
   _pickBtn() {
-    return `<button onclick="FolderBrowser.open()" style="margin-top:1rem;padding:0.6rem 1.2rem;background:var(--accent);color:#fff;border:none;border-radius:10px;font:500 0.85rem var(--font-ui);cursor:pointer">Choose folder</button>`;
+    return `<button onclick="FolderBrowser.open()" style="margin-top:1rem;padding:0.6rem 1.2rem;background:var(--accent);color:#fff;border:none;border-radius:10px;font:500 0.85rem var(--font-ui);cursor:pointer">${I18n.t('choose_folder_btn')}</button>`;
   },
 };
 
@@ -3440,7 +3700,7 @@ const Reader = {
     TTS._preIdx = -1; // reset chapter/subtitle pre-pause tracking for the new book
 
     try {
-      toast('Downloading...', 0);
+      toast(I18n.t('downloading_ellipsis'), 0);
       const buf = await Drive.download(book.id);
       hideToast();
 
@@ -3476,7 +3736,7 @@ const Reader = {
       await State.rendition.display(saved?.cfi || undefined);
 
       document.getElementById('reader-loading').classList.add('hidden');
-      if (saved?.cfi) toast('Resuming where you left off');
+      if (saved?.cfi) toast(I18n.t('resuming'));
 
       // Persist the current page on abrupt exits too (backgrounding / closing
       // the PWA), not only on page turns — so we never lose the spot. Added once.
@@ -4600,7 +4860,7 @@ const TTS = {
       // Guard against an endless run of blank pages (e.g. an all-image book).
       if (++this._skips > 20) {
         this.stop();
-        toast('No text found to read');
+        toast(I18n.t('no_text_found'));
         return;
       }
       // BACKGROUND (screen off / app hidden): epub's page turn AND section render
@@ -5019,7 +5279,7 @@ const TTS = {
       if (!url) {
         // No prefetch ready — synthesis is audible latency now; surface it so a
         // slow generation doesn't look like the app died.
-        const genT = setTimeout(() => { if (this.active && gen === this._gen) toast('Generating audio…', 0); }, 600);
+        const genT = setTimeout(() => { if (this.active && gen === this._gen) toast(I18n.t('generating_audio'), 0); }, 600);
         try { url = await this._synth(chunk.text); } finally { clearTimeout(genT); hideToast(); }
       }
       if (!this.active || gen !== this._gen) {
@@ -5070,7 +5330,7 @@ const TTS = {
         });
         if (usable) {
           localStorage.setItem('pl_voice_native', usable[0]);
-          toast('That voice’s language pack isn’t installed — switched to ' + usable[1] + '.');
+          toast(I18n.t('pack_not_installed_switched', { voice: usable[1] }) + '.');
         } else if (!this._noVoiceShown) {
           this._noVoiceShown = true;
           NoVoiceModal.open();
@@ -5083,7 +5343,7 @@ const TTS = {
       // disable Kokoro for the session so every chunk doesn't wait 30s.
       if (!this._kokoroDead && ++this._kstrikes >= 2) {
         this._kokoroDead = true;
-        toast('The natural voice is struggling on this device — using the standard voice for now');
+        toast(I18n.t('natural_voice_struggling'));
         Settings.render(); // surface the fallback row + Retry
       }
       // Synthesis failed (offline, model not ready…) — read this chunk with
@@ -5218,7 +5478,7 @@ const TTS = {
     if (b.ratio > 1.25 && !this._kokoroDead) {
       this._kokoroDead = true;
       // Only toast on a fresh verdict — a cached one re-applies silently at boot.
-      if (fresh) toast('This device can’t run the natural voice in real time — using the standard voice.');
+      if (fresh) toast(I18n.t('device_cant_run_realtime'));
       Settings.render();
     }
   },
@@ -5511,13 +5771,13 @@ const VoiceModal = {
         // English gate in VoicePacks.downloadEnglish).
         const slowNote = TTS._nativeSlow
           ? `<div class="voice-item" style="cursor:default">
-              <div><div class="voice-name" style="color:var(--text-dim)">May run slower than real time on this device</div></div>
+              <div><div class="voice-name" style="color:var(--text-dim)">${I18n.t('may_run_slower')}</div></div>
             </div>`
           : '';
         document.getElementById('voice-list').innerHTML =
           slowNote +
           (available.length ? available.map(([id, label, , model]) => {
-            const tier = model === 'kokoro' ? 'High' : 'Standard';
+            const tier = model === 'kokoro' ? I18n.t('voice_tier_high') : I18n.t('voice_tier_standard');
             return `
           <div class="voice-item ${cur === id ? 'active' : ''}" onclick="VoiceModal.selectNative(this.dataset.vname)" data-vname="${esc(id)}" role="button" tabindex="0" aria-current="${cur === id}">
             <div>
@@ -5527,11 +5787,11 @@ const VoiceModal = {
           </div>`;
           }).join('')
             : `<div class="voice-item" style="cursor:default">
-                <div><div class="voice-name" style="color:var(--text-dim)">No natural voices installed yet</div>
-                <div class="voice-lang">Download one below to use the natural voice</div></div>
+                <div><div class="voice-name" style="color:var(--text-dim)">${I18n.t('no_natural_voices')}</div>
+                <div class="voice-lang">${I18n.t('download_one_below')}</div></div>
               </div>`) +
           `<div class="voice-item" onclick="VoiceModal.openLangPacks()" role="button" tabindex="0">
-            <div><div class="voice-name">Get more voices</div><div class="voice-lang">Download language packs</div></div>
+            <div><div class="voice-name">${I18n.t('get_more_voices')}</div><div class="voice-lang">${I18n.t('download_language_packs')}</div></div>
           </div>`;
         document.getElementById('voice-modal').classList.add('open');
         return;
@@ -5550,7 +5810,7 @@ const VoiceModal = {
       return;
     }
     this._list = TTS.allVoices();
-    if (!this._list.length) { toast('No voices available yet — try again in a moment'); return; }
+    if (!this._list.length) { toast(I18n.t('no_voices_yet')); return; }
     document.getElementById('voice-list').innerHTML = this._list.map(v => `
       <div class="voice-item ${TTS.voice?.name === v.name ? 'active' : ''}" onclick="VoiceModal.selectNamed(this.dataset.vname)" data-vname="${esc(v.name)}" role="button" tabindex="0" aria-current="${TTS.voice?.name === v.name}">
         <div>
@@ -5579,7 +5839,7 @@ const VoiceModal = {
     localStorage.setItem(key, id);
     TTS.updateVoiceLabel();
     const v = cat.find(x => x[0] === id);
-    toast('Voice: ' + (v ? v[1] : id));
+    toast(I18n.t('voice_prefix') + (v ? v[1] : id));
     this.close();
     if (TTS.active) { TTS._gen++; TTS._stopAudio(); window.speechSynthesis?.cancel(); TTS._speak(); }
   },
@@ -5593,7 +5853,7 @@ const VoiceModal = {
     TTS.voice = v;
     localStorage.setItem('pl_voice', v.name);
     TTS.updateVoiceLabel();
-    toast('Voice: ' + v.name);
+    toast(I18n.t('voice_prefix') + v.name);
     this.close();
     // _gen++ so the canceled utterance's late onend can't skip a chunk.
     if (TTS.active) { TTS._gen++; window.speechSynthesis.cancel(); TTS._speak(); }
@@ -5611,12 +5871,12 @@ const ChapterModal = {
     // Flattened TOC (incl. subitems) so the names match the reader overlay's
     // current-chapter label exactly. Subitems are indented.
     const flat = flattenToc(State.toc);
-    if (!flat.length) { toast('No chapter list available'); return; }
+    if (!flat.length) { toast(I18n.t('no_chapter_list')); return; }
     this._flat = flat;
     document.getElementById('chapter-list').innerHTML = flat.map(({ item, depth }, i) => `
       <div class="chapter-item" onclick="ChapterModal.jump(${i})" style="padding-left:${12 + depth * 16}px" role="button" tabindex="0">
         <span class="chapter-num">${depth ? '' : (i + 1)}</span>
-        <span class="chapter-label">${esc(item.label?.trim() || 'Chapter ' + (i + 1))}</span>
+        <span class="chapter-label">${esc(item.label?.trim() || I18n.t('chapter_n', { n: i + 1 }))}</span>
       </div>`).join('');
     document.getElementById('chapter-modal').classList.add('open');
   },
@@ -5649,7 +5909,7 @@ const ChapterModal = {
     TTS._dir = 1;
     TTS.skipPage(() => State.rendition?.display(target).catch(err => {
       console.error('chapter jump failed', err);
-      toast('Could not open chapter');
+      toast(I18n.t('could_not_open_chapter'));
       TTS.stop();
     }));
   },
@@ -5665,9 +5925,11 @@ const ConfirmModal = {
   _cb: null,
   // Defaults are the stats-reset wording this dialog originally had. They're
   // re-applied on every show() so a previous caller's custom text can never
-  // linger and mislabel the next confirmation.
-  _DEF_MSG: 'Are you sure you want to reset your listening data? This cannot be undone.',
-  _DEF_OK: 'Reset',
+  // linger and mislabel the next confirmation. Getters (not fields) so they
+  // resolve in whichever language is active right now, not whatever was
+  // active when the script first parsed.
+  get _DEF_MSG() { return I18n.t('reset_stats_confirm'); },
+  get _DEF_OK() { return I18n.t('reset'); },
   show(cb, msg, okLabel) {
     this._cb = cb;
     const m = document.querySelector('#confirm-modal .confirm-msg');
@@ -5805,7 +6067,7 @@ const Feedback = {
   async send() {
     const email = (document.getElementById('fb-email')?.value || '').trim();
     const message = (document.getElementById('fb-message')?.value || '').trim();
-    if (!message) { toast('Write a message first'); return; }
+    if (!message) { toast(I18n.t('write_message_first')); return; }
     const body = [`Reply email: ${email || '(not given)'}`, '', message].join('\n');
     const subject = 'PhonoLeaf feedback';
     if (await App.composeEmail({ to: CONFIG.SUPPORT_EMAIL, subject, body })) { this.close(); return; }
@@ -5827,7 +6089,7 @@ const BugReport = {
   close(e) { if (!e || e.target.classList.contains('modal-backdrop')) document.getElementById('bugreport-modal').classList.remove('open'); },
   onPhotoChange(input) {
     const hint = document.getElementById('bug-photo-hint');
-    if (hint) hint.textContent = input.files?.[0] ? `Selected: ${input.files[0].name}` : '';
+    if (hint) hint.textContent = input.files?.[0] ? I18n.t('selected_file', { name: input.files[0].name }) : '';
   },
   // Answers the "model and make of your device" ask without making the user
   // type it: navigator.userAgent on Android includes the device model, and
@@ -5857,7 +6119,7 @@ const BugReport = {
     const email = (document.getElementById('bug-email')?.value || '').trim();
     const what = (document.getElementById('bug-what')?.value || '').trim();
     const steps = (document.getElementById('bug-steps')?.value || '').trim();
-    if (!what) { toast('Describe what happened first'); return; }
+    if (!what) { toast(I18n.t('describe_first')); return; }
     const file = document.getElementById('bug-photo')?.files?.[0] || null;
     const subject = 'PhonoLeaf bug report';
     const body = [
@@ -5928,6 +6190,11 @@ const BugReport = {
 
 // --- Boot -------------------------------------------------
 window.addEventListener('load', () => {
+  // Translate the static shell (sign-in screen included) as the very first
+  // thing, before App.init() even runs — otherwise a French-locale device
+  // would see English up through sign-in and only switch once Settings (only
+  // reachable after signing in) has been rendered at least once.
+  I18n.apply(document.body);
   CoverCache.migrate(); // one-time koboaudio → phonoleaf DB rename (fire & forget)
   Meta._cleanGenres();  // one-time: drop bogus "genres" cached from OL subjects
   App.init();
@@ -5937,7 +6204,7 @@ window.addEventListener('load', () => {
   // Consumed once: removed immediately so it never repeats.
   if (localStorage.getItem('pl_scope_mig_notice')) {
     localStorage.removeItem('pl_scope_mig_notice');
-    toast('Please sign in again — your saved folder is remembered', 5000);
+    toast(I18n.t('sign_in_again_folder_remembered'), 5000);
   }
   TTS.pickDefaultVoice(); // voices may already be loaded; voiceschanged refines later
   // NOT warmed here. The model init used to run at boot, which meant a
