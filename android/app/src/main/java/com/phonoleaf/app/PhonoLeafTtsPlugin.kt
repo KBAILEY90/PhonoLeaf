@@ -119,6 +119,7 @@
             "fr" to "piper-fr-upmc-medium-2spk",
             "de" to "piper-libritts-r-medium",
             "es" to "piper-es-sharvard-medium-2spk",
+            "kokoro" to "kokoro-int8-en-v0_19",
         )
         private fun modelVersion(model: String) = MODEL_VERSIONS[model] ?: "piper-libritts-r-medium"
         @Volatile private var tts: OfflineTts? = null
@@ -196,6 +197,26 @@
                 folder = "kokoro-es",
                 url = "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-es_ES-sharvard-medium.tar.bz2",
                 approxBytes = 80318184L,
+            ),
+            // English, Kokoro-82M v0.19, int8 — the ONLY Kokoro release that
+            // fits this app: the "multi-lang" Kokoro releases add Chinese, not
+            // French/German/Spanish, so there is no Kokoro coverage for those
+            // languages at all (confirmed by downloading and inspecting the
+            // actual release assets, 2026-08-08 — the multi-lang model's own
+            // embedded speaker metadata lists 3 English speakers against 100
+            // Mandarin ones). This model covers BOTH US and UK English (11
+            // speakers total — see KOKORO_VOICES in index.html, sids verified
+            // against this exact model's onnx metadata) from one download, so
+            // it replaces both the "us" and "gb" Piper packs when a device
+            // qualifies for it (see VoicePacks' English gating in index.html).
+            // Folder deliberately distinct from "us"/"gb" so a device that
+            // falls back to Piper can keep both installed side by side without
+            // collision (harmless — the gate only offers one at a time in the
+            // UI, but nothing stops both existing on disk).
+            "kokoro" to VoicePackInfo(
+                folder = "kokoro-en-hq",
+                url = "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/kokoro-int8-en-v0_19.tar.bz2",
+                approxBytes = 103248205L,
             ),
         )
 

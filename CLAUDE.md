@@ -1209,6 +1209,18 @@ Google login); verify by inspection + the owner testing on device.
     speed" was never possible without first downloading something. Not
     device-verified — same caveat as every other native-adjacent change in
     this file; the bench call itself is untested on real hardware.
+    **RE-SUPERSEDED 2026-08-08 — native Kokoro was built after all.** The
+    2026-08-07 "not worth it" call above was reasoned from ONE data point
+    (the owner's own Pixel 7). Owner pushback: **"Kokoro was removed because
+    it didn't fit Pixel 7, but PhonoLeaf is not just for Pixel 7s. More
+    devices will be using it. I want the user to be able to experience a
+    higher quality model if their device can operate it."** Correct — a
+    single mid-tier phone's measurement was never a sound basis for deciding
+    every future device, only for what to ship as the BASELINE. See the new
+    **"Native Kokoro — device-gated English upgrade (2026-08-08)"** entry
+    below for the full design; this paragraph stays only for the historical
+    trail (why Piper became the baseline, and why that specific baseline
+    decision still stands unchanged even after Kokoro's return).
     The plugin **auto-detects the model family** from the placed files
     (`voices.bin` present → Kokoro config; else → VITS/Piper config), so
     switching engines is just a model-file swap. cancel() bounds the
@@ -2231,6 +2243,159 @@ system text-size/motion settings, and tap target size. Findings and fixes:
   search work as a side effect). Verified in an isolated harness across
   underscore/dot-separated filenames, a Meta-title-only match, and a
   no-match case.
+
+## Native Kokoro — device-gated English upgrade (2026-08-08)
+
+Reverses the 2026-08-07 "shelve native Kokoro" call (see the RE-SUPERSEDED
+note in the Voice engine section) after owner pushback: a single Pixel 7
+measurement was the wrong basis for deciding every device, only for what to
+ship as the baseline. Design, in order of what was actually verified before
+writing code:
+
+- **Kokoro only covers English — confirmed by downloading and inspecting the
+  real sherpa-onnx release assets, not assumed.** Every Kokoro `.tar.bz2` on
+  `k2-fsa/sherpa-onnx`'s `tts-models` release was downloaded and its
+  `model.int8.onnx`'s embedded metadata read directly via `onnxruntime` in
+  Python (`get_modelmeta().custom_metadata_map`, keys `speaker_names`/
+  `id2speaker`/`language`). The "multi-lang" releases (`kokoro-int8-multi-lang-v1_1`,
+  147 MB) add **Chinese**, not French/German/Spanish — its own metadata lists
+  103 speakers, 3 English against 100 Mandarin. **`kokoro-int8-en-v0_19`**
+  (103 MB) is the only one that fits this app: 11 speakers, `af`/`af_bella`/
+  `af_nicole`/`af_sarah`/`af_sky`/`am_adam`/`am_michael` (US) plus `bf_emma`/
+  `bf_isabella`/`bm_george`/`bm_lewis` (UK) — covering BOTH accents PhonoLeaf
+  already serves via separate Piper packs, from one download. Its
+  `speaker2id` map matches `KOKORO_VOICES`' existing sids exactly (that
+  catalog already existed for the web-WASM path and, per its own comment,
+  was written anticipating this — "for a native Kokoro model (premium tier,
+  later)"). **French/German/Spanish get no Kokoro option and stay Piper-only
+  unconditionally** — there is nothing to gate for those languages.
+- **Kotlin needed almost no changes.** `PhonoLeafTtsPlugin.kt`'s
+  `ensureReady()` already auto-detects Kokoro vs Piper purely from whether
+  `voices.bin` exists in the downloaded model folder (`hasVoices` branch,
+  written when the plugin still ran Kokoro pre-pivot) — every method
+  (`synthesize`/`prepare`/`packStatus`/`downloadPack`/`deletePack`/
+  `cancelDownload`) is already fully generic over the `model` key. The only
+  change: one new `"kokoro"` entry in `VOICE_PACKS` (folder `kokoro-en-hq`,
+  the `kokoro-int8-en-v0_19.tar.bz2` URL, exact size `103248205L` from the
+  GitHub release API) and `MODEL_VERSIONS`. Verified the archive's internal
+  file layout (`voices.bin`, `tokens.txt`, `model.int8.onnx`,
+  `espeak-ng-data/`, no `dict/` or `lexicon-*.txt` — the multi-lang-only
+  files) matches exactly what `ensureReady()`'s existing `ifExists()` checks
+  and the pre-computed (but previously always-empty-for-Piper) `lexicon`
+  variable expect.
+- **Owner correction mid-build: "the app should first determine the
+  performance of your device BEFORE suggesting the models to use, NOT
+  default to Kokoro blindly."** The first draft of this design downloaded
+  Kokoro (~98 MB) FIRST on every English request and fell back to Piper only
+  if it measured slow — exactly the "blindly try the big one" pattern the
+  owner ruled out. Redesigned as a two-stage screen instead:
+  1. **`VoicePacks.downloadEnglish()`** installs Piper "us" first — the
+     mandatory, guaranteed-working baseline PhonoLeaf has always needed
+     regardless of Kokoro, so this costs nothing extra — and benchmarks it
+     for real (`TTS._nativeBench('us')`, **awaited** here rather than its
+     usual fire-and-forget, so the decision below sees a fresh result).
+  2. **`VoicePacks._maybeOfferKokoro()`** reads that measurement. Only if
+     Piper itself ran with real headroom (`ratio ≤ VoicePacks._KOKORO_SUGGEST_RATIO`,
+     0.6 — Kokoro is architecturally heavier, so "Piper barely keeps up" is
+     not evidence Kokoro would too) does it even mention Kokoro exists, via
+     a `ConfirmModal` prompt naming the real cost ("About 98 MB — replaces
+     the standard English voice"). No headroom ⇒ gate resolves to `'no'`
+     immediately, Piper stays, Kokoro is never downloaded or mentioned.
+  3. Only if the owner/user accepts does **`VoicePacks._tryKokoroUpgrade()`**
+     actually download Kokoro and run **its own real, separate benchmark**
+     (`TTS._benchKokoroGate()` — the Piper number above is a proxy from a
+     different, smaller model, not proof; Kokoro is what's being kept, so it
+     gets its own genuine measurement). Confirmed fast (`ratio ≤ 1`) ⇒
+     delete the now-redundant Piper "us" pack, gate → `'yes'`. Confirmed slow
+     ⇒ delete the Kokoro attempt, gate stays `'no'`, Piper untouched — the
+     device is no worse off than before it was asked.
+  - `pl_kokoro_gate` (`'pending'` | `'no'` | `'yes'`) is the persisted
+    verdict. **Settings → Retry** (`Settings.retryKokoroGate`, shown only
+    while gate is `'no'`) re-runs step 1–2 against the ALREADY-downloaded
+    Piper pack (no re-download needed to re-measure) — relevant on a new
+    device, after an OS update, or if the first check just didn't get a fair
+    shot; nothing to retry once already on Kokoro (`'yes'`) or before
+    anything's been checked at all (`'pending'` is the Language Packs flow's
+    job, not this button's).
+- **The Language Packs catalog is gate-aware.** `VoicePacks.CATALOG` became a
+  getter: while `'pending'`, English shows as ONE row (nothing to split into
+  US/UK until it's known which engine will serve it); once `'yes'`, still one
+  row, now pointing at the real `"kokoro"` pack; once `'no'`, the familiar
+  two-row "English (US)"/"English (UK)" Piper split, since Piper genuinely
+  needs two separate downloads for the two accents. The virtual `"english"`
+  model key (used only while `'pending'`) has no real pack behind it —
+  `VoicePacks._englishRowHTML()` derives its displayed state from whichever
+  REAL download is actually in flight (`_progress.us`, `_progress.kokoro`, or
+  the `_checkingEnglish` flag during the brief post-download benchmark)
+  rather than tracking a parallel state machine that could disagree with
+  what's actually happening. `MyData.deleteAll()`'s exhaustive pack wipe was
+  switched from `CATALOG` (which only ever shows one English variant) to a
+  new `VoicePacks.ALL_PACK_MODELS` constant, so a leftover pack from an
+  earlier retry can't survive "delete all my data" un-removed.
+- **Voice selection had to become a union of both engines — a real
+  refactor, not a config flip.** Before this, `TTS._nativeCatalog()`/
+  `_voiceKey()` picked PIPER_VOICES-or-KOKORO_VOICES and
+  `pl_voice_piper`-or-`pl_voice_kokoro` based on `_modelType` — "whichever
+  model the native engine last happened to load." That only ever worked
+  because every pack was Piper, so `_modelType` was always `'vits'`
+  regardless of WHICH Piper accent was active; the ternary never actually
+  mattered in practice. With Kokoro now a genuinely different, coexistable
+  family (a device can have Kokoro for English AND Piper for French
+  downloaded at once), "whichever loaded most recently" stops being a
+  reliable stand-in for "show me everything I have." Replaced with
+  **`TTS._allNativeVoices()`** (`PIPER_VOICES.concat(KOKORO_VOICES)`) and a
+  **single persisted choice, `pl_voice_native`**, replacing the
+  `pl_voice_piper`/`pl_voice_kokoro` split for native (a one-time migration
+  adopts `pl_voice_piper` if present — `pl_voice_kokoro` was web-WASM-only
+  before this change, native never had a Kokoro voice to have picked).
+  `_voiceSid()`/`_voiceModel()` now resolve synchronously from this union,
+  so `_modelReady()` no longer needs to complete first for them to be
+  correct — it now instead **prepares the model the user actually has
+  selected** (`nat.prepare({model: this._voiceModel()})`) instead of
+  unconditionally "us", which fixes a real (if minor) waste: every native
+  boot used to load-then-immediately-discard the US model for any user whose
+  real choice was French/German/Spanish, since the engine holds one model at
+  a time. `VoiceModal`'s picker, `activeVoiceLabel()`, `TTS._nativeBench()`,
+  and the `PACK_NOT_DOWNLOADED` same-session fallback search were all
+  updated to the union too. **A harness catch worth recording**: the first
+  cut of `_tryKokoroUpgrade()`'s success path deleted the Piper pack and
+  flipped the gate, but left `pl_voice_native` pointing at whatever it was
+  before (a Piper voice id, first in the union array, if nothing had ever
+  been explicitly chosen) — which no longer existed on disk. Harmless in
+  that the `PACK_NOT_DOWNLOADED` fallback search would have caught it and
+  switched to a real Kokoro voice anyway, but it would have surfaced as an
+  unnecessary "switched to…" toast at the exact moment the user just
+  unlocked the good voice. Fixed by explicitly pointing `pl_voice_native` at
+  a real Kokoro voice on a successful upgrade, unless the stored choice was
+  already a genuine (prior-install) Kokoro pick.
+- **A separate, pre-existing bug found and fixed while rewriting `VoiceModal.open()`
+  for the union:** its neural branch filtered candidates by
+  `VoicePacks._status[...].downloaded`, but `VoicePacks._status` is native-only
+  (never populated when `TTS._nativeTts()` is null) — so on the **web** build,
+  which also takes this branch whenever Kokoro-WASM isn't dead
+  (`TTS._engineNow() === 'kokoro'` doesn't distinguish native from web), the
+  filter always evaluated empty and the picker permanently showed "No natural
+  voices installed yet," even while the WASM voice was loaded and working.
+  Fixed by branching explicitly on `TTS._nativeTts()`: native takes the
+  pack-gated union-catalog path above; web shows `KOKORO_VOICES` directly
+  (its own `pl_voice_kokoro` key, no pack system, nothing to gate).
+- Voice picker rows now show a quality badge (`✨ Natural · High` for Kokoro,
+  `· Standard` for Piper) so a device with both engines downloaded (English
+  via Kokoro, another language via Piper) can tell them apart at a glance.
+- **Everything above is verified in Node-based harnesses (mocked plugin +
+  clock), NOT on real hardware** — same standing caveat as every native
+  change in this file, no JDK/Android SDK in this environment. Verified: the
+  full two-stage flow across a fast device (Piper screens well → Kokoro
+  offered → confirmed → Piper cleaned up → union catalog updated → voice
+  choice repointed), a borderline device (Piper works but shows no headroom →
+  Kokoro never even mentioned), a device where Piper looks fine but Kokoro's
+  OWN real bench fails (offered → attempted → correctly discarded, Piper
+  untouched), Retry re-offering after a fresh measurement, `MyData.deleteAll()`
+  wiping packs `CATALOG` alone would have hidden, the union picker showing a
+  Kokoro voice and a Piper voice simultaneously, the Settings label/Retry
+  visibility across all three gate states plus the slow-Piper sub-label, and
+  the Language Packs modal's virtual English row across its
+  download/checking/queued sub-states.
 
 ## Productization roadmap (ACTIVE — production-bound as of 2026-07-03)
 

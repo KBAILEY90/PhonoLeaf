@@ -991,7 +991,7 @@
           <div class="sr-sub" id="neural-sub">Checking&hellip;</div>
         </div>
         <span class="set-stat" id="neural-status">On</span>
-        <button class="set-link" id="neural-retry" onclick="Settings.retryNeural()" style="display:none">Retry</button>
+        <button class="set-link" id="neural-retry" style="display:none">Retry</button>
       </div>
       <div class="set-row" id="vh-row" style="display:none">
         <div><div class="sr-k">Better device voices</div><div class="sr-sub">Install free natural voices</div></div>
@@ -1841,22 +1841,59 @@ const VoiceHelp = {
 // of truth (packStatus() re-derives it, nothing here is persisted to
 // localStorage), so a fresh install / cleared app data can't disagree with it.
 const VoicePacks = {
+  // Every real pack model the native plugin recognizes — used where the
+  // gate-aware CATALOG below (which only ever shows ONE English variant at a
+  // time) would miss one, e.g. wiping every possible pack on "Delete my
+  // data" regardless of which the user currently has.
+  ALL_PACK_MODELS: ['us', 'gb', 'fr', 'de', 'es', 'kokoro'],
+  // How much faster than realtime Piper itself needs to run before it's even
+  // worth trying Kokoro. Kokoro is a meaningfully bigger/slower model
+  // architecturally (this project's own history: Kokoro measured ~1.36x
+  // realtime on a Pixel 7, where Piper was specifically chosen because it
+  // runs comfortably under 1x there) — "Piper barely keeps up" isn't good
+  // enough evidence to spend another ~98 MB attempting something that would
+  // likely be worse. This is a screening heuristic only; _tryKokoroUpgrade
+  // still does a REAL Kokoro-specific measurement before keeping it.
+  _KOKORO_SUGGEST_RATIO: 0.6,
+  // English gating verdict (owner, 2026-08-08: "the app should first
+  // determine the performance of your device BEFORE suggesting the models
+  // to use, not default to Kokoro blindly") — 'pending' (never checked),
+  // 'no' (Piper confirmed as the English voice — either Piper itself showed
+  // no headroom, the user declined the upgrade offer, or a real Kokoro
+  // attempt didn't pan out), 'yes' (Kokoro confirmed and active). See
+  // downloadEnglish/retryKokoro for how this gets set.
+  _kokoroGate() { try { return localStorage.getItem('pl_kokoro_gate') || 'pending'; } catch (_) { return 'pending'; } },
+  _setKokoroGate(v) { try { localStorage.setItem('pl_kokoro_gate', v); } catch (_) {} },
+  // English is ONE row while ungated (nothing to split into US/UK until we
+  // know which engine will serve it — Kokoro covers both accents from a
+  // single download, Piper needs two separate ones) or once Kokoro is
+  // confirmed; it's the familiar two-row US/UK Piper split only once the
+  // gate has actually landed on Piper.
+  _englishRows() {
+    const gate = this._kokoroGate();
+    if (gate === 'no') return [
+      { model: 'us', label: 'English (US)', approxMB: 78 },
+      { model: 'gb', label: 'English (UK)', approxMB: 77 },
+    ];
+    return [{ model: gate === 'yes' ? 'kokoro' : 'english', label: 'English', approxMB: 78 }];
+  },
   // Kept in sync with PhonoLeafTtsPlugin.kt's VOICE_PACKS map. Every entry is
   // a real download now — nothing ships in the APK — so they're all uniform
   // here: same Download/Remove UI, same progress, no special cases. approxMB
   // is only the fallback shown before packStatus() resolves a real size.
-  CATALOG: [
-    { model: 'us', label: 'English (US)', approxMB: 78 },
-    { model: 'gb', label: 'English (UK)', approxMB: 77 },
-    // fr/es sizes updated 2026-08-05 — both switched to 2-speaker models
-    // (~77 MB) to get a real male + female voice per language; see the
-    // PIPER_VOICES comment for details.
-    { model: 'fr', label: 'French', approxMB: 77 },
-    { model: 'de', label: 'German', approxMB: 64 },
-    { model: 'es', label: 'Spanish', approxMB: 77 },
-  ],
+  get CATALOG() {
+    return this._englishRows().concat([
+      // fr/es sizes updated 2026-08-05 — both switched to 2-speaker models
+      // (~77 MB) to get a real male + female voice per language; see the
+      // PIPER_VOICES comment for details.
+      { model: 'fr', label: 'French', approxMB: 77 },
+      { model: 'de', label: 'German', approxMB: 64 },
+      { model: 'es', label: 'Spanish', approxMB: 77 },
+    ]);
+  },
   _status: {},   // model -> {downloaded, approxBytes}, once known
   _progress: {}, // model -> {pct}, while a download is in flight
+  _checkingEnglish: false, // true only during the brief post-download Kokoro benchmark
   _listenerBound: false,
 
   _plugin() { return TTS._nativeTts(); },
@@ -1924,7 +1961,13 @@ const VoicePacks = {
     LangPacksModal.open(true);
   },
 
-  async download(model) {
+  // bench:false skips the automatic informational TTS._nativeBench call —
+  // used by downloadEnglish/_tryKokoroUpgrade, which each run their OWN
+  // dedicated, explicitly-awaited benchmark right after (the generic one is
+  // fire-and-forget, so relying on it there would race their own decision
+  // logic, and Kokoro's own confirm-bench makes the generic one redundant
+  // and potentially misleading for that specific download anyway).
+  async download(model, { bench = true } = {}) {
     const p = this._plugin();
     if (!p) return;
     // started:false until the native side confirms it's actually running
@@ -1937,7 +1980,7 @@ const VoicePacks = {
       await p.downloadPack({ model });
       this._status[model] = { downloaded: true, approxBytes: (this._status[model] || {}).approxBytes || 0 };
       toast('Voice pack downloaded');
-      TTS._nativeBench(model); // one-time proactive speed check — see TTS._nativeBench
+      if (bench) TTS._nativeBench(model); // one-time proactive speed check — see TTS._nativeBench
     } catch (e) {
       // A cancel rejects this promise too (native throws InterruptedIOException
       // "cancelled"), but the user asked for that — reporting it as a failure
@@ -1948,6 +1991,92 @@ const VoicePacks = {
       }
     }
     delete this._progress[model];
+    this._notify();
+  },
+
+  // Tap "Download" on the (still-ungated) English row: install the
+  // guaranteed-working Piper baseline first and measure it FOR REAL on this
+  // exact device — never assume Kokoro is worth trying before that
+  // measurement exists. Piper is the mandatory fallback anyway, so this
+  // costs nothing extra; Kokoro is only ever attempted afterward, and only
+  // as an explicit, separate offer (see _maybeOfferKokoro).
+  async downloadEnglish() {
+    await this.download('us', { bench: false });
+    if (!(this._status.us && this._status.us.downloaded)) return; // failed/cancelled — stays 'pending'
+    this._setKokoroGate('no'); // Piper is the confirmed-working baseline from here on
+    this._notify();
+    await TTS._nativeBench('us'); // awaited (not fire-and-forget) so the check below sees a fresh result
+    this._notify();
+    await this._maybeOfferKokoro();
+  },
+
+  // Re-entry point once Piper is already installed (gate already 'no') —
+  // re-measures it (device/OS may have changed since the first check, or it
+  // simply never got a fair shot) and offers Kokoro again if it now
+  // qualifies. Shown in Settings only while on Piper — see Settings.render.
+  async retryKokoro() {
+    if (!(this._status.us && this._status.us.downloaded)) return;
+    try { localStorage.removeItem('pl_native_bench'); } catch (_) {}
+    TTS._nativeSlow = false;
+    await TTS._nativeBench('us');
+    this._notify();
+    await this._maybeOfferKokoro();
+  },
+
+  // Shared decision point: read the just-measured Piper ratio and, only if
+  // it shows real headroom, ask before spending the extra download on
+  // Kokoro — a genuinely optional ~98 MB, not something to spend without
+  // asking.
+  async _maybeOfferKokoro() {
+    const bench = TTS._nativeBenchCached();
+    if (!bench || bench.ratio > this._KOKORO_SUGGEST_RATIO) return; // no evidence it's worth trying
+    ConfirmModal.show(
+      () => this._tryKokoroUpgrade(),
+      'Your device looks fast enough for our higher-quality natural voice. Download it? (About 98 MB — replaces the standard English voice.)',
+      'Download',
+    );
+  },
+
+  // The actual Kokoro attempt plus its own REAL confirm-or-fallback bench —
+  // separate from the Piper-based screening above, which is only a proxy
+  // (a different, smaller model). Kokoro is what's actually kept, so it
+  // gets its own genuine measurement before anything is decided for good.
+  async _tryKokoroUpgrade() {
+    await this.download('kokoro', { bench: false });
+    if (!(this._status.kokoro && this._status.kokoro.downloaded)) { this._notify(); return; } // failed/cancelled — stays on Piper
+    this._checkingEnglish = true;
+    this._notify();
+    const ratio = await TTS._benchKokoroGate();
+    this._checkingEnglish = false;
+    const p = this._plugin();
+    if (ratio != null && ratio <= 1) {
+      // Confirmed — Kokoro covers both accents from this one pack, so the
+      // now-redundant Piper baseline can go.
+      try { await p.deletePack({ model: 'us' }); } catch (_) {}
+      this._status.us = { downloaded: false, approxBytes: 0 };
+      this._setKokoroGate('yes');
+      // If the persisted voice choice was still the untouched default (a
+      // Piper voice, since PIPER_VOICES comes first in the union — see
+      // TTS._allNativeVoices), it now points at a pack that no longer
+      // exists. Point it at a real Kokoro voice explicitly so the picker's
+      // "current" selection and the next synth call are correct immediately,
+      // rather than relying on the PACK_NOT_DOWNLOADED fallback search to
+      // paper over it with an unnecessary "switched to…" toast right after
+      // upgrading. Leaves an EXPLICIT prior Kokoro choice (e.g. from a
+      // previous install of this same pack) alone.
+      try {
+        const chosen = localStorage.getItem('pl_voice_native');
+        if (!chosen || !KOKORO_VOICES.some(v => v[0] === chosen)) {
+          localStorage.setItem('pl_voice_native', KOKORO_VOICES[0][0]);
+        }
+      } catch (_) {}
+      toast('Natural voice upgraded — high quality');
+    } else {
+      try { await p.deletePack({ model: 'kokoro' }); } catch (_) {}
+      this._status.kokoro = { downloaded: false, approxBytes: 0 };
+      toast('That didn’t run smoothly on your device — keeping the standard voice');
+      // gate stays 'no' — the Piper baseline is still installed, untouched.
+    }
     this._notify();
   },
 
@@ -1980,8 +2109,12 @@ const VoicePacks = {
   // whichever action (Download / Cancel / Remove) applies right now. Fully
   // uniform across every pack since the US model stopped being bundled: no
   // "Included"/"Reinstall" special case, and removing any pack frees its
-  // whole footprint.
+  // whole footprint. The virtual "english" model (gate still 'pending') is
+  // the one exception — there's no single real pack behind it yet, so its
+  // display is derived from whichever real download (Piper "us" first, then
+  // maybe Kokoro) the gate flow happens to be running.
   rowHTML({ model, label, approxMB }) {
+    if (model === 'english') return this._englishRowHTML(label, approxMB);
     const st = this._status[model];
     const prog = this._progress[model];
     let sub, right;
@@ -1998,6 +2131,33 @@ const VoicePacks = {
       const mb = Math.round((st.approxBytes || approxMB * 1024 * 1024) / (1024 * 1024));
       sub = `${mb} MB`;
       right = `<button class="set-link" onclick="VoicePacks.download('${model}')">Download</button>`;
+    }
+    return `<div class="voice-item" style="cursor:default">
+      <div><div class="voice-name">${esc(label)}</div><div class="voice-lang">${esc(sub)}</div></div>
+      ${right}
+    </div>`;
+  },
+
+  // See rowHTML's "english" branch. Reads the REAL underlying downloads
+  // (Piper "us", then maybe Kokoro) rather than tracking a parallel state
+  // machine of its own, so it can never disagree with what's actually
+  // happening.
+  _englishRowHTML(label, approxMB) {
+    let sub, right;
+    if (this._checkingEnglish) {
+      sub = 'Checking your device…';
+      right = '';
+    } else if (this._progress.us) {
+      const prog = this._progress.us;
+      sub = prog.started ? `Downloading… ${prog.pct}%` : 'Queued…';
+      right = `<button class="set-link" onclick="VoicePacks.cancel('us')">Cancel</button>`;
+    } else if (this._progress.kokoro) {
+      const prog = this._progress.kokoro;
+      sub = prog.started ? `Downloading the high quality voice… ${prog.pct}%` : 'Queued…';
+      right = `<button class="set-link" onclick="VoicePacks.cancel('kokoro')">Cancel</button>`;
+    } else {
+      sub = `${approxMB} MB`;
+      right = `<button class="set-link" onclick="VoicePacks.downloadEnglish()">Download</button>`;
     }
     return `<div class="voice-item" style="cursor:default">
       <div><div class="voice-name">${esc(label)}</div><div class="voice-lang">${esc(sub)}</div></div>
@@ -2059,15 +2219,39 @@ const Settings = {
     const sel = document.getElementById('set-speed'); if (sel) sel.value = localStorage.getItem('pl_speed') || '1';
     const vs = document.getElementById('set-voice-sub'); if (vs) vs.textContent = TTS.activeVoiceLabel();
     // Natural-voice row is ALWAYS shown; only its wording and right-hand
-    // control change. Retry is offered solely in fallback mode (there is
-    // nothing to retry when it's already working).
+    // control change. Retry is offered in web fallback mode (Settings.
+    // retryNeural) AND, since 2026-08-08, on native while running Piper —
+    // Settings.retryKokoroGate re-measures Piper and offers the Kokoro
+    // upgrade again (see VoicePacks.retryKokoro) — nothing to retry once
+    // already on Kokoro (nowhere higher to go) or before anything's been
+    // downloaded at all (that's the Language Packs flow's job, not this
+    // button's).
     const dead = TTS._kokoroDead;
+    const nativeActive = !!TTS._nativeTts();
+    const gate = VoicePacks._kokoroGate();
     const nsub = document.getElementById('neural-sub');
-    if (nsub) nsub.textContent = dead
-      ? 'Unavailable on this device — using the standard voice'
-      : (TTS._nativeSlow ? 'On — generated on your device (may run slower than real time here)' : 'On — generated on your device');
+    if (nsub) {
+      if (dead) {
+        nsub.textContent = 'Unavailable on this device — using the standard voice';
+      } else if (nativeActive && gate === 'yes') {
+        nsub.textContent = 'On — Kokoro, high quality, generated on your device';
+      } else if (nativeActive && gate === 'no') {
+        nsub.textContent = TTS._nativeSlow
+          ? 'On — Piper, medium quality, generated on your device (may run slower than real time here)'
+          : 'On — Piper, medium quality, generated on your device';
+      } else {
+        nsub.textContent = TTS._nativeSlow
+          ? 'On — generated on your device (may run slower than real time here)'
+          : 'On — generated on your device';
+      }
+    }
     const nst = document.getElementById('neural-status'); if (nst) nst.style.display = dead ? 'none' : '';
-    const nrt = document.getElementById('neural-retry'); if (nrt) nrt.style.display = dead ? '' : 'none';
+    const nrt = document.getElementById('neural-retry');
+    if (nrt) {
+      if (dead) { nrt.style.display = ''; nrt.onclick = () => Settings.retryNeural(); }
+      else if (nativeActive && gate === 'no') { nrt.style.display = ''; nrt.onclick = () => Settings.retryKokoroGate(); }
+      else { nrt.style.display = 'none'; nrt.onclick = null; }
+    }
     // "Better device voices" only helps while we're actually using the device
     // voice, and only on mobile (desktop installs add variants, not quality).
     const vh = document.getElementById('vh-row'); if (vh) vh.style.display = (dead && VoiceHelp.available()) ? '' : 'none';
@@ -2089,6 +2273,13 @@ const Settings = {
     TTS.stop();
     TTS._kokoroWarm();
     TTS.updateVoiceLabel();
+    this.render();
+  },
+  // Native, currently on Piper: re-measure it and offer the Kokoro upgrade
+  // again (see VoicePacks.retryKokoro) — relevant if the device or OS has
+  // changed since the first check, or it simply never got a fair shot.
+  async retryKokoroGate() {
+    await VoicePacks.retryKokoro();
     this.render();
   },
   setTheme(mode) { Theme.apply(mode); this.render(); },
@@ -4522,42 +4713,58 @@ const TTS = {
     bmp.close?.();
     return cv.toDataURL('image/jpeg', 0.85).split(',')[1] || '';
   },
-  // Resolves once the plugin has told us which model is actually loaded. We
-  // never GUESS the model: the voice id spaces differ per model, so guessing
-  // wrong makes the first chunk speak in the wrong voice and then switch. Only
-  // the first session ever waits — the answer is cached in `pl_modeltype` and
-  // restored at parse time, so later sessions resolve instantly.
+  // Resolves once the plugin has told us which model is actually loaded.
+  // Prepares the CURRENTLY SELECTED voice's model (see _voiceModel below),
+  // not a hardcoded default — preparing "us" unconditionally (the old
+  // behavior) meant every native boot loaded and immediately discarded the
+  // US model for any user whose actual choice was French/German/Spanish/
+  // Kokoro, since the engine holds only one model at a time. Only the first
+  // session ever waits — the answer is cached in `pl_modeltype` and restored
+  // at parse time, so later sessions resolve instantly.
   _modelReady() {
     if (this._modelType) return Promise.resolve(this._modelType);
     const nat = this._nativeTts();
     if (!nat) return Promise.resolve(null); // web build → browser-WASM Kokoro
     if (!this._modelReadyP) {
-      this._modelReadyP = nat.prepare()
+      this._modelReadyP = nat.prepare({ model: this._voiceModel() })
         .then(r => { if (r) this._setModelType(r.modelType); return this._modelType; })
         .catch(() => null);
     }
     return this._modelReadyP;
   },
   _modelReadyP: null,
-  // The voice catalog + persisted-choice key depend on the loaded native model
-  // (Kokoro vs Piper) — they have different speakers and speaker-id orderings.
-  _effModelType() { return this._modelType; },
-  _nativeCatalog() { return this._effModelType() === 'vits' ? PIPER_VOICES : KOKORO_VOICES; },
-  _voiceKey() { return this._effModelType() === 'vits' ? 'pl_voice_piper' : 'pl_voice_kokoro'; },
-  _voiceSid() {
-    const cat = this._nativeCatalog();
-    const id = localStorage.getItem(this._voiceKey()) || cat[0][0];
-    const v = cat.find(x => x[0] === id) || cat[0];
-    return (v && v[2] != null) ? v[2] : 0;
+  // Every native voice, from EITHER engine, in one list. Needed since
+  // 2026-08-08: a device can have a Kokoro pack (English) AND Piper packs
+  // (other languages) downloaded at the same time, so "which catalog to look
+  // in" can no longer be inferred from whichever model the native engine
+  // last happened to load (this._modelType reflects that, and every Piper
+  // model reports the SAME family — "vits" — so that only worked by accident
+  // before a second real engine existed). PIPER_VOICES first so an untouched
+  // default still resolves to the pre-Kokoro behavior.
+  _allNativeVoices() { return PIPER_VOICES.concat(KOKORO_VOICES); },
+  // Single persisted choice across BOTH engines, replacing the old
+  // pl_voice_piper/pl_voice_kokoro split (which was keyed on the transient
+  // "last loaded" signal above, not a stable per-user choice). One-time
+  // migration below adopts whichever of the old keys was actually usable on
+  // native (pl_voice_kokoro was web-WASM-only before this change — native
+  // never had a Kokoro voice to have picked — so pl_voice_piper is the only
+  // one that could hold a real prior native choice).
+  _voiceEntry() {
+    const all = this._allNativeVoices();
+    let id = localStorage.getItem('pl_voice_native');
+    if (id == null) {
+      try {
+        id = localStorage.getItem('pl_voice_piper');
+        if (id != null) localStorage.setItem('pl_voice_native', id);
+      } catch (_) {}
+    }
+    if (id == null) id = all[0][0];
+    return all.find(v => v[0] === id) || all[0];
   },
-  // The model key ("us"/"gb") of the selected voice — different accents live in
-  // separate native model folders. KOKORO_VOICES have no 4th field → "us".
-  _voiceModel() {
-    const cat = this._nativeCatalog();
-    const id = localStorage.getItem(this._voiceKey()) || cat[0][0];
-    const v = cat.find(x => x[0] === id) || cat[0];
-    return (v && v[3]) ? v[3] : 'us';
-  },
+  _voiceSid() { const v = this._voiceEntry(); return (v && v[2] != null) ? v[2] : 0; },
+  // The model key ("us"/"gb"/"fr"/"de"/"es"/"kokoro") of the selected voice —
+  // different accents/engines live in separate native model folders.
+  _voiceModel() { const v = this._voiceEntry(); return (v && v[3]) ? v[3] : 'us'; },
   _synth(text) {
     const nat = this._nativeTts();
     if (nat) return this._synthNative(nat, text);
@@ -4642,13 +4849,12 @@ const TTS = {
       const msg = String((e && e.message) || e || '');
       const missingModel = msg.startsWith('PACK_NOT_DOWNLOADED:') ? msg.slice('PACK_NOT_DOWNLOADED:'.length) : null;
       if (missingModel) {
-        const cat = this._nativeCatalog();
-        const usable = cat.find(v => {
+        const usable = this._allNativeVoices().find(v => {
           const m = v[3] || 'us';
           return m !== missingModel && VoicePacks._status[m] && VoicePacks._status[m].downloaded;
         });
         if (usable) {
-          localStorage.setItem(this._voiceKey(), usable[0]);
+          localStorage.setItem('pl_voice_native', usable[0]);
           toast('That voice’s language pack isn’t installed — switched to ' + usable[1] + '.');
         } else if (!this._noVoiceShown) {
           this._noVoiceShown = true;
@@ -4831,9 +5037,7 @@ const TTS = {
     const nat = this._nativeTts();
     if (!nat) return;
     try {
-      await this._modelReady();
-      const cat = this._nativeCatalog();
-      const entry = cat.find(v => (v[3] || 'us') === model) || cat[0];
+      const entry = this._allNativeVoices().find(v => (v[3] || 'us') === model) || this._allNativeVoices()[0];
       const t0 = performance.now();
       const r = await nat.synthesize({
         text: 'The quick brown fox jumps over the lazy dog near the quiet river bank.',
@@ -4847,6 +5051,29 @@ const TTS = {
       Diag.push({ e: 'nbench', m: bench.model, r: bench.ratio });
       VoicePacks._notify(); // re-render Settings + whichever picker is open
     } catch (_) { /* informational only — never blocks onboarding or playback */ }
+  },
+  // Real, synthesis-timed measurement specifically for the Kokoro upgrade
+  // decision (see VoicePacks._tryKokoroUpgrade) — separate from _nativeBench
+  // above, which only ever informationally labels whichever Piper pack the
+  // user already has and never gates anything. Runs every time it's called
+  // (no caching — it's about THIS one candidate pack, not a one-time device
+  // verdict) and returns the measured ratio, or null if synthesis itself
+  // failed (treated as "couldn't confirm it's fast enough", so the caller
+  // falls back to Piper rather than risking a broken voice).
+  async _benchKokoroGate() {
+    const nat = this._nativeTts();
+    if (!nat) return null;
+    try {
+      const t0 = performance.now();
+      const r = await nat.synthesize({
+        text: 'The quick brown fox jumps over the lazy dog near the quiet river bank.',
+        sid: 0, speed: 1.0, model: 'kokoro',
+      });
+      if (!r || !r.durationMs) return null;
+      const ratio = (performance.now() - t0) / r.durationMs;
+      Diag.push({ e: 'kgate', r: +ratio.toFixed(2) });
+      return ratio;
+    } catch (_) { return null; }
   },
   _synthKokoro(text) {
     if (this._kokoroDead) return Promise.reject(new Error('kokoro-dead'));
@@ -4906,9 +5133,12 @@ const TTS = {
   // neural engine is running; the system voice in fallback mode.
   activeVoiceLabel() {
     if (this._engineNow() === 'kokoro') {
-      const cat = this._nativeCatalog();
-      const id = localStorage.getItem(this._voiceKey()) || cat[0][0];
-      const v = cat.find(x => x[0] === id) || cat[0];
+      // Native (Piper and/or Kokoro packs, union catalog) vs web (browser-WASM
+      // Kokoro only, its own separate pl_voice_kokoro choice — there's no pack
+      // system on web, so the union/gate machinery below doesn't apply there).
+      if (this._nativeTts()) return this._voiceEntry()[1];
+      const id = localStorage.getItem('pl_voice_kokoro') || KOKORO_VOICES[0][0];
+      const v = KOKORO_VOICES.find(x => x[0] === id) || KOKORO_VOICES[0];
       return v[1];
     }
     return this.voice?.name || 'System default';
@@ -4951,21 +5181,26 @@ window.speechSynthesis?.addEventListener('voiceschanged', () => TTS.pickDefaultV
 // + `npm run sync` (no Gradle rebuild). Catalog is chosen by the loaded model
 // family (TTS._modelType) — sids are MODEL-SPECIFIC.
 //
-// KOKORO_VOICES: kokoro-en-v0_19 (English-only, 11 speakers, sids 0-10,
-// authoritative from sherpa's model page). Used for the browser-WASM engine and
-// for a native Kokoro model (premium tier, later).
+// KOKORO_VOICES: kokoro-int8-en-v0_19 (English-only, 11 speakers, sids 0-10).
+// Used for the browser-WASM engine and, since 2026-08-08, for the native
+// Kokoro pack too (see VOICE_PACKS' "kokoro" entry in PhonoLeafTtsPlugin.kt) —
+// sids re-verified directly against that exact model's own embedded ONNX
+// metadata (speaker_names/id2speaker), not assumed carried over from the
+// pre-pivot native attempt. The 4th field ("kokoro") is the native model
+// folder key, same convention as PIPER_VOICES' 4th field — unused on the web
+// path, where there's only ever one model.
 const KOKORO_VOICES = [
-  ['af',          'Heart · US female',    0],
-  ['af_bella',    'Bella · US female',    1],
-  ['af_nicole',   'Nicole · US female',   2],
-  ['af_sarah',    'Sarah · US female',    3],
-  ['af_sky',      'Sky · US female',      4],
-  ['am_adam',     'Adam · US male',       5],
-  ['am_michael',  'Michael · US male',    6],
-  ['bf_emma',     'Emma · UK female',     7],
-  ['bf_isabella', 'Isabella · UK female', 8],
-  ['bm_george',   'George · UK male',     9],
-  ['bm_lewis',    'Lewis · UK male',      10],
+  ['af',          'Heart · US female',    0,  'kokoro'],
+  ['af_bella',    'Bella · US female',    1,  'kokoro'],
+  ['af_nicole',   'Nicole · US female',   2,  'kokoro'],
+  ['af_sarah',    'Sarah · US female',    3,  'kokoro'],
+  ['af_sky',      'Sky · US female',      4,  'kokoro'],
+  ['am_adam',     'Adam · US male',       5,  'kokoro'],
+  ['am_michael',  'Michael · US male',    6,  'kokoro'],
+  ['bf_emma',     'Emma · UK female',     7,  'kokoro'],
+  ['bf_isabella', 'Isabella · UK female', 8,  'kokoro'],
+  ['bm_george',   'George · UK male',     9,  'kokoro'],
+  ['bm_lewis',    'Lewis · UK male',      10, 'kokoro'],
 ];
 // PIPER_VOICES: vits-piper-en_US-libritts_r-medium (904 speakers). Their quality
 // and gender vary and aren't documented per-sid, so this is an AUDITION set — a
@@ -5028,45 +5263,69 @@ const VoiceModal = {
   open() {
     // Neural engine running: the active model's catalog. Fallback: system voices.
     if (TTS._engineNow() === 'kokoro') {
-      const cat = TTS._nativeCatalog();
-      const cur = localStorage.getItem(TTS._voiceKey()) || cat[0][0];
-      // Listing every voice here — including locked, not-yet-downloaded ones —
-      // got convoluted as more languages were added (owner feedback
-      // 2026-08-04). Now this only shows voices that actually work right now;
-      // a trailing "Get more voices" row links to the Language Packs popup
-      // instead of managing downloads inline. Every model is gated the same
-      // way since the US voice stopped being bundled — there is no
-      // always-available fallback voice any more, so the list can legitimately
-      // be empty on a fresh install that skipped the onboarding download.
-      VoicePacks.refresh();
-      const available = cat.filter(([, , , model]) => {
-        const m = model || 'us';
-        return VoicePacks._status[m] && VoicePacks._status[m].downloaded;
-      });
-      // Native only — see TTS._nativeBench. Every voice here shares the same
-      // underlying (already downloaded) model, so this is one device-level
-      // note above the list, not a per-voice speed label.
-      const slowNote = (TTS._nativeTts() && TTS._nativeSlow)
-        ? `<div class="voice-item" style="cursor:default">
-            <div><div class="voice-name" style="color:var(--text-dim)">May run slower than real time on this device</div></div>
-          </div>`
-        : '';
-      document.getElementById('voice-list').innerHTML =
-        slowNote +
-        (available.length ? available.map(([id, label]) => `
+      // Native (pack-gated, union of Piper + Kokoro) vs web (browser-WASM
+      // Kokoro only — no pack system there, so it isn't gated by
+      // VoicePacks._status at all; that map is native-only and stays empty on
+      // web, which previously made this branch show "No natural voices
+      // installed yet" on web even though the WASM voice was working fine).
+      if (TTS._nativeTts()) {
+        const cat = TTS._allNativeVoices();
+        const cur = TTS._voiceEntry()[0];
+        // Listing every voice here — including locked, not-yet-downloaded ones —
+        // got convoluted as more languages were added (owner feedback
+        // 2026-08-04). Now this only shows voices that actually work right now;
+        // a trailing "Get more voices" row links to the Language Packs popup
+        // instead of managing downloads inline. Every model is gated the same
+        // way since the US voice stopped being bundled — there is no
+        // always-available fallback voice any more, so the list can legitimately
+        // be empty on a fresh install that skipped the onboarding download.
+        VoicePacks.refresh();
+        const available = cat.filter(([, , , model]) => {
+          const m = model || 'us';
+          return VoicePacks._status[m] && VoicePacks._status[m].downloaded;
+        });
+        // Native only — see TTS._nativeBench. Every voice here shares the same
+        // underlying (already downloaded) model, so this is one device-level
+        // note above the list, not a per-voice speed label. Only relevant for
+        // Piper — Kokoro is the confirmed-fast tier by construction (see the
+        // English gate in VoicePacks.downloadEnglish).
+        const slowNote = TTS._nativeSlow
+          ? `<div class="voice-item" style="cursor:default">
+              <div><div class="voice-name" style="color:var(--text-dim)">May run slower than real time on this device</div></div>
+            </div>`
+          : '';
+        document.getElementById('voice-list').innerHTML =
+          slowNote +
+          (available.length ? available.map(([id, label, , model]) => {
+            const tier = model === 'kokoro' ? 'High' : 'Standard';
+            return `
           <div class="voice-item ${cur === id ? 'active' : ''}" onclick="VoiceModal.selectNative(this.dataset.vname)" data-vname="${esc(id)}" role="button" tabindex="0" aria-current="${cur === id}">
             <div>
-              <div class="voice-name">${esc(label)} <span class="voice-badge">&#10024; Natural</span></div>
+              <div class="voice-name">${esc(label)} <span class="voice-badge">&#10024; Natural &middot; ${tier}</span></div>
             </div>
             ${cur === id ? '<span class="voice-check">&#10003;</span>' : ''}
-          </div>`).join('')
-          : `<div class="voice-item" style="cursor:default">
-              <div><div class="voice-name" style="color:var(--text-dim)">No natural voices installed yet</div>
-              <div class="voice-lang">Download one below to use the natural voice</div></div>
-            </div>`) +
-        `<div class="voice-item" onclick="VoiceModal.openLangPacks()" role="button" tabindex="0">
-          <div><div class="voice-name">Get more voices</div><div class="voice-lang">Download language packs</div></div>
-        </div>`;
+          </div>`;
+          }).join('')
+            : `<div class="voice-item" style="cursor:default">
+                <div><div class="voice-name" style="color:var(--text-dim)">No natural voices installed yet</div>
+                <div class="voice-lang">Download one below to use the natural voice</div></div>
+              </div>`) +
+          `<div class="voice-item" onclick="VoiceModal.openLangPacks()" role="button" tabindex="0">
+            <div><div class="voice-name">Get more voices</div><div class="voice-lang">Download language packs</div></div>
+          </div>`;
+        document.getElementById('voice-modal').classList.add('open');
+        return;
+      }
+      // Web: the browser-WASM Kokoro model, always available once loaded — no
+      // packs, no download gating.
+      const cur = localStorage.getItem('pl_voice_kokoro') || KOKORO_VOICES[0][0];
+      document.getElementById('voice-list').innerHTML = KOKORO_VOICES.map(([id, label]) => `
+        <div class="voice-item ${cur === id ? 'active' : ''}" onclick="VoiceModal.selectNative(this.dataset.vname)" data-vname="${esc(id)}" role="button" tabindex="0" aria-current="${cur === id}">
+          <div>
+            <div class="voice-name">${esc(label)} <span class="voice-badge">&#10024; Natural</span></div>
+          </div>
+          ${cur === id ? '<span class="voice-check">&#10003;</span>' : ''}
+        </div>`).join('');
       document.getElementById('voice-modal').classList.add('open');
       return;
     }
@@ -5090,12 +5349,16 @@ const VoiceModal = {
     LangPacksModal.open();
   },
 
-  // Native voice selection (Kokoro or Piper — key + catalog per model type);
-  // restart the current chunk so the new voice is heard immediately.
+  // Native voice selection (Piper and/or Kokoro, one unified choice — see
+  // TTS._voiceEntry) or, on web, the browser-WASM Kokoro voice; restart the
+  // current chunk so the new voice is heard immediately.
   selectNative(id) {
-    localStorage.setItem(TTS._voiceKey(), id);
+    const native = TTS._nativeTts();
+    const key = native ? 'pl_voice_native' : 'pl_voice_kokoro';
+    const cat = native ? TTS._allNativeVoices() : KOKORO_VOICES;
+    localStorage.setItem(key, id);
     TTS.updateVoiceLabel();
-    const v = TTS._nativeCatalog().find(x => x[0] === id);
+    const v = cat.find(x => x[0] === id);
     toast('Voice: ' + (v ? v[1] : id));
     this.close();
     if (TTS.active) { TTS._gen++; TTS._stopAudio(); window.speechSynthesis?.cancel(); TTS._speak(); }
@@ -5298,7 +5561,12 @@ const MyData = {
     // deleting data and was never prompted to download a voice).
     const p = VoicePacks._plugin();
     if (p) {
-      try { await Promise.all(VoicePacks.CATALOG.map(({ model }) => p.deletePack({ model }).catch(() => {}))); } catch (_) {}
+      // ALL_PACK_MODELS, not the gate-aware CATALOG — CATALOG only ever
+      // shows ONE English variant at a time, so it would miss whichever
+      // pack (Piper "us"/"gb" or Kokoro) isn't currently in play, e.g. a
+      // leftover Piper baseline kept around after a successful Kokoro
+      // upgrade (see _tryKokoroUpgrade).
+      try { await Promise.all(VoicePacks.ALL_PACK_MODELS.map(model => p.deletePack({ model }).catch(() => {}))); } catch (_) {}
     }
     toast('All local data deleted');
     setTimeout(() => location.reload(), 900);
