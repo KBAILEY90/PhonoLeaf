@@ -1859,20 +1859,31 @@ const VoicePacks = {
   // data" regardless of which the user currently has.
   ALL_PACK_MODELS: ['us', 'gb', 'fr', 'de', 'es', 'kokoro'],
   // Minimum deviceBench() score (see PhonoLeafTtsPlugin.kt) to even OFFER
-  // Kokoro voices. **PROVISIONAL — not yet calibrated against real hardware.**
-  // Derivation: the Pixel 7 runs Kokoro at ~1.36x realtime (measured
-  // 2026-07-06), so a device needs roughly 2x its throughput to land
-  // comfortably under the _KOKORO_KEEP_RATIO margin below. 6.0 GFLOPS on this
-  // synthetic scale is an ESTIMATE of that bar; the real number comes from
-  // running deviceBench() on the owner's Pixel 7 and reading the logged score
-  // (Diag 'dbench', plus Logcat tag PhonoLeafTts) — set this to ~1.8x
-  // whatever that device reports.
+  // Kokoro voices. **CALIBRATED against real hardware 2026-08-08.**
   //
-  // Deliberately biased toward Piper: a wrong "yes" here means stuttering
-  // audio (the bad first impression this whole flow exists to prevent), while
-  // a wrong "no" only means a capable device gets the merely-good voice.
-  // The real Kokoro measurement in _verifyKokoro is the actual safety net.
-  _KOKORO_MIN_GFLOPS: 6.0,
+  // The one anchor point we have: the owner's **Pixel 7 scores 2.47 GFLOPS**
+  // here (device log: `deviceBench threads=4 ms=53 gflops=2.47`) and is
+  // independently known to run Kokoro at **~1.36x realtime** (measured
+  // 2026-07-06) — i.e. a device we have confirmed CANNOT do this.
+  // Break-even, assuming throughput scales linearly with this score, is
+  // 1.36 / 0.75 = 1.81x the Pixel 7 = ~4.5 GFLOPS. Set at 5.0 (~2.0x the
+  // Pixel 7), which predicts ~0.67x realtime — about 10% clear of
+  // _KOKORO_KEEP_RATIO.
+  //
+  // **What this number is NOT:** we know ONE point on the curve, not its
+  // slope. Scalar JVM matmul and onnxruntime's NEON kernels do not have to
+  // scale together, so a device could beat this screen and still miss on
+  // real inference (or vice versa). That is precisely why _verifyKokoro
+  // measures the actual model before committing — this threshold only has to
+  // be good enough to avoid pointless downloads, not to be the final word.
+  // A wrong "yes" costs one wasted download and is caught; a wrong "no" only
+  // costs a capable device the merely-good voice.
+  //
+  // To refine: every real verification logs the pair (this score, the
+  // measured Kokoro ratio) to Diag as {e:'kgate'} — a second device that
+  // actually passes or fails is worth more than any amount of reasoning from
+  // this single anchor.
+  _KOKORO_MIN_GFLOPS: 5.0,
   // How comfortably a REAL Kokoro synthesis must beat realtime to be kept.
   // Not 1.0: the app already has evidence that CPU contention bites in
   // practice (voices audibly garbled while a pack downloaded in the
@@ -2049,9 +2060,12 @@ const VoicePacks = {
     try {
       const r = await p.deviceBench();
       const gflops = (r && r.gflops) || 0;
-      // Logged so the owner's device test can read the real number off a
-      // known device and calibrate _KOKORO_MIN_GFLOPS against it.
+      // Logged (and kept) so a device that later goes through _verifyKokoro
+      // records the PAIR (synthetic score, real Kokoro ratio) — the only
+      // thing that can actually refine _KOKORO_MIN_GFLOPS, since one anchor
+      // point tells us where the Pixel 7 sits but not the slope.
       Diag.push({ e: 'dbench', g: +gflops.toFixed(2), t: r && r.threads, c: r && r.cores });
+      try { localStorage.setItem('pl_device_gflops', String(+gflops.toFixed(2))); } catch (_) {}
       const gate = gflops >= this._KOKORO_MIN_GFLOPS ? 'yes' : 'no';
       this._setKokoroGate(gate);
       return gate;
@@ -5149,7 +5163,12 @@ const TTS = {
       });
       if (!r || !r.durationMs) return null;
       const ratio = (performance.now() - t0) / r.durationMs;
-      Diag.push({ e: 'kgate', r: +ratio.toFixed(2) });
+      // Paired with the synthetic score that green-lit this attempt, so the
+      // log line is a calibration data point rather than an isolated number
+      // (see VoicePacks._KOKORO_MIN_GFLOPS on why the slope is still unknown).
+      let g = null;
+      try { g = +localStorage.getItem('pl_device_gflops') || null; } catch (_) {}
+      Diag.push({ e: 'kgate', r: +ratio.toFixed(2), g });
       return ratio;
     } catch (_) { return null; }
   },

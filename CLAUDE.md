@@ -2344,17 +2344,37 @@ writing code:
     only just keeps up in a quiet one-shot benchmark will stutter in real
     reading — which is precisely the bad first impression this flow exists
     to prevent.
-- **`_KOKORO_MIN_GFLOPS` (6.0) is PROVISIONAL and needs one real calibration
-  run.** Derivation: the Pixel 7 runs Kokoro at ~1.36x realtime, so a device
-  needs roughly 2x its throughput to land under the 0.75 margin; 6.0 GFLOPS
-  on this synthetic scale is an *estimate* of that bar, not a measurement.
-  **To calibrate: run the app on the Pixel 7, read the logged score** (Diag
-  `{e:'dbench'}`, and Logcat tag `PhonoLeafTts` line `deviceBench …
-  gflops=…`), then set this to ~1.8x that number. Until then the threshold
-  is a guess — but a deliberately conservative one, because the error costs
-  are asymmetric: a wrong `'yes'` means stuttering audio, a wrong `'no'`
-  only means a capable device gets the merely-good voice. **Err toward
-  Piper.**
+- **`_KOKORO_MIN_GFLOPS` = 5.0, CALIBRATED on device 2026-08-08.** The owner
+  ran the build on the Pixel 7: `deviceBench threads=4 ms=53 gflops=2.47`.
+  Two things came out of that one line:
+  1. **The Kotlin benchmark compiles and runs correctly.** 2.47 is exactly
+     what the code predicts — `2 x 160³ x 4 reps x 4 threads = 131,072,000`
+     flops ÷ 53 ms — and `threads=4` is the right answer for an 8-core
+     device under `inferenceThreads()`. Removes the "never compiled" caveat
+     for this method specifically. Also: 53 ms per timed run means the whole
+     benchmark (2 warm-up + 3 timed) is ~300–400 ms, so `VoiceSetup.MIN_MS`
+     (1.1 s) is what the user actually perceives, which is the intended
+     behavior — the floor exists so a fast check doesn't flash past.
+  2. **The threshold now has a real anchor.** The Pixel 7 scores 2.47 AND is
+     independently known to run Kokoro at ~1.36x realtime — a confirmed
+     *failure* case, which is the most useful kind of anchor. Break-even
+     (landing exactly on `_KOKORO_KEEP_RATIO`) is `1.36 / 0.75 = 1.81x` the
+     Pixel 7 ≈ 4.5 GFLOPS. Set to **5.0 (~2.0x the Pixel 7)**, predicting
+     ~0.67x realtime, ~10% clear of the keep bar. That 2x line also matches
+     the owner's own framing of the feature ("Pixel 7 is not strong enough
+     but Pixel 12 is").
+  - **What is still unknown: the SLOPE.** One anchor tells us where the
+    Pixel 7 sits, not how scalar-JVM-matmul throughput maps onto NEON ONNX
+    inference across other chips. A device could clear this screen and still
+    miss on real inference. That is exactly why `_verifyKokoro` exists — the
+    screen only has to be good enough to avoid pointless downloads, and a
+    wrong `'yes'` costs one recoverable download while a wrong `'no'` costs
+    only a missed upgrade.
+  - **Self-refining from here:** `screenDevice()` persists the score to
+    `pl_device_gflops`, and `_benchKokoroGate()` logs it alongside the real
+    measured ratio (`Diag {e:'kgate', r, g}`). Any device that actually goes
+    through verification therefore records a **paired** data point — worth
+    more for calibration than any further reasoning from this single anchor.
   - Why not an OS API or a lookup table (researched 2026-08-08, not
     assumed): Android's own **performance class** API is OEM-declared and
     frequently absent, and its criteria are media-pipeline oriented rather
@@ -2468,11 +2488,15 @@ writing code:
   across all three gate states, and the Language Packs modal's virtual
   English row across its sub-states. The `VoiceSetup` overlay was also
   rendered in a real browser at 375px to confirm it reads correctly.
-- **First real device test should:** read the logged `deviceBench` GFLOPS off
-  the Pixel 7 and calibrate `_KOKORO_MIN_GFLOPS` (above), confirm the
-  overlay's timing feels deliberate rather than sluggish, and — since the
-  Pixel 7 is known to fail Kokoro — confirm it is screened onto Piper
-  *without* ever downloading Kokoro.
+- **Device-test status (2026-08-08):** the `deviceBench` calibration run is
+  DONE (see `_KOKORO_MIN_GFLOPS` above) and confirms the benchmark itself
+  works on real hardware. **Still to confirm on device:** that the Pixel 7 is
+  screened onto Piper *without* ever downloading Kokoro (2.47 is well under
+  the 5.0 bar, so it should never be offered — this is the end-to-end check
+  that the gate actually wires through to the catalog); that the overlay
+  reads as deliberate rather than sluggish; and, whenever a genuinely faster
+  device is available, one real `_verifyKokoro` pass to produce the first
+  paired calibration point.
 
 ## Productization roadmap (ACTIVE — production-bound as of 2026-07-03)
 
