@@ -2243,6 +2243,17 @@ system text-size/motion settings, and tap target size. Findings and fixes:
   search work as a side effect). Verified in an isolated harness across
   underscore/dot-separated filenames, a Meta-title-only match, and a
   no-match case.
+- **Library covers were being cropped ("halved").** `.book-cover img` used
+  `object-fit: cover` inside a fixed 2:3 box — a real cover's actual
+  proportions rarely match 2:3 exactly, and `cover` crops off whatever
+  doesn't fit rather than shrinking to show it all. Changed to
+  `object-fit: contain`, which always shows the whole image, letterboxed on
+  `--cover-fallback` (already the box's background) when the ratio doesn't
+  match. Verified in a browser harness with a synthetic square test image
+  (labelled top/bottom): both edges are now visible with letterbox bars,
+  where `cover` would have cropped one off. Home's smaller cover thumbnails
+  (`.hh-cover`/`.cr-cover`, ~54–120px `background-size: cover`) weren't
+  touched — not what was reported, and cropping matters less at that size.
 
 ## Native Kokoro — device-gated English upgrade (2026-08-08)
 
