@@ -954,18 +954,25 @@
 <!-- ============== SETTINGS VIEW ============== -->
 <div id="settings-view" class="view">
   <div class="scrolly">
-    <div class="home-title">Settings</div>
+    <div class="home-title" data-i18n="settings_title">Settings</div>
     <div class="set-group">
       <div class="set-row">
-        <div><div class="sr-k">Theme</div><div class="sr-sub">Light, dark, or match device</div></div>
+        <div><div class="sr-k" data-i18n="theme">Theme</div><div class="sr-sub" data-i18n="theme_sub">Light, dark, or match device</div></div>
         <div class="seg" id="theme-seg">
-          <button data-mode="light" onclick="Settings.setTheme('light')">Light</button>
-          <button data-mode="dark" onclick="Settings.setTheme('dark')">Dark</button>
-          <button data-mode="auto" onclick="Settings.setTheme('auto')">Auto</button>
+          <button data-mode="light" data-i18n="theme_light" onclick="Settings.setTheme('light')">Light</button>
+          <button data-mode="dark" data-i18n="theme_dark" onclick="Settings.setTheme('dark')">Dark</button>
+          <button data-mode="auto" data-i18n="theme_auto" onclick="Settings.setTheme('auto')">Auto</button>
         </div>
       </div>
       <div class="set-row">
-        <div><div class="sr-k">Default speed</div></div>
+        <div><div class="sr-k" data-i18n="app_language">App language</div><div class="sr-sub" data-i18n="app_language_sub">Translates the Settings tab</div></div>
+        <div class="seg" id="lang-seg">
+          <button data-lang="en" onclick="Settings.setLang('en')">EN</button>
+          <button data-lang="fr" onclick="Settings.setLang('fr')">FR</button>
+        </div>
+      </div>
+      <div class="set-row">
+        <div><div class="sr-k" data-i18n="default_speed">Default speed</div></div>
         <select class="set-select" id="set-speed" onchange="Settings.setSpeed(+this.value)">
           <option value="0.5">0.5&times;</option>
           <option value="0.75">0.75&times;</option>
@@ -977,11 +984,11 @@
         </select>
       </div>
       <div class="set-row">
-        <div><div class="sr-k">Voice</div><div class="sr-sub" id="set-voice-sub">System default</div></div>
-        <button class="set-link" onclick="VoiceModal.open()">Change</button>
+        <div><div class="sr-k" data-i18n="voice">Voice</div><div class="sr-sub" id="set-voice-sub" data-i18n="voice_sub_default">System default</div></div>
+        <button class="set-link" data-i18n="change" onclick="VoiceModal.open()">Change</button>
       </div>
       <div class="set-row">
-        <div><div class="sr-k">Keep screen on</div><div class="sr-sub">While audio is playing</div></div>
+        <div><div class="sr-k" data-i18n="keep_screen_on">Keep screen on</div><div class="sr-sub" data-i18n="keep_screen_on_sub">While audio is playing</div></div>
         <label class="tog"><input type="checkbox" id="set-wakelock" onchange="Settings.setWakeLock(this.checked)"><span class="tog-track"></span></label>
       </div>
     </div>
@@ -992,15 +999,15 @@
            Now it reports either state, with an "i" explainer either way. -->
       <div class="set-row" id="neural-row">
         <div>
-          <div class="sr-k">Natural voice<button class="sr-info" onclick="VoiceInfo.open()" aria-label="About the natural voice">i</button></div>
-          <div class="sr-sub" id="neural-sub">Checking&hellip;</div>
+          <div class="sr-k"><span data-i18n="natural_voice">Natural voice</span><button class="sr-info" onclick="VoiceInfo.open()" aria-label="About the natural voice">i</button></div>
+          <div class="sr-sub" id="neural-sub" data-i18n="natural_voice_checking">Checking&hellip;</div>
         </div>
-        <span class="set-stat" id="neural-status">On</span>
-        <button class="set-link" id="neural-retry" style="display:none">Retry</button>
+        <span class="set-stat" id="neural-status" data-i18n="on">On</span>
+        <button class="set-link" id="neural-retry" data-i18n="retry" style="display:none">Retry</button>
       </div>
       <div class="set-row" id="vh-row" style="display:none">
-        <div><div class="sr-k">Better device voices</div><div class="sr-sub">Install free natural voices</div></div>
-        <button class="set-link" onclick="VoiceHelp.open()">How</button>
+        <div><div class="sr-k" data-i18n="better_device_voices">Better device voices</div><div class="sr-sub" data-i18n="better_device_voices_sub">Install free natural voices</div></div>
+        <button class="set-link" data-i18n="how" onclick="VoiceHelp.open()">How</button>
       </div>
     </div>
     <!-- Language packs: accents/languages beyond the store build's bundled US
@@ -1013,8 +1020,8 @@
          no-op and summary() returns null. -->
     <div class="set-group" id="langpacks-group" style="display:none">
       <div class="set-row">
-        <div><div class="sr-k">Language packs</div></div>
-        <button class="set-link" onclick="LangPacksModal.open()">Downloads</button>
+        <div><div class="sr-k" data-i18n="language_packs">Language packs</div></div>
+        <button class="set-link" data-i18n="downloads" onclick="LangPacksModal.open()">Downloads</button>
       </div>
     </div>
     <!-- Your data: GDPR-style access (export) and erasure (delete). Everything
@@ -1022,37 +1029,37 @@
          there is no server to request anything from. -->
     <div class="set-group">
       <div class="set-row">
-        <div><div class="sr-k">Export my data</div><div class="sr-sub">Download everything stored on this device</div></div>
-        <button class="set-link" onclick="MyData.export()">Export</button>
+        <div><div class="sr-k" data-i18n="export_data">Export my data</div><div class="sr-sub" data-i18n="export_data_sub">Download everything stored on this device</div></div>
+        <button class="set-link" data-i18n="export" onclick="MyData.export()">Export</button>
       </div>
       <div class="set-row">
-        <div><div class="sr-k">Delete my data</div><div class="sr-sub">Erase local data and disconnect Google</div></div>
-        <button class="set-link danger" onclick="MyData.confirmDelete()">Delete</button>
-      </div>
-    </div>
-    <div class="set-group">
-      <div class="set-row">
-        <div><div class="sr-k">Google account</div><div class="sr-sub" id="set-account">Signed in</div></div>
-        <button class="set-link" onclick="App.signOut()">Sign out</button>
-      </div>
-      <div class="set-row">
-        <div><div class="sr-k">Drive folder</div><div class="sr-sub" id="set-folder">Not selected</div></div>
-        <button class="set-link" onclick="Settings.changeFolder()">Change</button>
+        <div><div class="sr-k" data-i18n="delete_data">Delete my data</div><div class="sr-sub" data-i18n="delete_data_sub">Erase local data and disconnect Google</div></div>
+        <button class="set-link danger" data-i18n="delete" onclick="MyData.confirmDelete()">Delete</button>
       </div>
     </div>
     <div class="set-group">
       <div class="set-row">
-        <div><div class="sr-k">Send feedback</div><div class="sr-sub">Ideas or anything on your mind</div></div>
-        <button class="set-link" onclick="Feedback.open()">Open</button>
+        <div><div class="sr-k" data-i18n="google_account">Google account</div><div class="sr-sub" id="set-account" data-i18n="signed_in">Signed in</div></div>
+        <button class="set-link" data-i18n="sign_out" onclick="App.signOut()">Sign out</button>
       </div>
       <div class="set-row">
-        <div><div class="sr-k">Report a bug</div><div class="sr-sub">Tell us what went wrong</div></div>
-        <button class="set-link" onclick="BugReport.open()">Open</button>
+        <div><div class="sr-k" data-i18n="drive_folder">Drive folder</div><div class="sr-sub" id="set-folder" data-i18n="not_selected">Not selected</div></div>
+        <button class="set-link" data-i18n="change" onclick="Settings.changeFolder()">Change</button>
+      </div>
+    </div>
+    <div class="set-group">
+      <div class="set-row">
+        <div><div class="sr-k" data-i18n="send_feedback">Send feedback</div><div class="sr-sub" data-i18n="send_feedback_sub">Ideas or anything on your mind</div></div>
+        <button class="set-link" data-i18n="open" onclick="Feedback.open()">Open</button>
+      </div>
+      <div class="set-row">
+        <div><div class="sr-k" data-i18n="report_bug">Report a bug</div><div class="sr-sub" data-i18n="report_bug_sub">Tell us what went wrong</div></div>
+        <button class="set-link" data-i18n="open" onclick="BugReport.open()">Open</button>
       </div>
     </div>
     <div style="text-align:center;color:var(--text-dim);font-size:0.7rem;margin-top:1.4rem">
-      PhonoLeaf &middot; A voice for every page<br>
-      <a href="privacy.html" style="color:var(--text-dim)">Privacy Policy</a> &middot; <a href="terms.html" style="color:var(--text-dim)">Terms of Service</a>
+      <span data-i18n="footer_tagline">PhonoLeaf &middot; A voice for every page</span><br>
+      <a href="privacy.html" style="color:var(--text-dim)" data-i18n="privacy_policy">Privacy Policy</a> &middot; <a href="terms.html" style="color:var(--text-dim)" data-i18n="terms_of_service">Terms of Service</a>
     </div>
   </div>
 </div>
@@ -1455,6 +1462,114 @@ const Theme = {
     if (m === 'dark') return true;
     if (m === 'light') return false;
     return !!(window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
+  },
+};
+
+// --- Localization (BACKLOG.md section B: Bill 96 covers the app UI itself,
+// not only the marketing/legal pages, which already got French versions —
+// see home-fr.html/terms-fr.html/privacy-fr.html). FIRST PASS, scoped to the
+// Settings tab only (owner request 2026-08-08) — the mechanism here
+// (STRINGS dict, I18n.t, data-i18n attributes, the language toggle) is meant
+// to be reused to cover Home/Library/Stats/Reader in follow-up passes, not
+// rebuilt per tab. `pl_lang` is the SAME key the marketing pages already use
+// (LEGAL_FR.md), so a choice made on phonoleaf.com and a choice made inside
+// the app agree with each other. ---
+const STRINGS = {
+  en: {
+    settings_title: 'Settings',
+    theme: 'Theme', theme_sub: 'Light, dark, or match device',
+    theme_light: 'Light', theme_dark: 'Dark', theme_auto: 'Auto',
+    default_speed: 'Default speed',
+    voice: 'Voice', voice_sub_default: 'System default', change: 'Change',
+    keep_screen_on: 'Keep screen on', keep_screen_on_sub: 'While audio is playing',
+    natural_voice: 'Natural voice', natural_voice_checking: 'Checking…',
+    natural_voice_dead: 'Unavailable on this device — using the standard voice',
+    natural_voice_kokoro: 'On — Kokoro, high quality, generated on your device',
+    natural_voice_piper: 'On — Piper, medium quality, generated on your device',
+    natural_voice_piper_slow: 'On — Piper, medium quality, generated on your device (may run slower than real time here)',
+    natural_voice_on: 'On — generated on your device',
+    natural_voice_on_slow: 'On — generated on your device (may run slower than real time here)',
+    on: 'On', retry: 'Retry',
+    better_device_voices: 'Better device voices', better_device_voices_sub: 'Install free natural voices', how: 'How',
+    language_packs: 'Language packs', downloads: 'Downloads',
+    export_data: 'Export my data', export_data_sub: 'Download everything stored on this device', export: 'Export',
+    delete_data: 'Delete my data', delete_data_sub: 'Erase local data and disconnect Google', delete: 'Delete',
+    delete_confirm: 'Delete all PhonoLeaf data on this device and disconnect your Google account? Your ebooks in Google Drive are NOT touched. This cannot be undone.',
+    data_deleted: 'All local data deleted',
+    data_exported: 'Data exported', data_export_failed: 'Could not export data',
+    google_account: 'Google account', signed_in: 'Signed in', signed_in_as: 'Signed in as {name}', sign_out: 'Sign out',
+    drive_folder: 'Drive folder', not_selected: 'Not selected',
+    send_feedback: 'Send feedback', send_feedback_sub: 'Ideas or anything on your mind', open: 'Open',
+    report_bug: 'Report a bug', report_bug_sub: 'Tell us what went wrong',
+    app_language: 'App language', app_language_sub: 'Translates the Settings tab',
+    footer_tagline: 'PhonoLeaf · A voice for every page',
+    privacy_policy: 'Privacy Policy', terms_of_service: 'Terms of Service',
+  },
+  fr: {
+    settings_title: 'Paramètres',
+    theme: 'Thème', theme_sub: 'Clair, sombre, ou selon l’appareil',
+    theme_light: 'Clair', theme_dark: 'Sombre', theme_auto: 'Auto',
+    default_speed: 'Vitesse par défaut',
+    voice: 'Voix', voice_sub_default: 'Voix du système', change: 'Modifier',
+    keep_screen_on: 'Garder l’écran allumé', keep_screen_on_sub: 'Pendant la lecture audio',
+    natural_voice: 'Voix naturelle', natural_voice_checking: 'Vérification…',
+    natural_voice_dead: 'Non disponible sur cet appareil — voix standard utilisée',
+    natural_voice_kokoro: 'Activée — Kokoro, haute qualité, générée sur votre appareil',
+    natural_voice_piper: 'Activée — Piper, qualité moyenne, générée sur votre appareil',
+    natural_voice_piper_slow: 'Activée — Piper, qualité moyenne, générée sur votre appareil (peut être plus lente que le temps réel ici)',
+    natural_voice_on: 'Activée — générée sur votre appareil',
+    natural_voice_on_slow: 'Activée — générée sur votre appareil (peut être plus lente que le temps réel ici)',
+    on: 'Activée', retry: 'Réessayer',
+    better_device_voices: 'Meilleures voix de l’appareil', better_device_voices_sub: 'Installer des voix naturelles gratuites', how: 'Comment',
+    language_packs: 'Packs de langue', downloads: 'Téléchargements',
+    export_data: 'Exporter mes données', export_data_sub: 'Télécharger tout ce qui est stocké sur cet appareil', export: 'Exporter',
+    delete_data: 'Supprimer mes données', delete_data_sub: 'Effacer les données locales et déconnecter Google', delete: 'Supprimer',
+    delete_confirm: 'Supprimer toutes les données de PhonoLeaf sur cet appareil et déconnecter votre compte Google ? Vos livres numériques dans Google Drive ne seront PAS touchés. Cette action est irréversible.',
+    data_deleted: 'Toutes les données locales ont été supprimées',
+    data_exported: 'Données exportées', data_export_failed: 'Impossible d’exporter les données',
+    google_account: 'Compte Google', signed_in: 'Connecté', signed_in_as: 'Connecté en tant que {name}', sign_out: 'Se déconnecter',
+    drive_folder: 'Dossier Drive', not_selected: 'Non sélectionné',
+    send_feedback: 'Envoyer des commentaires', send_feedback_sub: 'Idées ou tout ce qui vous passe par la tête', open: 'Ouvrir',
+    report_bug: 'Signaler un problème', report_bug_sub: 'Dites-nous ce qui n’a pas fonctionné',
+    app_language: 'Langue de l’application', app_language_sub: 'Traduit l’onglet Paramètres',
+    footer_tagline: 'PhonoLeaf · Une voix pour chaque page',
+    privacy_policy: 'Politique de confidentialité', terms_of_service: 'Conditions d’utilisation',
+  },
+};
+const I18n = {
+  // No saved choice yet ⇒ match the browser/device locale (fr* → French),
+  // same rule LEGAL_FR.md already applies to the marketing pages — a
+  // non-French visitor is never switched to French, and a French speaker
+  // gets French without having to find the toggle first.
+  _detect() {
+    try {
+      return (navigator.languages || [navigator.language || 'en']).some(l => /^fr/i.test(l)) ? 'fr' : 'en';
+    } catch (_) { return 'en'; }
+  },
+  lang() { try { return localStorage.getItem('pl_lang') || this._detect(); } catch (_) { return 'en'; } },
+  setLang(l) {
+    try { localStorage.setItem('pl_lang', l); } catch (_) {}
+    this.apply(document.getElementById('settings-view'));
+    if (typeof Settings !== 'undefined') Settings.render();
+  },
+  // {name}-style placeholders only — deliberately not a full template
+  // engine, this only ever needs to splice in one or two plain strings
+  // (a display name), never markup.
+  t(key, vars) {
+    const dict = STRINGS[this.lang()] || STRINGS.en;
+    let s = (dict && dict[key]) ?? STRINGS.en[key] ?? key;
+    if (vars) for (const k in vars) s = s.replace('{' + k + '}', vars[k]);
+    return s;
+  },
+  // Walks every [data-i18n] (textContent) and [data-i18n-title] (title attr,
+  // for things like the theme segmented buttons where a shorter label reads
+  // better than reflowing the row) under `root` and fills it from the
+  // current language. Safe to call repeatedly — it's just textContent, so
+  // re-running it on every Settings.render() can't accumulate anything.
+  apply(root) {
+    if (!root) return;
+    root.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = this.t(el.dataset.i18n); });
+    root.querySelectorAll('[data-i18n-title]').forEach(el => { el.title = this.t(el.dataset.i18nTitle); });
   },
 };
 
@@ -2311,6 +2426,12 @@ const LangPacksModal = {
 // --- Settings ---------------------------------------------
 const Settings = {
   render() {
+    // Fills every [data-i18n] node under Settings first — the dynamic
+    // strings below then overwrite the handful that depend on live state
+    // (voice/folder/account/natural-voice status), same as the static ones
+    // would otherwise be stuck in whatever language they were last set to.
+    I18n.apply(document.getElementById('settings-view'));
+    document.querySelectorAll('#lang-seg button').forEach(b => b.classList.toggle('on', b.dataset.lang === I18n.lang()));
     const m = Theme.mode();
     document.querySelectorAll('#theme-seg button').forEach(b => b.classList.toggle('on', b.dataset.mode === m));
     const sel = document.getElementById('set-speed'); if (sel) sel.value = localStorage.getItem('pl_speed') || '1';
@@ -2329,17 +2450,13 @@ const Settings = {
     const nsub = document.getElementById('neural-sub');
     if (nsub) {
       if (dead) {
-        nsub.textContent = 'Unavailable on this device — using the standard voice';
+        nsub.textContent = I18n.t('natural_voice_dead');
       } else if (nativeActive && gate === 'yes') {
-        nsub.textContent = 'On — Kokoro, high quality, generated on your device';
+        nsub.textContent = I18n.t('natural_voice_kokoro');
       } else if (nativeActive && gate === 'no') {
-        nsub.textContent = TTS._nativeSlow
-          ? 'On — Piper, medium quality, generated on your device (may run slower than real time here)'
-          : 'On — Piper, medium quality, generated on your device';
+        nsub.textContent = I18n.t(TTS._nativeSlow ? 'natural_voice_piper_slow' : 'natural_voice_piper');
       } else {
-        nsub.textContent = TTS._nativeSlow
-          ? 'On — generated on your device (may run slower than real time here)'
-          : 'On — generated on your device';
+        nsub.textContent = I18n.t(TTS._nativeSlow ? 'natural_voice_on_slow' : 'natural_voice_on');
       }
     }
     const nst = document.getElementById('neural-status'); if (nst) nst.style.display = dead ? 'none' : '';
@@ -2353,8 +2470,8 @@ const Settings = {
     // voice, and only on mobile (desktop installs add variants, not quality).
     const vh = document.getElementById('vh-row'); if (vh) vh.style.display = (dead && VoiceHelp.available()) ? '' : 'none';
     const wl = document.getElementById('set-wakelock'); if (wl) wl.checked = localStorage.getItem('pl_wakelock') !== 'false';
-    const f = document.getElementById('set-folder'); if (f) f.textContent = activeFolder() || 'Not selected';
-    const a = document.getElementById('set-account'); if (a) a.textContent = State.userName ? 'Signed in as ' + State.userName : 'Signed in';
+    const f = document.getElementById('set-folder'); if (f) f.textContent = activeFolder() || I18n.t('not_selected');
+    const a = document.getElementById('set-account'); if (a) a.textContent = State.userName ? I18n.t('signed_in_as', { name: State.userName }) : I18n.t('signed_in');
     // Language packs: hidden on the web build (no plugin to ask). Pre-warm the
     // status cache so opening the modal doesn't show a "Checking…" beat.
     VoicePacks.refresh();
@@ -2362,6 +2479,7 @@ const Settings = {
     if (lpg) lpg.style.display = VoicePacks.available() ? '' : 'none';
   },
   changeFolder() { FolderBrowser.open(); },
+  setLang(l) { I18n.setLang(l); },
   // Give the neural voice a fresh chance on this device: clear the cached speed
   // verdict, reset the strike-out, and re-warm (the probe reruns after load).
   retryNeural() {
@@ -5631,17 +5749,12 @@ const MyData = {
       a.click();
       a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 2000);
-      toast('Data exported');
-    } catch (_) { toast('Could not export data'); }
+      toast(I18n.t('data_exported'));
+    } catch (_) { toast(I18n.t('data_export_failed')); }
   },
 
   confirmDelete() {
-    ConfirmModal.show(
-      () => this.deleteAll(),
-      'Delete all PhonoLeaf data on this device and disconnect your Google account? '
-      + 'Your ebooks in Google Drive are NOT touched. This cannot be undone.',
-      'Delete'
-    );
+    ConfirmModal.show(() => this.deleteAll(), I18n.t('delete_confirm'), I18n.t('delete'));
   },
 
   // Order matters: sign out FIRST so the still-valid token can revoke the
@@ -5670,7 +5783,7 @@ const MyData = {
       // upgrade (see _verifyKokoro).
       try { await Promise.all(VoicePacks.ALL_PACK_MODELS.map(model => p.deletePack({ model }).catch(() => {}))); } catch (_) {}
     }
-    toast('All local data deleted');
+    toast(I18n.t('data_deleted'));
     setTimeout(() => location.reload(), 900);
   },
 };

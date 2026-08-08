@@ -2131,6 +2131,55 @@ Google login); verify by inspection + the owner testing on device.
 - Use `100dvh` (not `100vh`) for full-height views so mobile browser chrome
   doesn't hide the bottom controls.
 
+## Localization (first pass 2026-08-08, Settings tab only)
+
+BACKLOG.md section B: Bill 96 covers the app's own interface for Québec
+consumers, not only the marketing/legal pages (which already had French
+versions — `home-fr.html`/`terms-fr.html`/`privacy-fr.html`). Owner asked to
+start with the Settings tab specifically, as the first concrete slice of a
+mechanism meant to expand to every tab.
+
+- **`STRINGS` (en/fr dictionary) + `I18n`** (`index.html`, right after
+  `Theme`): `I18n.lang()` resolves from `pl_lang` — **the same key the
+  marketing pages already use** (`LEGAL_FR.md`), so a choice made on
+  phonoleaf.com and a choice made inside the app agree — falling back to
+  `navigator.languages` (`fr*` → French) when nothing's saved yet, matching
+  the marketing pages' own auto-detect rule. `I18n.t(key, vars)` looks up the
+  current language, falling back to English for a missing key; `{name}`-style
+  placeholders only, deliberately not a template engine.
+- **`data-i18n`/`data-i18n-title` attributes**, not a rewritten render
+  function. Settings' markup was already mostly-static HTML with targeted JS
+  updates (unlike Home/Library/Stats, which are JS-templated) — matching that
+  existing pattern, `I18n.apply(root)` walks `[data-i18n]` under a container
+  and sets `textContent` from the dictionary, called from `Settings.render()`
+  (already re-run on every tab visit, so no separate boot-time pass is
+  needed). This is the reusable piece for extending localization to other
+  tabs later: add the attributes, no per-tab i18n code.
+- **The dynamic strings** (natural-voice status, folder, account,
+  export/delete toasts, the delete-confirmation dialog) were switched from
+  hardcoded English to `I18n.t()` calls at their call sites — `data-i18n`
+  alone only covers the static default shown before JS first runs.
+- **The language toggle lives in Settings** (`#lang-seg`, styled for free by
+  the existing generic `.seg`/`.seg button` rules — not `#theme-seg`-scoped),
+  calling `Settings.setLang` → `I18n.setLang`, which persists to `pl_lang`
+  and re-renders.
+- **Scope of this pass, explicitly**: only the Settings view's own content,
+  plus the confirmation dialog and toasts its own buttons trigger
+  (`MyData.confirmDelete/export/deleteAll`). Deliberately NOT covered:
+  the bottom tab bar labels, and every other modal Settings merely links to
+  (`VoiceModal`, `LangPacksModal`, `Feedback`, `BugReport`, `VoiceInfo`,
+  `VoiceHelp`) plus `ConfirmModal`'s own generic "Cancel" button — all still
+  English regardless of language choice. Switching to French today visibly
+  translates the Settings tab and nothing else; that's expected, not a bug,
+  until a follow-up pass extends `data-i18n` to Home/Library/Stats/Reader and
+  the shared modals.
+- Verified in a browser harness: renders correctly in both languages at a
+  375px viewport with no truncation, the language toggle round-trips
+  (EN→FR→EN) with the active button highlighted correctly each time,
+  `pl_lang` persists across `Settings.render()` calls, and the delete
+  confirmation dialog's body + its own "Supprimer" button translate (its
+  shared "Cancel" button does not, per the scope note above).
+
 ## Conventions
 
 - **Escape all externally-sourced strings** (file names, error messages, voice
