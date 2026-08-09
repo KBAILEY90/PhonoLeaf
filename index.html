@@ -1484,9 +1484,9 @@ const STRINGS = {
     keep_screen_on: 'Keep screen on', keep_screen_on_sub: 'While audio is playing',
     natural_voice: 'Natural voice', natural_voice_checking: 'Checking…',
     natural_voice_dead: 'Unavailable on this device — using the standard voice',
-    natural_voice_kokoro: 'On — Kokoro, high quality, generated on your device',
-    natural_voice_piper: 'On — Piper, medium quality, generated on your device',
-    natural_voice_piper_slow: 'On — Piper, medium quality, generated on your device (may run slower than real time here)',
+    natural_voice_kokoro: 'On — high quality, generated on your device',
+    natural_voice_piper: 'On — standard quality, generated on your device',
+    natural_voice_piper_slow: 'On — standard quality, generated on your device (may run slower than real time here)',
     natural_voice_on: 'On — generated on your device',
     natural_voice_on_slow: 'On — generated on your device (may run slower than real time here)',
     on: 'On', retry: 'Retry',
@@ -1562,6 +1562,7 @@ const STRINGS = {
     may_run_slower: 'May run slower than real time on this device',
     no_voices_yet: 'No voices available yet — try again in a moment',
     voice_tier_high: 'High', voice_tier_standard: 'Standard', voice_prefix: 'Voice: ',
+    gender_female: 'female', gender_male: 'male',
 
     // Language packs modal
     language_packs_title: 'Language Packs',
@@ -1638,9 +1639,9 @@ const STRINGS = {
     keep_screen_on: 'Garder l’écran allumé', keep_screen_on_sub: 'Pendant la lecture audio',
     natural_voice: 'Voix naturelle', natural_voice_checking: 'Vérification…',
     natural_voice_dead: 'Non disponible sur cet appareil — voix standard utilisée',
-    natural_voice_kokoro: 'Activée — Kokoro, haute qualité, générée sur votre appareil',
-    natural_voice_piper: 'Activée — Piper, qualité moyenne, générée sur votre appareil',
-    natural_voice_piper_slow: 'Activée — Piper, qualité moyenne, générée sur votre appareil (peut être plus lente que le temps réel ici)',
+    natural_voice_kokoro: 'Activée — haute qualité, générée sur votre appareil',
+    natural_voice_piper: 'Activée — qualité standard, générée sur votre appareil',
+    natural_voice_piper_slow: 'Activée — qualité standard, générée sur votre appareil (peut être plus lente que le temps réel ici)',
     natural_voice_on: 'Activée — générée sur votre appareil',
     natural_voice_on_slow: 'Activée — générée sur votre appareil (peut être plus lente que le temps réel ici)',
     on: 'Activée', retry: 'Réessayer',
@@ -1716,6 +1717,7 @@ const STRINGS = {
     may_run_slower: 'Peut être plus lente que le temps réel sur cet appareil',
     no_voices_yet: 'Aucune voix disponible pour l’instant — réessayez dans un moment',
     voice_tier_high: 'Haute', voice_tier_standard: 'Standard', voice_prefix: 'Voix : ',
+    gender_female: 'femme', gender_male: 'homme',
 
     // Packs de langue
     language_packs_title: 'Packs de langue',
@@ -5330,7 +5332,7 @@ const TTS = {
         });
         if (usable) {
           localStorage.setItem('pl_voice_native', usable[0]);
-          toast(I18n.t('pack_not_installed_switched', { voice: usable[1] }) + '.');
+          toast(I18n.t('pack_not_installed_switched', { voice: voiceLabel(usable) }) + '.');
         } else if (!this._noVoiceShown) {
           this._noVoiceShown = true;
           NoVoiceModal.open();
@@ -5616,12 +5618,12 @@ const TTS = {
       // Native (Piper and/or Kokoro packs, union catalog) vs web (browser-WASM
       // Kokoro only, its own separate pl_voice_kokoro choice — there's no pack
       // system on web, so the union/gate machinery below doesn't apply there).
-      if (this._nativeTts()) return this._voiceEntry()[1];
+      if (this._nativeTts()) return voiceLabel(this._voiceEntry());
       const id = localStorage.getItem('pl_voice_kokoro') || KOKORO_VOICES[0][0];
       const v = KOKORO_VOICES.find(x => x[0] === id) || KOKORO_VOICES[0];
-      return v[1];
+      return voiceLabel(v);
     }
-    return this.voice?.name || 'System default';
+    return this.voice?.name || I18n.t('voice_sub_default');
   },
   // The reader's button is always just "Voice" — it's an action, and the name it
   // used to show varied (engine/voice-dependent, sometimes the literal word
@@ -5669,45 +5671,57 @@ window.speechSynthesis?.addEventListener('voiceschanged', () => TTS.pickDefaultV
 // pre-pivot native attempt. The 4th field ("kokoro") is the native model
 // folder key, same convention as PIPER_VOICES' 4th field — unused on the web
 // path, where there's only ever one model.
+// Entries are [id, name, sid, model, langKey, genderKey] — langKey/genderKey
+// are STRINGS dict keys, composed into a translated label by voiceLabel()
+// below rather than baked into a fixed English string, so the picker reads
+// correctly in French too (owner-reported 2026-08-08: "voice names still
+// show in English"). `name` (Ava, Emma, ...) is a proper name and is never
+// translated.
 const KOKORO_VOICES = [
-  ['af',          'Heart · US female',    0,  'kokoro'],
-  ['af_bella',    'Bella · US female',    1,  'kokoro'],
-  ['af_nicole',   'Nicole · US female',   2,  'kokoro'],
-  ['af_sarah',    'Sarah · US female',    3,  'kokoro'],
-  ['af_sky',      'Sky · US female',      4,  'kokoro'],
-  ['am_adam',     'Adam · US male',       5,  'kokoro'],
-  ['am_michael',  'Michael · US male',    6,  'kokoro'],
-  ['bf_emma',     'Emma · UK female',     7,  'kokoro'],
-  ['bf_isabella', 'Isabella · UK female', 8,  'kokoro'],
-  ['bm_george',   'George · UK male',     9,  'kokoro'],
-  ['bm_lewis',    'Lewis · UK male',      10, 'kokoro'],
+  ['af',          'Heart',    0,  'kokoro', 'lang_en_us', 'gender_female'],
+  ['af_bella',    'Bella',    1,  'kokoro', 'lang_en_us', 'gender_female'],
+  ['af_nicole',   'Nicole',   2,  'kokoro', 'lang_en_us', 'gender_female'],
+  ['af_sarah',    'Sarah',    3,  'kokoro', 'lang_en_us', 'gender_female'],
+  ['af_sky',      'Sky',      4,  'kokoro', 'lang_en_us', 'gender_female'],
+  ['am_adam',     'Adam',     5,  'kokoro', 'lang_en_us', 'gender_male'],
+  ['am_michael',  'Michael',  6,  'kokoro', 'lang_en_us', 'gender_male'],
+  ['bf_emma',     'Emma',     7,  'kokoro', 'lang_en_gb', 'gender_female'],
+  ['bf_isabella', 'Isabella', 8,  'kokoro', 'lang_en_gb', 'gender_female'],
+  ['bm_george',   'George',   9,  'kokoro', 'lang_en_gb', 'gender_male'],
+  ['bm_lewis',    'Lewis',    10, 'kokoro', 'lang_en_gb', 'gender_male'],
 ];
+// Composes a catalog entry's translated display label live (never baked into
+// the array itself, so it updates when I18n.setLang() runs). Falls back to
+// just the name if langKey/genderKey are absent (shouldn't happen for either
+// catalog below, but keeps this safe if a future entry omits them).
+function voiceLabel(v) {
+  if (!v) return '';
+  return (v[4] && v[5]) ? `${v[1]} · ${I18n.t(v[4])} ${I18n.t(v[5])}` : v[1];
+}
 // PIPER_VOICES: vits-piper-en_US-libritts_r-medium (904 speakers). Their quality
 // and gender vary and aren't documented per-sid, so this is an AUDITION set — a
 // spread across the range with placeholder labels. Listen to each on device
 // (picking one mid-read previews it), then keep the good ones and relabel by
 // real gender/accent. The `spk N` shown in the picker is the sid to report back.
-// [id, label, sid, model] — `model` picks the native model folder ("us" =
-// libritts_r American; "gb" = vctk British). Switching accents reloads the
-// native model (~1s), so keep each engine's voices grouped by model.
+// [id, name, sid, model, langKey, genderKey] — `model` picks the native
+// model folder ("us" = libritts_r American; "gb" = vctk British). Switching
+// accents reloads the native model (~1s), so keep each engine's voices
+// grouped by model. See voiceLabel() above for how name+langKey+genderKey
+// become the displayed label.
 const PIPER_VOICES = [
   // US (libritts_r) — finalized from audition round 1 (genders corrected).
   // 92 & 600 were also good US males if you'd rather swap those in.
-  // Labels use "English (US)"/"English (UK)" to match the Language Packs
-  // popup's naming (VoicePacks.CATALOG) rather than the bare "US"/"UK" used
-  // before — owner request 2026-08-05, so the picker and the pack list read
-  // as the same language, not two different names for it.
-  ['us40',  'Ava · English (US) female',  40,  'us'],
-  ['us160', 'Nora · English (US) female', 160, 'us'],
-  ['us16',  'Ben · English (US) male',    16,  'us'],
-  ['us520', 'Jack · English (US) male',   520, 'us'],
+  ['us40',  'Ava',  40,  'us', 'lang_en_us', 'gender_female'],
+  ['us160', 'Nora', 160, 'us', 'lang_en_us', 'gender_female'],
+  ['us16',  'Ben',  16,  'us', 'lang_en_us', 'gender_male'],
+  ['us520', 'Jack', 520, 'us', 'lang_en_us', 'gender_male'],
   // UK (vctk) — owner-picked keepers. Amelia's gender is confirmed; the other
   // three are labelled to match their placeholder names — correct if a voice's
   // gender doesn't match its label.
-  ['gb0',  'Amelia · English (UK) female', 0,  'gb'],
-  ['gb85', 'Ruby · English (UK) female',   85, 'gb'],
-  ['gb70', 'Sam · English (UK) male',      70, 'gb'],
-  ['gb20', 'Max · English (UK) male',      20, 'gb'],
+  ['gb0',  'Amelia', 0,  'gb', 'lang_en_gb', 'gender_female'],
+  ['gb85', 'Ruby',   85, 'gb', 'lang_en_gb', 'gender_female'],
+  ['gb70', 'Sam',    70, 'gb', 'lang_en_gb', 'gender_male'],
+  ['gb20', 'Max',    20, 'gb', 'lang_en_gb', 'gender_male'],
   // French/Spanish (2026-08-05): switched from single-speaker models to
   // genuine 2-speaker Piper models on the same release, confirmed via each
   // model's own config.json (speaker_id_map) rather than assumed from file
@@ -5717,12 +5731,12 @@ const PIPER_VOICES = [
   // model, so nothing else about the pack plumbing changes.
   // fr_FR-upmc-medium: speaker_id_map {"jessica":0,"pierre":1} — Jessica named
   // "Aline" (owner's pick), Pierre kept as-is (already a real French name).
-  ['fr0', 'Aline · French female',  0, 'fr'],
-  ['fr1', 'Pierre · French male',   1, 'fr'],
+  ['fr0', 'Aline',  0, 'fr', 'lang_fr', 'gender_female'],
+  ['fr1', 'Pierre', 1, 'fr', 'lang_fr', 'gender_male'],
   // es_ES-sharvard-medium: speaker_id_map {"M":0,"F":1} (bare gender labels,
   // not names — Mateo/Sofía are our own picks, not from the dataset).
-  ['es0', 'Mateo · Spanish male',   0, 'es'],
-  ['es1', 'Sofía · Spanish female', 1, 'es'],
+  ['es0', 'Mateo', 0, 'es', 'lang_es', 'gender_male'],
+  ['es1', 'Sofía', 1, 'es', 'lang_es', 'gender_female'],
   // German (2026-08-05): still a single voice — de_DE-thorsten-medium is
   // genuinely single-speaker (confirmed via config: the only other "medium"
   // German model, thorsten_emotional, has 8 speaker_id_map entries but they're
@@ -5734,7 +5748,7 @@ const PIPER_VOICES = [
   // are all "low"/"x_low" quality, a real step down from every other voice
   // here, which is "medium". Left as male-only pending either a better
   // catalog option or an owner decision to accept the quality mismatch.
-  ['de0', 'Thorsten · German male', 0, 'de'],
+  ['de0', 'Thorsten', 0, 'de', 'lang_de', 'gender_male'],
 ];
 // --- Voice Modal ------------------------------------------
 const VoiceModal = {
@@ -5776,12 +5790,13 @@ const VoiceModal = {
           : '';
         document.getElementById('voice-list').innerHTML =
           slowNote +
-          (available.length ? available.map(([id, label, , model]) => {
+          (available.length ? available.map((entry) => {
+            const [id, , , model] = entry;
             const tier = model === 'kokoro' ? I18n.t('voice_tier_high') : I18n.t('voice_tier_standard');
             return `
           <div class="voice-item ${cur === id ? 'active' : ''}" onclick="VoiceModal.selectNative(this.dataset.vname)" data-vname="${esc(id)}" role="button" tabindex="0" aria-current="${cur === id}">
             <div>
-              <div class="voice-name">${esc(label)} <span class="voice-badge">&#10024; Natural &middot; ${tier}</span></div>
+              <div class="voice-name">${esc(voiceLabel(entry))} <span class="voice-badge">&#10024; Natural &middot; ${tier}</span></div>
             </div>
             ${cur === id ? '<span class="voice-check">&#10003;</span>' : ''}
           </div>`;
@@ -5799,13 +5814,16 @@ const VoiceModal = {
       // Web: the browser-WASM Kokoro model, always available once loaded — no
       // packs, no download gating.
       const cur = localStorage.getItem('pl_voice_kokoro') || KOKORO_VOICES[0][0];
-      document.getElementById('voice-list').innerHTML = KOKORO_VOICES.map(([id, label]) => `
+      document.getElementById('voice-list').innerHTML = KOKORO_VOICES.map((entry) => {
+        const id = entry[0];
+        return `
         <div class="voice-item ${cur === id ? 'active' : ''}" onclick="VoiceModal.selectNative(this.dataset.vname)" data-vname="${esc(id)}" role="button" tabindex="0" aria-current="${cur === id}">
           <div>
-            <div class="voice-name">${esc(label)} <span class="voice-badge">&#10024; Natural</span></div>
+            <div class="voice-name">${esc(voiceLabel(entry))} <span class="voice-badge">&#10024; Natural</span></div>
           </div>
           ${cur === id ? '<span class="voice-check">&#10003;</span>' : ''}
-        </div>`).join('');
+        </div>`;
+      }).join('');
       document.getElementById('voice-modal').classList.add('open');
       return;
     }
@@ -5839,7 +5857,7 @@ const VoiceModal = {
     localStorage.setItem(key, id);
     TTS.updateVoiceLabel();
     const v = cat.find(x => x[0] === id);
-    toast(I18n.t('voice_prefix') + (v ? v[1] : id));
+    toast(I18n.t('voice_prefix') + (v ? voiceLabel(v) : id));
     this.close();
     if (TTS.active) { TTS._gen++; TTS._stopAudio(); window.speechSynthesis?.cancel(); TTS._speak(); }
   },

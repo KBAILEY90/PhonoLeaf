@@ -2205,6 +2205,42 @@ cover the entire app in the same session.
   this change). Not device-verified — same caveat as everything native
   in this file, though nothing here touches native code.
 
+**Bug fixes on the same feature (2026-08-08, owner device testing):**
+- **The Settings "Natural voice" row named the underlying engine — owner:
+  "users don't need to know the technical details."** `natural_voice_kokoro`/
+  `natural_voice_piper` said "Kokoro, high quality" / "Piper, medium
+  quality"; dropped the engine names entirely (now "high quality" /
+  "standard quality" — "standard" to match the picker's existing
+  `voice_tier_standard` badge wording rather than introduce a third term for
+  the same tier).
+- **Voice picker names stayed English even in French — a real gap, not a
+  missed `data-i18n` spot.** `PIPER_VOICES`/`KOKORO_VOICES` baked the whole
+  label ("Ava · English (US) female") into a literal string per entry, so
+  there was nothing for `I18n.t()` to intercept. Restructured every entry to
+  `[id, name, sid, model, langKey, genderKey]` — `name` (Ava, Emma, Thorsten,
+  ...) stays a literal proper name and is never translated; `langKey`/
+  `genderKey` are `STRINGS` keys composed live by a new `voiceLabel(entry)`
+  helper, so the label re-renders correctly on every language switch instead
+  of being frozen at parse time. New `gender_female`/`gender_male` keys;
+  reused the existing `lang_en_us`/`lang_en_gb`/`lang_fr`/`lang_de`/`lang_es`
+  keys already built for the Language Packs catalog — also fixes a small
+  pre-existing inconsistency where Kokoro's labels said bare "US"/"UK" while
+  Piper's said "English (US)"/"English (UK)" for the same accents; both now
+  match. `activeVoiceLabel()` (Settings' voice sub-label) had the same
+  bug for its own "System default" fallback text — was a raw English
+  literal, not `I18n.t()`, on top of the same baked-label problem. Every
+  read site (`VoiceModal`'s two render branches, `selectNative`'s toast,
+  `activeVoiceLabel`, the `PACK_NOT_DOWNLOADED` fallback-voice toast) had to
+  move from reading `v[1]` as a full label to calling `voiceLabel(v)` —
+  `v[1]` is now just the name. `_voiceSid()`/`_voiceModel()` (indices 2/3)
+  and every `id`-keyed lookup (index 0) are unaffected by the shift.
+- Verified in a browser harness: every Piper voice (US/UK/French/German/
+  Spanish) and every Kokoro voice produces the correct composed label in
+  both languages, flips live on `Settings.setLang()` with no reload, the
+  name itself never gets translated, and the Settings quality row shows no
+  engine name in either language while still correctly distinguishing
+  Kokoro from Piper by tier wording alone.
+
 ## Conventions
 
 - **Escape all externally-sourced strings** (file names, error messages, voice
