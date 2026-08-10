@@ -2455,11 +2455,53 @@ ratio) / Table of Book Name, Artist name."*
   row's progress bar renders at the right width, the empty state still
   renders correctly in table mode, and `pl_libview` persists and re-syncs
   the toggle's highlighted button across a reload.
-- **Alphabet scrubber (A–Z fast-scroll) is next, not yet built** — tracked
-  as a follow-up. Design note for whoever picks it up: sort key should be
-  the captured epub title (`Meta.get(b.id)?.title`, falling back to the
-  cleaned filename), NOT Drive's raw `orderBy: 'name'` order, so letters
-  reflect real title initials rather than filename prefixes.
+- **Alphabet scrubber shipped the same day** — see the entry directly below.
+
+## A-Z fast-scroll scrubber for the library (2026-08-09)
+
+The follow-up flagged in the view-switcher entry above. `#az-scrub`, a
+narrow vertical letter strip pinned to the grid's right edge (iOS Contacts
+pattern): press or drag jumps straight to the first book whose resolved
+title starts with that letter, snapping to the **nearest available**
+letter (not doing nothing) when the one under your finger has no books —
+most libraries don't have something under every letter.
+
+- **Necessary side effect: the library is now genuinely sorted
+  alphabetically**, not just the scrubber's internal letter map. A scrubber
+  is meaningless against a list that isn't actually in that order. Sort key
+  is `Library._sortTitle(b)` — `Meta.get(b.id)?.title` (the epub's own
+  captured title, same source `Meta.fetchAll` already uses for Open Library
+  lookups) falling back to `Meta._cleanName(b.name)` — instead of Drive's
+  raw `orderBy: 'name'` filename order, which is close but not the same
+  (e.g. "Reviewed, The Anthropocene - John Green.epub"). Both view-mode
+  render paths (grid cards, table rows) already shared one `_itemHTML`
+  helper from the switcher work, so this sort sits once ahead of it rather
+  than needing to be duplicated.
+- **Gated**: hidden below `Library._AZ_THRESHOLD` (20 books — not worth the
+  clutter on a small library) and hidden during an active search
+  (`Library._q`) — a letter index over a filtered subset doesn't mean
+  anything reliable, most letters would be empty or misleading.
+- **`.books-grid` gained a wrapping `.books-grid-wrap`**
+  (`position: relative; flex: 1; min-height: 0`) so the scrubber can be
+  pinned to the grid's own box, independent of scroll position, without
+  also overlapping `.lib-header`/`.lib-search` above it. `.books-grid`
+  itself moved from `flex: 1` to `position: absolute; inset: 0` against
+  that wrapper — same effective sizing as before (still constrained to the
+  available flex space, still needs `grid-auto-rows: max-content` for the
+  same reason as the grid-crush fix above), just now sized against the
+  wrapper's box instead of directly by the parent flex column.
+- Bucket letters are `#ABCDEFGHIJKLMNOPQRSTUVWXYZ` — anything not starting
+  with A-Z (a title beginning with a digit, say) buckets under `#`.
+- Verified in a browser harness with a synthetic 41-book library
+  deliberately built with gaps (no K/L/Q titles) and one numeric title: the
+  letter index correctly marks the gap letters unavailable and the numeric
+  title under `#`; dragging onto a gap snaps to the nearest real letter and
+  scrolls the matching titles to the top of the visible area; the bubble
+  and active-letter highlight show/hide correctly across REAL dispatched
+  `mousedown`/`mousemove`/`mouseup` events (not just calling `_scrubTo`
+  directly, which would only prove the math and not the event wiring); and
+  the strip is hidden both below the 20-book threshold and during an active
+  search, reappearing once the query clears.
 
 ## Voice-pack downloads dying on screen lock + sign-in language toggle (2026-08-09)
 
