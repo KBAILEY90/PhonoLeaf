@@ -2571,6 +2571,48 @@ most libraries don't have something under every letter.
   `pl_lang` unset beforehand), the toggle's highlighted button stays correct
   after the switch, and `pl_lang` persists across reload.
 
+## Settings "Natural voice" renamed "Upgraded voice", On badge gated on Kokoro (2026-08-10)
+
+Owner: *"Let's rename the Natural Voice section to something like 'Upgraded
+voice'... have the On switch if Kokoro is on, not Piper since Piper is lower
+quality. Natural voice is always on, so it doesn't make sense to have
+Natural Voice there."* Correct — the row's "On" badge (`#neural-status`)
+previously showed whenever ANY native/neural engine was active, Piper
+included, and Piper is the baseline that's running almost all the time
+regardless of device (see the Kokoro-gating design below), so "On" conveyed
+nothing.
+
+- `natural_voice` string renamed to "Upgraded voice" (FR: "Voix améliorée").
+- **`kokoroOn = !dead && (!nativeActive || gate === 'yes')`** — badge and
+  status text now key off Kokoro specifically: native + `gate==='yes'` (a
+  qualifying device) or web (Kokoro-WASM is the only upgrade path there, no
+  Piper/gate concept at all) both read as "on"; native + `gate` `'no'` OR
+  still `'pending'` are BOTH now treated as "not upgraded" — badge hidden,
+  `natural_voice_piper`'s text repurposed to "Not available on this device —
+  using the standard voice" (previously said "On — standard quality...",
+  which is exactly the claim being removed).
+- Retry (`Settings.retryKokoroGate` → `VoicePacks.retryKokoro`) broadened
+  from showing only on `gate==='no'` to any `gate !== 'yes'` while native is
+  active, so a still-`'pending'` gate also gets an explicit way to trigger
+  screening rather than silently sitting unupgraded with no visible action.
+- Dropped `natural_voice_piper_slow` (both languages) — the "may run slower
+  than real time" nuance mattered when Piper was badged "On" and speed was
+  the open question; it doesn't add anything to a message that's now just
+  "the upgrade isn't available here."
+- Scoped deliberately narrow: only this Settings row's visible label and
+  logic changed. Broader "natural voice" terminology elsewhere (the
+  `VoiceInfo` modal's on-device-generation privacy explainer, the sign-in
+  screen's marketing copy, the voice picker's "No natural voices installed
+  yet" empty state) was left alone — those describe a different, still-
+  accurate concept (on-device generation in general, or "no pack downloaded
+  at all"), not the Kokoro-vs-Piper distinction this row is specifically
+  about.
+- Verified in a browser harness across all five reachable states (dead/
+  Web-Speech fallback, native+Kokoro, native+Piper, native+gate-pending,
+  web-only Kokoro-WASM) in both languages: the badge shows ONLY for genuine
+  Kokoro (native gate=yes, or web), and Retry appears in every state where
+  the upgrade isn't currently active.
+
 ## Native Kokoro — device-gated English upgrade (2026-08-08)
 
 Reverses the 2026-08-07 "shelve native Kokoro" call (see the RE-SUPERSEDED
