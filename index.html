@@ -209,7 +209,20 @@
     }
     .lib-header h2 { font-size: 1.25rem; font-weight: 700; }
 
-    .header-actions { display: flex; gap: 0.25rem; }
+    .header-actions { display: flex; align-items: center; gap: 0.25rem; }
+
+    /* View-mode switcher: 4 small icon toggles (2/3/4-col grid + table),
+       styled like the .seg segmented controls elsewhere rather than
+       .icon-btn's single-glyph buttons — this is a mutually-exclusive
+       group, not independent actions. */
+    .lib-view-toggle { display: inline-flex; background: var(--track); border-radius: 9px; padding: 2px; margin-right: 0.3rem; }
+    .lib-view-toggle button {
+      border: none; background: none; cursor: pointer;
+      padding: 0.35rem; border-radius: 7px; line-height: 0;
+      color: var(--text-dim);
+    }
+    .lib-view-toggle button.on { background: var(--surface); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,0.14); }
+    .lib-view-toggle svg { display: block; }
 
     .icon-btn {
       background: none; border: none;
@@ -226,7 +239,10 @@
       -webkit-overflow-scrolling: touch;
       padding: 1rem;
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+      /* Column count is set per-mode below via [data-view] — JS always sets
+         one of these (default "2") before the first render, so this base
+         rule is just a safety fallback if that attribute were ever missing. */
+      grid-template-columns: repeat(2, 1fr);
       gap: 1rem;
       align-content: start;
       /* max-content, NOT the default auto — this is what makes the grid scroll
@@ -247,6 +263,31 @@
          covers show whole and the grid overflows into a normal scroll. */
       grid-auto-rows: max-content;
     }
+    #books-grid[data-view="3"] { grid-template-columns: repeat(3, 1fr); }
+    #books-grid[data-view="4"] { grid-template-columns: repeat(4, 1fr); }
+    /* Table/list mode swaps the grid for a simple flex column of rows —
+       .loading/.empty's `grid-column: 1/-1` is harmless (just unused) under
+       flex, so no separate markup is needed for those states. */
+    #books-grid[data-view="table"] { display: flex; flex-direction: column; gap: 0.5rem; }
+
+    .book-row {
+      display: flex; align-items: center; gap: 0.8rem;
+      background: var(--card);
+      border: 0.5px solid var(--line);
+      border-radius: var(--radius);
+      padding: 0.5rem 0.7rem;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+    }
+    .book-row:active { transform: scale(0.98); }
+    .book-row .book-cover {
+      width: 2.6rem; flex-shrink: 0;
+      border-radius: 4px;
+    }
+    .book-row .book-info { padding: 0; min-width: 0; flex: 1; }
+    .book-row .book-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .book-row .book-progress-bar { height: 2px; }
 
     .book-card {
       background: var(--card);
@@ -967,6 +1008,20 @@
   <div class="lib-header">
     <h2 data-i18n="library_title">Library</h2>
     <div class="header-actions">
+      <div class="lib-view-toggle" id="lib-view-toggle" role="group" aria-label="Library view">
+        <button data-view="2" onclick="Library.setView('2')" data-i18n-title="lib_view_2" aria-label="2 per row">
+          <svg width="17" height="17" viewBox="0 0 17 17"><rect x="0" y="1" width="7" height="15" rx="1.2" fill="currentColor"/><rect x="10" y="1" width="7" height="15" rx="1.2" fill="currentColor"/></svg>
+        </button>
+        <button data-view="3" onclick="Library.setView('3')" data-i18n-title="lib_view_3" aria-label="3 per row">
+          <svg width="17" height="17" viewBox="0 0 17 17"><rect x="0" y="2" width="4.2" height="13" rx="1" fill="currentColor"/><rect x="6.4" y="2" width="4.2" height="13" rx="1" fill="currentColor"/><rect x="12.8" y="2" width="4.2" height="13" rx="1" fill="currentColor"/></svg>
+        </button>
+        <button data-view="4" onclick="Library.setView('4')" data-i18n-title="lib_view_4" aria-label="4 per row">
+          <svg width="17" height="17" viewBox="0 0 17 17"><rect x="0" y="3" width="3" height="11" rx="0.8" fill="currentColor"/><rect x="4.7" y="3" width="3" height="11" rx="0.8" fill="currentColor"/><rect x="9.4" y="3" width="3" height="11" rx="0.8" fill="currentColor"/><rect x="14.1" y="3" width="3" height="11" rx="0.8" fill="currentColor"/></svg>
+        </button>
+        <button data-view="table" onclick="Library.setView('table')" data-i18n-title="lib_view_table" aria-label="List view">
+          <svg width="17" height="17" viewBox="0 0 17 17"><rect x="0" y="2" width="17" height="2.6" rx="1" fill="currentColor"/><rect x="0" y="7.2" width="17" height="2.6" rx="1" fill="currentColor"/><rect x="0" y="12.4" width="17" height="2.6" rx="1" fill="currentColor"/></svg>
+        </button>
+      </div>
       <button class="icon-btn" onclick="Library.refresh()" title="Refresh" aria-label="Refresh library">&#8634;</button>
     </div>
   </div>
@@ -1557,6 +1612,7 @@ const STRINGS = {
     library_finding: 'Finding your books...', library_loading: 'Loading your library...',
     library_choose_folder1: 'Choose the Google Drive folder', library_choose_folder2: 'your ebooks live in to get started.',
     library_no_ebooks_in: 'No ebooks found in', library_no_match: 'No books match "{q}".',
+    lib_view_2: '2 per row', lib_view_3: '3 per row', lib_view_4: '4 per row', lib_view_table: 'List',
     library_error: 'Error: {msg}', choose_folder_btn: 'Choose folder',
 
     // Stats
@@ -1712,6 +1768,7 @@ const STRINGS = {
     library_finding: 'Recherche de vos livres...', library_loading: 'Chargement de votre bibliothèque...',
     library_choose_folder1: 'Choisissez le dossier Google Drive', library_choose_folder2: 'où se trouvent vos livres pour commencer.',
     library_no_ebooks_in: 'Aucun livre trouvé dans', library_no_match: 'Aucun livre ne correspond à « {q} ».',
+    lib_view_2: '2 par rangée', lib_view_3: '3 par rangée', lib_view_4: '4 par rangée', lib_view_table: 'Liste',
     library_error: 'Erreur : {msg}', choose_folder_btn: 'Choisir un dossier',
 
     // Statistiques
@@ -3493,8 +3550,54 @@ const Library = {
   _normalize(s) { return (s || '').toLowerCase().replace(/[._-]+/g, ' ').replace(/\s+/g, ' ').trim(); },
   filter(q) { this._q = this._normalize(q); this.render(); },
 
+  // View mode: '2'|'3'|'4' (grid density) or 'table' (list). Persisted so it
+  // survives reloads, same pattern as pl_speed/pl_theme.
+  _view: localStorage.getItem('pl_libview') || '2',
+  setView(v) {
+    this._view = v;
+    try { localStorage.setItem('pl_libview', v); } catch (_) {}
+    this._applyView();
+    this.render();
+  },
+  _applyView() {
+    const grid = document.getElementById('books-grid');
+    if (grid) grid.dataset.view = this._view;
+    document.querySelectorAll('#lib-view-toggle button')
+      .forEach(b => b.classList.toggle('on', b.dataset.view === this._view));
+  },
+
+  // Shared per-book markup for both the grid card and the table row — same
+  // title/progress/cover computation, just a different wrapper element and
+  // class so a table row can stay visually compact.
+  _itemHTML(b, i, isRow) {
+    const title = b.name.replace(/\.epub$/i, '');
+    const prog  = State.progress[b.id];
+    const pct   = prog?.pct ?? 0;
+    // Prefer the epub's own cover (extracted + cached); fall back to Drive's
+    // thumbnail as a quick placeholder, then to the book glyph.
+    const cover = Covers.urls[b.id]
+      || (b.thumbnailLink ? b.thumbnailLink.replace('s220', 's400') : '');
+    const coverHTML = `
+      <div class="book-cover" data-book-id="${esc(b.id)}">
+        <span class="cover-fallback">&#128214;</span>
+        ${cover
+          ? `<img src="${esc(cover)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">`
+          : ''}
+        ${pct > 0 ? `<div class="book-progress-bar" style="width:${pct}%"></div>` : ''}
+      </div>`;
+    const infoHTML = `
+      <div class="book-info">
+        <div class="book-title" title="${esc(title)}">${esc(title)}</div>
+        <div class="book-meta">${esc(Meta.get(b.id)?.author || '')}</div>
+      </div>`;
+    const cls = isRow ? 'book-row' : 'book-card';
+    return `<div class="${cls}" onclick="Reader.open(${i})" role="button" tabindex="0" aria-label="Open ${esc(title)}">${coverHTML}${infoHTML}</div>`;
+  },
+
   render() {
     const grid = document.getElementById('books-grid');
+    this._applyView();
+    const isRow = this._view === 'table';
     const items = State.books
       .map((b, i) => ({ b, i }))
       .filter(({ b }) => {
@@ -3510,29 +3613,7 @@ const Library = {
       grid.innerHTML = `<div class="empty"><p>${esc(I18n.t('library_no_match', { q: this._q }))}</p></div>`;
       return;
     }
-    grid.innerHTML = items.map(({ b, i }) => {
-      const title = b.name.replace(/\.epub$/i, '');
-      const prog  = State.progress[b.id];
-      const pct   = prog?.pct ?? 0;
-      // Prefer the epub's own cover (extracted + cached); fall back to Drive's
-      // thumbnail as a quick placeholder, then to the book glyph.
-      const cover = Covers.urls[b.id]
-        || (b.thumbnailLink ? b.thumbnailLink.replace('s220', 's400') : '');
-      return `
-        <div class="book-card" onclick="Reader.open(${i})" role="button" tabindex="0" aria-label="Open ${esc(title)}">
-          <div class="book-cover" data-book-id="${esc(b.id)}">
-            <span class="cover-fallback">&#128214;</span>
-            ${cover
-              ? `<img src="${esc(cover)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">`
-              : ''}
-            ${pct > 0 ? `<div class="book-progress-bar" style="width:${pct}%"></div>` : ''}
-          </div>
-          <div class="book-info">
-            <div class="book-title" title="${esc(title)}">${esc(title)}</div>
-            <div class="book-meta">${esc(Meta.get(b.id)?.author || '')}</div>
-          </div>
-        </div>`;
-    }).join('');
+    grid.innerHTML = items.map(({ b, i }) => this._itemHTML(b, i, isRow)).join('');
   },
 
   refresh() { this.load(); },
