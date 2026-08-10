@@ -233,8 +233,16 @@
     }
     .icon-btn:hover { background: var(--overlay); }
 
+    /* Wraps .books-grid + the A-Z scrubber so the scrubber can be positioned
+       absolutely against the grid's own box (pinned to its right edge,
+       independent of scroll) without also overlapping .lib-header/.lib-search
+       above it. This wrapper is the flex item now (flex:1; min-height:0, the
+       same pairing .books-grid used alone before) — see .books-grid below for
+       why min-height:0 (a definite height to size against) matters here. */
+    .books-grid-wrap { position: relative; flex: 1; min-height: 0; }
+
     .books-grid {
-      flex: 1;
+      position: absolute; inset: 0;
       overflow-y: auto;
       -webkit-overflow-scrolling: touch;
       padding: 1rem;
@@ -249,19 +257,51 @@
          instead of crushing the books onto one screen. .book-cover gets its
          height from `aspect-ratio: 2/3` against a percentage width, and an
          aspect-ratio-derived height is a COMPRESSIBLE contribution when auto
-         rows are sized against a definite container height (this grid is
-         `flex: 1`, and `overflow-y: auto` makes its flex min-height resolve to
-         0, so it can't push back). The rows were therefore shrunk to fit the
-         viewport rather than overflowing it, and `.book-card { overflow:
-         hidden }` clipped each 241px cover down to the leftover height —
-         measured at 190px with 6 books, 138px with 8, 15px with 40, and NEVER
-         scrolling (scrollHeight stayed pinned to clientHeight). That is the
-         real cause of the long-running "library covers are cropped/halved"
-         report; object-fit was never the problem, and the amount of crop
-         varying with library size is exactly why it looked so inconsistent.
+         rows are sized against a definite-height container (this element gets
+         its definite height from `inset: 0` against .books-grid-wrap above,
+         which is itself constrained to `min-height: 0` so IT can't grow past
+         the available flex space either — same effect the earlier flex:1 +
+         overflow-y:auto pairing had before the scrubber wrapper was added).
+         Without max-content, the rows shrink to fit rather than overflowing,
+         and `.book-card { overflow: hidden }` clips each 241px cover down to
+         the leftover height — measured at 190px with 6 books, 138px with 8,
+         15px with 40, and NEVER scrolling (scrollHeight pinned to
+         clientHeight). That is the real cause of the long-running "library
+         covers are cropped/halved" report; object-fit was never the problem.
          Pinning rows to max-content restores the true content height, so the
          covers show whole and the grid overflows into a normal scroll. */
       grid-auto-rows: max-content;
+    }
+
+    /* A-Z fast-scroll scrubber: a narrow strip of letters pinned to the
+       grid's right edge (like iOS Contacts). Only shown once the library is
+       big enough to need it and never during an active search — see
+       Library._renderScrub in the script. touch-action:none stops the page
+       from panning under a drag; the letters themselves handle the jump. */
+    .az-scrub {
+      position: absolute; top: 0; bottom: 0; right: 0.15rem;
+      width: 1.1rem;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      touch-action: none; user-select: none; cursor: pointer;
+      z-index: 3;
+    }
+    .az-scrub.hidden { display: none; }
+    .az-scrub span {
+      font: 700 0.5rem var(--font-ui); color: var(--text-dim);
+      line-height: 1.35; width: 100%; text-align: center;
+    }
+    .az-scrub span.dim { opacity: 0.28; }
+    .az-scrub span.active { color: var(--accent); transform: scale(1.3); }
+    .az-bubble {
+      display: none;
+      position: absolute; top: 50%; right: 2rem; transform: translateY(-50%);
+      width: 2.7rem; height: 2.7rem; border-radius: 50%;
+      background: var(--accent); color: #fff;
+      align-items: center; justify-content: center;
+      font: 700 1.2rem var(--font-ui);
+      box-shadow: 0 4px 14px rgba(0,0,0,0.35);
+      pointer-events: none;
+      z-index: 4;
     }
     #books-grid[data-view="3"] { grid-template-columns: repeat(3, 1fr); }
     #books-grid[data-view="4"] { grid-template-columns: repeat(4, 1fr); }
@@ -1028,8 +1068,11 @@
   <div class="lib-search">
     <input id="lib-search" type="search" placeholder="Search your books" data-i18n-placeholder="search_placeholder" oninput="Library.filter(this.value)" aria-label="Search your books">
   </div>
-  <div class="books-grid scrolly" id="books-grid">
-    <div class="loading"><div class="spinner"></div><span data-i18n="library_loading">Loading your library...</span></div>
+  <div class="books-grid-wrap" id="books-grid-wrap">
+    <div class="books-grid scrolly" id="books-grid">
+      <div class="loading"><div class="spinner"></div><span data-i18n="library_loading">Loading your library...</span></div>
+    </div>
+    <div class="az-scrub hidden" id="az-scrub" aria-hidden="true"></div>
   </div>
 </div>
 
@@ -3591,8 +3634,16 @@ const Library = {
         <div class="book-meta">${esc(Meta.get(b.id)?.author || '')}</div>
       </div>`;
     const cls = isRow ? 'book-row' : 'book-card';
-    return `<div class="${cls}" onclick="Reader.open(${i})" role="button" tabindex="0" aria-label="Open ${esc(title)}">${coverHTML}${infoHTML}</div>`;
+    return `<div class="${cls}" data-book-id="${esc(b.id)}" onclick="Reader.open(${i})" role="button" tabindex="0" aria-label="Open ${esc(title)}">${coverHTML}${infoHTML}</div>`;
   },
+
+  // Resolved display title for sorting/the A-Z scrubber — prefers the
+  // epub's own captured title (Meta), same source Meta.fetchAll already
+  // uses for Open Library lookups, falling back to the cleaned filename
+  // (Meta._cleanName strips extension/bracketed junk/separators) rather
+  // than the raw Drive filename, which is often "Author - Title" or
+  // underscore-separated and would sort/bucket on the wrong letter.
+  _sortTitle(b) { return Meta.get(b.id)?.title || Meta._cleanName(b.name) || b.name; },
 
   render() {
     const grid = document.getElementById('books-grid');
@@ -3608,15 +3659,119 @@ const Library = {
         const m = Meta.get(b.id);
         const hay = this._normalize(`${b.name} ${m?.title || ''} ${m?.author || ''}`);
         return hay.includes(this._q);
-      });
+      })
+      // Alphabetical by resolved title — the A-Z scrubber below only makes
+      // sense against a list that's actually in that order; Drive's own
+      // `orderBy: 'name'` is filename order, which is close but not the
+      // same (e.g. "Reviewed, The Anthropocene - John Green.epub").
+      .sort((x, y) => this._sortTitle(x.b).localeCompare(this._sortTitle(y.b), undefined, { sensitivity: 'base' }));
     if (!items.length) {
       grid.innerHTML = `<div class="empty"><p>${esc(I18n.t('library_no_match', { q: this._q }))}</p></div>`;
+      this._renderScrub([]);
       return;
     }
     grid.innerHTML = items.map(({ b, i }) => this._itemHTML(b, i, isRow)).join('');
+    this._renderScrub(items);
   },
 
   refresh() { this.load(); },
+
+  // --- A-Z fast-scroll scrubber -------------------------------
+  // A vertical letter strip along the grid's right edge (like iOS
+  // Contacts): press-and-drag jumps the library to the first book whose
+  // title starts with the letter under your finger. Only worth showing
+  // once there's enough library to actually need it, and hidden during an
+  // active search (a letter index over a filtered subset doesn't mean
+  // anything reliable — most letters would be empty or misleading).
+  _AZ_THRESHOLD: 20,
+  _AZ_LETTERS: '#ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split(''),
+  _letterIndex: [], // [{ letter, id, available }] parallel to _AZ_LETTERS
+
+  _renderScrub(items) {
+    const strip = document.getElementById('az-scrub');
+    if (!strip) return;
+    const show = items.length >= this._AZ_THRESHOLD && !this._q;
+    strip.classList.toggle('hidden', !show);
+    if (!show) { this._letterIndex = []; return; }
+    // First item (in the already-sorted `items`) whose title starts with
+    // each letter -> that book's id, so jumping works the same way
+    // regardless of which view mode (grid columns vs table rows) is active.
+    const firstIdForLetter = {};
+    for (const { b } of items) {
+      const t = this._sortTitle(b).trim();
+      const c = t ? t[0].toUpperCase() : '';
+      const key = c >= 'A' && c <= 'Z' ? c : '#';
+      if (!(key in firstIdForLetter)) firstIdForLetter[key] = b.id;
+    }
+    this._letterIndex = this._AZ_LETTERS.map(letter => ({
+      letter, id: firstIdForLetter[letter] ?? null, available: letter in firstIdForLetter,
+    }));
+    strip.innerHTML = this._letterIndex
+      .map(l => `<span class="${l.available ? '' : 'dim'}">${l.letter}</span>`)
+      .join('');
+  },
+
+  // Maps a touch/mouse Y position (viewport coords) to the nearest AVAILABLE
+  // letter and scrolls that book into view. "Nearest available" (not just
+  // "nearest") matches iOS's own scrubber behavior — most libraries don't
+  // have books under every letter, and landing on a dead letter would make
+  // large stretches of the strip do nothing.
+  _scrubTo(clientY) {
+    if (!this._letterIndex.length) return;
+    const strip = document.getElementById('az-scrub');
+    const r = strip.getBoundingClientRect();
+    const frac = Math.min(1, Math.max(0, (clientY - r.top) / r.height));
+    const rawIdx = Math.round(frac * (this._letterIndex.length - 1));
+    let best = -1, bestDist = Infinity;
+    for (let i = 0; i < this._letterIndex.length; i++) {
+      if (!this._letterIndex[i].available) continue;
+      const d = Math.abs(i - rawIdx);
+      if (d < bestDist) { bestDist = d; best = i; }
+    }
+    if (best === -1) return;
+    const entry = this._letterIndex[best];
+    this._showBubble(entry.letter, r);
+    const el = document.querySelector(`#books-grid [data-book-id="${CSS.escape(entry.id)}"]`);
+    if (el) el.scrollIntoView({ block: 'start' });
+    // Highlight the active letter in the strip itself.
+    strip.querySelectorAll('span').forEach((el2, i) => el2.classList.toggle('active', i === best));
+  },
+
+  _showBubble(letter, stripRect) {
+    let b = document.getElementById('az-bubble');
+    if (!b) {
+      b = document.createElement('div');
+      b.id = 'az-bubble';
+      b.className = 'az-bubble';
+      document.getElementById('books-grid-wrap')?.appendChild(b);
+    }
+    b.textContent = letter;
+    b.style.display = 'flex';
+  },
+  _hideBubble() {
+    const b = document.getElementById('az-bubble');
+    if (b) b.style.display = 'none';
+    document.querySelectorAll('#az-scrub span.active').forEach(el => el.classList.remove('active'));
+  },
+
+  // Bound once at boot (see the load-event handler). touch-action:none in
+  // CSS already stops the page from panning under a drag, so these don't
+  // need preventDefault/passive:false gymnastics.
+  _bindScrub() {
+    const strip = document.getElementById('az-scrub');
+    if (!strip) return;
+    let dragging = false;
+    const start = y => { dragging = true; this._scrubTo(y); };
+    const move  = y => { if (dragging) this._scrubTo(y); };
+    const end   = () => { dragging = false; this._hideBubble(); };
+    strip.addEventListener('touchstart', e => start(e.touches[0].clientY));
+    strip.addEventListener('touchmove',  e => move(e.touches[0].clientY));
+    strip.addEventListener('touchend', end);
+    strip.addEventListener('touchcancel', end);
+    strip.addEventListener('mousedown', e => start(e.clientY));
+    window.addEventListener('mousemove', e => move(e.clientY));
+    window.addEventListener('mouseup', end);
+  },
 
   _pickBtn() {
     return `<button onclick="FolderBrowser.open()" style="margin-top:1rem;padding:0.6rem 1.2rem;background:var(--accent);color:#fff;border:none;border-radius:10px;font:500 0.85rem var(--font-ui);cursor:pointer">${I18n.t('choose_folder_btn')}</button>`;
@@ -6325,6 +6480,7 @@ window.addEventListener('load', () => {
   // would see English up through sign-in and only switch once Settings (only
   // reachable after signing in) has been rendered at least once.
   I18n.apply(document.body);
+  Library._bindScrub(); // A-Z fast-scroll strip — bound once, gated per-render by _renderScrub
   CoverCache.migrate(); // one-time koboaudio → phonoleaf DB rename (fire & forget)
   Meta._cleanGenres();  // one-time: drop bogus "genres" cached from OL subjects
   App.init();
