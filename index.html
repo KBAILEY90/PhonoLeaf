@@ -1607,11 +1607,10 @@ const STRINGS = {
     default_speed: 'Default speed',
     voice: 'Voice', voice_sub_default: 'System default', change: 'Change',
     keep_screen_on: 'Keep screen on', keep_screen_on_sub: 'While audio is playing',
-    natural_voice: 'Natural voice', natural_voice_checking: 'Checking…',
+    natural_voice: 'Upgraded voice', natural_voice_checking: 'Checking…',
     natural_voice_dead: 'Unavailable on this device — using the standard voice',
     natural_voice_kokoro: 'On — high quality, generated on your device',
-    natural_voice_piper: 'On — standard quality, generated on your device',
-    natural_voice_piper_slow: 'On — standard quality, generated on your device (may run slower than real time here)',
+    natural_voice_piper: 'Not available on this device — using the standard voice',
     natural_voice_on: 'On — generated on your device',
     natural_voice_on_slow: 'On — generated on your device (may run slower than real time here)',
     on: 'On', retry: 'Retry',
@@ -1763,11 +1762,10 @@ const STRINGS = {
     default_speed: 'Vitesse par défaut',
     voice: 'Voix', voice_sub_default: 'Voix du système', change: 'Modifier',
     keep_screen_on: 'Garder l’écran allumé', keep_screen_on_sub: 'Pendant la lecture audio',
-    natural_voice: 'Voix naturelle', natural_voice_checking: 'Vérification…',
+    natural_voice: 'Voix améliorée', natural_voice_checking: 'Vérification…',
     natural_voice_dead: 'Non disponible sur cet appareil — voix standard utilisée',
     natural_voice_kokoro: 'Activée — haute qualité, générée sur votre appareil',
-    natural_voice_piper: 'Activée — qualité standard, générée sur votre appareil',
-    natural_voice_piper_slow: 'Activée — qualité standard, générée sur votre appareil (peut être plus lente que le temps réel ici)',
+    natural_voice_piper: 'Non disponible sur cet appareil — voix standard utilisée',
     natural_voice_on: 'Activée — générée sur votre appareil',
     natural_voice_on_slow: 'Activée — générée sur votre appareil (peut être plus lente que le temps réel ici)',
     on: 'Activée', retry: 'Réessayer',
@@ -2829,34 +2827,38 @@ const Settings = {
     document.querySelectorAll('#theme-seg button').forEach(b => b.classList.toggle('on', b.dataset.mode === m));
     const sel = document.getElementById('set-speed'); if (sel) sel.value = localStorage.getItem('pl_speed') || '1';
     const vs = document.getElementById('set-voice-sub'); if (vs) vs.textContent = TTS.activeVoiceLabel();
-    // Natural-voice row is ALWAYS shown; only its wording and right-hand
-    // control change. Retry is offered in web fallback mode (Settings.
-    // retryNeural) AND, since 2026-08-08, on native while running Piper —
-    // Settings.retryKokoroGate re-measures Piper and offers the Kokoro
-    // upgrade again (see VoicePacks.retryKokoro) — nothing to retry once
-    // already on Kokoro (nowhere higher to go) or before anything's been
-    // downloaded at all (that's the Language Packs flow's job, not this
-    // button's).
+    // "Upgraded voice" row is ALWAYS shown; only its wording and right-hand
+    // control change. This row is specifically about the Kokoro upgrade, NOT
+    // "is some on-device voice speaking" — Piper (the baseline native voice)
+    // is active almost 100% of the time regardless of device, so badging it
+    // as "On" here conveyed nothing (owner feedback 2026-08-10: "Natural
+    // voice is always on, so it doesn't make sense to have Natural Voice
+    // there"). The "On" badge and the info-line wording below both now key
+    // off whether Kokoro SPECIFICALLY is the active engine, not merely
+    // whether native/neural synthesis of any kind is running.
+    // On web there's no Piper/gate concept at all — Kokoro-WASM IS the only
+    // upgrade path, so "not dead" already means "the upgrade is on" there.
     const dead = TTS._kokoroDead;
     const nativeActive = !!TTS._nativeTts();
     const gate = VoicePacks._kokoroGate();
+    const kokoroOn = !dead && (!nativeActive || gate === 'yes');
     const nsub = document.getElementById('neural-sub');
     if (nsub) {
       if (dead) {
         nsub.textContent = I18n.t('natural_voice_dead');
       } else if (nativeActive && gate === 'yes') {
         nsub.textContent = I18n.t('natural_voice_kokoro');
-      } else if (nativeActive && gate === 'no') {
-        nsub.textContent = I18n.t(TTS._nativeSlow ? 'natural_voice_piper_slow' : 'natural_voice_piper');
+      } else if (nativeActive) { // gate is 'no' or still 'pending' — Piper baseline, not the upgrade
+        nsub.textContent = I18n.t('natural_voice_piper');
       } else {
         nsub.textContent = I18n.t(TTS._nativeSlow ? 'natural_voice_on_slow' : 'natural_voice_on');
       }
     }
-    const nst = document.getElementById('neural-status'); if (nst) nst.style.display = dead ? 'none' : '';
+    const nst = document.getElementById('neural-status'); if (nst) nst.style.display = kokoroOn ? '' : 'none';
     const nrt = document.getElementById('neural-retry');
     if (nrt) {
       if (dead) { nrt.style.display = ''; nrt.onclick = () => Settings.retryNeural(); }
-      else if (nativeActive && gate === 'no') { nrt.style.display = ''; nrt.onclick = () => Settings.retryKokoroGate(); }
+      else if (nativeActive && gate !== 'yes') { nrt.style.display = ''; nrt.onclick = () => Settings.retryKokoroGate(); }
       else { nrt.style.display = 'none'; nrt.onclick = null; }
     }
     // "Better device voices" only helps while we're actually using the device
