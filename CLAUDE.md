@@ -2364,6 +2364,83 @@ system text-size/motion settings, and tap target size. Findings and fixes:
   where `cover` would have cropped one off. Home's smaller cover thumbnails
   (`.hh-cover`/`.cr-cover`, ~54–120px `background-size: cover`) weren't
   touched — not what was reported, and cropping matters less at that size.
+  **STILL REPORTED CROPPED after a genuine uninstall + reinstall on device
+  (2026-08-09).** The `object-fit: contain` fix above is verified correct in
+  a browser harness, and a real uninstall (not just `npm run sync` +
+  reinstall) should rule out the WebView caching Capacitor's local-origin
+  content independently of the APK — so the persistence of the symptom past
+  that step is not yet explained. Needs re-diagnosis with a device in hand
+  (or fresh Logcat/screenshot evidence) before another fix is attempted
+  blind; not re-investigated further this session because the owner moved on
+  to other topics without confirming they wanted it chased further.
+
+## Voice-pack downloads dying on screen lock + sign-in language toggle (2026-08-09)
+
+- **"If I download language packs, it never completes the download... I'm
+  thinking it's because the download fails if the screen shuts down?"**
+  Correct diagnosis, and the same class of bug this project already solved
+  once for TTS playback: `downloadPack()` in `PhonoLeafTtsPlugin.kt` ran on
+  a plain background thread (`downloadExecutor`) with **no foreground-service
+  or wake-lock protection at all** — unlike playback, which needed exactly
+  that (`PlaybackService.kt`) to survive the screen locking. A voice pack is
+  65–140 MB; almost nobody keeps the screen on that long, so Android's
+  Doze/App Standby was suspending the download thread and throttling network
+  access the moment the screen turned off, stalling the transfer for good.
+  Fixed with a new **`PackDownloadService.kt`**, deliberately much simpler
+  than `PlaybackService` (no media session, just a progress notification +
+  wake lock) but following the exact same hard-won rules from that file's
+  own history, since they're Android's rules, not this app's:
+  `android:foregroundServiceType="dataSync"` (the type Android's own docs
+  specify for "transferring data through the network and shouldn't be
+  interrupted by the system" — a different type than playback's
+  `mediaPlayback`, so it needed its own manifest `<service>` entry and its
+  own `FOREGROUND_SERVICE_DATA_SYNC` permission), `startForeground()` called
+  immediately in `onStartCommand`, a `PowerManager.PARTIAL_WAKE_LOCK`
+  (`"PhonoLeaf:download"`, capped at 30 min) held for the download's
+  duration, and `context.startService()` rather than
+  `startForegroundService()` — the same choice `PlaybackService` already
+  made after hitting a real `ForegroundServiceDidNotStartInTimeException`
+  crash, and safe here for the same reason: a download always starts from a
+  user tapping Download while the app is genuinely in the foreground.
+  Tracked with a simple `@Volatile` counter (`start()`/`finish()`) rather
+  than one service instance per download — `downloadExecutor` is already
+  single-threaded so only one download ever runs at once, but several can be
+  queued; the counter means a mid-queue handoff from one pack to the next
+  just updates the existing notification instead of stopping and
+  restarting. Wired into `PhonoLeafTtsPlugin.kt`'s `downloadPack()`: `start()`
+  right after the queued-cancellation check (so a task cancelled while still
+  queued never touches the service at all), `progress()` piggybacked on the
+  existing throttled `packProgress` emit, `finish()` in the `finally` block
+  (covers success, failure, and cancel uniformly) guarded by a
+  `serviceStarted` flag so it can't decrement a counter it never
+  incremented. `cancelDownload()` needed no changes — cancellation already
+  works by bumping the per-model epoch, which the download loop's own check
+  throws on, landing in the same `catch`/`finally` path.
+  **Not device-verified** — no JDK/Android SDK in this environment, same
+  standing caveat as every other native change in this file; the Kotlin was
+  written and reviewed carefully against `PlaybackService.kt`'s proven
+  pattern but never compiled. First real device test should confirm a
+  download genuinely survives the screen locking mid-transfer, and that the
+  notification's progress updates and disappears correctly across a
+  multi-pack queue.
+- **"I don't think the home pages, onboarding, sign-in pages have [a language
+  toggle] right now."** Correct — the only in-app toggle lived in Settings
+  (`#lang-seg`), unreachable before signing in, so a wrong auto-detected
+  language (or a user who just wants the other one) had no way to be
+  corrected pre-auth, unlike `home.html`'s own EN/FR switcher for signed-out
+  visitors. Added a small matching **EN/FR toggle to the sign-in screen**
+  (`.si-langtoggle`, top-right of `.si-wrap`), calling `I18n.setLang()`
+  directly. Refactored `I18n.apply(root)` to also sync any `.lang-seg`
+  button group's `.on` state (previously done as an ad-hoc extra line inside
+  `Settings.render()`, querying `#lang-seg` specifically) — both the
+  sign-in and Settings toggles now share one `.lang-seg` class and can never
+  disagree about which button is highlighted, wherever `apply()` runs.
+  `app_language_sub`'s copy ("Translates the Settings tab") was stale from
+  the original Settings-only pilot; updated to "Translates the whole app" in
+  both languages. Verified in a browser harness: the sign-in screen renders
+  in French purely from clicking FR pre-auth (no prior Settings visit,
+  `pl_lang` unset beforehand), the toggle's highlighted button stays correct
+  after the switch, and `pl_lang` persists across reload.
 
 ## Native Kokoro — device-gated English upgrade (2026-08-08)
 
