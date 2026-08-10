@@ -1350,16 +1350,16 @@
   <div class="confirm-box" onclick="event.stopPropagation()" style="text-align:left">
     <p class="confirm-msg" style="font-weight:600;margin-bottom:0.5rem" data-i18n="voiceinfo_title">About the natural voice</p>
     <p class="confirm-msg" style="font-size:0.85rem" data-i18n="voiceinfo_p1">
-      PhonoLeaf comes with its own natural-sounding voice that runs entirely on
-      your device &mdash; nothing you read is sent to a server to be turned into
-      speech.
+      PhonoLeaf reads using one of its own natural-sounding voice models,
+      generated entirely on your device &mdash; nothing you read is ever sent
+      to a server to be turned into speech.
     </p>
     <p class="confirm-msg" style="font-size:0.85rem" data-i18n="voiceinfo_p2">
-      To play without gaps it has to generate speech faster than you can listen
-      to it. Most phones manage this comfortably; some slower or older devices,
-      and some web browsers, can&rsquo;t keep up. When that happens PhonoLeaf
-      automatically switches to the standard voice built into your device, so
-      reading never stops &mdash; it just sounds more robotic.
+      Capable devices get our very high-quality voice; other devices
+      automatically get our high-quality standard voice instead &mdash;
+      PhonoLeaf picks based on how fast your device can generate speech.
+      Only if neither can keep up, which is rare, does it briefly fall back
+      to the voice built into your phone, just so reading never stops.
     </p>
     <p class="confirm-msg" style="font-size:0.85rem">
       <b data-i18n="voiceinfo_p3_b">Retry</b><span data-i18n="voiceinfo_p3"> re-tests this device, which is worth doing if it happened to
@@ -1736,8 +1736,8 @@ const STRINGS = {
     novoice_body: 'PhonoLeaf needs a language pack downloaded to your device before it can read to you. Playback has stopped — download one below, then press play again.',
     novoice_action: 'Download a voice',
     voiceinfo_title: 'About the natural voice',
-    voiceinfo_p1: 'PhonoLeaf comes with its own natural-sounding voice that runs entirely on your device — nothing you read is sent to a server to be turned into speech.',
-    voiceinfo_p2: 'To play without gaps it has to generate speech faster than you can listen to it. Most phones manage this comfortably; some slower or older devices, and some web browsers, can’t keep up. When that happens PhonoLeaf automatically switches to the standard voice built into your device, so reading never stops — it just sounds more robotic.',
+    voiceinfo_p1: 'PhonoLeaf reads using one of its own natural-sounding voice models, generated entirely on your device — nothing you read is ever sent to a server to be turned into speech.',
+    voiceinfo_p2: 'Capable devices get our very high-quality voice; other devices automatically get our high-quality standard voice instead — PhonoLeaf picks based on how fast your device can generate speech. Only if neither can keep up, which is rare, does it briefly fall back to the voice built into your phone, just so reading never stops.',
     voiceinfo_p3_b: 'Retry', voiceinfo_p3: ' re-tests this device, which is worth doing if it happened to be busy the first time.',
     voicesetup_title: 'Setting up your voice', voicesetup_body: 'Checking which voices run best on your device…',
 
@@ -1899,8 +1899,8 @@ const STRINGS = {
     novoice_body: 'PhonoLeaf a besoin qu’un pack de langue soit téléchargé sur votre appareil avant de pouvoir vous faire la lecture. La lecture s’est arrêtée — téléchargez-en un ci-dessous, puis appuyez de nouveau sur lecture.',
     novoice_action: 'Télécharger une voix',
     voiceinfo_title: 'À propos de la voix naturelle',
-    voiceinfo_p1: 'PhonoLeaf est livrée avec sa propre voix au son naturel qui fonctionne entièrement sur votre appareil — rien de ce que vous lisez n’est envoyé à un serveur pour être transformé en parole.',
-    voiceinfo_p2: 'Pour lire sans interruption, l’appareil doit générer la parole plus vite que vous ne pouvez l’écouter. La plupart des téléphones y arrivent sans problème; certains appareils plus lents ou plus anciens, ainsi que certains navigateurs Web, n’y arrivent pas. Dans ce cas, PhonoLeaf bascule automatiquement vers la voix standard intégrée à votre appareil, afin que la lecture ne s’arrête jamais — elle sonne simplement un peu plus robotique.',
+    voiceinfo_p1: 'PhonoLeaf lit vos livres avec l’un de ses propres modèles de voix au son naturel, générée entièrement sur votre appareil — rien de ce que vous lisez n’est jamais envoyé à un serveur pour être transformé en parole.',
+    voiceinfo_p2: 'Les appareils performants obtiennent notre voix de très haute qualité; les autres appareils obtiennent automatiquement notre voix standard de haute qualité à la place — PhonoLeaf choisit selon la rapidité avec laquelle votre appareil peut générer la parole. C’est seulement si aucune des deux n’y arrive, ce qui est rare, qu’elle bascule brièvement vers la voix intégrée à votre téléphone, simplement pour que la lecture ne s’arrête jamais.',
     voiceinfo_p3_b: 'Réessayer', voiceinfo_p3: ' teste de nouveau cet appareil, ce qui vaut la peine si celui-ci était occupé la première fois.',
     voicesetup_title: 'Configuration de votre voix', voicesetup_body: 'Vérification des voix qui fonctionnent le mieux sur votre appareil…',
 

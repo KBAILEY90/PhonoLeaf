@@ -2587,14 +2587,13 @@ the claim.
   falls back to it when `Drive.listEpubs()` throws; the offline-vs-generic
   error message selection logic picks correctly across all three states
   (offline+uncached, offline+cached, online+generic-failure).
-  **The native `@capacitor/filesystem` path is NOT device-verified** — no
-  JDK/Android SDK in this environment, same standing caveat as every other
-  native-touching change in this project; written carefully against the
-  same `writeFile`/`readFile` API shape already proven working for the
-  bug-report photo feature, but never run on real hardware.
-  `STORE_LISTINGS.md`'s offline claim stays gated behind a real device test
-  per its own updated note — the web verification here doesn't cover the
-  platform those listings are actually for.
+  **DEVICE-VERIFIED 2026-08-10 — owner confirmed download + offline mode
+  both work.** No JDK/Android SDK in this environment, so the native
+  `@capacitor/filesystem` path was written carefully against the same
+  `writeFile`/`readFile` API shape already proven working for the bug-report
+  photo feature but never compiled here — the owner's own on-device test is
+  what confirmed it. `STORE_LISTINGS.md`'s offline claim is now safe to
+  publish; its gating note should be treated as resolved.
 
 ## Cloudflare Web Analytics on the marketing pages only (2026-08-10)
 

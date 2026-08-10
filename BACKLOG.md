@@ -88,11 +88,10 @@ the filesystem via Capacitor with no quota). So this is not phone only.
 4. ~~Native: prefer Capacitor Filesystem for the ebook bytes...~~ DONE —
    `BookCache` branches on `App.isNative()`, using `@capacitor/filesystem`
    (`Directory: 'DATA'`) natively instead of IndexedDB.
-5. Still open: `home.html`/`STORE_LISTINGS.md`'s offline wording is drafted
-   and ready but gated behind a REAL DEVICE test — the native Filesystem
-   path above is untested on hardware (no JDK/Android SDK in the dev
-   environment). See `CLAUDE.md`'s "Offline reading" entry (2026-08-10) and
-   `STORE_LISTINGS.md`'s own note for exactly what's still needed.
+5. ~~Still open: gated behind a real device test~~ **DEVICE-VERIFIED
+   2026-08-10** — owner confirmed download + offline mode both work on a
+   real Android device. `home.html`/`STORE_LISTINGS.md`'s offline wording is
+   now safe to publish.
 
 ---
 
