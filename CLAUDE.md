@@ -2503,6 +2503,44 @@ most libraries don't have something under every letter.
   the strip is hidden both below the 20-book threshold and during an active
   search, reappearing once the query clears.
 
+## Cloudflare Web Analytics on the marketing pages only (2026-08-10)
+
+First piece of the marketing-foundation work (`BUSINESS.md` item 6). Owner
+picked analytics as the starting point; chose Cloudflare Web Analytics since
+Cloudflare already runs phonoleaf.com's DNS — free, cookieless/privacy-
+respecting by design, no new vendor relationship.
+
+- **Deliberately scoped to `home.html`/`home-fr.html` only — not
+  `index.html` (the signed-in app), and not `privacy.html`/`terms.html`
+  either.** The first cut added the beacon to all six marketing-adjacent
+  pages, but `privacy.html`/`terms.html` (+ `-fr` variants) are staged into
+  the native Android app's bundled assets and reachable from in-app Settings
+  via a plain same-context `<a href>` (see the Tech-stack note) — so the
+  beacon would have run *inside the native app's WebView* whenever someone
+  tapped Privacy Policy or Terms from Settings, exactly the "nothing in the
+  app talks to a third party" boundary that mattered for the CASA/OAuth
+  verification story. Reverted from those four, kept only on the two pages
+  confirmed elsewhere in this file as **"Web-only by design... NOT in
+  `stage-www.js`'s `FILES`... no marketing page in the APK."**
+- **Setup needed the manual JS-snippet path, not Cloudflare's "Enable"
+  auto-inject option** — auto-inject only works for traffic actually
+  proxied through Cloudflare, and phonoleaf.com's DNS is deliberately
+  grey-cloud/DNS-only (see the Live section at the top of this file), so
+  Cloudflare never sees the traffic to inject anything into. The dashboard
+  also auto-creates a DNS zone page that looks like an analytics dashboard
+  but isn't one — Web Analytics is a separate, account-level product,
+  easy to miss on first look.
+- Snippet: `<script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token":"…"}'>`,
+  inserted right before `</body>` on both pages. No CSP change needed
+  (neither page carries a Content-Security-Policy — only `index.html`
+  does). No `sw.js` precache change needed (these two pages were already
+  excluded from precaching).
+- Verified in a local preview: pages render unaffected; the beacon's RUM
+  POST is correctly rejected under the local origin (Cloudflare validates
+  the request `Origin` against the registered `phonoleaf.com` hostname) —
+  expected behavior in local dev, not a bug, and it will fire normally once
+  actually served from phonoleaf.com.
+
 ## Voice-pack downloads dying on screen lock + sign-in language toggle (2026-08-09)
 
 - **"If I download language packs, it never completes the download... I'm
