@@ -2419,6 +2419,48 @@ to make sure they all fit in one page?"* Exactly right.
   device symptom, that is evidence the diagnosis is wrong, not evidence the
   fix didn't ship.
 
+## Library view-mode switcher: 2/3/4-col grid + table/list (2026-08-09)
+
+Owner request, off the back of the grid-crush fix above: *"I just thought
+that it could be interesting for users to have multiple ways of seeing
+their covers... 2 per row / 3 per row (locked ratio) / 4 per row (locked
+ratio) / Table of Book Name, Artist name."*
+
+- **Four icon toggles in `.lib-header`** (`#lib-view-toggle`, next to the
+  existing refresh button), styled as a `.seg`-like segmented group rather
+  than independent `.icon-btn`s since it's a mutually-exclusive choice.
+  `Library.setView(v)` persists to `pl_libview` (`'2'`|`'3'`|`'4'`|`'table'`,
+  same pattern as `pl_speed`/`pl_theme`) and re-renders.
+- **Grid modes are explicit fixed column counts** (`repeat(2/3/4, 1fr)` via
+  `#books-grid[data-view]`), not the previous responsive
+  `auto-fill, minmax(130px, 1fr)`. "2 per row" needed to be a well-defined,
+  switchable option rather than something that could silently become 3+ on
+  a wider viewport — the app is portrait-locked/mobile-first anyway (see the
+  native-shell orientation note), so this is a behavior-neutral change on a
+  phone and a more predictable one on a wider browser window. Cover ratio
+  ("locked ratio" in the request) was already guaranteed by
+  `.book-cover { aspect-ratio: 2/3 }` regardless of column count, so no
+  separate work was needed for that part.
+- **Table mode** (`#books-grid[data-view="table"] { display: flex;
+  flex-direction: column }`) is a new compact `.book-row` layout: small
+  thumbnail, title, author, thin progress bar. Both the grid cards and table
+  rows now go through one shared `Library._itemHTML(b, i, isRow)` — same
+  title/progress/cover resolution either way, just a different wrapper
+  class — instead of duplicating that logic into a second render path.
+- `.loading`/`.empty` (which rely on `grid-column: 1/-1` under the grid
+  modes) needed no separate table-mode markup — that rule is simply unused
+  and harmless under `display: flex`.
+- Verified in a browser harness with a synthetic 9-book library: correct
+  column counts and zero clipped covers in all three grid modes, the table
+  row's progress bar renders at the right width, the empty state still
+  renders correctly in table mode, and `pl_libview` persists and re-syncs
+  the toggle's highlighted button across a reload.
+- **Alphabet scrubber (A–Z fast-scroll) is next, not yet built** — tracked
+  as a follow-up. Design note for whoever picks it up: sort key should be
+  the captured epub title (`Meta.get(b.id)?.title`, falling back to the
+  cleaned filename), NOT Drive's raw `orderBy: 'name'` order, so letters
+  reflect real title initials rather than filename prefixes.
+
 ## Voice-pack downloads dying on screen lock + sign-in language toggle (2026-08-09)
 
 - **"If I download language packs, it never completes the download... I'm
