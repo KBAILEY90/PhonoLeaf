@@ -2503,6 +2503,99 @@ most libraries don't have something under every letter.
   the strip is hidden both below the 20-book threshold and during an active
   search, reappearing once the query clears.
 
+## Offline reading — cached library list + saved books (2026-08-10)
+
+Implements `BACKLOG.md` section C ("Offline (bug + differentiator)"). Root
+cause of the pre-existing "no books offline" behavior: the library list is a
+live Drive API call and book bytes are downloaded from Drive at read time
+with nothing cached — offline, the Drive call fails, the library goes empty,
+and nothing can open. Only the app shell and the on-device voice worked
+offline before this. Triggered off the store-listing prep work: the drafted
+`STORE_LISTINGS.md` copy already claimed offline listening, gated on this
+feature actually shipping — owner chose to build it now rather than strip
+the claim.
+
+- **Library file-list caching** (`Library._cacheBookList`/`_cachedBookList`,
+  localStorage under `pl_libcache`, keyed to the folder id): after every
+  successful `Drive.listEpubs()`, the list is cached; `Library.load()`'s
+  catch block falls back to it — but only if the cached folder id matches
+  the CURRENT one, so switching folders while offline can't show a stale
+  different folder's books. A cache hit but 0 books legitimately falls
+  through to the normal error/retry path.
+- **`BookCache`** (right after `CoverCache` in `index.html`) — a
+  **separate** IndexedDB database (`phonoleaf-offline`, store `books`) from
+  `CoverCache`'s `phonoleaf` DB, deliberately isolated so nothing here can
+  ever risk that DB's existing schema/migration history. Web: raw
+  `ArrayBuffer` stored directly (structured-clone handles it, no encoding
+  needed). Native: `@capacitor/filesystem` (already a dependency, used
+  elsewhere for the bug-report photo feature) — `Directory: 'DATA'`
+  specifically, **not** `'CACHE'`, which the OS can purge under storage
+  pressure and would silently undo a deliberate "save for offline." The
+  Capacitor bridge only accepts base64, so buffers are chunk-encoded
+  (32KB at a time via `String.fromCharCode.apply`) to avoid a stack overflow
+  from spreading a huge typed array as call arguments — the same class of
+  concern as the TTS pipeline's "1MB base64 froze the WebView" lesson, though
+  here it's a one-time save action (not per-sentence, repeated) so the
+  tradeoff of using the standard Filesystem base64 API (rather than building
+  a dedicated streaming native plugin method, like the TTS WAV-file-path
+  fix did) was judged acceptable for v1.
+  A lightweight **localStorage index** (`pl_offline_books`, id → `{bytes,
+  ts}`) makes `has()`/`list()` synchronous and cheap — the library grid can
+  check "is this saved?" for every visible card on render without touching
+  IndexedDB/Filesystem at all.
+  **`get()` never throws** (returns `null` on any failure — missing,
+  corrupt, plugin unavailable — so a cache-read problem can never break
+  opening a book, it just falls through to a fresh Drive download).
+  **`set()`/`remove()` DO throw** on failure — deliberately, so the explicit
+  "save for offline" button can tell the user it actually failed instead of
+  falsely claiming success; the passive auto-cache-on-open call site is the
+  one that chooses to swallow failures, via its own `.catch(() => {})`.
+- **`Reader.open()`** now checks `BookCache.get(book.id)` before ever
+  calling `Drive.download()` — a hit skips the network (and re-download)
+  entirely; a miss downloads as before and fire-and-forget auto-caches the
+  fresh bytes in the background (`BookCache.set(...).then(() =>
+  Library._refreshOfflineBadge(...)).catch(() => {})`), never blocking
+  getting into the book. The failure path now distinguishes the specific
+  "offline and never saved" case (`!navigator.onLine && !BookCache.has(id)`)
+  with a clear message, instead of surfacing a raw fetch-error string for
+  what's actually the most common offline failure.
+- **Explicit save/remove control + availability badge**
+  (`Library._offlineBtnHTML`/`_refreshOfflineBadge`/`toggleOffline`) on every
+  library card — covers "I know I'm about to lose signal," complementing
+  the passive auto-cache-on-open. Grid mode: an absolute-positioned corner
+  overlay on the cover (`.book-cover .offline-btn`, translucent dark
+  background so it reads against any cover art color). Table mode: the same
+  button as a normal trailing flex child of `.book-row`, no special
+  positioning needed. Icons are simple stroke-based shapes (a down-arrow +
+  tray, a checkmark) — deliberately NOT hand-guessed complex Material path
+  data, per the lesson from the notification-icon saga elsewhere in this
+  file about not guessing icon designs; low risk here regardless since
+  these render as normal RGBA SVG in a webview, not subject to Android's
+  alpha-silhouette extraction that made that earlier case unforgiving.
+  `Library._itemHTML` gained one shared `_offlineBtnHTML(id)` call used by
+  both the grid-card and table-row paths (same button markup, placed
+  differently via the existing `isRow` conditional).
+- `sw.js`'s own header comment ("book bytes... intentionally NOT cached")
+  was stale after this — updated to clarify that's still true of the
+  service worker's own Cache Storage specifically, while the app itself now
+  maintains a separate offline cache via `BookCache`.
+- Verified in a browser harness: `BookCache` round-trips correctly
+  (including a 2MB buffer) on the IndexedDB path; the save/remove toggle
+  updates the badge class, aria-label, and cache state correctly in both
+  directions, visually confirmed via screenshot in both grid and table
+  view; the library-list cache round-trips and `Library.load()` correctly
+  falls back to it when `Drive.listEpubs()` throws; the offline-vs-generic
+  error message selection logic picks correctly across all three states
+  (offline+uncached, offline+cached, online+generic-failure).
+  **The native `@capacitor/filesystem` path is NOT device-verified** — no
+  JDK/Android SDK in this environment, same standing caveat as every other
+  native-touching change in this project; written carefully against the
+  same `writeFile`/`readFile` API shape already proven working for the
+  bug-report photo feature, but never run on real hardware.
+  `STORE_LISTINGS.md`'s offline claim stays gated behind a real device test
+  per its own updated note — the web verification here doesn't cover the
+  platform those listings are actually for.
+
 ## Cloudflare Web Analytics on the marketing pages only (2026-08-10)
 
 First piece of the marketing-foundation work (`BUSINESS.md` item 6). Owner

@@ -76,18 +76,23 @@ via `navigator.storage.persist()`; large libraries can hit browser quota, but
 individual downloaded books are fine). The native app is more robust (it can use
 the filesystem via Capacitor with no quota). So this is not phone only.
 
-**[CODE] Make books work offline:**
-1. After each successful library load, cache the Drive file list (id, name, size,
-   etc.) locally. When offline or when the Drive call fails, render the cached list
-   instead of an empty library.
-2. Cache downloaded ebook bytes in IndexedDB keyed by Drive file id. On open, use
-   the cached copy when present or when offline; download and cache when online.
-3. Auto cache a book when it is opened, and add an explicit "save for offline"
-   control plus an indicator of which books are available offline.
-4. Native: prefer Capacitor Filesystem for the ebook bytes so large libraries are
-   not limited by WebView storage quota.
-5. Only claim offline for downloaded books, in `home.html` and the store listings,
-   until this ships. Coordinate the marketing wording with this feature.
+**[DONE 2026-08-10] Make books work offline:**
+1. ~~After each successful library load, cache the Drive file list...~~ DONE —
+   `Library._cacheBookList`/`_cachedBookList`, `localStorage.pl_libcache`.
+2. ~~Cache downloaded ebook bytes in IndexedDB keyed by Drive file id...~~ DONE —
+   see the new `BookCache` module (`index.html`, right after `CoverCache`).
+3. ~~Auto cache a book when it is opened, and add an explicit "save for offline"
+   control plus an indicator...~~ DONE — `Reader.open()` auto-caches on a
+   download; `Library._offlineBtnHTML`/`toggleOffline` is the explicit control
+   + badge.
+4. ~~Native: prefer Capacitor Filesystem for the ebook bytes...~~ DONE —
+   `BookCache` branches on `App.isNative()`, using `@capacitor/filesystem`
+   (`Directory: 'DATA'`) natively instead of IndexedDB.
+5. Still open: `home.html`/`STORE_LISTINGS.md`'s offline wording is drafted
+   and ready but gated behind a REAL DEVICE test — the native Filesystem
+   path above is untested on hardware (no JDK/Android SDK in the dev
+   environment). See `CLAUDE.md`'s "Offline reading" entry (2026-08-10) and
+   `STORE_LISTINGS.md`'s own note for exactly what's still needed.
 
 ---
 
