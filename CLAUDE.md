@@ -2364,15 +2364,60 @@ system text-size/motion settings, and tap target size. Findings and fixes:
   where `cover` would have cropped one off. Home's smaller cover thumbnails
   (`.hh-cover`/`.cr-cover`, ~54–120px `background-size: cover`) weren't
   touched — not what was reported, and cropping matters less at that size.
-  **STILL REPORTED CROPPED after a genuine uninstall + reinstall on device
-  (2026-08-09).** The `object-fit: contain` fix above is verified correct in
-  a browser harness, and a real uninstall (not just `npm run sync` +
-  reinstall) should rule out the WebView caching Capacitor's local-origin
-  content independently of the APK — so the persistence of the symptom past
-  that step is not yet explained. Needs re-diagnosis with a device in hand
-  (or fresh Logcat/screenshot evidence) before another fix is attempted
-  blind; not re-investigated further this session because the owner moved on
-  to other topics without confirming they wanted it chased further.
+  **THIS WAS A MISDIAGNOSIS — `object-fit` was never the cause. See the
+  "Library grid crushed its rows" entry below for the real bug (2026-08-09).**
+  The `contain` change is kept (it does deliver "show the whole cover" for a
+  cover whose ratio isn't exactly 2:3) but it fixed nothing on its own, and
+  three rounds of device reports kept coming back cropped because the actual
+  cause was untouched.
+
+## Library grid crushed its rows, clipping covers (2026-08-09)
+
+**The real cause of the long-running "book covers are cropped/halved"
+report — and the owner diagnosed it, after two wrong fixes from me.** Owner:
+*"Is it maybe because the size of the book covers is adapting to the number
+of books and instead of adding a scrollbar, it just resizes the book covers
+to make sure they all fit in one page?"* Exactly right.
+
+- **`.books-grid` never scrolled.** Measured in a browser at a 375px
+  viewport with a synthetic library: `scrollHeight` stayed pinned to
+  `clientHeight` (700px) at EVERY book count. Instead of overflowing, the
+  grid shrank its rows so every book fit on one screen — card height 292px
+  at 4 books (correct), then 190px at 6, 138px at 8, 46px at 20, **15px at
+  40** — while `.book-cover` stayed at its correct 241px throughout.
+  `.book-card { overflow: hidden }` then clipped the cover to the leftover
+  height. At 8 books that's 138/241 ≈ 57%, i.e. literally "halved."
+- **Why the severity looked random across reports:** it tracked library
+  size, not anything about the cover images. That is also why it survived a
+  genuine uninstall + reinstall, and why no amount of `object-fit` tuning
+  helped — the image was never being cropped by `object-fit` at all, the
+  CARD around it was being crushed.
+- **Mechanism:** `.book-cover` derives its height from `aspect-ratio: 2/3`
+  against a percentage width. An aspect-ratio-derived height is a
+  *compressible* contribution when `auto` rows are sized against a definite
+  container height — and this grid is `flex: 1` inside a flex column, with
+  `overflow-y: auto`, which makes its flex `min-height: auto` resolve to 0,
+  so it cannot push back against being sized to the available space. The
+  rows were therefore squeezed to fit rather than overflowing.
+- **Fix: `grid-auto-rows: max-content` on `.books-grid`.** Pins every row to
+  its true content height, so cards render at their natural 295px and the
+  grid overflows into a normal scroll (`scrollHeight` 6312 for 40 books
+  instead of a crushed 700). One line; `align-content: start` alone was not
+  enough and neither was anything about the image.
+- Verified in the browser across 2/4/6/8/10/14/20/40 books (card height
+  constant at 295, `clipped: false`, `scrolls: true` throughout), plus the
+  `.loading`/`.empty` states still spanning both columns at their 200px
+  `min-height`. `grid-auto-rows: min-content` behaves identically here;
+  `max-content` was chosen as the clearer statement of intent.
+- **Process lesson, worth keeping:** the first two attempts reasoned from
+  the *description* of the symptom ("cropped") straight to the property that
+  usually causes cropping (`object-fit`), and then — when the report came
+  back unchanged — blamed the build/deploy pipeline rather than re-opening
+  the diagnosis. What actually settled it was measuring the rendered DOM at
+  several library sizes instead of inspecting the CSS and reasoning about
+  it. When a fix that is verifiably correct in isolation doesn't move a
+  device symptom, that is evidence the diagnosis is wrong, not evidence the
+  fix didn't ship.
 
 ## Voice-pack downloads dying on screen lock + sign-in language toggle (2026-08-09)
 
