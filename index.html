@@ -229,6 +229,23 @@
       grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
       gap: 1rem;
       align-content: start;
+      /* max-content, NOT the default auto — this is what makes the grid scroll
+         instead of crushing the books onto one screen. .book-cover gets its
+         height from `aspect-ratio: 2/3` against a percentage width, and an
+         aspect-ratio-derived height is a COMPRESSIBLE contribution when auto
+         rows are sized against a definite container height (this grid is
+         `flex: 1`, and `overflow-y: auto` makes its flex min-height resolve to
+         0, so it can't push back). The rows were therefore shrunk to fit the
+         viewport rather than overflowing it, and `.book-card { overflow:
+         hidden }` clipped each 241px cover down to the leftover height —
+         measured at 190px with 6 books, 138px with 8, 15px with 40, and NEVER
+         scrolling (scrollHeight stayed pinned to clientHeight). That is the
+         real cause of the long-running "library covers are cropped/halved"
+         report; object-fit was never the problem, and the amount of crop
+         varying with library size is exactly why it looked so inconsistent.
+         Pinning rows to max-content restores the true content height, so the
+         covers show whole and the grid overflows into a normal scroll. */
+      grid-auto-rows: max-content;
     }
 
     .book-card {
