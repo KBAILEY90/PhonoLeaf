@@ -1,9 +1,14 @@
 // PhonoLeaf service worker — makes the app shell installable & offline-capable.
-// Note: this caches the UI and its libraries only. Book bytes come from Google
-// Drive at runtime and are intentionally NOT cached (they can be very large and
-// require a live auth token).
+// Note: THIS FILE caches the UI and its libraries only — book bytes from
+// Google Drive are intentionally NOT run through this service worker's own
+// Cache Storage (they can be very large and require a live auth token, which
+// this SW's fetch handler never sees or manages). Offline book reading is
+// instead handled by the app itself (see BookCache/index.html): epub bytes
+// are cached in IndexedDB (web) or via @capacitor/filesystem (native),
+// auto-saved on open plus an explicit "save for offline" control — a
+// separate, deliberate mechanism from anything in this file.
 
-const CACHE = 'phonoleaf-v29';
+const CACHE = 'phonoleaf-v30';
 const SHELL = [
   './',
   './index.html',

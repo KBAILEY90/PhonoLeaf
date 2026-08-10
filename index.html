@@ -329,6 +329,24 @@
     .book-row .book-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .book-row .book-progress-bar { height: 2px; }
 
+    /* Save/remove-for-offline button — shared shape+color between grid and
+       table; only the positioning differs (see the scoped rule below). */
+    .offline-btn {
+      width: 1.6rem; height: 1.6rem; border-radius: 50%; flex-shrink: 0;
+      background: var(--track); color: var(--text-dim);
+      border: none; display: flex; align-items: center; justify-content: center;
+      cursor: pointer; padding: 0;
+    }
+    .offline-btn.saved { background: var(--accent); color: #fff; }
+    /* Grid mode only: overlay it on the cover's top-right corner instead of
+       flowing normally — .book-cover is already position:relative. Darker/
+       translucent background so it reads against any cover art color. */
+    .book-cover .offline-btn {
+      position: absolute; top: 0.35rem; right: 0.35rem; z-index: 2;
+      background: rgba(0,0,0,0.55); color: #fff;
+    }
+    .book-cover .offline-btn.saved { background: var(--accent); }
+
     .book-card {
       background: var(--card);
       border: 0.5px solid var(--line);
@@ -1655,6 +1673,14 @@ const STRINGS = {
     library_choose_folder1: 'Choose the Google Drive folder', library_choose_folder2: 'your ebooks live in to get started.',
     library_no_ebooks_in: 'No ebooks found in', library_no_match: 'No books match "{q}".',
     lib_view_2: '2 per row', lib_view_3: '3 per row', lib_view_4: '4 per row', lib_view_table: 'List',
+    save_offline: 'Save for offline', remove_offline: 'Remove download',
+    saving_offline: 'Saving for offline…', saved_offline: 'Saved for offline',
+    removed_offline: 'Removed from offline',
+    save_offline_failed: 'Could not save for offline: {msg}',
+    remove_offline_failed: 'Could not remove download: {msg}',
+    offline_showing_cached_library: 'You’re offline — showing your saved library',
+    offline_book_not_downloaded: 'This book isn’t saved for offline listening. Connect to the internet to open it.',
+    failed_to_load_book: 'Failed to load book: {msg}',
     library_error: 'Error: {msg}', choose_folder_btn: 'Choose folder',
 
     // Stats
@@ -1810,6 +1836,14 @@ const STRINGS = {
     library_choose_folder1: 'Choisissez le dossier Google Drive', library_choose_folder2: 'où se trouvent vos livres pour commencer.',
     library_no_ebooks_in: 'Aucun livre trouvé dans', library_no_match: 'Aucun livre ne correspond à « {q} ».',
     lib_view_2: '2 par rangée', lib_view_3: '3 par rangée', lib_view_4: '4 par rangée', lib_view_table: 'Liste',
+    save_offline: 'Enregistrer hors ligne', remove_offline: 'Supprimer le téléchargement',
+    saving_offline: 'Enregistrement hors ligne…', saved_offline: 'Enregistré pour une écoute hors ligne',
+    removed_offline: 'Retiré du mode hors ligne',
+    save_offline_failed: 'Impossible d’enregistrer hors ligne : {msg}',
+    remove_offline_failed: 'Impossible de supprimer le téléchargement : {msg}',
+    offline_showing_cached_library: 'Vous êtes hors ligne — affichage de votre bibliothèque enregistrée',
+    offline_book_not_downloaded: 'Ce livre n’est pas enregistré pour une écoute hors ligne. Connectez-vous à Internet pour l’ouvrir.',
+    failed_to_load_book: 'Échec du chargement du livre : {msg}',
     library_error: 'Erreur : {msg}', choose_folder_btn: 'Choisir un dossier',
 
     // Statistiques
@@ -3555,12 +3589,28 @@ const Drive = {
 
 // --- Library ---------------------------------------------
 const Library = {
+  // Offline library fallback (BACKLOG.md C item 1): the file LIST is a live
+  // Drive API call, separate from the book bytes BookCache handles. Cached
+  // as {folderId, books} under one key — keyed-checked against the CURRENT
+  // folder on read so switching folders while offline can't show a stale
+  // DIFFERENT folder's list. Small (id/name/size/thumbnailLink per book),
+  // fine for localStorage even at a few hundred books.
+  _cacheBookList(folderId, books) {
+    try { localStorage.setItem('pl_libcache', JSON.stringify({ folderId, books, ts: Date.now() })); } catch (_) {}
+  },
+  _cachedBookList(folderId) {
+    try {
+      const c = JSON.parse(localStorage.getItem('pl_libcache') || 'null');
+      return (c && c.folderId === folderId && Array.isArray(c.books)) ? c.books : null;
+    } catch (_) { return null; }
+  },
+
   async load() {
     const grid = document.getElementById('books-grid');
     grid.innerHTML = `<div class="loading"><div class="spinner"></div><span>${I18n.t('library_finding')}</span></div>`;
+    const folder = activeFolder();
+    let fid = activeFolderId();
     try {
-      const folder = activeFolder();
-      let fid = activeFolderId();
       if (!fid && folder) fid = await Drive.findFolder(folder);
       if (!fid) {
         State.books = []; State.ready = true;
@@ -3570,6 +3620,7 @@ const Library = {
       }
       State.books = await Drive.listEpubs(fid);
       State.ready = true;
+      this._cacheBookList(fid, State.books);
       if (!State.books.length) {
         grid.innerHTML = `<div class="empty"><p>${I18n.t('library_no_ebooks_in')}<br><strong>"${esc(folder)}"</strong>.</p>${this._pickBtn()}</div>`;
         Home.render();
@@ -3580,6 +3631,19 @@ const Library = {
       Covers.loadAll(); // fill in real epub covers in the background
       Meta.fetchAll(State.books); // fetch Open Library genre + page counts in background
     } catch (e) {
+      // Drive is unreachable (offline, or the API call itself failed) — fall
+      // back to whatever this folder's list looked like last time, rather
+      // than showing an empty/error library for a book collection that's
+      // still genuinely there. Cache-hit but empty (0 books) legitimately
+      // falls through to the normal error path below.
+      const cached = fid ? this._cachedBookList(fid) : null;
+      if (cached && cached.length) {
+        State.books = cached; State.ready = true;
+        this.render();
+        Home.render();
+        toast(I18n.t('offline_showing_cached_library'));
+        return;
+      }
       console.error(e);
       grid.innerHTML = `<div class="empty"><p style="color:var(--accent)">${esc(I18n.t('library_error', { msg: e.message }))}</p><button onclick="Library.load()" style="margin-top:1rem;padding:0.5rem 1rem;background:var(--accent);color:white;border:none;border-radius:8px;cursor:pointer">${I18n.t('retry')}</button></div>`;
     }
@@ -3611,6 +3675,58 @@ const Library = {
       .forEach(b => b.classList.toggle('on', b.dataset.view === this._view));
   },
 
+  // Simple stroke-based icons (not filled Material path data) — deliberately
+  // low-risk shapes rather than hand-guessed complex paths (see the
+  // notification-icon lesson in CLAUDE.md about NOT guessing icon designs);
+  // easy to eyeball-verify and rendered as normal RGBA SVG here, not subject
+  // to Android's alpha-silhouette extraction that made that case unforgiving.
+  _ICON_DOWNLOAD: '<svg viewBox="0 0 24 24" width="14" height="14"><path d="M12 3v10" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M7 9l5 5 5-5" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 19h14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg>',
+  _ICON_SAVED: '<svg viewBox="0 0 24 24" width="14" height="14"><path d="M5 12l5 5 9-9" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+
+  // Explicit save/remove-for-offline control (BACKLOG.md C item 3, the
+  // "explicit control" half — auto-cache-on-open is the other half, see
+  // Reader.open). Shared between the grid-card cover overlay and the table
+  // row's trailing button; .book-cover .offline-btn is what makes it an
+  // absolute-positioned corner badge specifically in grid mode (see CSS) —
+  // as a direct child of .book-row it just flows normally instead.
+  _offlineBtnHTML(id) {
+    const saved = BookCache.has(id);
+    const label = I18n.t(saved ? 'remove_offline' : 'save_offline');
+    return `<button class="offline-btn${saved ? ' saved' : ''}" data-offline-id="${esc(id)}" onclick="event.stopPropagation(); Library.toggleOffline('${esc(id)}')" aria-label="${esc(label)}" title="${esc(label)}">${saved ? this._ICON_SAVED : this._ICON_DOWNLOAD}</button>`;
+  },
+  // Updates just the one button in place (mirrors Covers._apply) — never a
+  // full re-render, so this is cheap to call after every save/remove/
+  // auto-cache without disturbing scroll position or anything else on screen.
+  _refreshOfflineBadge(id) {
+    const saved = BookCache.has(id);
+    const label = I18n.t(saved ? 'remove_offline' : 'save_offline');
+    document.querySelectorAll(`[data-offline-id="${CSS.escape(id)}"]`).forEach(btn => {
+      btn.classList.toggle('saved', saved);
+      btn.setAttribute('aria-label', label);
+      btn.setAttribute('title', label);
+      btn.innerHTML = saved ? this._ICON_SAVED : this._ICON_DOWNLOAD;
+    });
+  },
+  async toggleOffline(id) {
+    const wasSaved = BookCache.has(id);
+    try {
+      if (wasSaved) {
+        await BookCache.remove(id);
+        toast(I18n.t('removed_offline'));
+      } else {
+        toast(I18n.t('saving_offline'), 0);
+        const buf = await Drive.download(id);
+        await BookCache.set(id, buf);
+        hideToast();
+        toast(I18n.t('saved_offline'));
+      }
+    } catch (e) {
+      hideToast();
+      toast(I18n.t(wasSaved ? 'remove_offline_failed' : 'save_offline_failed', { msg: e.message }));
+    }
+    this._refreshOfflineBadge(id); // reflects the true current state either way
+  },
+
   // Shared per-book markup for both the grid card and the table row — same
   // title/progress/cover computation, just a different wrapper element and
   // class so a table row can stay visually compact.
@@ -3622,6 +3738,7 @@ const Library = {
     // thumbnail as a quick placeholder, then to the book glyph.
     const cover = Covers.urls[b.id]
       || (b.thumbnailLink ? b.thumbnailLink.replace('s220', 's400') : '');
+    const offlineBtn = this._offlineBtnHTML(b.id);
     const coverHTML = `
       <div class="book-cover" data-book-id="${esc(b.id)}">
         <span class="cover-fallback">&#128214;</span>
@@ -3629,6 +3746,7 @@ const Library = {
           ? `<img src="${esc(cover)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">`
           : ''}
         ${pct > 0 ? `<div class="book-progress-bar" style="width:${pct}%"></div>` : ''}
+        ${!isRow ? offlineBtn : ''}
       </div>`;
     const infoHTML = `
       <div class="book-info">
@@ -3636,7 +3754,7 @@ const Library = {
         <div class="book-meta">${esc(Meta.get(b.id)?.author || '')}</div>
       </div>`;
     const cls = isRow ? 'book-row' : 'book-card';
-    return `<div class="${cls}" data-book-id="${esc(b.id)}" onclick="Reader.open(${i})" role="button" tabindex="0" aria-label="Open ${esc(title)}">${coverHTML}${infoHTML}</div>`;
+    return `<div class="${cls}" data-book-id="${esc(b.id)}" onclick="Reader.open(${i})" role="button" tabindex="0" aria-label="Open ${esc(title)}">${coverHTML}${infoHTML}${isRow ? offlineBtn : ''}</div>`;
   },
 
   // Resolved display title for sorting/the A-Z scrubber — prefers the
@@ -3857,6 +3975,122 @@ const CoverCache = {
   },
 };
 
+// --- BookCache: full epub bytes for offline reading (BACKLOG.md C) --
+// A SEPARATE IndexedDB database from CoverCache's 'phonoleaf' DB — covers
+// are small and already have their own migration history; keeping this
+// isolated means nothing here can ever risk that DB's schema/migration.
+// Web: raw ArrayBuffer in IndexedDB (structured-clone handles it natively,
+// no base64 needed). Native: @capacitor/filesystem (Directory 'DATA' — not
+// 'CACHE', which the OS can purge under storage pressure and would silently
+// undo a deliberate "save for offline") — the bridge only accepts base64,
+// so buffers are chunk-encoded to avoid a stack overflow from spreading a
+// huge typed array as call arguments.
+// A lightweight localStorage INDEX (id -> {bytes, ts}) makes has()/list()
+// synchronous and cheap, so the library grid can check "is this saved?" for
+// every card on render without touching IndexedDB/Filesystem at all.
+const BookCache = {
+  _db: null,
+  _persisted: false,
+  _open() {
+    if (this._db) return this._db;
+    this._db = new Promise((resolve, reject) => {
+      const r = indexedDB.open('phonoleaf-offline', 1);
+      r.onupgradeneeded = () => { if (!r.result.objectStoreNames.contains('books')) r.result.createObjectStore('books'); };
+      r.onsuccess = () => resolve(r.result);
+      r.onerror  = () => reject(r.error);
+    });
+    return this._db;
+  },
+  _index() { try { return JSON.parse(localStorage.getItem('pl_offline_books') || '{}'); } catch (_) { return {}; } },
+  _saveIndex(idx) { try { localStorage.setItem('pl_offline_books', JSON.stringify(idx)); } catch (_) {} },
+  has(id) { return !!this._index()[id]; },
+  list() { return Object.keys(this._index()); },
+
+  _bufToB64(buf) {
+    const bytes = new Uint8Array(buf);
+    let binary = '';
+    const CHUNK = 0x8000; // 32KB at a time — avoids "too many arguments" on huge files
+    for (let i = 0; i < bytes.length; i += CHUNK) {
+      binary += String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK));
+    }
+    return btoa(binary);
+  },
+  _b64ToBuf(b64) {
+    const binary = atob(b64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return bytes.buffer;
+  },
+
+  // Returns null on ANY failure (missing, corrupt, plugin unavailable) —
+  // callers fall through to a fresh Drive download, so a cache-read problem
+  // must never break opening a book.
+  async get(id) {
+    if (!this.has(id)) return null;
+    if (App.isNative()) {
+      try {
+        const fs = App._plugin('Filesystem');
+        if (!fs) return null;
+        const res = await fs.readFile({ path: `books/${id}.epub`, directory: 'DATA' });
+        return this._b64ToBuf(res.data);
+      } catch (_) { return null; }
+    }
+    try {
+      const db = await this._open();
+      return await new Promise(resolve => {
+        const req = db.transaction('books', 'readonly').objectStore('books').get(id);
+        req.onsuccess = () => resolve(req.result || null);
+        req.onerror  = () => resolve(null);
+      });
+    } catch (_) { return null; }
+  },
+  // Deliberately does NOT swallow errors (unlike get()) — the explicit
+  // "save for offline" action needs a real failure to reach its own catch
+  // block so the UI can say "failed" instead of falsely claiming success.
+  // The background auto-cache-on-open call site is the one that chooses to
+  // ignore failures, via its own .catch(() => {}).
+  async set(id, buf) {
+    if (App.isNative()) {
+      const fs = App._plugin('Filesystem');
+      if (!fs) throw new Error('Filesystem plugin unavailable');
+      await fs.mkdir({ path: 'books', directory: 'DATA', recursive: true }).catch(() => {}); // ok if it already exists
+      await fs.writeFile({ path: `books/${id}.epub`, directory: 'DATA', data: this._bufToB64(buf) });
+    } else {
+      const db = await this._open();
+      await new Promise((resolve, reject) => {
+        const tx = db.transaction('books', 'readwrite');
+        tx.objectStore('books').put(buf, id);
+        tx.oncomplete = resolve;
+        tx.onerror = () => reject(tx.error);
+      });
+      if (!this._persisted) {
+        this._persisted = true;
+        try { await navigator.storage?.persist?.(); } catch (_) {}
+      }
+    }
+    const idx = this._index();
+    idx[id] = { bytes: buf.byteLength, ts: Date.now() };
+    this._saveIndex(idx);
+  },
+  async remove(id) {
+    if (App.isNative()) {
+      const fs = App._plugin('Filesystem');
+      if (fs) await fs.deleteFile({ path: `books/${id}.epub`, directory: 'DATA' });
+    } else {
+      const db = await this._open();
+      await new Promise((resolve, reject) => {
+        const tx = db.transaction('books', 'readwrite');
+        tx.objectStore('books').delete(id);
+        tx.oncomplete = resolve;
+        tx.onerror = () => reject(tx.error);
+      });
+    }
+    const idx = this._index();
+    delete idx[id];
+    this._saveIndex(idx);
+  },
+};
+
 // --- Covers: extract each book's real cover, throttled + cached -----
 const Covers = {
   urls:    {},   // book id -> object URL for the rendered cover (session cache)
@@ -3972,7 +4206,18 @@ const Reader = {
 
     try {
       toast(I18n.t('downloading_ellipsis'), 0);
-      const buf = await Drive.download(book.id);
+      // Offline reading (BACKLOG.md C items 2-3): a cache hit skips the Drive
+      // call entirely (works offline AND saves bandwidth/time when already
+      // saved). A miss downloads as before and auto-caches the fresh bytes
+      // in the background — fire-and-forget, never blocks getting into the
+      // book, and failures are silently ignored here (BookCache.set() still
+      // throws on failure; the explicit "save for offline" button is what
+      // surfaces that to the user, this path just shrugs and moves on).
+      let buf = await BookCache.get(book.id);
+      if (!buf) {
+        buf = await Drive.download(book.id);
+        BookCache.set(book.id, buf).then(() => Library._refreshOfflineBadge(book.id)).catch(() => {});
+      }
       hideToast();
 
       // Destroy previous
@@ -4061,8 +4306,13 @@ const Reader = {
     } catch (e) {
       console.error(e);
       document.getElementById('reader-loading').classList.add('hidden');
+      // A clearer message for the specific, common offline case (no signal,
+      // book was never saved) beats the raw fetch-failure text underneath it.
+      const msg = (!navigator.onLine && !BookCache.has(book.id))
+        ? I18n.t('offline_book_not_downloaded')
+        : I18n.t('failed_to_load_book', { msg: e.message });
       document.getElementById('viewer').innerHTML =
-        `<div style="display:flex;align-items:center;justify-content:center;height:100%;padding:2rem;text-align:center;color:var(--accent);background:#fff"><p>Failed to load book:<br>${esc(e.message)}</p></div>`;
+        `<div style="display:flex;align-items:center;justify-content:center;height:100%;padding:2rem;text-align:center;color:var(--accent);background:#fff"><p>${esc(msg)}</p></div>`;
     }
   },
 

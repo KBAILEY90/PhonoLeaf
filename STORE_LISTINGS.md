@@ -11,9 +11,21 @@ details line.
 
 > Keep claims accurate. Both stores reject misleading copy, and the honest pitch
 > (your own books, private, on your device) is strong on its own.
-> **Offline note:** the "download to listen offline" line depends on the offline
-> feature in `BACKLOG.md` section C shipping first. Do not publish the offline claim
-> until downloaded books actually play with no network.
+> **Offline note (updated 2026-08-10):** `BACKLOG.md` section C now has a real
+> implementation — cached Drive file list for offline library browsing, cached
+> epub bytes (auto-saved on open, plus an explicit save/remove button with an
+> availability badge on every book), and `Reader.open()` prefers the cached
+> copy before ever calling Drive. **The web (IndexedDB) path is verified in a
+> browser harness — cache round-trips, the save/remove toggle, the offline
+> library-list fallback, and the offline-specific error message all confirmed
+> working.** The **native path is NOT yet device-verified** — it's written
+> against `@capacitor/filesystem`'s documented API (already a dependency,
+> used elsewhere in this codebase) but never run on a real Android device, no
+> JDK/SDK in this environment, same standing caveat as every other native
+> change in this project. **Do not publish the offline claim to the Play
+> Store / App Store listings until a real device confirms a saved book
+> actually opens with the network off** — the web verification doesn't cover
+> the platform these listings are actually for.
 
 ---
 
