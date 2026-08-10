@@ -49,6 +49,17 @@
             android:exported="false"
             android:foregroundServiceType="mediaPlayback" />
 
+        <!-- Keeps a voice-pack download (65-140 MB) alive when the screen locks
+             mid-download. See PackDownloadService.kt. exported=false: only we
+             start it. foregroundServiceType="dataSync" is Android's own type for
+             "transferring data through the network and shouldn't be interrupted
+             by the system" — a different type than PlaybackService's
+             mediaPlayback, since this is a different kind of work. -->
+        <service
+            android:name=".PackDownloadService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
@@ -71,6 +82,11 @@
          (Android 13+) lets the media notification show. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <!-- PackDownloadService: keeps a voice-pack download running with the
+         screen off (Android 14+/targetSdk 36 requires this for any dataSync
+         FGS, same rule that already applies to FOREGROUND_SERVICE_MEDIA_PLAYBACK
+         above). -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- PARTIAL (CPU) wake lock: the foreground service stops the app being
          killed, but not the CPU sleeping when the screen locks — and every

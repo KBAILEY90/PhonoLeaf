@@ -535,12 +535,26 @@
                 // folder that ensureReady() then treats as ready.
                 val tmp = File(context.filesDir, "$folder-tmp")
                 var conn: HttpURLConnection? = null
+                // Tracks whether THIS task told PackDownloadService it started, so
+                // the finally block only calls finish() for a task that actually
+                // called start() — a task cancelled while still queued (below)
+                // never touches the service at all, so it must not decrement a
+                // counter it never incremented.
+                var serviceStarted = false
                 try {
                     // Cancelled while still QUEUED behind another download —
                     // bail before opening a connection. Without this the task
                     // happily downloaded the whole archive anyway and only
                     // noticed at the first tar-entry check.
                     if (stamp != currentDownloadEpoch(model)) throw InterruptedIOException("cancelled")
+                    // Keep the download alive with the screen off — without this
+                    // the download thread and network access get suspended by
+                    // Doze/App Standby the moment the screen locks, and the
+                    // transfer stalls and never completes (owner-reported
+                    // 2026-08-08). Mirrors why PlaybackService exists for TTS
+                    // playback; see PackDownloadService.kt.
+                    PackDownloadService.start(context, model)
+                    serviceStarted = true
                     // Fires the MOMENT this task actually starts running — i.e. once
                     // downloadExecutor has dequeued it, not when downloadPack() was
                     // called. A download queued behind another gets NO packProgress
@@ -580,10 +594,12 @@
                         val now = System.currentTimeMillis()
                         if (now - lastEmit >= 200) {
                             lastEmit = now
+                            val pct = if (total > 0) minOf(99, (downloaded * 100 / total).toInt()) else 0
                             val p = JSObject()
                             p.put("model", model); p.put("downloaded", downloaded); p.put("total", total)
-                            p.put("pct", if (total > 0) minOf(99, (downloaded * 100 / total).toInt()) else 0)
+                            p.put("pct", pct)
                             notifyListeners("packProgress", p)
+                            PackDownloadService.progress(context, model, pct)
                         }
                     }
                     BZip2CompressorInputStream(progressIn).use { bz ->
@@ -622,6 +638,7 @@
                     call.reject(e.message ?: "download failed", e as? Exception ?: RuntimeException(e))
                 } finally {
                     conn?.disconnect()
+                    if (serviceStarted) PackDownloadService.finish(context)
                 }
             }
         }

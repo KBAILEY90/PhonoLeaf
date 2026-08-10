@@ -137,6 +137,12 @@
       width: 100%; max-width: 26rem;
       display: flex; flex-direction: column; align-items: center;
     }
+    /* Lets a French-speaking visitor switch before signing in, matching the
+       toggle home.html already gives out-of-app visitors — previously the
+       only in-app toggle lived in Settings, unreachable pre-auth, so a wrong
+       auto-detected language had no way to be corrected until after signing
+       in and finding it. */
+    .si-langtoggle { align-self: flex-end; margin-bottom: 0.9rem; }
     .si-lede { color: var(--text-dim); font-size: 0.92rem; line-height: 1.5; margin: 0 0 1.7rem; }
     .si-steps { width: 100%; display: flex; flex-direction: column; gap: 0.9rem; margin-bottom: 1.8rem; text-align: left; }
     .si-step { display: flex; align-items: flex-start; gap: 0.7rem; }
@@ -871,6 +877,10 @@
        slowed down; a future multi-step carousel can slice this same content
        across slides without rewriting it. -->
   <div class="si-wrap">
+    <div class="seg lang-seg si-langtoggle" role="group" aria-label="Language">
+      <button data-lang="en" onclick="I18n.setLang('en')">EN</button>
+      <button data-lang="fr" onclick="I18n.setLang('fr')">FR</button>
+    </div>
     <div class="app-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="90" height="90" aria-hidden="true"><rect width="100" height="100" rx="22" fill="#3E8E6B"/><path d="M50 24 C68 38 68 66 50 82 C32 66 32 38 50 24 Z" fill="#F4F1E8"/><path d="M50 82 L50 90" stroke="#F4F1E8" stroke-width="3.2" stroke-linecap="round"/><path d="M35 53 Q40 42 45 53 T55 53 T65 53" fill="none" stroke="#3E8E6B" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
     <div class="app-name">PhonoLeaf</div>
     <div class="app-tagline">A voice for every page</div>
@@ -966,7 +976,7 @@
       </div>
       <div class="set-row">
         <div><div class="sr-k" data-i18n="app_language">App language</div><div class="sr-sub" data-i18n="app_language_sub">Translates the Settings tab</div></div>
-        <div class="seg" id="lang-seg">
+        <div class="seg lang-seg" id="lang-seg">
           <button data-lang="en" onclick="Settings.setLang('en')">EN</button>
           <button data-lang="fr" onclick="Settings.setLang('fr')">FR</button>
         </div>
@@ -1501,7 +1511,7 @@ const STRINGS = {
     drive_folder: 'Drive folder', not_selected: 'Not selected',
     send_feedback: 'Send feedback', send_feedback_sub: 'Ideas or anything on your mind', open: 'Open',
     report_bug: 'Report a bug', report_bug_sub: 'Tell us what went wrong',
-    app_language: 'App language', app_language_sub: 'Translates the Settings tab',
+    app_language: 'App language', app_language_sub: 'Translates the whole app',
     footer_tagline: 'PhonoLeaf · A voice for every page',
     privacy_policy: 'Privacy Policy', terms_of_service: 'Terms of Service',
 
@@ -1656,7 +1666,7 @@ const STRINGS = {
     drive_folder: 'Dossier Drive', not_selected: 'Non sélectionné',
     send_feedback: 'Envoyer des commentaires', send_feedback_sub: 'Idées ou tout ce qui vous passe par la tête', open: 'Ouvrir',
     report_bug: 'Signaler un problème', report_bug_sub: 'Dites-nous ce qui n’a pas fonctionné',
-    app_language: 'Langue de l’application', app_language_sub: 'Traduit l’onglet Paramètres',
+    app_language: 'Langue de l’application', app_language_sub: 'Traduit toute l’application',
     footer_tagline: 'PhonoLeaf · Une voix pour chaque page',
     privacy_policy: 'Politique de confidentialité', terms_of_service: 'Conditions d’utilisation',
 
@@ -1836,6 +1846,11 @@ const I18n = {
     root.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = this.t(el.dataset.i18n); });
     root.querySelectorAll('[data-i18n-title]').forEach(el => { el.title = this.t(el.dataset.i18nTitle); });
     root.querySelectorAll('[data-i18n-placeholder]').forEach(el => { el.placeholder = this.t(el.dataset.i18nPlaceholder); });
+    // Any language-toggle button group (Settings' own, plus the sign-in
+    // screen's — see .lang-seg) stays in sync with the active language
+    // wherever apply() runs, not just after Settings.render(). Keeps the two
+    // toggles from ever disagreeing about which button is highlighted.
+    root.querySelectorAll('.lang-seg button').forEach(b => b.classList.toggle('on', b.dataset.lang === this.lang()));
   },
 };
 
@@ -2692,8 +2707,7 @@ const Settings = {
     // strings below then overwrite the handful that depend on live state
     // (voice/folder/account/natural-voice status), same as the static ones
     // would otherwise be stuck in whatever language they were last set to.
-    I18n.apply(document.getElementById('settings-view'));
-    document.querySelectorAll('#lang-seg button').forEach(b => b.classList.toggle('on', b.dataset.lang === I18n.lang()));
+    I18n.apply(document.getElementById('settings-view')); // also syncs .lang-seg's .on state
     const m = Theme.mode();
     document.querySelectorAll('#theme-seg button').forEach(b => b.classList.toggle('on', b.dataset.mode === m));
     const sel = document.getElementById('set-speed'); if (sel) sel.value = localStorage.getItem('pl_speed') || '1';
