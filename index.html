@@ -1355,11 +1355,11 @@
       to a server to be turned into speech.
     </p>
     <p class="confirm-msg" style="font-size:0.85rem" data-i18n="voiceinfo_p2">
-      Capable devices get our very high-quality voice; other devices
-      automatically get our high-quality standard voice instead &mdash;
-      PhonoLeaf picks based on how fast your device can generate speech.
-      Only if neither can keep up, which is rare, does it briefly fall back
-      to the voice built into your phone, just so reading never stops.
+      Capable devices get the Upgraded voice; other devices automatically
+      get the Standard voice instead &mdash; PhonoLeaf picks based on how
+      fast your device can generate speech. Only if neither can keep up,
+      which is rare, does it briefly fall back to your phone&rsquo;s
+      Built-in voice, just so reading never stops.
     </p>
     <p class="confirm-msg" style="font-size:0.85rem">
       <b data-i18n="voiceinfo_p3_b">Retry</b><span data-i18n="voiceinfo_p3"> re-tests this device, which is worth doing if it happened to
@@ -1626,9 +1626,9 @@ const STRINGS = {
     voice: 'Voice', voice_sub_default: 'System default', change: 'Change',
     keep_screen_on: 'Keep screen on', keep_screen_on_sub: 'While audio is playing',
     natural_voice: 'Upgraded voice', natural_voice_checking: 'Checking…',
-    natural_voice_dead: 'Unavailable on this device — using the standard voice',
-    natural_voice_kokoro: 'On — high quality, generated on your device',
-    natural_voice_piper: 'Not available on this device — using the standard voice',
+    natural_voice_dead: 'Unavailable on this device — using the Built-in voice',
+    natural_voice_kokoro: 'On — Upgraded voice, generated on your device',
+    natural_voice_piper: 'Not available on this device — using the Standard voice',
     natural_voice_on: 'On — generated on your device',
     natural_voice_on_slow: 'On — generated on your device (may run slower than real time here)',
     on: 'On', retry: 'Retry',
@@ -1712,7 +1712,7 @@ const STRINGS = {
     get_more_voices: 'Get more voices', download_language_packs: 'Download language packs',
     may_run_slower: 'May run slower than real time on this device',
     no_voices_yet: 'No voices available yet — try again in a moment',
-    voice_tier_high: 'High', voice_tier_standard: 'Standard', voice_prefix: 'Voice: ',
+    voice_tier_high: 'Upgraded', voice_tier_standard: 'Standard', voice_prefix: 'Voice: ',
     gender_female: 'female', gender_male: 'male',
 
     // Language packs modal
@@ -1720,10 +1720,10 @@ const STRINGS = {
     pick_voice_title: 'Pick a voice to download',
     pick_voice_body: 'PhonoLeaf reads aloud with a natural voice that runs entirely on your device. Choose the language you want — you can add or remove others any time in Settings.',
     slow_note_title: 'Natural voice may run slower than real time here',
-    slow_note_body: 'You can still use it — playback may occasionally pause to catch up. Your device’s built-in voice is always available as a faster alternative in Settings.',
+    slow_note_body: 'You can still use it — playback may occasionally pause to catch up. Your device’s Built-in voice is always available as a faster alternative in Settings.',
     downloading_pct: 'Downloading… {pct}%', queued: 'Queued…', checking: 'Checking…', downloaded: 'Downloaded',
     cancel: 'Cancel', remove: 'Remove', download: 'Download', mb: '{mb} MB',
-    checking_your_device: 'Checking your device…', downloading_hq_pct: 'Downloading the high quality voice… {pct}%',
+    checking_your_device: 'Checking your device…', downloading_hq_pct: 'Downloading the Upgraded voice… {pct}%',
     lang_en_us: 'English (US)', lang_en_gb: 'English (UK)', lang_en: 'English',
     lang_fr: 'French', lang_de: 'German', lang_es: 'Spanish',
 
@@ -1737,7 +1737,7 @@ const STRINGS = {
     novoice_action: 'Download a voice',
     voiceinfo_title: 'About the natural voice',
     voiceinfo_p1: 'PhonoLeaf reads using one of its own natural-sounding voice models, generated entirely on your device — nothing you read is ever sent to a server to be turned into speech.',
-    voiceinfo_p2: 'Capable devices get our very high-quality voice; other devices automatically get our high-quality standard voice instead — PhonoLeaf picks based on how fast your device can generate speech. Only if neither can keep up, which is rare, does it briefly fall back to the voice built into your phone, just so reading never stops.',
+    voiceinfo_p2: 'Capable devices get the Upgraded voice; other devices automatically get the Standard voice instead — PhonoLeaf picks based on how fast your device can generate speech. Only if neither can keep up, which is rare, does it briefly fall back to your phone’s Built-in voice, just so reading never stops.',
     voiceinfo_p3_b: 'Retry', voiceinfo_p3: ' re-tests this device, which is worth doing if it happened to be busy the first time.',
     voicesetup_title: 'Setting up your voice', voicesetup_body: 'Checking which voices run best on your device…',
 
@@ -1766,14 +1766,14 @@ const STRINGS = {
 
     // Toasts
     voice_pack_downloaded: 'Voice pack downloaded', download_failed: 'Download failed: {msg}',
-    device_runs_best_standard: 'This device runs best with the standard voice',
-    installing_standard_instead: 'That voice needs a faster device — installing the standard one instead',
+    device_runs_best_standard: 'This device runs best with the Standard voice',
+    installing_standard_instead: 'That voice needs a faster device — installing the Standard voice instead',
     download_cancelled: 'Download cancelled', voice_pack_removed: 'Voice pack removed',
     could_not_remove_pack: 'Could not remove pack: {msg}',
     downloading_ellipsis: 'Downloading...',
     pack_not_installed_switched: 'That voice’s language pack isn’t installed — switched to {voice}',
-    natural_voice_struggling: 'The natural voice is struggling on this device — using the standard voice for now',
-    device_cant_run_realtime: 'This device can’t run the natural voice in real time — using the standard voice.',
+    natural_voice_struggling: 'The natural voice is struggling on this device — using the Built-in voice for now',
+    device_cant_run_realtime: 'This device can’t run the natural voice in real time — using the Built-in voice.',
     check_connection: 'check your connection and try again',
     auth_loading: 'Auth loading, please wait...', sign_in_failed: 'Sign-in failed: {msg}',
     sign_in_not_configured: 'Sign-in not configured for the app build yet',
@@ -1789,8 +1789,8 @@ const STRINGS = {
     voice: 'Voix', voice_sub_default: 'Voix du système', change: 'Modifier',
     keep_screen_on: 'Garder l’écran allumé', keep_screen_on_sub: 'Pendant la lecture audio',
     natural_voice: 'Voix améliorée', natural_voice_checking: 'Vérification…',
-    natural_voice_dead: 'Non disponible sur cet appareil — voix standard utilisée',
-    natural_voice_kokoro: 'Activée — haute qualité, générée sur votre appareil',
+    natural_voice_dead: 'Non disponible sur cet appareil — voix intégrée utilisée',
+    natural_voice_kokoro: 'Activée — voix améliorée, générée sur votre appareil',
     natural_voice_piper: 'Non disponible sur cet appareil — voix standard utilisée',
     natural_voice_on: 'Activée — générée sur votre appareil',
     natural_voice_on_slow: 'Activée — générée sur votre appareil (peut être plus lente que le temps réel ici)',
@@ -1875,7 +1875,7 @@ const STRINGS = {
     get_more_voices: 'Obtenir plus de voix', download_language_packs: 'Télécharger des packs de langue',
     may_run_slower: 'Peut être plus lente que le temps réel sur cet appareil',
     no_voices_yet: 'Aucune voix disponible pour l’instant — réessayez dans un moment',
-    voice_tier_high: 'Haute', voice_tier_standard: 'Standard', voice_prefix: 'Voix : ',
+    voice_tier_high: 'Améliorée', voice_tier_standard: 'Standard', voice_prefix: 'Voix : ',
     gender_female: 'femme', gender_male: 'homme',
 
     // Packs de langue
@@ -1886,7 +1886,7 @@ const STRINGS = {
     slow_note_body: 'Vous pouvez tout de même l’utiliser — la lecture peut parfois marquer une pause pour rattraper son retard. La voix intégrée à votre appareil reste toujours disponible comme solution de rechange plus rapide, dans les Paramètres.',
     downloading_pct: 'Téléchargement… {pct} %', queued: 'En attente…', checking: 'Vérification…', downloaded: 'Téléchargée',
     cancel: 'Annuler', remove: 'Supprimer', download: 'Télécharger', mb: '{mb} Mo',
-    checking_your_device: 'Vérification de votre appareil…', downloading_hq_pct: 'Téléchargement de la voix haute qualité… {pct} %',
+    checking_your_device: 'Vérification de votre appareil…', downloading_hq_pct: 'Téléchargement de la voix améliorée… {pct} %',
     lang_en_us: 'Anglais (É.-U.)', lang_en_gb: 'Anglais (R.-U.)', lang_en: 'Anglais',
     lang_fr: 'Français', lang_de: 'Allemand', lang_es: 'Espagnol',
 
@@ -1900,7 +1900,7 @@ const STRINGS = {
     novoice_action: 'Télécharger une voix',
     voiceinfo_title: 'À propos de la voix naturelle',
     voiceinfo_p1: 'PhonoLeaf lit vos livres avec l’un de ses propres modèles de voix au son naturel, générée entièrement sur votre appareil — rien de ce que vous lisez n’est jamais envoyé à un serveur pour être transformé en parole.',
-    voiceinfo_p2: 'Les appareils performants obtiennent notre voix de très haute qualité; les autres appareils obtiennent automatiquement notre voix standard de haute qualité à la place — PhonoLeaf choisit selon la rapidité avec laquelle votre appareil peut générer la parole. C’est seulement si aucune des deux n’y arrive, ce qui est rare, qu’elle bascule brièvement vers la voix intégrée à votre téléphone, simplement pour que la lecture ne s’arrête jamais.',
+    voiceinfo_p2: 'Les appareils performants obtiennent la voix améliorée; les autres appareils obtiennent automatiquement la voix standard à la place — PhonoLeaf choisit selon la rapidité avec laquelle votre appareil peut générer la parole. C’est seulement si aucune des deux n’y arrive, ce qui est rare, qu’elle bascule brièvement vers la voix intégrée à votre téléphone, simplement pour que la lecture ne s’arrête jamais.',
     voiceinfo_p3_b: 'Réessayer', voiceinfo_p3: ' teste de nouveau cet appareil, ce qui vaut la peine si celui-ci était occupé la première fois.',
     voicesetup_title: 'Configuration de votre voix', voicesetup_body: 'Vérification des voix qui fonctionnent le mieux sur votre appareil…',
 
@@ -1935,8 +1935,8 @@ const STRINGS = {
     could_not_remove_pack: 'Impossible de supprimer le pack : {msg}',
     downloading_ellipsis: 'Téléchargement...',
     pack_not_installed_switched: 'Le pack de langue de cette voix n’est pas installé — remplacée par {voice}',
-    natural_voice_struggling: 'La voix naturelle peine sur cet appareil — utilisation de la voix standard pour l’instant',
-    device_cant_run_realtime: 'Cet appareil ne peut pas exécuter la voix naturelle en temps réel — utilisation de la voix standard.',
+    natural_voice_struggling: 'La voix naturelle peine sur cet appareil — utilisation de la voix intégrée pour l’instant',
+    device_cant_run_realtime: 'Cet appareil ne peut pas exécuter la voix naturelle en temps réel — utilisation de la voix intégrée.',
     check_connection: 'vérifiez votre connexion et réessayez',
     auth_loading: 'Chargement de l’authentification, veuillez patienter...', sign_in_failed: 'Échec de la connexion : {msg}',
     sign_in_not_configured: 'La connexion n’est pas encore configurée pour cette version de l’application',
