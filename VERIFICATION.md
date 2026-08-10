@@ -472,8 +472,10 @@ you two weeks.
       file for the full email and what it means.
 - [ ] **13. Complete the AL1 CASA assessment before Nov 3, 2026.** AL1 only
       (not AL2 — that tier is for Google Workspace Marketplace badging, not
-      relevant here). Status: **outreach sent to Eydle 2026-08-05, awaiting
-      response** — see below. Nothing paid or started yet.
+      relevant here). Status: **Eydle engaged, invoice paid (2026-08-10)** —
+      see "Decision: Eydle, invoice paid" below. Onboarding (Letter of
+      Engagement, Evidence Questionnaire, Test Environment setup) not yet
+      started.
 - [ ] **14. Once CASA is complete, reply to Google's email to confirm** — the
       email requires a direct reply after addressing the requirement, not
       just completing it silently.
@@ -612,6 +614,51 @@ risk from starting now, and no double-payment risk from not bundling iOS in.
 (ask about the discount first), or get a comparable quote from TAC first for
 comparison — TAC's pricing was researched ($675/$855/$3600 tiers) but no
 outreach was sent to them.
+
+### Decision: Eydle, invoice paid (2026-08-10)
+
+A follow-up email from Birendra Jha reiterated the same terms as the
+2026-08-06 response:
+
+> Adding iOS later does not require a new assessment.
+>
+> Details of CASA AL1 (formerly Tier2) assessment are as follows. Please let
+> me know if you have questions.
+>
+> Pricing (Time to Initial LOV, Number of Retesting)
+> - USD 770 (3 weeks, Unlimited)
+>
+> 10% off for startups (less than 1 million USD raised), nonprofits, indie
+> developers and multiple assessments.
+>
+> Relevant Notes:
+> - Authorized lab submits Letter of Validation (LOV) to Google/Platform/ADA.
+> - Lab will retest after the developer fixes issues. Retests must be done
+>   within 3 months.
+> - In AL2, the lab collects most of the evidence. In AL1, the developer
+>   collects the evidence.
+> - Onboarding includes signing Letter of Engagement, completing Evidence
+>   Questionnaire and setting up Test Environment (details will be provided).
+
+**Owner paid the invoice off this email.** TAC was not pursued for a
+comparison quote — Eydle's iOS-bundling answer plus a repeated, consistent
+quote was enough to decide.
+
+**Whether the 10%-off eligibility was actually applied to the paid amount is
+unconfirmed** — the email restates it as available rather than confirming
+it was used on this invoice. Worth checking the actual receipt ($770 vs
+$693) if it matters for expense records later; not chased further here.
+
+**Status: PAID, onboarding not yet started.** Next steps per the email's own
+"Onboarding includes" line: (1) sign the Letter of Engagement, (2) complete
+the Evidence Questionnaire, (3) set up the Test Environment (Eydle to
+provide details for the last one). Since AL1 puts evidence-collection on the
+developer, these three are real work, not a formality — and the "3 weeks to
+initial LOV" clock most likely starts once onboarding is actually complete
+(evidence questionnaire + test environment in particular), not from the
+payment date. That start-date assumption isn't confirmed by anything Eydle
+has sent — worth asking them directly rather than assuming once the
+onboarding materials arrive.
 
 ### Play Store track — can run in parallel
 

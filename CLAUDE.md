@@ -3006,9 +3006,28 @@ the working plan, not an exploration.
      asked for before signing), 3 weeks to initial Letter of Validation,
      unlimited retesting within 3 months. **Real implication beyond price**:
      in AL1 the developer (not the lab) collects most of the evidence, so
-     this needs real owner time once engaged, not just payment. **Nothing
-     paid or signed yet** — decision pending on Eydle vs. getting a
-     comparable quote from TAC first.
+     this needs real owner time once engaged, not just payment.
+   **DECIDED + ENGAGED 2026-08-10: Eydle chosen (no separate TAC quote
+   pursued), invoice paid.** A follow-up email from Birendra Jha (Eydle
+   co-founder) reiterated the same terms — USD 770, 3 weeks to initial LOV,
+   unlimited retesting within the 3-month window, the 10%-off eligibility
+   (startups/nonprofits/indie developers/multiple assessments) — and the
+   owner paid the invoice off that email. **Whether the 10% indie-developer
+   discount was actually applied to the paid amount is unconfirmed** — the
+   email restates the discount as available rather than confirming it was
+   used, and this note shouldn't assume either way; check the actual invoice/
+   receipt total against $770 vs $693 if it matters later (e.g. for expense
+   records).
+   **Immediate next steps, per the same email — onboarding, not yet done:**
+   (1) sign the Letter of Engagement, (2) complete the Evidence
+   Questionnaire, (3) set up the Test Environment (Eydle to provide details).
+   Recall from the AL1/AL2 distinction above: in AL1 **the developer collects
+   most of the evidence**, not the lab — so these three steps are real owner
+   work, not a formality, and the 3-week-to-LOV clock most likely starts once
+   onboarding (particularly the evidence questionnaire + test environment)
+   is actually complete, not from the payment date. Worth clarifying with
+   Eydle if the clock's start date isn't stated explicitly in the onboarding
+   materials they send next.
    Full reply text and lab research are in `VERIFICATION.md`.
 
    Do not change publish status (Testing → Production) or make unnecessary
