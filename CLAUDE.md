@@ -2545,13 +2545,10 @@ most libraries don't have something under every letter.
   incremented. `cancelDownload()` needed no changes — cancellation already
   works by bumping the per-model epoch, which the download loop's own check
   throws on, landing in the same `catch`/`finally` path.
-  **Not device-verified** — no JDK/Android SDK in this environment, same
-  standing caveat as every other native change in this file; the Kotlin was
-  written and reviewed carefully against `PlaybackService.kt`'s proven
-  pattern but never compiled. First real device test should confirm a
-  download genuinely survives the screen locking mid-transfer, and that the
-  notification's progress updates and disappears correctly across a
-  multi-pack queue.
+  **DEVICE-VERIFIED 2026-08-10 — owner confirmed working.** No JDK/Android
+  SDK in this environment, so this was written and reviewed carefully
+  against `PlaybackService.kt`'s proven pattern but never compiled here; the
+  owner's own on-device rebuild + test is what confirmed it.
 - **"I don't think the home pages, onboarding, sign-in pages have [a language
   toggle] right now."** Correct — the only in-app toggle lived in Settings
   (`#lang-seg`), unreachable before signing in, so a wrong auto-detected
@@ -3255,6 +3252,13 @@ the working plan, not an exploration.
        which matters specifically for compiling sherpa-onnx from source).
        No engineering has started; next concrete step is Apple Developer
        Program enrollment, which can run in parallel with hardware delivery.
+       **UPDATE 2026-08-10: the MacBook Air purchase above fell through**
+       (seller didn't show) — owner is looking for another one; spec/rejection
+       reasoning above still stands as the buying criteria for whichever
+       machine replaces it. **iPhone XR now expected 2026-08-12** (Wednesday).
+       Apple Developer Program enrollment still hasn't been started and
+       remains the actionable next step, since it doesn't depend on either
+       device arriving.
 4. ~~**Privacy policy + ToS**~~ — **DONE (2026-07-22).** `privacy.html` /
    `terms.html` at the repo root, live at
    `kbailey90.github.io/PhonoLeaf/privacy.html` (and `/terms.html`) — same
@@ -3324,8 +3328,12 @@ the working plan, not an exploration.
      `BUSINESS.md` §3, with a `TODO: lawyer review` comment left in the HTML.
      Currency (USD) and the three time-window values are Cowork's suggested
      defaults, not owner/lawyer-confirmed yet — see `BUSINESS.md`'s roadmap
-     item 4 for what's still open. **Still not lawyer-reviewed** — flag for
-     legal review before launch; jurisdiction is **Québec, Canada** (owner in
+     item 4 for what's still open. **Lawyer engaged 2026-08-10 — awaiting
+     response.** Owner has retained a lawyer and sent both the ToS/Privacy
+     review request and the business-registration question (structure,
+     REQ registration — see `BUSINESS.md` "Gating, do now" item 2) in one
+     pass; nothing back yet. Still treat as **not lawyer-reviewed** until
+     that response lands. Jurisdiction is **Québec, Canada** (owner in
      Longueuil). Québec adds French language (Bill 96), Consumer Protection Act,
      and GST/QST obligations (French Terms/Privacy/marketing, Québec governing
      law, GST+QST, REQ registration); see `BUSINESS.md` "Québec compliance". `home.html`'s CTA note changed from "Free" to "Free 7 day
