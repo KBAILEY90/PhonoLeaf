@@ -2698,6 +2698,54 @@ respecting by design, no new vendor relationship.
   `pl_lang` unset beforehand), the toggle's highlighted button stays correct
   after the switch, and `pl_lang` persists across reload.
 
+## Voice-tier terminology aligned: Built-in, Standard, Upgraded (2026-08-10)
+
+Owner: *"We should align on what we call the models. I think we should go
+Built-in, Standard, and Upgraded."* Prompted by reviewing the "Upgraded
+voice" rename above and the VoiceInfo copy fix that followed it — both were
+correct in isolation, but "standard" was being used across the app to mean
+two genuinely different things depending on which string you happened to
+read: **Piper** (the baseline on-device neural voice) in some places, the
+**phone's own OS voice** (the true last-resort fallback) in others. Same
+word, contradictory meaning.
+
+Three names now used consistently everywhere a voice tier is named —
+Settings subtext, toasts, the voice picker's tier badge, and the VoiceInfo
+modal, EN + FR:
+- **Built-in** — the device's own OS voice (Web Speech / native
+  system TTS). FR: **"voix intégrée"** (already the term
+  `slow_note_body` used — extended everywhere else that previously said the
+  ambiguous "voix standard" for this specific meaning).
+- **Standard** — Piper, the baseline on-device neural voice. FR: **"voix
+  standard"** (this usage was already correct/unambiguous; unchanged).
+- **Upgraded** — Kokoro, the higher-quality on-device neural voice. FR:
+  **"voix améliorée"** (matches the Settings row's own title, `natural_voice`
+  = "Voix améliorée").
+- **English capitalizes all three as named tiers** wherever they appear,
+  including mid-sentence ("using the Built-in voice", "get the Upgraded
+  voice") — a deliberate style choice treating them as fixed labels rather
+  than generic adjectives, matching how the owner presented them. **French
+  deliberately does NOT capitalize the equivalent adjectives mid-sentence**
+  ("voix intégrée", "voix améliorée", "voix standard") — French capitalization
+  rules don't extend to common-noun-style branded terms the way English
+  marketing conventions do, and capitalizing there would read as a mistake,
+  not emphasis.
+- Touched: `natural_voice_dead`/`natural_voice_kokoro`/`natural_voice_piper`
+  (Settings subtext), `voice_tier_high` (renamed from "High" to "Upgraded" —
+  the voice picker's `✨ Natural · {tier}` badge), `downloading_hq_pct`,
+  `device_runs_best_standard`, `installing_standard_instead`,
+  `natural_voice_struggling`, `device_cant_run_realtime`, `slow_note_body`,
+  and `voiceinfo_p2` (both the STRINGS value and the static HTML fallback
+  text in the modal markup, kept in sync per the file's own convention).
+  `voice_tier_standard` ("Standard") and `device_runs_best_standard`/
+  `installing_standard_instead` (already correctly about Piper) needed no
+  content change, only this verification that they weren't part of the
+  ambiguity.
+- Verified in a browser harness across all five Settings "Upgraded voice"
+  row states, the VoiceInfo modal in both languages, and the voice picker's
+  tier badges rendered for a mix of real Kokoro/Piper voice entries (French
+  Piper voices correctly show "· Standard", English Kokoro voices "· Upgraded").
+
 ## Settings "Natural voice" renamed "Upgraded voice", On badge gated on Kokoro (2026-08-10)
 
 Owner: *"Let's rename the Natural Voice section to something like 'Upgraded
