@@ -112,7 +112,9 @@ Ordered by what gates revenue or has a deadline. "Code" = implementable in the r
    (Android); 7 day trial; entitlement tied to Google account; lifetime as
    non consumable. Fold in the deferred bug report photo upload endpoint here
    (roadmap item 5). **Full architecture + endpoints + build order in
-   `PAYMENTS_SPEC.md`.** *(Code.)*
+   `PAYMENTS_SPEC.md`, which also now carries the pre-implementation prep:
+   prerequisites and their ordering (§11), the CASA impact (§12), and the
+   decisions still open (§13).** *(Code.)*
    **Carries a CASA cost, confirmed by Eydle 2026-08-14: "Adding a backend
    will require a DAST scan. It may count as a significant change."** Today
    PhonoLeaf has no backend, which is what exempts it from the entire DAST
