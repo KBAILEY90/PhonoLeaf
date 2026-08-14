@@ -649,16 +649,56 @@ unconfirmed** — the email restates it as available rather than confirming
 it was used on this invoice. Worth checking the actual receipt ($770 vs
 $693) if it matters for expense records later; not chased further here.
 
-**Status: PAID, onboarding not yet started.** Next steps per the email's own
-"Onboarding includes" line: (1) sign the Letter of Engagement, (2) complete
-the Evidence Questionnaire, (3) set up the Test Environment (Eydle to
-provide details for the last one). Since AL1 puts evidence-collection on the
-developer, these three are real work, not a formality — and the "3 weeks to
-initial LOV" clock most likely starts once onboarding is actually complete
-(evidence questionnaire + test environment in particular), not from the
-payment date. That start-date assumption isn't confirmed by anything Eydle
-has sent — worth asking them directly rather than assuming once the
-onboarding materials arrive.
+### Letter of Engagement — signed (2026-08-12)
+
+**RESOLVES the discount question above: the 10% indie-developer discount
+WAS applied.** `Eydle_Customer_Engagement_Letter - Signed.pdf` — Assessment
+Fee $693, Certification Fee $0, Total $693. Signed by both parties: Ashwini
+Rao (CEO, Eydle) 2026-08-11, Kevin Bailey (CEO, PhonoLeaf) 2026-08-12.
+
+Key terms now on record, superseding the earlier verbal/email summary:
+- **Eydle Job ID 1024.** Engagement Partner Ashwini Rao, EQCR Reviewer
+  Birendra Jha.
+- **Evidence Collection Mode: Developer Collected** (confirms the AL1
+  developer-collected path, not lab-collected).
+- **Assessment Start Date: August 12, 2026. Estimated Completion Date:
+  September 2, 2026.**
+- **Schedule: "Testing and initial reporting will be completed within
+  fifteen (15) business days from receipt of all required materials."**
+  This answers the open question from the previous entry — the clock is
+  keyed to when Eydle actually receives the complete package (questionnaire
+  + evidence zip), not the signing/payment date. The Sept 2 estimate implies
+  Eydle is assuming that package lands within a day or two of signing — real
+  incentive to send it promptly rather than let it drift.
+- **Re-assessment: unlimited within 90 calendar days from delivery of the
+  initial report** (the earlier "3 months" was an approximation; 90 days is
+  the actual contracted figure).
+- **Test environment responsibility, spelled out for AL1 developer-collected
+  specifically**: "The Client gathers all required evidence from its own
+  production or pre-production systems and provides it securely to Eydle
+  for review. Eydle conducts its evaluation within its controlled review
+  environment and does not access live client systems." Consistent with the
+  no-backend exemption question already sent to Eydle — this confirms
+  Eydle never touches phonoleaf.com directly regardless of how that
+  question is answered.
+
+**Status: Letter of Engagement signed (step 1 of 3 onboarding items done).**
+Remaining: (2) the Evidence Questionnaire — drafted, technical tabs
+reviewed and rewritten, F2/F3 evidence gathered, F4 and the Gen 4/5 fields
+still open (Gen 4/5 blocked on a question sent to Eydle 2026-08-13, see
+below); (3) Test Environment setup — likely N/A per the no-backend
+exemption, pending Eydle's confirmation on the same question.
+
+### Follow-up questions sent to Eydle (2026-08-13)
+
+Emailed Birendra three questions before sending the package back: (1) does
+the "No Backend" exemption cover the entire "Prepare Test Environment"
+section (staging URL, bypass endpoint, SSO bypass, WAF, test account); (2)
+is an individual developer's own name/address acceptable for Gen 4/5 given
+no business entity is registered yet, and what happens to the certificate
+if one is registered later; (3) does adding a payments backend after the
+LOV but before the next annual recert require notification or a delta
+assessment. Awaiting reply.
 
 ### Play Store track — can run in parallel
 

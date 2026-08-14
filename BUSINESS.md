@@ -53,6 +53,24 @@ Confirm all of this with a Québec lawyer/accountant; recorded here so it isn't 
 
 ---
 
+## Company structure
+
+**Everbloom** is the parent company; **PhonoLeaf** is its first product. The plan is
+a family of products, each named after something in nature (PhonoLeaf is a leaf), all
+owned by Everbloom, whose name represents the whole of thriving nature. Everbloom is
+the legal entity and brand umbrella; PhonoLeaf is the thing that has the website, the
+app, and the customers, so it carries its own domain (phonoleaf.com) while Everbloom
+does not need one.
+
+- Use the same spelling of "Everbloom" on the CASA assessment and the Québec business
+  registration (Registraire des entreprises du Québec) so the entity, the assessment,
+  and future paperwork all line up.
+- Trademarking the parent name is a later, optional step. "Everbloom" is somewhat
+  common in other fields (gardening, wellness, retail) and the exact .com is taken,
+  so a distinguished form (Everbloom plus a word) or a logo mark may be needed if the
+  parent brand is ever protected. None of that affects using Everbloom as the company
+  name now.
+
 ## 1. Pricing (DECIDED 2026-08)
 
 | Plan | Price | Notes |
