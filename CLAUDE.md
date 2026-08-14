@@ -3691,3 +3691,23 @@ and fixed, in priority order:
    restricted `drive.readonly` scope, and the compensating control is Google's
    own verification/CASA review (roadmap item 2). Revisit only if the product
    ever accepts a per-file "select your books" model with no auto-sync.
+5. ~~**Capacitor's native-bridge logging could dump OAuth tokens to
+   Logcat**~~ — **DONE (2026-08-13).** Found while capturing F4 evidence for
+   the CASA questionnaire: a Logcat capture during native sign-in contained
+   the full Google access and refresh tokens in plaintext. Root cause is
+   Capacitor's own `native-bridge.js` — `cap.toNative()` calls
+   `cap.logToNative(callData)` whenever `Capacitor.isLoggingEnabled` is
+   true, dumping the full plugin call payload (including `CapacitorHttp`'s
+   raw HTTP response body from the token exchange) through `console.info`,
+   which Android's default WebView console handler forwards to Logcat.
+   **Not a production vulnerability** — `capacitor.config.json` had no
+   `loggingBehavior` set, so it defaulted to `"debug"`, which
+   `CapConfig.java` ties to Android's own `ApplicationInfo.FLAG_DEBUGGABLE`
+   (true only for debug-variant builds, never a signed release build). The
+   token only appeared because the capture was taken from a debug build
+   during testing — exactly as Capacitor intends. Set `loggingBehavior`
+   explicitly to `"none"` in `capacitor.config.json` anyway rather than rely
+   on that implicit default: cheap, removes a dependency on a Capacitor
+   default that could change in a future major version, and now directly
+   backs the claim in Config 2 of the CASA questionnaire. Verified the
+   setting reaches the built app via `npm run sync`.
