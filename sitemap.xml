@@ -2,6 +2,10 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
         xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
+    <loc>https://phonoleaf.com/</loc>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://phonoleaf.com/"/>
+  </url>
+  <url>
     <loc>https://phonoleaf.com/home.html</loc>
     <xhtml:link rel="alternate" hreflang="en" href="https://phonoleaf.com/home.html"/>
     <xhtml:link rel="alternate" hreflang="fr-ca" href="https://phonoleaf.com/home-fr.html"/>

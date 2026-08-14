@@ -14,6 +14,25 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="PhonoLeaf">
+  <!-- SEO. This file is served at the domain ROOT (phonoleaf.com/), so it is the
+       URL that inbound links and search results actually point at, even though
+       it is the app rather than the marketing page. Without these it presented
+       to crawlers as a bare "PhonoLeaf" title and no description. The sign-in
+       screen below carries real indexable content (headline, lede, the three
+       how-it-works steps, the privacy statement), so this is a legitimate
+       landing page — the description deliberately leads with the sign-in/app
+       framing so it does not read as a near-duplicate of home.html, which
+       covers the fuller marketing pitch and canonicalises to itself. -->
+  <meta name="description" content="Listen to the ebooks in your Google Drive as audiobooks. PhonoLeaf reads EPUB files aloud in a natural voice generated on your device, with offline listening and background playback. Sign in with Google to start.">
+  <link rel="canonical" href="https://phonoleaf.com/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="PhonoLeaf">
+  <meta property="og:title" content="PhonoLeaf — Turn your ebooks into audiobooks">
+  <meta property="og:description" content="Listen to the ebooks in your Google Drive, read aloud in a natural voice generated on your device. Private, offline, background playback.">
+  <meta property="og:url" content="https://phonoleaf.com/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="PhonoLeaf — Turn your ebooks into audiobooks">
+  <meta name="twitter:description" content="Listen to the ebooks in your Google Drive, read aloud in a natural voice generated on your device. Private, offline, background playback.">
   <!-- Defense-in-depth backstop, not a replacement for escaping dynamic content
        with esc(). No build step means inline <script>/<style> can't use hashes
        that survive every edit, so 'unsafe-inline' is accepted for those — but
@@ -42,7 +61,11 @@
   ">
   <link rel="manifest" href="manifest.json">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%233E8E6B'/%3E%3Cpath d='M50 24 C68 38 68 66 50 82 C32 66 32 38 50 24 Z' fill='%23F4F1E8'/%3E%3Cpath d='M50 82 L50 90' stroke='%23F4F1E8' stroke-width='3.2' stroke-linecap='round'/%3E%3Cpath d='M35 53 Q40 42 45 53 T55 53 T65 53' fill='none' stroke='%233E8E6B' stroke-width='3.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
-  <title>PhonoLeaf</title>
+  <!-- Carries the value proposition, not just the brand: this is the root URL's
+       search-result headline. The installed PWA/native app shows manifest.json's
+       "name" instead, so the longer form here does not affect the app's own
+       label on a home screen. -->
+  <title>PhonoLeaf — Turn your ebooks into audiobooks</title>
   <style>
     /* --- Reset & Variables --- */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -998,7 +1021,11 @@
       <button data-lang="fr" onclick="I18n.setLang('fr')">FR</button>
     </div>
     <div class="app-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="90" height="90" aria-hidden="true"><rect width="100" height="100" rx="22" fill="#3E8E6B"/><path d="M50 24 C68 38 68 66 50 82 C32 66 32 38 50 24 Z" fill="#F4F1E8"/><path d="M50 82 L50 90" stroke="#F4F1E8" stroke-width="3.2" stroke-linecap="round"/><path d="M35 53 Q40 42 45 53 T55 53 T65 53" fill="none" stroke="#3E8E6B" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-    <div class="app-name">PhonoLeaf</div>
+    <!-- h1, not a div: the root URL had no heading hierarchy at all, which
+         crawlers use to work out what a page is about. Visually identical —
+         the global reset zeroes the default h1 margin and .app-name sets its
+         own font-size/weight. -->
+    <h1 class="app-name">PhonoLeaf</h1>
     <div class="app-tagline">A voice for every page</div>
     <p class="si-lede" data-i18n="si_lede">Turn the ebooks already sitting in your Google Drive into an audiobook library.</p>
 
