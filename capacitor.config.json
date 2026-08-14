@@ -1,5 +1,6 @@
 {
   "appId": "com.phonoleaf.app",
   "appName": "PhonoLeaf",
-  "webDir": "www"
+  "webDir": "www",
+  "loggingBehavior": "none"
 }
