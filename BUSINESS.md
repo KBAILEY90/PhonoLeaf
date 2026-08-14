@@ -113,6 +113,18 @@ Ordered by what gates revenue or has a deadline. "Code" = implementable in the r
    non consumable. Fold in the deferred bug report photo upload endpoint here
    (roadmap item 5). **Full architecture + endpoints + build order in
    `PAYMENTS_SPEC.md`.** *(Code.)*
+   **Carries a CASA cost, confirmed by Eydle 2026-08-14: "Adding a backend
+   will require a DAST scan. It may count as a significant change."** Today
+   PhonoLeaf has no backend, which is what exempts it from the entire DAST
+   and test-environment portion of the AL1 assessment. Standing one up
+   removes that exemption. Budget **~$700–800 for a second assessment**
+   whenever payments ship — the engagement letter's included re-assessments
+   cover "verification of remediated findings only", so a scope change is
+   very unlikely to be free. Confirm the exact figure with Eydle before
+   committing to a payments timeline. Do **not** delay payments to avoid
+   this: one assessment costs less than a single month of delayed
+   subscription revenue at even modest volume. See `VERIFICATION.md`,
+   "Eydle's answers (2026-08-14)".
 4. **Finalize legal docs.** ~~Apply the Terms clauses in §3~~. **DONE
    2026-08-05**: `terms.html`'s old one paragraph "Pricing" section replaced
    with the full "Pricing & Payments" section from §3 (plans, free trial,

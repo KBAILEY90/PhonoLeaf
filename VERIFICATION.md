@@ -700,6 +700,64 @@ if one is registered later; (3) does adding a payments backend after the
 LOV but before the next annual recert require notification or a delta
 assessment. Awaiting reply.
 
+### Eydle's answers (2026-08-14) — all three resolved
+
+From Birendra Jha, verbatim:
+
+> 1. As indicated earlier, if there is absolutely no backend then the
+>    requirement does not apply.
+>
+> 2. We need the information that Google uses to identify the developer.
+>
+> 3. That depends on Google. Google can ask you to revalidate if significant
+>    changes are done. Adding a backend will require a DAST scan. It may
+>    count as a significant change.
+
+**1. No-backend exemption CONFIRMED.** The entire "Prepare Test Environment"
+section of the instructions PDF does not apply: no staging/UAT URL, no
+`POST /v1/auth/bypass-token` endpoint, no SSO bypass token, no WAF or
+rate-limit changes, no populated test account, and no OpenAPI 3.0
+specification. Note the conditional — "if there is **absolutely** no
+backend" — which is true today and is exactly what answer 3 puts a clock on.
+
+**2. Gen 4 / Gen 5 are NOT blocked on the business-registration decision.**
+The certificate carries whatever identifies the developer *to Google*, not a
+legal entity the developer intends to create later. For this project that is
+the GCP account holder on project `phonoleaf` — an individual, since no
+company is registered and the OAuth consent screen has no company-name or
+company-address field for an External/individual app. So Gen 4 is the
+owner's own name and Gen 5 the owner's own address, both already known.
+This decouples CASA completely from the Everbloom/incorporation question,
+which was the last thing holding up submission.
+
+**3. Adding a backend later has a real, quantified cost.** "Adding a backend
+will require a DAST scan" is unambiguous; whether it *also* triggers full
+revalidation is Google's call, not Eydle's. Consequences for the roadmap:
+- The decision to submit now rather than build payments first is
+  **confirmed correct on timing**. The LOV lands ~3 weeks after Eydle
+  receives the package, so submitting in mid-August clears the Nov 3
+  deadline with roughly two months of buffer. Building the payments
+  backend first (Stripe + Cloudflare Worker + Play Billing + entitlement,
+  none of it designed yet) would realistically push submission into late
+  September or October and leave no room for findings and remediation.
+- **Budget a second assessment for whenever payments ship.** The engagement
+  letter's included re-assessments cover "verification of remediated
+  findings only, unless otherwise agreed in writing" — a *scope change*
+  such as adding a backend is very unlikely to fall under that, so expect
+  to pay again (~$693–770 at current rates). Worth confirming the exact
+  figure with Eydle before committing to a payments timeline, and worth
+  recording in `BUSINESS.md` as a real launch cost rather than a surprise.
+- Do **not** contort the payments timeline to dodge this. One extra
+  assessment is trivial next to delaying subscription revenue by months.
+  If the backend happens to be ready near the annual recertification date
+  anyway, the two naturally merge into one assessment.
+
+**Worth asking Eydle before payments work starts:** does the included 90-day
+re-assessment window cover a scope change like adding a backend, or only
+remediation of findings — and if not, what does a backend-added assessment
+cost? That is a budgeting question, not a blocker for the current
+submission.
+
 ### Play Store track — can run in parallel
 
 - [ ] **Register the Play Console account** ($25 one-time).
