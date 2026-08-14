@@ -3205,6 +3205,28 @@ the working plan, not an exploration.
    materials they send next.
    Full reply text and lab research are in `VERIFICATION.md`.
 
+   **UPDATE 2026-08-14 — CASA package PARKED, not submitted, pending the
+   payments backend.** Onboarding with Eydle completed (engagement letter
+   signed 2026-08-12, questionnaire drafted, Gen 4/5 answered as the owner's
+   own name/address per Eydle's confirmation that CASA identity tracks the
+   GCP account holder, not a registered business — see `VERIFICATION.md`).
+   Then the owner challenged the "submit now" plan directly: with no backend
+   there's no way to charge anyone, and no pool of ~100 testers either, so
+   completing verification now bought nothing beyond not missing a date.
+   Two things had to be confirmed before parking was safe: whether a second,
+   backend-triggered assessment means paying Eydle again in full, and
+   whether the Nov 3, 2026 deadline is survivable if verification is delayed
+   until the backend is built. Eydle confirmed both favorably (2026-08-14):
+   the already-paid engagement covers a future assessment, and Eydle can
+   request a due-date extension directly from Google. **Decision: build the
+   payments backend first (see `PAYMENTS_SPEC.md`, especially §11–13, added
+   the same day), then submit ONE CASA assessment covering the finished
+   product**, rather than assessing a no-backend app now and re-assessing a
+   few months later regardless. The Google verification email naming the
+   Nov 3 deadline was forwarded to Eydle the same day so an extension request
+   can be initiated without further owner action. Full exchange in
+   `VERIFICATION.md`'s "Decision revisited (2026-08-14)" section.
+
    Do not change publish status (Testing → Production) or make unnecessary
    consent-screen edits while review is open — the console's own submission
    page warns that both can delay review.

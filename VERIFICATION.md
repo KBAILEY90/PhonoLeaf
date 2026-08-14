@@ -732,31 +732,62 @@ which was the last thing holding up submission.
 
 **3. Adding a backend later has a real, quantified cost.** "Adding a backend
 will require a DAST scan" is unambiguous; whether it *also* triggers full
-revalidation is Google's call, not Eydle's. Consequences for the roadmap:
-- The decision to submit now rather than build payments first is
-  **confirmed correct on timing**. The LOV lands ~3 weeks after Eydle
-  receives the package, so submitting in mid-August clears the Nov 3
-  deadline with roughly two months of buffer. Building the payments
-  backend first (Stripe + Cloudflare Worker + Play Billing + entitlement,
-  none of it designed yet) would realistically push submission into late
-  September or October and leave no room for findings and remediation.
-- **Budget a second assessment for whenever payments ship.** The engagement
-  letter's included re-assessments cover "verification of remediated
-  findings only, unless otherwise agreed in writing" — a *scope change*
-  such as adding a backend is very unlikely to fall under that, so expect
-  to pay again (~$693–770 at current rates). Worth confirming the exact
-  figure with Eydle before committing to a payments timeline, and worth
-  recording in `BUSINESS.md` as a real launch cost rather than a surprise.
-- Do **not** contort the payments timeline to dodge this. One extra
-  assessment is trivial next to delaying subscription revenue by months.
-  If the backend happens to be ready near the annual recertification date
-  anyway, the two naturally merge into one assessment.
+revalidation is Google's call, not Eydle's.
 
-**Worth asking Eydle before payments work starts:** does the included 90-day
-re-assessment window cover a scope change like adding a backend, or only
-remediation of findings — and if not, what does a backend-added assessment
-cost? That is a budgeting question, not a blocker for the current
-submission.
+**The "submit now, confirmed correct on timing" conclusion originally drawn
+here is SUPERSEDED — see the next section.** The reasoning wasn't wrong on
+its own terms (submitting in mid-August does clear Nov 3 with buffer), but
+it answered "can we hit the deadline," not "what do we actually gain by
+hitting it" — and challenged on that second question, the case for
+submitting now (with no way to charge anyone yet, and no meaningful pool of
+testers) turned out to be thin. Kept here for the record, not as guidance.
+
+### Decision revisited (2026-08-14): park CASA, build the payments backend
+first, submit once
+
+Owner pushback, paraphrased: submitting now doesn't get us to Production
+without a way to make money, and there's no pool of ~100 testers to make
+Testing-mode submission worthwhile either — so what does submitting now
+actually buy, beyond not missing a date? That question exposed two real
+unknowns that had to be answered before "submit now" vs. "park it and build
+payments first" could be decided honestly: whether a second assessment
+(triggered by adding a backend) means paying Eydle again in full, and
+whether missing Nov 3 while payments get built is actually survivable.
+
+Two questions sent to Eydle 2026-08-14, both now answered:
+
+> - Yes, we can use the payment for the future assessment.
+> - Eydle can request an extension from Google. Please send us the email you
+>   received from Google.
+
+Both unknowns are resolved:
+- **The already-paid engagement covers the future assessment** — parking
+  now and submitting once, after the backend exists, does not mean paying
+  ~$693–770 twice.
+- **The Nov 3 deadline is not a hard wall.** Eydle can request an extension
+  directly from Google — which the instructions PDF already implied
+  ("extensions... must be requested through the chosen ADA-authorized lab")
+  but hadn't been confirmed as actually available to us until now.
+
+**Decision: park the CASA package. Build the payments backend
+(`PAYMENTS_SPEC.md`) first, then submit one assessment that covers the
+finished product — no-backend-today assumptions and a functioning payment
+system both scoped in the same review**, rather than assessing an app that
+can't yet make money and re-assessing it a few months later regardless.
+
+**Already done, not just planned:** the Aug 6 Google email (the one naming
+the Nov 3 deadline and the lab-extension path) was forwarded to
+`support@eydle.com` the same day this was decided, so an extension request
+can be initiated without waiting on anything further from this end. The
+signed engagement letter and paid invoice from 2026-08-10/12 stand — nothing
+about parking loses that.
+
+**What "park" means concretely:** the questionnaire xlsx stays filled in
+(Gen 4/5 and the F-answers already correct per the answers above) but is not
+sent back to Eydle as a completed package yet. `PAYMENTS_SPEC.md` §12 ("what
+adding a backend does to the CASA assessment") already documents exactly
+which answers change once the backend exists — that section is the bridge
+between this decision and the eventual real submission.
 
 ### Play Store track — can run in parallel
 
