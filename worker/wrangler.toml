@@ -1,0 +1,32 @@
+name = "phonoleaf-entitlement"
+main = "src/index.js"
+compatibility_date = "2025-06-01"
+
+# Cloudflare KV: entitlement records, keyed by sub_hash (PAYMENTS_SPEC.md §2).
+# Create both namespaces once:
+#   npx wrangler kv namespace create ENTITLEMENTS
+#   npx wrangler kv namespace create ENTITLEMENTS --preview
+# then paste the two ids this prints below. The preview id is what local
+# `wrangler dev` uses, so local testing never touches production data.
+[[kv_namespaces]]
+binding = "ENTITLEMENTS"
+id = "REPLACE_WITH_KV_NAMESPACE_ID"
+preview_id = "REPLACE_WITH_PREVIEW_KV_NAMESPACE_ID"
+
+[vars]
+# Non-secret config. Both are already public (they're in index.html /
+# AndroidManifest.xml) — duplicated here because the Worker deploys
+# independently of the app. See CLAUDE.md "Critical facts" for the
+# canonical values if these ever need to change.
+GOOGLE_CLIENT_ID = "88179965472-codmbgtm99mgik9qke2kucbvfkbug3ul.apps.googleusercontent.com"
+GOOGLE_ANDROID_CLIENT_ID = "88179965472-cs9869nsk2b9i00v5ebo8sd9mrq9kmmn.apps.googleusercontent.com"
+TRIAL_DAYS = "7"
+
+# Secrets — never put these in this file. Set with `wrangler secret put NAME`:
+#   SUB_HASH_PEPPER              random string, pepper for hashing `sub` (§1)
+#   ENTITLEMENT_JWT_PRIVATE_KEY  ES256 private key as JWK JSON (§6) —
+#                                 generate with `npm run generate-keys`
+#
+# Added later, once their prerequisite in PAYMENTS_SPEC.md §11 exists:
+#   STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, PLAY_SERVICE_ACCOUNT_JSON,
+#   EYDLE_LAB_SECRET (staging only)

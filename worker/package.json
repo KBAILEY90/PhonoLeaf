@@ -1,0 +1,15 @@
+{
+  "name": "phonoleaf-entitlement-worker",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Cloudflare Worker: PhonoLeaf's entitlement backend. See PAYMENTS_SPEC.md at the repo root and this directory's README.",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "generate-keys": "node scripts/generate-entitlement-keypair.mjs"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}

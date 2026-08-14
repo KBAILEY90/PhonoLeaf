@@ -141,6 +141,19 @@ to a paid subscription and when.
 1. Add `openid` scope; get `sub`; stand up the Worker + KV + `GET /entitlement`
    with the server side trial. Gate the app on entitlement. (No money yet,
    validates the whole gate.)
+   **The Worker half of this is done (2026-08-14) — see `worker/`.**
+   `GET /entitlement` verifies a Google ID token (web or Android client) against
+   Google's live JWKS, derives `sub_hash`, starts the 7-day server-side trial on
+   first lookup, and returns a signed ES256 JWT. `/checkout`, `/portal`,
+   `/webhooks/stripe`, `/verify-play`, `/webhooks/play` are routed but 501,
+   each naming the §11 prerequisite it's blocked on. Verified functionally in a
+   Node harness (hashing, the trial state machine, JWT sign+verify+tamper
+   detection, Google-token accept/reject paths) — not deployed, and **not
+   called from the app yet on purpose**: adding the `openid` scope and gating
+   the UI on entitlement are held back as separate, later steps (see
+   `worker/README.md`'s "Not wired up yet" section), since gating now — before
+   Stripe checkout exists — would show every current user a paywall with no
+   way to pay.
 2. Stripe web: products, `/checkout`, `/portal`, webhooks, Stripe Tax. Web paid.
 3. Play Billing: products, purchase flow, `/verify-play`. Android paid + unified.
 4. Offline grace signed entitlement + lifetime durability hardening.

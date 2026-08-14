@@ -12,3 +12,8 @@ android/app/release/
 
 # IDE state (created when Android Studio opened the repo root by mistake)
 .idea/
+
+# Entitlement Worker (worker/) — local wrangler state and dev secrets.
+# node_modules/ above already covers worker/node_modules/.
+worker/.wrangler/
+worker/.dev.vars

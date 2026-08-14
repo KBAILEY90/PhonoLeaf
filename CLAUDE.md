@@ -3478,6 +3478,19 @@ the working plan, not an exploration.
    desktop bug-report photo upload too** (Cloudflare Worker + R2 — see the
    "Feedback + Report a bug" behavior note's "Desktop" bullet) rather than
    standing up a second, separate backend for it.
+   **STARTED 2026-08-14: `worker/` — the entitlement Cloudflare Worker from
+   `PAYMENTS_SPEC.md`.** `GET /entitlement` is real (Google ID token
+   verification via live JWKS, `sub_hash` derivation, the 7-day server-side
+   trial, a signed ES256 entitlement JWT); the Stripe/Play endpoints are
+   routed but 501 pending their prerequisites (business registration →
+   Stripe account; a Play Developer API service account). Deliberately
+   dependency-free (Web Crypto only, no `jsonwebtoken`) to keep the CASA
+   dependency-scan surface small — see `worker/README.md`. Verified with a
+   Node harness, not deployed. **Not called from the app** — adding the
+   `openid` scope and gating the UI on entitlement are separate steps, held
+   back because gating now, before Stripe checkout exists, would paywall
+   every current user with no way to pay. Full detail in `PAYMENTS_SPEC.md`
+   §9 step 1 and `worker/README.md`.
    **Owner intent (2026-07-28): NOT permanently free — a free trial (~1 week)
    then a paid subscription.** `terms.html` was updated the same day to stop
    asserting the app is free, and now carries a **Pricing** section promising
