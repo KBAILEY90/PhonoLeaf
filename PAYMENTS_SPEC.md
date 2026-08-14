@@ -243,29 +243,47 @@ Rotation plan matters too: the assessment asks about storage *and* rotation.
 
 These need answers before coding, not during.
 
-1. **Lifetime cap enforcement.** `BUSINESS.md` promises "limited to first ~500
-   buyers." Where does the counter live, and what stops two simultaneous
-   checkouts from both being #500? Cloudflare KV is eventually consistent and
-   is the wrong primitive for a hard limit — this likely needs D1, Durable
-   Objects, or simply reconciling against Stripe's own count. Also: is 500 a
-   hard stop or a soft marketing number? A public promise that is not enforced
-   is a consumer-protection problem, especially under Québec's CPA.
-2. **Currency.** `BUSINESS.md` records USD as a *suggested default*, not
-   owner-confirmed. Charging Québec customers in USD is legal but adds FX
-   friction; CAD may convert better locally. Decide before Stripe products are
-   created — changing currency later means recreating prices.
-3. **KV vs D1 for entitlement.** KV is eventually consistent (writes can take
-   seconds to propagate globally). The signed-JWT + offline-grace design in §6
-   mostly absorbs that, but a user who pays and immediately reloads could
-   briefly still see the paywall. Acceptable? Or use D1 for strong consistency?
-4. **Refund mechanics.** The ToS promises a 14-day web money-back window.
+**Resolved (owner, 2026-08-14):**
+- **Lifetime cap is a hard stop, not a soft marketing number.** Enforcement
+  therefore cannot live in Cloudflare KV — it's eventually consistent, so two
+  simultaneous checkouts could both land as #500. The counter needs a
+  strongly-consistent store: a **D1 row updated inside a transaction** (or a
+  Durable Object) that the checkout endpoint checks and increments atomically
+  before creating the Stripe session, not after. This is the one counter in
+  the whole design that can't use KV — everything else (entitlement cache,
+  JWT state) is fine with eventual consistency; this specific number isn't.
+- **Currency is USD only, charged and settled — no CAD Stripe product.**
+  Localized pricing is still worth doing, but strictly as **display-only
+  estimate**, not as a second currency: convert USD to the viewer's local
+  currency client-side (or via a Worker endpoint returning a rate cached in KV
+  for ~24h) and show it labeled as an estimate ("$5.99 USD ≈ $8.10 CAD") next
+  to the real USD price. The Stripe Checkout session — and the number the
+  customer actually sees at the point of payment — is always USD. Deliberately
+  NOT using Stripe's Adaptive Pricing / multi-currency Checkout: that feature
+  actually settles in the customer's local currency via Stripe's own
+  conversion, and the amount it displays at checkout is an estimate that can
+  differ from what actually clears once the card network does its own FX —
+  Stripe's own UI carries a "may vary" disclaimer for exactly that reason.
+  Display-only conversion avoids that discrepancy entirely, since the number
+  charged and the number promised are always the same USD figure. GST+QST
+  calculation is unaffected — it still runs against the one USD amount.
+
+**Still open:**
+1. **KV vs D1 for entitlement generally.** KV is eventually consistent (writes
+   can take seconds to propagate globally). The signed-JWT + offline-grace
+   design in §6 mostly absorbs that, but a user who pays and immediately
+   reloads could briefly still see the paywall. Acceptable? Or use D1 for
+   strong consistency here too? (Separate from the lifetime-cap counter above,
+   which is now decided as D1/Durable-Object regardless — this item is about
+   the general entitlement-check path.)
+2. **Refund mechanics.** The ToS promises a 14-day web money-back window.
    Manual (owner issues refunds in the Stripe dashboard) or automated? Manual
    is fine at low volume and needs no code — but it needs to actually happen
    within 14 days.
-5. **Lifetime shutdown reserve.** The ToS commits to a 12-month refund window
+3. **Lifetime shutdown reserve.** The ToS commits to a 12-month refund window
    for lifetime buyers if the product is discontinued. That is a real
    liability against revenue that should not be spent as profit — decide the
    reserve policy before selling any.
-6. **Trial abuse.** §3 accepts that new Google accounts can restart the trial.
+4. **Trial abuse.** §3 accepts that new Google accounts can restart the trial.
    Confirm that is still acceptable, since it is a deliberate choice rather
    than an oversight.
