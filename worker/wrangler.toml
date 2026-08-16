@@ -10,8 +10,8 @@ compatibility_date = "2025-06-01"
 # `wrangler dev` uses, so local testing never touches production data.
 [[kv_namespaces]]
 binding = "ENTITLEMENTS"
-id = "REPLACE_WITH_KV_NAMESPACE_ID"
-preview_id = "REPLACE_WITH_PREVIEW_KV_NAMESPACE_ID"
+id = "3cedc9460e7940da81ac6cca4c4ced7a"
+preview_id = "37a17adbffdc4feeaf0c184a669152d0"
 
 [vars]
 # Non-secret config. Both are already public (they're in index.html /

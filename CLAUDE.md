@@ -3486,8 +3486,14 @@ the working plan, not an exploration.
    Stripe account; a Play Developer API service account). Deliberately
    dependency-free (Web Crypto only, no `jsonwebtoken`) to keep the CASA
    dependency-scan surface small — see `worker/README.md`. Verified with a
-   Node harness, not deployed. **Not called from the app** — adding the
-   `openid` scope and gating the UI on entitlement are separate steps, held
+   Node harness, then walked through the real Cloudflare setup on the
+   owner's machine (2026-08-14): KV namespace created, both secrets set,
+   local `wrangler dev` confirmed working (health check + the 401-without-
+   a-token path). **The Worker is now live on Cloudflare** — a side effect
+   of `wrangler secret put` offering to create it the first time, not a
+   deliberate deploy — but inert, since nothing calls it yet. **Not called
+   from the app** — adding the `openid` scope and gating the UI on
+   entitlement are separate steps, held
    back because gating now, before Stripe checkout exists, would paywall
    every current user with no way to pay. Full detail in `PAYMENTS_SPEC.md`
    §9 step 1 and `worker/README.md`.
