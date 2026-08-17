@@ -117,6 +117,41 @@ support later could unlock some library loans without any circumvention. It is
 nontrivial (a licensing and SDK integration), so it is a roadmap candidate, not a
 quick win. Documented so we remember the opportunity.
 
+### Owner question, 2026-08-17: could we read `.acsm` / `.lcpl` files directly?
+
+Sharpens the DRM question above into the two actual file formats. They are not
+the same problem.
+
+- **`.acsm` (Adobe Content Server Message) — still a hard no, and this is a legal
+  boundary, not an effort estimate.** An ACSM file is only a fulfillment ticket;
+  reading it does not get you the book, it points an Adobe-authorized ADEPT
+  client (like Adobe Digital Editions) at a download that is then decrypted
+  using Adobe's own proprietary, device-activated protocol. There is no
+  independent way to build a compatible reader without either an Adobe license
+  we do not have, or reverse-engineering Adobe's encryption — the latter is
+  exactly the "circumventing a technological protection measure" that the DMCA
+  (US) and Canada's Copyright Act (s. 41.1) prohibit, independent of whether
+  the underlying loan is legitimate. True even for a book the user honestly
+  borrowed. Real legal exposure and an instant app-store takedown. Unchanged
+  from the decision above; will not build or advise this.
+- **`.lcpl` (Readium LCP License Document) — genuinely different, and worth
+  actually scoping now that it has come up twice.** LCP was designed by EDRLab
+  specifically so third-party apps CAN support it legitimately: published spec,
+  an open-source reference client, and libraries (including Québec's own Prêt
+  Numérique, via Cantook) issue LCP loans instead of Adobe DRM for exactly this
+  reason. Reading the `.lcpl` file is not the hard part — validating the
+  license against EDRLab's license status server and decrypting the content
+  needs a real crypto client, which `epub.js` does not provide, so this is new
+  engine work (likely a parallel code path for LCP-protected books), not a
+  config flag.
+  **Still needed before this can be scoped as a real task, none of it done
+  yet:** what EDRLab's certification process for a new reading app costs and
+  takes, whether Prêt Numérique/Cantook needs anything beyond generic LCP
+  compliance, and how large the Readium LCP client integration is against
+  PhonoLeaf's own epub.js-based renderer. **[RESEARCH, not started.]** Worth a
+  dedicated pass — "your library loans work here" is a real, differentiated
+  feature no competitor in `COMPETITORS.md` offers.
+
 ---
 
 ## E. More storage sources than Google Drive
