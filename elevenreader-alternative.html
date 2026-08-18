@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#3E8E6B">
+<meta name="description" content="PhonoLeaf reads the ebooks in your Google Drive aloud in a natural on-device voice, for about half the price of ElevenReader. Private, offline, no upload.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%233E8E6B'/%3E%3Cpath d='M50 24 C68 38 68 66 50 82 C32 66 32 38 50 24 Z' fill='%23F4F1E8'/%3E%3Cpath d='M50 82 L50 90' stroke='%23F4F1E8' stroke-width='3.2' stroke-linecap='round'/%3E%3Cpath d='M35 53 Q40 42 45 53 T55 53 T65 53' fill='none' stroke='%233E8E6B' stroke-width='3.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<title>A private ElevenReader alternative — PhonoLeaf</title>
+<link rel="canonical" href="https://phonoleaf.com/elevenreader-alternative.html">
+<link rel="alternate" hreflang="en" href="https://phonoleaf.com/elevenreader-alternative.html">
+<link rel="alternate" hreflang="fr-ca" href="https://phonoleaf.com/elevenreader-alternative-fr.html">
+<link rel="alternate" hreflang="x-default" href="https://phonoleaf.com/elevenreader-alternative.html">
+<meta property="og:type" content="website">
+<meta property="og:title" content="A private ElevenReader alternative — PhonoLeaf">
+<meta property="og:description" content="PhonoLeaf reads the ebooks in your Google Drive aloud in a natural on-device voice, for about half the price of ElevenReader. Private, offline, no upload.">
+<meta property="og:url" content="https://phonoleaf.com/elevenreader-alternative.html">
+<meta name="twitter:card" content="summary_large_image">
+<meta property="og:image" content="https://phonoleaf.com/brand/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="PhonoLeaf: turn your ebooks into audiobooks">
+<meta name="twitter:image" content="https://phonoleaf.com/brand/og-image.png">
+<script>
+(function () {
+  try {
+    var saved = localStorage.getItem('pl_lang');
+    var prefersFr = (navigator.languages || [navigator.language || 'en'])
+      .some(function (l) { return /^fr/i.test(l); });
+    var wantFr = saved ? saved === 'fr' : prefersFr;
+    if (wantFr) { location.replace('elevenreader-alternative-fr.html'); }
+  } catch (e) {}
+})();
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "How much does PhonoLeaf cost compared to ElevenReader?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "PhonoLeaf is $5.99 a month or $49.99 a year, with a free 7-day trial. ElevenReader's Ultra plan is $11 a month or $99 a year."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Is PhonoLeaf really private?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes. Your ebooks are read aloud entirely on your device — PhonoLeaf has no backend that receives or stores your book content. Files travel straight from your Google Drive to your device."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Does PhonoLeaf work offline?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes, fully. You can save a book for offline listening, and the voice itself is generated on your device, so it keeps working without a network connection at all."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Does PhonoLeaf have a free plan?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "PhonoLeaf offers a free 7-day trial with full access, then continues as a paid subscription."
+      }
+    }
+  ]
+}
+</script>
+<style>
+  :root {
+    --bg:        #F4F1E8;
+    --surface:   #FBF9F2;
+    --card:      #FFFFFF;
+    --accent:    #3E8E6B;
+    --accent2:   #C98A3C;
+    --text:      #1E2A22;
+    --text-dim:  #6E7A70;
+    --line:      #E6E1D3;
+    --font-ui:   'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg:#0F1310; --surface:#161B14; --card:#1D241B;
+      --accent:#6FC598; --accent2:#E0A857;
+      --text:#E8ECE1; --text-dim:#97A290; --line:#2A3225;
+    }
+  }
+  @font-face {
+    font-family:'Manrope'; font-style:normal; font-weight:100 900;
+    font-display:swap; src:url('fonts/manrope.woff2') format('woff2');
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 400 1rem/1.65 var(--font-ui);
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 2.5rem 1.5rem 5rem; }
+  .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 3rem; }
+  .brand { display: flex; align-items: center; gap: 0.6rem; text-decoration: none; color: var(--text); }
+  .brand svg { flex-shrink: 0; }
+  .brand span { font-weight: 800; font-size: 1.15rem; letter-spacing: -0.01em; }
+  .langswitch { font-size: 0.8rem; }
+  .langswitch a, .langswitch b { text-decoration: none; padding: 0.2rem 0.4rem; }
+  .langswitch a { color: var(--text-dim); }
+  .langswitch b { color: var(--text); }
+
+  .hero { text-align: center; margin-bottom: 3.5rem; }
+  .hero .mark { margin-bottom: 1.2rem; }
+  h1 { font-size: 2rem; font-weight: 800; margin: 0 0 0.6rem; letter-spacing: -0.02em; line-height: 1.25; }
+  .tagline { color: var(--accent2); font-weight: 700; font-size: 0.95rem; letter-spacing: 0.02em; margin-bottom: 1.1rem; }
+  .lede { color: var(--text-dim); font-size: 1.05rem; max-width: 34rem; margin: 0 auto 1.8rem; }
+  .cta {
+    display: inline-block; background: var(--accent); color: #fff; text-decoration: none;
+    font-weight: 700; font-size: 0.98rem; padding: 0.8rem 1.7rem; border-radius: 999px;
+  }
+  .cta-note { display: block; color: var(--text-dim); font-size: 0.82rem; margin-top: 0.8rem; }
+
+  h2 { font-size: 1.2rem; font-weight: 700; margin: 2.8rem 0 0.9rem; color: var(--accent); }
+  p { margin: 0 0 1rem; }
+  a { color: var(--accent); }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.9rem; margin: 1.2rem 0 1rem; }
+  .feat {
+    background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 1.1rem 1.2rem;
+  }
+  .feat b { display: block; margin-bottom: 0.25rem; font-size: 0.95rem; }
+  .feat span { color: var(--text-dim); font-size: 0.88rem; }
+
+  ul { margin: 0 0 1rem; padding-left: 1.3rem; }
+  li { margin-bottom: 0.45rem; }
+  .foot { margin-top: 3.5rem; padding-top: 1.5rem; border-top: 1px solid var(--line); color: var(--text-dim); font-size: 0.82rem; }
+
+  /* Comparison table */
+  .cmp-wrap { overflow-x: auto; margin: 1.2rem 0 0.5rem; }
+  table.cmp { width: 100%; border-collapse: collapse; font-size: 0.9rem; background: var(--card); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+  table.cmp th, table.cmp td { text-align: left; padding: 0.7rem 0.9rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+  table.cmp th { background: var(--surface); font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-dim); }
+  table.cmp tr:last-child td { border-bottom: none; }
+  table.cmp td:first-child { color: var(--text-dim); white-space: nowrap; }
+  .cmp-note { color: var(--text-dim); font-size: 0.78rem; margin: 0.6rem 0 0; }
+
+  /* FAQ */
+  .faq-item { margin-bottom: 1.3rem; }
+  .faq-item b { display: block; margin-bottom: 0.3rem; font-size: 0.98rem; }
+  .faq-item p { color: var(--text-dim); margin: 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <a class="brand" href="home.html">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="28" height="28" aria-hidden="true"><rect width="100" height="100" rx="22" fill="#3E8E6B"/><path d="M50 24 C68 38 68 66 50 82 C32 66 32 38 50 24 Z" fill="#F4F1E8"/><path d="M50 82 L50 90" stroke="#F4F1E8" stroke-width="3.2" stroke-linecap="round"/><path d="M35 53 Q40 42 45 53 T55 53 T65 53" fill="none" stroke="#3E8E6B" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span>PhonoLeaf</span>
+    </a>
+    <div class="langswitch">
+      <b>EN</b> ·
+      <a href="elevenreader-alternative-fr.html" onclick="try{localStorage.setItem('pl_lang','fr')}catch(e){}">FR</a>
+    </div>
+  </div>
+
+  <div class="hero">
+    <div class="mark">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="76" height="76" aria-hidden="true"><rect width="100" height="100" rx="22" fill="#3E8E6B"/><path d="M50 24 C68 38 68 66 50 82 C32 66 32 38 50 24 Z" fill="#F4F1E8"/><path d="M50 82 L50 90" stroke="#F4F1E8" stroke-width="3.2" stroke-linecap="round"/><path d="M35 53 Q40 42 45 53 T55 53 T65 53" fill="none" stroke="#3E8E6B" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+    <h1>The private, on-device alternative to ElevenReader for the books you already own</h1>
+    <div class="tagline">Built around the ebooks you already have</div>
+    <p class="lede">
+      PhonoLeaf turns the ebooks already sitting in your Google Drive into a
+      private, on-device audiobook library — nothing uploaded, nothing generated
+      in the cloud, for about half the price.
+    </p>
+    <a class="cta" href="index.html">Open PhonoLeaf</a>
+    <span class="cta-note">Free 7-day trial · Sign in with Google · Nothing to install</span>
+  </div>
+
+  <h2>PhonoLeaf vs. ElevenReader, at a glance</h2>
+  <div class="cmp-wrap">
+    <table class="cmp">
+      <thead>
+        <tr><th>Feature</th><th>PhonoLeaf</th><th>ElevenReader</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Where your audio is generated</td><td>Entirely on your device</td><td>ElevenReader's cloud*</td></tr>
+        <tr><td>Price</td><td>$5.99/mo or $49.99/yr</td><td>$11/mo or $99/yr*</td></tr>
+        <tr><td>Free plan</td><td>7-day trial, full access</td><td>10 hours per month*</td></tr>
+        <tr><td>Works offline</td><td>Yes, including generating new audio</td><td>Only pre-downloaded audio*</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="cmp-note">*ElevenReader details as published on elevenreader.io, August 2026 — check their site for current terms.</p>
+
+  <h2>Why people choose PhonoLeaf</h2>
+  <div class="grid">
+    <div class="feat">
+      <b>A library that stays in sync</b>
+      <span>Connect your Google Drive folder once. Add more ebooks to it later and they simply appear — no re-importing.</span>
+    </div>
+    <div class="feat">
+      <b>Nothing leaves your device</b>
+      <span>Your book text is never uploaded anywhere — the voice is generated locally, every time.</span>
+    </div>
+    <div class="feat">
+      <b>Keeps reading with the screen off</b>
+      <span>Playback continues when your phone is locked, with play/pause, page and chapter controls on the lock screen.</span>
+    </div>
+    <div class="feat">
+      <b>Picks up where you left off</b>
+      <span>Your position is saved per book, down to the paragraph — across pauses and restarts.</span>
+    </div>
+  </div>
+
+  <h2>Frequently asked questions</h2>
+  <div class="faq-item">
+    <b>How much does PhonoLeaf cost compared to ElevenReader?</b>
+    <p>PhonoLeaf is $5.99 a month or $49.99 a year, with a free 7-day trial. ElevenReader's Ultra plan is $11 a month or $99 a year.</p>
+  </div>
+  <div class="faq-item">
+    <b>Is PhonoLeaf really private?</b>
+    <p>Yes. Your ebooks are read aloud entirely on your device — PhonoLeaf has no backend that receives or stores your book content. Files travel straight from your Google Drive to your device.</p>
+  </div>
+  <div class="faq-item">
+    <b>Does PhonoLeaf work offline?</b>
+    <p>Yes, fully. You can save a book for offline listening, and the voice itself is generated on your device, so it keeps working without a network connection at all.</p>
+  </div>
+  <div class="faq-item">
+    <b>Does PhonoLeaf have a free plan?</b>
+    <p>PhonoLeaf offers a free 7-day trial with full access, then continues as a paid subscription.</p>
+  </div>
+
+  <div class="foot">
+    <a href="home.html">About PhonoLeaf</a> ·
+    <a href="privacy.html">Privacy Policy</a> ·
+    <a href="terms.html">Terms of Service</a> ·
+    <a href="index.html">Open the app</a><br><br>
+    Contact: <a href="mailto:support@phonoleaf.com">support@phonoleaf.com</a><br><br>
+    "ElevenReader" is a trademark of its respective owner. PhonoLeaf is not
+    affiliated with or endorsed by ElevenReader; this page is an independent
+    comparison.
+  </div>
+
+</div>
+<!-- Cloudflare Web Analytics --><script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "cbc3149663944543a36ea8d6090ec58b"}'></script><!-- End Cloudflare Web Analytics -->
+</body>
+</html>

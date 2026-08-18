@@ -42,6 +42,54 @@
     <xhtml:link rel="alternate" hreflang="x-default" href="https://phonoleaf.com/voice-dream-alternative.html"/>
   </url>
   <url>
+    <loc>https://phonoleaf.com/elevenreader-alternative.html</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://phonoleaf.com/elevenreader-alternative.html"/>
+    <xhtml:link rel="alternate" hreflang="fr-ca" href="https://phonoleaf.com/elevenreader-alternative-fr.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://phonoleaf.com/elevenreader-alternative.html"/>
+  </url>
+  <url>
+    <loc>https://phonoleaf.com/elevenreader-alternative-fr.html</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://phonoleaf.com/elevenreader-alternative.html"/>
+    <xhtml:link rel="alternate" hreflang="fr-ca" href="https://phonoleaf.com/elevenreader-alternative-fr.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://phonoleaf.com/elevenreader-alternative.html"/>
+  </url>
+  <url>
+    <loc>https://phonoleaf.com/naturalreader-alternative.html</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://phonoleaf.com/naturalreader-alternative.html"/>
+    <xhtml:link rel="alternate" hreflang="fr-ca" href="https://phonoleaf.com/naturalreader-alternative-fr.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://phonoleaf.com/naturalreader-alternative.html"/>
+  </url>
+  <url>
+    <loc>https://phonoleaf.com/naturalreader-alternative-fr.html</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://phonoleaf.com/naturalreader-alternative.html"/>
+    <xhtml:link rel="alternate" hreflang="fr-ca" href="https://phonoleaf.com/naturalreader-alternative-fr.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://phonoleaf.com/naturalreader-alternative.html"/>
+  </url>
+  <url>
+    <loc>https://phonoleaf.com/play-books-alternative.html</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://phonoleaf.com/play-books-alternative.html"/>
+    <xhtml:link rel="alternate" hreflang="fr-ca" href="https://phonoleaf.com/play-books-alternative-fr.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://phonoleaf.com/play-books-alternative.html"/>
+  </url>
+  <url>
+    <loc>https://phonoleaf.com/play-books-alternative-fr.html</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://phonoleaf.com/play-books-alternative.html"/>
+    <xhtml:link rel="alternate" hreflang="fr-ca" href="https://phonoleaf.com/play-books-alternative-fr.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://phonoleaf.com/play-books-alternative.html"/>
+  </url>
+  <url>
+    <loc>https://phonoleaf.com/voice-aloud-alternative.html</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://phonoleaf.com/voice-aloud-alternative.html"/>
+    <xhtml:link rel="alternate" hreflang="fr-ca" href="https://phonoleaf.com/voice-aloud-alternative-fr.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://phonoleaf.com/voice-aloud-alternative.html"/>
+  </url>
+  <url>
+    <loc>https://phonoleaf.com/voice-aloud-alternative-fr.html</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://phonoleaf.com/voice-aloud-alternative.html"/>
+    <xhtml:link rel="alternate" hreflang="fr-ca" href="https://phonoleaf.com/voice-aloud-alternative-fr.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://phonoleaf.com/voice-aloud-alternative.html"/>
+  </url>
+  <url>
     <loc>https://phonoleaf.com/terms.html</loc>
     <xhtml:link rel="alternate" hreflang="en" href="https://phonoleaf.com/terms.html"/>
     <xhtml:link rel="alternate" hreflang="fr-ca" href="https://phonoleaf.com/terms-fr.html"/>
