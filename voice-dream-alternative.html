@@ -4,17 +4,17 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#3E8E6B">
-<meta name="description" content="Prefer to keep your reading private and on your device? PhonoLeaf reads the ebooks you already own aloud, offline, for less. A calm Speechify alternative.">
+<meta name="description" content="PhonoLeaf reads the ebooks in your Google Drive aloud in a natural on-device voice, for less than Voice Dream Reader. Private, offline, on the web and Android.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%233E8E6B'/%3E%3Cpath d='M50 24 C68 38 68 66 50 82 C32 66 32 38 50 24 Z' fill='%23F4F1E8'/%3E%3Cpath d='M50 82 L50 90' stroke='%23F4F1E8' stroke-width='3.2' stroke-linecap='round'/%3E%3Cpath d='M35 53 Q40 42 45 53 T55 53 T65 53' fill='none' stroke='%233E8E6B' stroke-width='3.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
-<title>A private Speechify alternative — PhonoLeaf</title>
-<link rel="canonical" href="https://phonoleaf.com/speechify-alternative.html">
-<link rel="alternate" hreflang="en" href="https://phonoleaf.com/speechify-alternative.html">
-<link rel="alternate" hreflang="fr-ca" href="https://phonoleaf.com/speechify-alternative-fr.html">
-<link rel="alternate" hreflang="x-default" href="https://phonoleaf.com/speechify-alternative.html">
+<title>A more affordable Voice Dream Reader alternative — PhonoLeaf</title>
+<link rel="canonical" href="https://phonoleaf.com/voice-dream-alternative.html">
+<link rel="alternate" hreflang="en" href="https://phonoleaf.com/voice-dream-alternative.html">
+<link rel="alternate" hreflang="fr-ca" href="https://phonoleaf.com/voice-dream-alternative-fr.html">
+<link rel="alternate" hreflang="x-default" href="https://phonoleaf.com/voice-dream-alternative.html">
 <meta property="og:type" content="website">
-<meta property="og:title" content="A private Speechify alternative — PhonoLeaf">
-<meta property="og:description" content="PhonoLeaf reads the ebooks you already own aloud, entirely on your device. Private, offline, and less expensive than Speechify.">
-<meta property="og:url" content="https://phonoleaf.com/speechify-alternative.html">
+<meta property="og:title" content="A more affordable Voice Dream Reader alternative — PhonoLeaf">
+<meta property="og:description" content="PhonoLeaf reads the ebooks in your Google Drive aloud in a natural on-device voice, for less than Voice Dream Reader. Private, offline, on the web and Android.">
+<meta property="og:url" content="https://phonoleaf.com/voice-dream-alternative.html">
 <meta name="twitter:card" content="summary_large_image">
 <meta property="og:image" content="https://phonoleaf.com/brand/og-image.png">
 <meta property="og:image:width" content="1200">
@@ -28,7 +28,7 @@
     var prefersFr = (navigator.languages || [navigator.language || 'en'])
       .some(function (l) { return /^fr/i.test(l); });
     var wantFr = saved ? saved === 'fr' : prefersFr;
-    if (wantFr) { location.replace('speechify-alternative-fr.html'); }
+    if (wantFr) { location.replace('voice-dream-alternative-fr.html'); }
   } catch (e) {}
 })();
 </script>
@@ -39,10 +39,10 @@
   "mainEntity": [
     {
       "@type": "Question",
-      "name": "Is PhonoLeaf really private?",
+      "name": "How much does PhonoLeaf cost compared to Voice Dream Reader?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Yes. Your ebooks are read aloud entirely on your device — PhonoLeaf has no backend that receives or stores your book content. Files travel straight from your Google Drive to your device."
+        "text": "PhonoLeaf is $5.99 a month or $49.99 a year, with a free 7-day trial. Voice Dream Reader's subscription is $79.99 a year."
       }
     },
     {
@@ -55,18 +55,18 @@
     },
     {
       "@type": "Question",
-      "name": "Can PhonoLeaf read my own EPUB files?",
+      "name": "Is PhonoLeaf good for dyslexia or ADHD?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Yes, for DRM-free EPUB files. Connect the Google Drive folder they're in and they appear in your library automatically, including new ones you add later."
+        "text": "Many readers use PhonoLeaf for exactly that: a calm, natural voice, adjustable reading speed from 0.5x to 2x, and picking up exactly where you left off, in every book."
       }
     },
     {
       "@type": "Question",
-      "name": "How much does PhonoLeaf cost?",
+      "name": "What platforms does PhonoLeaf run on?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "$5.99 a month or $49.99 a year, with a free 7-day trial."
+        "text": "Any modern browser — phone, tablet or desktop — and a dedicated Android app. It can be installed to your home screen like an app."
       }
     }
   ]
@@ -133,11 +133,6 @@
   .feat b { display: block; margin-bottom: 0.25rem; font-size: 0.95rem; }
   .feat span { color: var(--text-dim); font-size: 0.88rem; }
 
-  .card {
-    background: var(--card); border: 1px solid var(--line); border-radius: 14px;
-    padding: 1.2rem 1.4rem; margin: 1.4rem 0; font-size: 0.92rem;
-  }
-  .card b { display: block; margin-bottom: 0.3rem; }
   ul { margin: 0 0 1rem; padding-left: 1.3rem; }
   li { margin-bottom: 0.45rem; }
   .foot { margin-top: 3.5rem; padding-top: 1.5rem; border-top: 1px solid var(--line); color: var(--text-dim); font-size: 0.82rem; }
@@ -150,13 +145,6 @@
   table.cmp tr:last-child td { border-bottom: none; }
   table.cmp td:first-child { color: var(--text-dim); white-space: nowrap; }
   .cmp-note { color: var(--text-dim); font-size: 0.78rem; margin: 0.6rem 0 0; }
-
-  /* Choose X if / choose Y if */
-  .choose-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; margin: 1.2rem 0 1rem; }
-  .choose { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 1.2rem 1.3rem; }
-  .choose b { display: block; margin-bottom: 0.6rem; font-size: 0.98rem; }
-  .choose ul { margin: 0; padding-left: 1.2rem; font-size: 0.9rem; }
-  .choose li { margin-bottom: 0.5rem; }
 
   /* FAQ */
   .faq-item { margin-bottom: 1.3rem; }
@@ -174,7 +162,7 @@
     </a>
     <div class="langswitch">
       <b>EN</b> ·
-      <a href="speechify-alternative-fr.html" onclick="try{localStorage.setItem('pl_lang','fr')}catch(e){}">FR</a>
+      <a href="voice-dream-alternative-fr.html" onclick="try{localStorage.setItem('pl_lang','fr')}catch(e){}">FR</a>
     </div>
   </div>
 
@@ -182,62 +170,76 @@
     <div class="mark">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="76" height="76" aria-hidden="true"><rect width="100" height="100" rx="22" fill="#3E8E6B"/><path d="M50 24 C68 38 68 66 50 82 C32 66 32 38 50 24 Z" fill="#F4F1E8"/><path d="M50 82 L50 90" stroke="#F4F1E8" stroke-width="3.2" stroke-linecap="round"/><path d="M35 53 Q40 42 45 53 T55 53 T65 53" fill="none" stroke="#3E8E6B" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
     </div>
-    <h1>The private, on-device Speechify alternative for the books you already own</h1>
+    <h1>A more affordable alternative to Voice Dream Reader</h1>
     <div class="tagline">Built around the ebooks you already have</div>
     <p class="lede">
-      PhonoLeaf turns the ebooks already sitting in your Google Drive into a
-      private, on-device audiobook library — no uploads, no cloud, and a
-      natural voice that runs entirely on your device.
+      PhonoLeaf reads the ebooks already sitting in your Google Drive aloud, in
+      a natural voice that runs entirely on your device. Connect a folder once,
+      and every book in it becomes something you can listen to — for a fraction
+      of the price.
     </p>
     <a class="cta" href="index.html">Open PhonoLeaf</a>
     <span class="cta-note">Free 7-day trial · Sign in with Google · Nothing to install</span>
   </div>
 
-  <h2>PhonoLeaf vs. Speechify, at a glance</h2>
+  <h2>PhonoLeaf vs. Voice Dream Reader, at a glance</h2>
   <div class="cmp-wrap">
     <table class="cmp">
       <thead>
-        <tr><th>Feature</th><th>PhonoLeaf</th><th>Speechify</th></tr>
+        <tr><th>Feature</th><th>PhonoLeaf</th><th>Voice Dream Reader</th></tr>
       </thead>
       <tbody>
-        <tr><td>Where your text is processed</td><td>Entirely on your device</td><td>Uploaded to Speechify's cloud</td></tr>
-        <tr><td>Price</td><td>$5.99/mo or $49.99/yr</td><td>~$29/mo or ~$139/yr*</td></tr>
-        <tr><td>Free trial</td><td>7 days, full access</td><td>Free plan with limited voices and speed</td></tr>
-        <tr><td>Works offline</td><td>Yes</td><td>Downloads available on paid plans</td></tr>
+        <tr><td>Price</td><td>$5.99/mo or $49.99/yr</td><td>$79.99/yr*</td></tr>
+        <tr><td>Platforms</td><td>Any browser, plus a dedicated Android app</td><td>iOS and Mac*</td></tr>
       </tbody>
     </table>
   </div>
-  <p class="cmp-note">*Speechify pricing as published on speechify.com, August 2026 — check their site for current pricing.</p>
+  <p class="cmp-note">*Voice Dream Reader pricing and platforms as published on voicedream.com, August 2026 — check their site for current details.</p>
 
-  <h2>Why people choose PhonoLeaf</h2>
-  <div class="choose-grid">
-    <div class="choose">
-      <b>Choose PhonoLeaf if —</b>
-      <ul>
-        <li>You want your reading to stay private and on your device</li>
-        <li>You mainly want to listen to ebooks you already own</li>
-        <li>You want a lower price</li>
-        <li>You want new books added to a Drive folder to just appear, automatically</li>
-      </ul>
+  <h2>What you get with PhonoLeaf</h2>
+  <div class="grid">
+    <div class="feat">
+      <b>A library that stays in sync</b>
+      <span>Connect your Google Drive folder once. Add more ebooks to it later and they simply appear — no re-importing.</span>
+    </div>
+    <div class="feat">
+      <b>A natural, on-device voice</b>
+      <span>Generated right on your device, with a choice of voices and accents, and no text ever sent anywhere.</span>
+    </div>
+    <div class="feat">
+      <b>Reading speed from 0.5x to 2x</b>
+      <span>Slow down for dense chapters or speed through familiar ones — adjust any time.</span>
+    </div>
+    <div class="feat">
+      <b>Keeps reading with the screen off</b>
+      <span>Playback continues when your phone is locked, with play/pause, page and chapter controls on the lock screen.</span>
+    </div>
+    <div class="feat">
+      <b>Picks up where you left off</b>
+      <span>Your position is saved per book, down to the paragraph — across pauses and restarts.</span>
+    </div>
+    <div class="feat">
+      <b>Genuinely offline</b>
+      <span>Save a book for offline listening and keep going without a connection.</span>
     </div>
   </div>
 
   <h2>Frequently asked questions</h2>
   <div class="faq-item">
-    <b>Is PhonoLeaf really private?</b>
-    <p>Yes. Your ebooks are read aloud entirely on your device — PhonoLeaf has no backend that receives or stores your book content. Files travel straight from your Google Drive to your device.</p>
+    <b>How much does PhonoLeaf cost compared to Voice Dream Reader?</b>
+    <p>PhonoLeaf is $5.99 a month or $49.99 a year, with a free 7-day trial. Voice Dream Reader's subscription is $79.99 a year.</p>
   </div>
   <div class="faq-item">
     <b>Does it work offline?</b>
     <p>Yes. You can save a book for offline listening, and the on-device voice keeps working without a network connection.</p>
   </div>
   <div class="faq-item">
-    <b>Can it read my own EPUB files?</b>
-    <p>Yes, for DRM-free EPUB files. Connect the Google Drive folder they're in and they appear in your library automatically, including new ones you add later.</p>
+    <b>Is PhonoLeaf good for dyslexia or ADHD?</b>
+    <p>Many readers use PhonoLeaf for exactly that: a calm, natural voice, adjustable reading speed from 0.5x to 2x, and picking up exactly where you left off, in every book.</p>
   </div>
   <div class="faq-item">
-    <b>How much does it cost?</b>
-    <p>$5.99 a month or $49.99 a year, with a free 7-day trial. See the <a href="terms.html">Terms of Service</a> for full billing details.</p>
+    <b>What platforms does PhonoLeaf run on?</b>
+    <p>Any modern browser — phone, tablet or desktop — and a dedicated Android app. It can be installed to your home screen like an app.</p>
   </div>
 
   <div class="foot">
@@ -246,8 +248,9 @@
     <a href="terms.html">Terms of Service</a> ·
     <a href="index.html">Open the app</a><br><br>
     Contact: <a href="mailto:support@phonoleaf.com">support@phonoleaf.com</a><br><br>
-    "Speechify" is a trademark of its respective owner. PhonoLeaf is not affiliated
-    with or endorsed by Speechify; this page is an independent comparison.
+    "Voice Dream Reader" is a trademark of its respective owner. PhonoLeaf is
+    not affiliated with or endorsed by Voice Dream Reader; this page is an
+    independent comparison.
   </div>
 
 </div>

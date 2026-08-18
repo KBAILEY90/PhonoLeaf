@@ -19,7 +19,27 @@
   </url>
   <url>
     <loc>https://phonoleaf.com/speechify-alternative.html</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://phonoleaf.com/speechify-alternative.html"/>
+    <xhtml:link rel="alternate" hreflang="fr-ca" href="https://phonoleaf.com/speechify-alternative-fr.html"/>
     <xhtml:link rel="alternate" hreflang="x-default" href="https://phonoleaf.com/speechify-alternative.html"/>
+  </url>
+  <url>
+    <loc>https://phonoleaf.com/speechify-alternative-fr.html</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://phonoleaf.com/speechify-alternative.html"/>
+    <xhtml:link rel="alternate" hreflang="fr-ca" href="https://phonoleaf.com/speechify-alternative-fr.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://phonoleaf.com/speechify-alternative.html"/>
+  </url>
+  <url>
+    <loc>https://phonoleaf.com/voice-dream-alternative.html</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://phonoleaf.com/voice-dream-alternative.html"/>
+    <xhtml:link rel="alternate" hreflang="fr-ca" href="https://phonoleaf.com/voice-dream-alternative-fr.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://phonoleaf.com/voice-dream-alternative.html"/>
+  </url>
+  <url>
+    <loc>https://phonoleaf.com/voice-dream-alternative-fr.html</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://phonoleaf.com/voice-dream-alternative.html"/>
+    <xhtml:link rel="alternate" hreflang="fr-ca" href="https://phonoleaf.com/voice-dream-alternative-fr.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://phonoleaf.com/voice-dream-alternative.html"/>
   </url>
   <url>
     <loc>https://phonoleaf.com/terms.html</loc>
