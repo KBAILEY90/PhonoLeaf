@@ -4,35 +4,23 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#3E8E6B">
-<meta name="description" content="PhonoLeaf turns the ebooks in your Google Drive into audiobooks, with a natural on device voice, background playback and lock screen controls.">
+<meta name="description" content="PhonoLeaf turns any EPUB into something you can listen to — no conversion, no export, no separate audio file. Connect your Google Drive and press play.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%233E8E6B'/%3E%3Cpath d='M50 24 C68 38 68 66 50 82 C32 66 32 38 50 24 Z' fill='%23F4F1E8'/%3E%3Cpath d='M50 82 L50 90' stroke='%23F4F1E8' stroke-width='3.2' stroke-linecap='round'/%3E%3Cpath d='M35 53 Q40 42 45 53 T55 53 T65 53' fill='none' stroke='%233E8E6B' stroke-width='3.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
-<title>PhonoLeaf: Turn any ebook into an audiobook</title>
-<link rel="canonical" href="https://phonoleaf.com/home.html">
-<link rel="alternate" hreflang="en" href="https://phonoleaf.com/home.html">
-<link rel="alternate" hreflang="fr-ca" href="https://phonoleaf.com/home-fr.html">
-<link rel="alternate" hreflang="x-default" href="https://phonoleaf.com/home.html">
+<title>Turn an EPUB into an audiobook — PhonoLeaf</title>
+<link rel="canonical" href="https://phonoleaf.com/epub-to-audiobook.html">
+<link rel="alternate" hreflang="en" href="https://phonoleaf.com/epub-to-audiobook.html">
+<link rel="alternate" hreflang="fr-ca" href="https://phonoleaf.com/epub-to-audiobook-fr.html">
+<link rel="alternate" hreflang="x-default" href="https://phonoleaf.com/epub-to-audiobook.html">
 <meta property="og:type" content="website">
-<meta property="og:title" content="Turn any ebook into an audiobook — PhonoLeaf">
-<meta property="og:description" content="Listen to the ebooks in your Google Drive, read in a natural on device voice. Private, offline, background playback.">
-<meta property="og:url" content="https://phonoleaf.com/home.html">
+<meta property="og:title" content="Turn an EPUB into an audiobook — PhonoLeaf">
+<meta property="og:description" content="PhonoLeaf turns any EPUB into something you can listen to — no conversion, no export, no separate audio file.">
+<meta property="og:url" content="https://phonoleaf.com/epub-to-audiobook.html">
 <meta name="twitter:card" content="summary_large_image">
 <meta property="og:image" content="https://phonoleaf.com/brand/og-image.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="PhonoLeaf: turn your ebooks into audiobooks">
 <meta name="twitter:image" content="https://phonoleaf.com/brand/og-image.png">
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "SoftwareApplication",
-  "name": "PhonoLeaf",
-  "applicationCategory": "BookApplication",
-  "operatingSystem": "Android, Web",
-  "description": "PhonoLeaf turns the ebooks in your Google Drive into audiobooks, read aloud in a natural on device voice. Private, offline, background playback.",
-  "url": "https://phonoleaf.com/",
-  "offers": { "@type": "Offer", "price": "5.99", "priceCurrency": "USD" }
-}
-</script>
 <script>
 (function () {
   try {
@@ -40,9 +28,49 @@
     var prefersFr = (navigator.languages || [navigator.language || 'en'])
       .some(function (l) { return /^fr/i.test(l); });
     var wantFr = saved ? saved === 'fr' : prefersFr;
-    if (wantFr) { location.replace('home-fr.html'); }
+    if (wantFr) { location.replace('epub-to-audiobook-fr.html'); }
   } catch (e) {}
 })();
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Do I need to convert my EPUB files first?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "No. PhonoLeaf reads EPUB files directly — there's no conversion or export step, and no separate audio file is created."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What ebook formats does PhonoLeaf support?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "DRM-free EPUB files."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Can I keep the audio to listen to later without PhonoLeaf?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "No — PhonoLeaf reads books live rather than producing a downloadable audio file. That's also what lets it offer offline listening and unlimited books at a flat price instead of charging per conversion."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "How much does PhonoLeaf cost?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "$5.99 a month or $49.99 a year, with a free 7-day trial."
+      }
+    }
+  ]
+}
 </script>
 <style>
   :root {
@@ -85,9 +113,9 @@
 
   .hero { text-align: center; margin-bottom: 3.5rem; }
   .hero .mark { margin-bottom: 1.2rem; }
-  h1 { font-size: 2.1rem; font-weight: 800; margin: 0 0 0.6rem; letter-spacing: -0.02em; line-height: 1.2; }
+  h1 { font-size: 2rem; font-weight: 800; margin: 0 0 0.6rem; letter-spacing: -0.02em; line-height: 1.25; }
   .tagline { color: var(--accent2); font-weight: 700; font-size: 0.95rem; letter-spacing: 0.02em; margin-bottom: 1.1rem; }
-  .lede { color: var(--text-dim); font-size: 1.05rem; max-width: 30rem; margin: 0 auto 1.8rem; }
+  .lede { color: var(--text-dim); font-size: 1.05rem; max-width: 34rem; margin: 0 auto 1.8rem; }
   .cta {
     display: inline-block; background: var(--accent); color: #fff; text-decoration: none;
     font-weight: 700; font-size: 0.98rem; padding: 0.8rem 1.7rem; border-radius: 999px;
@@ -112,13 +140,6 @@
   .steps b { display: block; }
   .steps span { color: var(--text-dim); font-size: 0.93rem; }
 
-  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.9rem; margin: 1.2rem 0 1rem; }
-  .feat {
-    background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 1.1rem 1.2rem;
-  }
-  .feat b { display: block; margin-bottom: 0.25rem; font-size: 0.95rem; }
-  .feat span { color: var(--text-dim); font-size: 0.88rem; }
-
   .card {
     background: var(--card); border: 1px solid var(--line); border-radius: 14px;
     padding: 1.2rem 1.4rem; margin: 1.4rem 0; font-size: 0.92rem;
@@ -126,11 +147,12 @@
   .card b { display: block; margin-bottom: 0.3rem; }
   ul { margin: 0 0 1rem; padding-left: 1.3rem; }
   li { margin-bottom: 0.45rem; }
-  code {
-    background: var(--surface); border: 1px solid var(--line); border-radius: 5px;
-    padding: 0.08rem 0.35rem; font-size: 0.88em;
-  }
   .foot { margin-top: 3.5rem; padding-top: 1.5rem; border-top: 1px solid var(--line); color: var(--text-dim); font-size: 0.82rem; }
+
+  /* FAQ */
+  .faq-item { margin-bottom: 1.3rem; }
+  .faq-item b { display: block; margin-bottom: 0.3rem; font-size: 0.98rem; }
+  .faq-item p { color: var(--text-dim); margin: 0; }
 </style>
 </head>
 <body>
@@ -143,7 +165,7 @@
     </a>
     <div class="langswitch">
       <b>EN</b> ·
-      <a href="home-fr.html" onclick="try{localStorage.setItem('pl_lang','fr')}catch(e){}">FR</a>
+      <a href="epub-to-audiobook-fr.html" onclick="try{localStorage.setItem('pl_lang','fr')}catch(e){}">FR</a>
     </div>
   </div>
 
@@ -151,12 +173,13 @@
     <div class="mark">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="76" height="76" aria-hidden="true"><rect width="100" height="100" rx="22" fill="#3E8E6B"/><path d="M50 24 C68 38 68 66 50 82 C32 66 32 38 50 24 Z" fill="#F4F1E8"/><path d="M50 82 L50 90" stroke="#F4F1E8" stroke-width="3.2" stroke-linecap="round"/><path d="M35 53 Q40 42 45 53 T55 53 T65 53" fill="none" stroke="#3E8E6B" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
     </div>
-    <h1>Turn any ebook into an audiobook</h1>
-    <div class="tagline">A voice for every page</div>
+    <h1>Turn any EPUB into an audiobook — without converting a single file</h1>
+    <div class="tagline">No upload, no wait, no download</div>
     <p class="lede">
-      PhonoLeaf uses the ebooks already sitting in your Google Drive to build
-      an audiobook library. Connect a folder once, and every ebook in it becomes
-      something you can listen to, on a walk, doing the dishes, or on the commute.
+      Most "EPUB to audiobook" tools want you to upload a file, wait, and
+      download an MP3. PhonoLeaf skips all of that: connect the Google Drive
+      folder your EPUBs are in, and every book becomes something you can
+      press play on immediately.
     </p>
     <a class="cta" href="index.html">Open PhonoLeaf</a>
     <span class="cta-note">Free 7-day trial · Sign in with Google · Nothing to install</span>
@@ -165,97 +188,48 @@
   <h2>How it works</h2>
   <ol class="steps">
     <li>
-      <b>Sign in with Google</b>
-      <span>Used only to reach the ebook files in your own Drive. PhonoLeaf has no separate account to create.</span>
+      <b>Connect your Drive folder</b>
+      <span>Sign in with Google and pick the folder your EPUBs are in.</span>
     </li>
     <li>
-      <b>Choose the Drive folder your ebooks live in</b>
-      <span>Browse your Drive inside the app and pick a folder. Add more ebooks to it later and they simply appear — no re-picking.</span>
+      <b>Your library appears</b>
+      <span>Every EPUB in that folder shows up with its real cover art — no file conversion or export step.</span>
     </li>
     <li>
       <b>Press play</b>
-      <span>Pick a book and listen. PhonoLeaf remembers exactly where you stopped, in every book.</span>
+      <span>A natural, on-device voice reads the book aloud immediately, and resumes exactly where you left off next time.</span>
     </li>
   </ol>
 
-  <h2>What it does</h2>
-  <div class="grid">
-    <div class="feat">
-      <b>Natural speech</b>
-      <span>A neural voice that runs entirely on your device, with a choice of accents and voices. Falls back to your system voice where that isn't available.</span>
-    </div>
-    <div class="feat">
-      <b>Keeps reading with the screen off</b>
-      <span>Playback continues when your phone is locked, with play/pause, page and chapter controls on the lock screen.</span>
-    </div>
-    <div class="feat">
-      <b>Picks up where you left off</b>
-      <span>Your position is saved per book, down to the paragraph — across pauses, chapters and restarts.</span>
-    </div>
-    <div class="feat">
-      <b>Your library, as a library</b>
-      <span>Real cover art pulled from each ebook, search, chapter jumping and adjustable reading speed from 0.5× to 2×.</span>
-    </div>
-    <div class="feat">
-      <b>Listening stats</b>
-      <span>Hours listened, a day streak, and a breakdown by author, book, genre or book length.</span>
-    </div>
-    <div class="feat">
-      <b>Light and dark</b>
-      <span>A warm paper theme by day, a dim forest one by night, or follow your system setting.</span>
-    </div>
-  </div>
-
-  <h2>How PhonoLeaf uses your Google Drive data</h2>
-  <p>
-    PhonoLeaf asks for <strong>read-only</strong> access to Google Drive (the
-    <code>drive.readonly</code> scope). It uses that access for exactly one purpose:
-    to list the ebook files (EPUB) in the folder you choose and download them so
-    they can be rendered and read aloud.
-  </p>
   <div class="card">
-    <b>What PhonoLeaf never does</b>
-    <ul>
-      <li>Never creates, edits, moves or deletes anything in your Drive — the access it holds is read-only.</li>
-      <li>Never sends your files or your Drive data to any server of ours. <strong>PhonoLeaf has no backend</strong>: your books travel from Google straight to your device.</li>
-      <li>Never uses your data for advertising, and never sells or transfers it.</li>
-      <li>Never reads anything outside the folder you connect, in normal use.</li>
-    </ul>
+    <b>Why there's no audio file to download</b>
+    PhonoLeaf reads your EPUB aloud live, using a voice generated on your
+    device, rather than producing and storing an audio file somewhere. That's
+    a deliberate trade: no waiting for a conversion to finish, no per-book
+    export limits, and it's part of why PhonoLeaf can offer unlimited books
+    at one flat price instead of charging per conversion.
   </div>
-  <p>
-    Your reading position, listening stats and settings are stored locally on your
-    own device, not in an account. Signing out revokes PhonoLeaf's access to your
-    Google account. Full detail is in the
-    <a href="privacy.html">Privacy Policy</a>.
-  </p>
 
-  <h2>Where you can use it</h2>
-  <p>
-    PhonoLeaf runs in the browser on phones, tablets and desktops, and can be
-    installed to your home screen as an app. An Android build is currently in
-    private testing.
-  </p>
-
-  <p>
-    Want to know more? Read about
-    <a href="read-ebooks-aloud.html">reading ebooks aloud</a>,
-    <a href="epub-to-audiobook.html">turning an EPUB into an audiobook</a>,
-    <a href="google-drive-audiobooks.html">listening to your Google Drive ebooks</a>,
-    <a href="offline-text-to-speech.html">offline text to speech</a>, or
-    <a href="text-to-speech-dyslexia.html">text to speech for dyslexia</a>.
-  </p>
-
-  <p>
-    Coming from another app? See how PhonoLeaf compares to
-    <a href="speechify-alternative.html">Speechify</a>,
-    <a href="voice-dream-alternative.html">Voice Dream Reader</a>,
-    <a href="elevenreader-alternative.html">ElevenReader</a>,
-    <a href="naturalreader-alternative.html">NaturalReader</a>,
-    <a href="play-books-alternative.html">Google Play Books</a>, or
-    <a href="voice-aloud-alternative.html">@Voice Aloud Reader</a>.
-  </p>
+  <h2>Frequently asked questions</h2>
+  <div class="faq-item">
+    <b>Do I need to convert my EPUB files first?</b>
+    <p>No. PhonoLeaf reads EPUB files directly — there's no conversion or export step, and no separate audio file is created.</p>
+  </div>
+  <div class="faq-item">
+    <b>What ebook formats does PhonoLeaf support?</b>
+    <p>DRM-free EPUB files.</p>
+  </div>
+  <div class="faq-item">
+    <b>Can I keep the audio to listen to later without PhonoLeaf?</b>
+    <p>No — PhonoLeaf reads books live rather than producing a downloadable audio file. That's also what lets it offer offline listening and unlimited books at a flat price instead of charging per conversion.</p>
+  </div>
+  <div class="faq-item">
+    <b>How much does PhonoLeaf cost?</b>
+    <p>$5.99 a month or $49.99 a year, with a free 7-day trial.</p>
+  </div>
 
   <div class="foot">
+    <a href="home.html">About PhonoLeaf</a> ·
     <a href="privacy.html">Privacy Policy</a> ·
     <a href="terms.html">Terms of Service</a> ·
     <a href="index.html">Open the app</a><br><br>

@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#3E8E6B">
+<meta name="description" content="PhonoLeaf reads your ebooks aloud in a natural voice generated on your device. Adjustable speed, background playback, and it remembers your place in every book.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%233E8E6B'/%3E%3Cpath d='M50 24 C68 38 68 66 50 82 C32 66 32 38 50 24 Z' fill='%23F4F1E8'/%3E%3Cpath d='M50 82 L50 90' stroke='%23F4F1E8' stroke-width='3.2' stroke-linecap='round'/%3E%3Cpath d='M35 53 Q40 42 45 53 T55 53 T65 53' fill='none' stroke='%233E8E6B' stroke-width='3.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<title>Read your ebooks aloud — PhonoLeaf</title>
+<link rel="canonical" href="https://phonoleaf.com/read-ebooks-aloud.html">
+<link rel="alternate" hreflang="en" href="https://phonoleaf.com/read-ebooks-aloud.html">
+<link rel="alternate" hreflang="fr-ca" href="https://phonoleaf.com/read-ebooks-aloud-fr.html">
+<link rel="alternate" hreflang="x-default" href="https://phonoleaf.com/read-ebooks-aloud.html">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Read your ebooks aloud — PhonoLeaf">
+<meta property="og:description" content="PhonoLeaf reads your ebooks aloud in a natural voice generated on your device. Adjustable speed, background playback, and it remembers your place.">
+<meta property="og:url" content="https://phonoleaf.com/read-ebooks-aloud.html">
+<meta name="twitter:card" content="summary_large_image">
+<meta property="og:image" content="https://phonoleaf.com/brand/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="PhonoLeaf: turn your ebooks into audiobooks">
+<meta name="twitter:image" content="https://phonoleaf.com/brand/og-image.png">
+<script>
+(function () {
+  try {
+    var saved = localStorage.getItem('pl_lang');
+    var prefersFr = (navigator.languages || [navigator.language || 'en'])
+      .some(function (l) { return /^fr/i.test(l); });
+    var wantFr = saved ? saved === 'fr' : prefersFr;
+    if (wantFr) { location.replace('read-ebooks-aloud-fr.html'); }
+  } catch (e) {}
+})();
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Can PhonoLeaf read any ebook?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "PhonoLeaf reads DRM-free EPUB files. Connect the Google Drive folder they're in and they appear in your library automatically."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Does the voice sound robotic?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "No — PhonoLeaf uses a natural neural voice generated on your device, not the flat system voice most reading apps rely on."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Can I change the reading speed?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes, from 0.5x to 2x, adjustable any time."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Is PhonoLeaf free to try?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes, a free 7-day trial with full access, then $5.99 a month or $49.99 a year."
+      }
+    }
+  ]
+}
+</script>
+<style>
+  :root {
+    --bg:        #F4F1E8;
+    --surface:   #FBF9F2;
+    --card:      #FFFFFF;
+    --accent:    #3E8E6B;
+    --accent2:   #C98A3C;
+    --text:      #1E2A22;
+    --text-dim:  #6E7A70;
+    --line:      #E6E1D3;
+    --font-ui:   'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg:#0F1310; --surface:#161B14; --card:#1D241B;
+      --accent:#6FC598; --accent2:#E0A857;
+      --text:#E8ECE1; --text-dim:#97A290; --line:#2A3225;
+    }
+  }
+  @font-face {
+    font-family:'Manrope'; font-style:normal; font-weight:100 900;
+    font-display:swap; src:url('fonts/manrope.woff2') format('woff2');
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 400 1rem/1.65 var(--font-ui);
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 2.5rem 1.5rem 5rem; }
+  .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 3rem; }
+  .brand { display: flex; align-items: center; gap: 0.6rem; text-decoration: none; color: var(--text); }
+  .brand svg { flex-shrink: 0; }
+  .brand span { font-weight: 800; font-size: 1.15rem; letter-spacing: -0.01em; }
+  .langswitch { font-size: 0.8rem; }
+  .langswitch a, .langswitch b { text-decoration: none; padding: 0.2rem 0.4rem; }
+  .langswitch a { color: var(--text-dim); }
+  .langswitch b { color: var(--text); }
+
+  .hero { text-align: center; margin-bottom: 3.5rem; }
+  .hero .mark { margin-bottom: 1.2rem; }
+  h1 { font-size: 2rem; font-weight: 800; margin: 0 0 0.6rem; letter-spacing: -0.02em; line-height: 1.25; }
+  .tagline { color: var(--accent2); font-weight: 700; font-size: 0.95rem; letter-spacing: 0.02em; margin-bottom: 1.1rem; }
+  .lede { color: var(--text-dim); font-size: 1.05rem; max-width: 34rem; margin: 0 auto 1.8rem; }
+  .cta {
+    display: inline-block; background: var(--accent); color: #fff; text-decoration: none;
+    font-weight: 700; font-size: 0.98rem; padding: 0.8rem 1.7rem; border-radius: 999px;
+  }
+  .cta-note { display: block; color: var(--text-dim); font-size: 0.82rem; margin-top: 0.8rem; }
+
+  h2 { font-size: 1.2rem; font-weight: 700; margin: 2.8rem 0 0.9rem; color: var(--accent); }
+  p { margin: 0 0 1rem; }
+  a { color: var(--accent); }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.9rem; margin: 1.2rem 0 1rem; }
+  .feat {
+    background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 1.1rem 1.2rem;
+  }
+  .feat b { display: block; margin-bottom: 0.25rem; font-size: 0.95rem; }
+  .feat span { color: var(--text-dim); font-size: 0.88rem; }
+
+  ul { margin: 0 0 1rem; padding-left: 1.3rem; }
+  li { margin-bottom: 0.45rem; }
+  .foot { margin-top: 3.5rem; padding-top: 1.5rem; border-top: 1px solid var(--line); color: var(--text-dim); font-size: 0.82rem; }
+
+  /* FAQ */
+  .faq-item { margin-bottom: 1.3rem; }
+  .faq-item b { display: block; margin-bottom: 0.3rem; font-size: 0.98rem; }
+  .faq-item p { color: var(--text-dim); margin: 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <a class="brand" href="home.html">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="28" height="28" aria-hidden="true"><rect width="100" height="100" rx="22" fill="#3E8E6B"/><path d="M50 24 C68 38 68 66 50 82 C32 66 32 38 50 24 Z" fill="#F4F1E8"/><path d="M50 82 L50 90" stroke="#F4F1E8" stroke-width="3.2" stroke-linecap="round"/><path d="M35 53 Q40 42 45 53 T55 53 T65 53" fill="none" stroke="#3E8E6B" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span>PhonoLeaf</span>
+    </a>
+    <div class="langswitch">
+      <b>EN</b> ·
+      <a href="read-ebooks-aloud-fr.html" onclick="try{localStorage.setItem('pl_lang','fr')}catch(e){}">FR</a>
+    </div>
+  </div>
+
+  <div class="hero">
+    <div class="mark">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="76" height="76" aria-hidden="true"><rect width="100" height="100" rx="22" fill="#3E8E6B"/><path d="M50 24 C68 38 68 66 50 82 C32 66 32 38 50 24 Z" fill="#F4F1E8"/><path d="M50 82 L50 90" stroke="#F4F1E8" stroke-width="3.2" stroke-linecap="round"/><path d="M35 53 Q40 42 45 53 T55 53 T65 53" fill="none" stroke="#3E8E6B" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+    <h1>Read your ebooks aloud, in a natural voice</h1>
+    <div class="tagline">A voice for every page</div>
+    <p class="lede">
+      Some days you'd rather listen than read. PhonoLeaf turns any ebook
+      already in your Google Drive into something you can listen to — while
+      you walk, drive, cook, or just rest your eyes.
+    </p>
+    <a class="cta" href="index.html">Open PhonoLeaf</a>
+    <span class="cta-note">Free 7-day trial · Sign in with Google · Nothing to install</span>
+  </div>
+
+  <h2>Built for listening, not just accessibility</h2>
+  <div class="grid">
+    <div class="feat">
+      <b>A natural voice, not robotic</b>
+      <span>A neural voice generated entirely on your device, with a choice of accents. Falls back to your system voice when needed.</span>
+    </div>
+    <div class="feat">
+      <b>Any speed you like</b>
+      <span>Slow down for dense chapters, speed up for familiar ones — from 0.5x to 2x, adjustable any time.</span>
+    </div>
+    <div class="feat">
+      <b>Keeps reading, screen off</b>
+      <span>Playback continues when your phone is locked, with lock-screen play/pause and chapter controls.</span>
+    </div>
+    <div class="feat">
+      <b>Always picks up where you left off</b>
+      <span>Your position is saved per book, down to the paragraph — across pauses, chapters and restarts.</span>
+    </div>
+  </div>
+
+  <h2>Frequently asked questions</h2>
+  <div class="faq-item">
+    <b>Can PhonoLeaf read any ebook?</b>
+    <p>PhonoLeaf reads DRM-free EPUB files. Connect the Google Drive folder they're in and they appear in your library automatically.</p>
+  </div>
+  <div class="faq-item">
+    <b>Does the voice sound robotic?</b>
+    <p>No — PhonoLeaf uses a natural neural voice generated on your device, not the flat system voice most reading apps rely on.</p>
+  </div>
+  <div class="faq-item">
+    <b>Can I change the reading speed?</b>
+    <p>Yes, from 0.5x to 2x, adjustable any time.</p>
+  </div>
+  <div class="faq-item">
+    <b>Is PhonoLeaf free to try?</b>
+    <p>Yes, a free 7-day trial with full access, then $5.99 a month or $49.99 a year.</p>
+  </div>
+
+  <div class="foot">
+    <a href="home.html">About PhonoLeaf</a> ·
+    <a href="privacy.html">Privacy Policy</a> ·
+    <a href="terms.html">Terms of Service</a> ·
+    <a href="index.html">Open the app</a><br><br>
+    Contact: <a href="mailto:support@phonoleaf.com">support@phonoleaf.com</a>
+  </div>
+
+</div>
+<!-- Cloudflare Web Analytics --><script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "cbc3149663944543a36ea8d6090ec58b"}'></script><!-- End Cloudflare Web Analytics -->
+</body>
+</html>

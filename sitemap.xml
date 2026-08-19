@@ -90,6 +90,66 @@
     <xhtml:link rel="alternate" hreflang="x-default" href="https://phonoleaf.com/voice-aloud-alternative.html"/>
   </url>
   <url>
+    <loc>https://phonoleaf.com/read-ebooks-aloud.html</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://phonoleaf.com/read-ebooks-aloud.html"/>
+    <xhtml:link rel="alternate" hreflang="fr-ca" href="https://phonoleaf.com/read-ebooks-aloud-fr.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://phonoleaf.com/read-ebooks-aloud.html"/>
+  </url>
+  <url>
+    <loc>https://phonoleaf.com/read-ebooks-aloud-fr.html</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://phonoleaf.com/read-ebooks-aloud.html"/>
+    <xhtml:link rel="alternate" hreflang="fr-ca" href="https://phonoleaf.com/read-ebooks-aloud-fr.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://phonoleaf.com/read-ebooks-aloud.html"/>
+  </url>
+  <url>
+    <loc>https://phonoleaf.com/epub-to-audiobook.html</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://phonoleaf.com/epub-to-audiobook.html"/>
+    <xhtml:link rel="alternate" hreflang="fr-ca" href="https://phonoleaf.com/epub-to-audiobook-fr.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://phonoleaf.com/epub-to-audiobook.html"/>
+  </url>
+  <url>
+    <loc>https://phonoleaf.com/epub-to-audiobook-fr.html</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://phonoleaf.com/epub-to-audiobook.html"/>
+    <xhtml:link rel="alternate" hreflang="fr-ca" href="https://phonoleaf.com/epub-to-audiobook-fr.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://phonoleaf.com/epub-to-audiobook.html"/>
+  </url>
+  <url>
+    <loc>https://phonoleaf.com/google-drive-audiobooks.html</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://phonoleaf.com/google-drive-audiobooks.html"/>
+    <xhtml:link rel="alternate" hreflang="fr-ca" href="https://phonoleaf.com/google-drive-audiobooks-fr.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://phonoleaf.com/google-drive-audiobooks.html"/>
+  </url>
+  <url>
+    <loc>https://phonoleaf.com/google-drive-audiobooks-fr.html</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://phonoleaf.com/google-drive-audiobooks.html"/>
+    <xhtml:link rel="alternate" hreflang="fr-ca" href="https://phonoleaf.com/google-drive-audiobooks-fr.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://phonoleaf.com/google-drive-audiobooks.html"/>
+  </url>
+  <url>
+    <loc>https://phonoleaf.com/offline-text-to-speech.html</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://phonoleaf.com/offline-text-to-speech.html"/>
+    <xhtml:link rel="alternate" hreflang="fr-ca" href="https://phonoleaf.com/offline-text-to-speech-fr.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://phonoleaf.com/offline-text-to-speech.html"/>
+  </url>
+  <url>
+    <loc>https://phonoleaf.com/offline-text-to-speech-fr.html</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://phonoleaf.com/offline-text-to-speech.html"/>
+    <xhtml:link rel="alternate" hreflang="fr-ca" href="https://phonoleaf.com/offline-text-to-speech-fr.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://phonoleaf.com/offline-text-to-speech.html"/>
+  </url>
+  <url>
+    <loc>https://phonoleaf.com/text-to-speech-dyslexia.html</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://phonoleaf.com/text-to-speech-dyslexia.html"/>
+    <xhtml:link rel="alternate" hreflang="fr-ca" href="https://phonoleaf.com/text-to-speech-dyslexia-fr.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://phonoleaf.com/text-to-speech-dyslexia.html"/>
+  </url>
+  <url>
+    <loc>https://phonoleaf.com/text-to-speech-dyslexia-fr.html</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://phonoleaf.com/text-to-speech-dyslexia.html"/>
+    <xhtml:link rel="alternate" hreflang="fr-ca" href="https://phonoleaf.com/text-to-speech-dyslexia-fr.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://phonoleaf.com/text-to-speech-dyslexia.html"/>
+  </url>
+  <url>
     <loc>https://phonoleaf.com/terms.html</loc>
     <xhtml:link rel="alternate" hreflang="en" href="https://phonoleaf.com/terms.html"/>
     <xhtml:link rel="alternate" hreflang="fr-ca" href="https://phonoleaf.com/terms-fr.html"/>

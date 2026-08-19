@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#3E8E6B">
+<meta name="description" content="Une application de synthèse vocale calme et naturelle pour la dyslexie et le TDAH. Vitesse de lecture ajustable, reprend exactement là où vous vous êtes arrêté, dans chaque livre.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%233E8E6B'/%3E%3Cpath d='M50 24 C68 38 68 66 50 82 C32 66 32 38 50 24 Z' fill='%23F4F1E8'/%3E%3Cpath d='M50 82 L50 90' stroke='%23F4F1E8' stroke-width='3.2' stroke-linecap='round'/%3E%3Cpath d='M35 53 Q40 42 45 53 T55 53 T65 53' fill='none' stroke='%233E8E6B' stroke-width='3.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<title>Synthèse vocale pour la dyslexie — PhonoLeaf</title>
+<link rel="canonical" href="https://phonoleaf.com/text-to-speech-dyslexia-fr.html">
+<link rel="alternate" hreflang="en" href="https://phonoleaf.com/text-to-speech-dyslexia.html">
+<link rel="alternate" hreflang="fr-ca" href="https://phonoleaf.com/text-to-speech-dyslexia-fr.html">
+<link rel="alternate" hreflang="x-default" href="https://phonoleaf.com/text-to-speech-dyslexia.html">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="fr_CA">
+<meta property="og:title" content="Synthèse vocale pour la dyslexie — PhonoLeaf">
+<meta property="og:description" content="Une application de synthèse vocale calme et naturelle pour la dyslexie et le TDAH. Vitesse de lecture ajustable, reprend exactement là où vous vous êtes arrêté.">
+<meta property="og:url" content="https://phonoleaf.com/text-to-speech-dyslexia-fr.html">
+<meta name="twitter:card" content="summary_large_image">
+<meta property="og:image" content="https://phonoleaf.com/brand/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="PhonoLeaf : transformez vos livres numériques en livres audio">
+<meta name="twitter:image" content="https://phonoleaf.com/brand/og-image.png">
+<script>
+(function () {
+  try {
+    var saved = localStorage.getItem('pl_lang');
+    if (saved === 'en') { location.replace('text-to-speech-dyslexia.html'); }
+  } catch (e) {}
+})();
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Est-ce que PhonoLeaf convient à la dyslexie ?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Plusieurs utilisent PhonoLeaf exactement pour cette raison : une voix calme et naturelle, une vitesse ajustable, et aucune configuration au-delà de la connexion d'un dossier Google Drive."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Est-ce que PhonoLeaf surligne les mots pendant la lecture ?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Pas encore. PhonoLeaf se concentre actuellement sur un son naturel et sur la mémorisation exacte de votre position. Le surlignage mot par mot est prévu au programme."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Puis-je ajuster la vitesse de lecture ?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Oui, de 0,5x à 2x, ajustable à tout moment."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Combien coûte PhonoLeaf ?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "5,99 $ par mois ou 49,99 $ par année, avec un essai gratuit de 7 jours."
+      }
+    }
+  ]
+}
+</script>
+<style>
+  :root {
+    --bg:        #F4F1E8;
+    --surface:   #FBF9F2;
+    --card:      #FFFFFF;
+    --accent:    #3E8E6B;
+    --accent2:   #C98A3C;
+    --text:      #1E2A22;
+    --text-dim:  #6E7A70;
+    --line:      #E6E1D3;
+    --font-ui:   'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg:#0F1310; --surface:#161B14; --card:#1D241B;
+      --accent:#6FC598; --accent2:#E0A857;
+      --text:#E8ECE1; --text-dim:#97A290; --line:#2A3225;
+    }
+  }
+  @font-face {
+    font-family:'Manrope'; font-style:normal; font-weight:100 900;
+    font-display:swap; src:url('fonts/manrope.woff2') format('woff2');
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 400 1rem/1.65 var(--font-ui);
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 2.5rem 1.5rem 5rem; }
+  .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 3rem; }
+  .brand { display: flex; align-items: center; gap: 0.6rem; text-decoration: none; color: var(--text); }
+  .brand svg { flex-shrink: 0; }
+  .brand span { font-weight: 800; font-size: 1.15rem; letter-spacing: -0.01em; }
+  .langswitch { font-size: 0.8rem; }
+  .langswitch a, .langswitch b { text-decoration: none; padding: 0.2rem 0.4rem; }
+  .langswitch a { color: var(--text-dim); }
+  .langswitch b { color: var(--text); }
+
+  .hero { text-align: center; margin-bottom: 3.5rem; }
+  .hero .mark { margin-bottom: 1.2rem; }
+  h1 { font-size: 2rem; font-weight: 800; margin: 0 0 0.6rem; letter-spacing: -0.02em; line-height: 1.25; }
+  .tagline { color: var(--accent2); font-weight: 700; font-size: 0.95rem; letter-spacing: 0.02em; margin-bottom: 1.1rem; }
+  .lede { color: var(--text-dim); font-size: 1.05rem; max-width: 34rem; margin: 0 auto 1.8rem; }
+  .cta {
+    display: inline-block; background: var(--accent); color: #fff; text-decoration: none;
+    font-weight: 700; font-size: 0.98rem; padding: 0.8rem 1.7rem; border-radius: 999px;
+  }
+  .cta-note { display: block; color: var(--text-dim); font-size: 0.82rem; margin-top: 0.8rem; }
+
+  h2 { font-size: 1.2rem; font-weight: 700; margin: 2.8rem 0 0.9rem; color: var(--accent); }
+  p { margin: 0 0 1rem; }
+  a { color: var(--accent); }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.9rem; margin: 1.2rem 0 1rem; }
+  .feat {
+    background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 1.1rem 1.2rem;
+  }
+  .feat b { display: block; margin-bottom: 0.25rem; font-size: 0.95rem; }
+  .feat span { color: var(--text-dim); font-size: 0.88rem; }
+
+  ul { margin: 0 0 1rem; padding-left: 1.3rem; }
+  li { margin-bottom: 0.45rem; }
+  .foot { margin-top: 3.5rem; padding-top: 1.5rem; border-top: 1px solid var(--line); color: var(--text-dim); font-size: 0.82rem; }
+
+  /* FAQ */
+  .faq-item { margin-bottom: 1.3rem; }
+  .faq-item b { display: block; margin-bottom: 0.3rem; font-size: 0.98rem; }
+  .faq-item p { color: var(--text-dim); margin: 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <a class="brand" href="home-fr.html">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="28" height="28" aria-hidden="true"><rect width="100" height="100" rx="22" fill="#3E8E6B"/><path d="M50 24 C68 38 68 66 50 82 C32 66 32 38 50 24 Z" fill="#F4F1E8"/><path d="M50 82 L50 90" stroke="#F4F1E8" stroke-width="3.2" stroke-linecap="round"/><path d="M35 53 Q40 42 45 53 T55 53 T65 53" fill="none" stroke="#3E8E6B" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span>PhonoLeaf</span>
+    </a>
+    <div class="langswitch">
+      <a href="text-to-speech-dyslexia.html" onclick="try{localStorage.setItem('pl_lang','en')}catch(e){}">EN</a> ·
+      <b>FR</b>
+    </div>
+  </div>
+
+  <div class="hero">
+    <div class="mark">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="76" height="76" aria-hidden="true"><rect width="100" height="100" rx="22" fill="#3E8E6B"/><path d="M50 24 C68 38 68 66 50 82 C32 66 32 38 50 24 Z" fill="#F4F1E8"/><path d="M50 82 L50 90" stroke="#F4F1E8" stroke-width="3.2" stroke-linecap="round"/><path d="M35 53 Q40 42 45 53 T55 53 T65 53" fill="none" stroke="#3E8E6B" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+    <h1>Une façon plus calme de lire, pour la dyslexie et le TDAH</h1>
+    <div class="tagline">Une voix pour chaque page</div>
+    <p class="lede">
+      PhonoLeaf lit à voix haute les livres numériques que vous avez déjà,
+      dans une voix naturelle sur votre appareil — conçue pour rendre la
+      lecture plus calme, pas pour ajouter une autre application à gérer.
+    </p>
+    <a class="cta" href="index.html">Ouvrir PhonoLeaf</a>
+    <span class="cta-note">Essai gratuit de 7 jours · Connexion avec Google · Rien à installer</span>
+  </div>
+
+  <h2>Ce qui rend la lecture plus facile</h2>
+  <div class="grid">
+    <div class="feat">
+      <b>Une voix naturelle, pas robotique</b>
+      <span>Une voix neuronale sur l'appareil, plus facile à écouter longtemps qu'une voix système plate.</span>
+    </div>
+    <div class="feat">
+      <b>Une vitesse de lecture que vous contrôlez</b>
+      <span>De 0,5× à 2× — trouvez le rythme qui fonctionne, et changez-le à tout moment.</span>
+    </div>
+    <div class="feat">
+      <b>Ne perdez jamais votre place</b>
+      <span>PhonoLeaf se souvient exactement de l'endroit où vous vous êtes arrêté, jusqu'au paragraphe, dans chaque livre.</span>
+    </div>
+    <div class="feat">
+      <b>Une bibliothèque calme et épurée</b>
+      <span>Papier chaud le jour, thème forêt tamisé la nuit — aucune publicité, aucun encombrement.</span>
+    </div>
+  </div>
+
+  <h2>Foire aux questions</h2>
+  <div class="faq-item">
+    <b>Est-ce que PhonoLeaf convient à la dyslexie ?</b>
+    <p>Plusieurs utilisent PhonoLeaf exactement pour cette raison : une voix calme et naturelle, une vitesse ajustable, et aucune configuration au-delà de la connexion d'un dossier Google Drive.</p>
+  </div>
+  <div class="faq-item">
+    <b>Est-ce que PhonoLeaf surligne les mots pendant la lecture ?</b>
+    <p>Pas encore. PhonoLeaf se concentre actuellement sur un son naturel et sur la mémorisation exacte de votre position. Le surlignage mot par mot est prévu au programme.</p>
+  </div>
+  <div class="faq-item">
+    <b>Puis-je ajuster la vitesse de lecture ?</b>
+    <p>Oui, de 0,5× à 2×, ajustable à tout moment.</p>
+  </div>
+  <div class="faq-item">
+    <b>Combien coûte PhonoLeaf ?</b>
+    <p>5,99 $ par mois ou 49,99 $ par année, avec un essai gratuit de 7 jours.</p>
+  </div>
+
+  <p>
+    Vous venez de Voice Dream Reader ? Découvrez
+    <a href="voice-dream-alternative-fr.html">comment PhonoLeaf se compare</a>.
+  </p>
+
+  <div class="foot">
+    <a href="home-fr.html">À propos de PhonoLeaf</a> ·
+    <a href="privacy-fr.html">Politique de confidentialité</a> ·
+    <a href="terms-fr.html">Conditions d'utilisation</a> ·
+    <a href="index.html">Ouvrir l'application</a><br><br>
+    Contact : <a href="mailto:support@phonoleaf.com">support@phonoleaf.com</a>
+  </div>
+
+</div>
+<!-- Cloudflare Web Analytics --><script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "cbc3149663944543a36ea8d6090ec58b"}'></script><!-- End Cloudflare Web Analytics -->
+</body>
+</html>
