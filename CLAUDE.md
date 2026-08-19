@@ -3908,3 +3908,22 @@ elsewhere in this file about not guessing icon designs), toggled via
   when that chunk started). Screenshotted the reader top bar in both on/off
   states to confirm the icon renders clearly and doesn't crowd the existing
   back/chapters buttons. Not device-verified.
+
+**Moved into the `.tts-pill` next to Voice the same day (owner request:
+"can we put the read-along icon next to Voice instead of next to the
+hamburger menu?").** `#hl-btn` relocated out of `.reader-top` into
+`.reader-bottom .tts-pill`, immediately before `#voice-btn` (order: prev,
+play, next, speed, highlight, voice). New `.hl-pill` class (tighter
+`0.4rem` padding, `flex-shrink: 0`) and an 18px (down from 20px) icon so it
+sits comfortably among the pill's other compact controls rather than using
+`.icon-btn`'s default top-bar-sized padding. `TTS.setFollowAlong`/
+`toggleFollowAlong`/`_syncFollowAlongUI` are untouched — this was a pure
+markup/CSS move, no JS logic changed. Verified in a browser harness at a
+real 375px phone width: the pill (354px) fits inside the viewport with
+room either side, correct button order confirmed via DOM traversal
+(`hl-btn.nextElementSibling === voice-btn`). Screenshot capture wasn't
+available in this session (Browser pane display issue unrelated to the
+code), so the visual result rests on the DOM-geometry check plus the
+icon's already-confirmed rendering from the prior top-bar placement — worth
+a glance next time the pane's up, and this is folded into the same
+on-device check as the rest of this feature.
