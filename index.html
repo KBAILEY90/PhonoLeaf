@@ -5722,12 +5722,14 @@ const TTS = {
       const doc = iframe && iframe.contentDocument;
       if (!doc || !chunk.node.isConnected || chunk.node.ownerDocument !== doc) return null;
 
-      let wordStart = 0;
-      for (let i = this.idx - 1; i >= 0 && this.chunks[i] && this.chunks[i].node === chunk.node; i--) {
-        wordStart += (this.chunks[i].text.match(/\S+/g) || []).length;
-      }
       const chunkWordCount = (chunk.text.match(/\S+/g) || []).length;
       if (!chunkWordCount) return null;
+
+      // Find the run of consecutive chunks (in THIS PAGE's chunk list) that
+      // share this .node — _split() breaks a long paragraph into several
+      // chunks that all reference the same block.
+      let runStartIdx = this.idx;
+      while (runStartIdx > 0 && this.chunks[runStartIdx - 1] && this.chunks[runStartIdx - 1].node === chunk.node) runStartIdx--;
 
       // Same /\S+/g per-word tokenization loadPageText() already uses for its
       // page-edge Range measurement, walked across the whole block here — but
@@ -5758,6 +5760,34 @@ const TTS = {
         }
       }
       flush();
+
+      // Anchor the run's start by CONTENT match against the node's real
+      // words, not by assuming word 0 of the block. A fresh page's chunk
+      // list always starts counting from index 0 (loadPageText() rebuilds
+      // this.chunks from scratch on every page), but the paragraph itself
+      // may have STARTED ON THE PREVIOUS PAGE (very common — most page
+      // breaks fall mid-paragraph) — its full text is still in this node,
+      // just further along than word 0. Assuming 0 would silently build a
+      // schedule for the wrong (earlier, now off-screen on the previous
+      // page's column) words, which highlights nothing anyone can see —
+      // this is what made the highlight appear to just stop after a page
+      // turn. Match a short prefix of the run's first chunk instead of a
+      // single word, to avoid landing on an earlier coincidental repeat.
+      const runStartWords = (this.chunks[runStartIdx].text.match(/\S+/g) || []);
+      if (!runStartWords.length) return null;
+      const anchorLen = Math.min(5, runStartWords.length);
+      let anchorIdx = -1;
+      for (let i = 0; i <= blockWords.length - anchorLen; i++) {
+        let ok = true;
+        for (let k = 0; k < anchorLen; k++) { if (blockWords[i + k].text !== runStartWords[k]) { ok = false; break; } }
+        if (ok) { anchorIdx = i; break; }
+      }
+      if (anchorIdx === -1) return null; // can't anchor — fail closed, never guess
+
+      let wordStart = anchorIdx;
+      for (let i = runStartIdx; i < this.idx; i++) {
+        wordStart += (this.chunks[i].text.match(/\S+/g) || []).length;
+      }
       if (blockWords.length < wordStart + chunkWordCount) return null; // can't reconcile — fail closed
 
       const words = blockWords.slice(wordStart, wordStart + chunkWordCount);

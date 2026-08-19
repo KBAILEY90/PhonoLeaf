@@ -3927,3 +3927,45 @@ code), so the visual result rests on the DOM-geometry check plus the
 icon's already-confirmed rendering from the prior top-bar placement — worth
 a glance next time the pane's up, and this is folded into the same
 on-device check as the rest of this feature.
+
+**Real bug found on the first device test (owner-reported): "if I change
+page while the read-along is on, it doesn't continue on the next page.
+There's no more read-along."** Root cause was in `_buildWordSchedule`'s
+`wordStart` calculation, not the page-turn plumbing itself. It computed
+`wordStart` by summing the word counts of earlier chunks in `this.chunks`
+that share the same `.node` — correct for the SAME-PAGE multi-chunk case
+(`_split()` breaking one long paragraph into several chunks), but wrong for
+the first chunk of a NEW page: `_resumeRead()` resets `this.chunks = []` on
+every page turn, so the first chunk of any page always had `wordStart = 0`,
+regardless of whether the underlying paragraph actually **started on the
+previous page** — which is the common case, since most page breaks in a
+real book fall mid-paragraph, not between paragraphs. The DOM node itself
+still holds the paragraph's FULL text (unaffected by pagination), so
+`_buildWordSchedule` would confidently build a schedule for words 1-N of
+the paragraph and register a `Range` pointing at them — except those words
+are the ones that were on the PREVIOUS page, now scrolled out of the
+paginated column view. The highlight was technically still being applied,
+just to text that had scrolled off-screen, which is indistinguishable from
+"no highlight at all" to the user.
+- **Fix: anchor the run's start by content match, not by assumed position.**
+  Instead of trusting `this.chunks` array position (which resets every
+  page), `_buildWordSchedule` now finds the run of same-`.node` chunks
+  within the CURRENT page's chunk list (`runStartIdx`, unchanged from
+  before), then searches the node's full word list (`blockWords`, from the
+  `TreeWalker`) for a 5-word matching prefix of that run's first chunk's
+  text, and uses WHEREVER that content actually lands as the true
+  `wordStart` — correctly finding the continuation point deep into the
+  paragraph when this page picks up mid-sentence, instead of always
+  assuming the paragraph's true beginning. Same-page multi-chunk math
+  (summing forward from the anchor to the current chunk) is unchanged.
+  Fails closed (returns `null`, no highlight) if the anchor genuinely can't
+  be found, same fail-closed philosophy as the rest of this feature.
+- Verified in a browser harness: all prior regression cases (simple
+  paragraph, inline-tag word merge, same-page multi-chunk split) still pass
+  unchanged; a new test simulating a 16-word paragraph split across two
+  "pages" (`this.chunks` reset between them, exactly matching
+  `_resumeRead()`'s real behavior) confirms page 2's chunk now correctly
+  anchors starting at word 9 ("nine") instead of wrongly repeating words
+  1-8 ("one"..."eight", which would have been off-screen on page 1); and a
+  chunk whose claimed text genuinely isn't in the DOM still fails closed
+  (returns `null`) rather than guessing or throwing.
