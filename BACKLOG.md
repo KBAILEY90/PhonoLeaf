@@ -152,6 +152,68 @@ the same problem.
   dedicated pass — "your library loans work here" is a real, differentiated
   feature no competitor in `COMPETITORS.md` offers.
 
+### Research pass, 2026-08-17: the real constraint is the web platform, not cost
+
+**LCP is excluded from web/browser apps by EDRLab's own design — not a gap in
+`epub.js`, a gap in what any browser app can ever do.** Quoting EDRLab's LCP
+FAQ directly: *"No, LCP is not available for Web applications... Web
+applications do not provide ways to avoid developers having access to their
+code... it is not possible to include in a Web application a real DRM
+solution, using secrets concealed in precompiled libraries."* Their
+precompiled LCP client libraries exist for iOS, Android, Windows, macOS and
+Linux — every one a native app, none a browser. This corrects the framing in
+the entry above ("new engine work... not a config flag") — it understated
+the constraint. It is not that `epub.js` lacks a crypto client that could in
+principle be added; no browser-based app, on any renderer, can ever pass
+LCP certification. **PhonoLeaf's web build could not get this feature under
+any amount of engineering effort.**
+
+A server-side workaround exists in theory (decrypt on a server, stream
+obfuscated content to the browser) but EDRLab itself discourages it, calling
+it something that "cannot be done generically" since the approach "would be
+too easily defeated if made public." Building it would also mean standing up
+real backend infrastructure that touches actual book content — the opposite
+of "PhonoLeaf has no backend, nothing is ever uploaded," the core claim
+across every comparison page in `COMPETITORS.md`'s "close the two gaps that
+matter" strategy. Not pursuing this path.
+
+**Native Android is the only realistic path**, using Readium's Kotlin LCP
+library, and would be new, self-contained engineering (a real crypto client,
+license validation against EDRLab's license status server) layered onto the
+native build the same way `PhonoLeafTtsPlugin.kt`/`SecureStoragePlugin.kt`
+already are. iOS would need a second, separate Swift port later.
+
+**Owner pushback on the "web is primary, so native-only is a weak case"
+framing above (2026-08-17): fair, and it changes the read.** Audiobook-style
+listening skews heavily toward phones regardless of which PhonoLeaf platform
+is currently more mature — people listen while walking, driving, commuting,
+not typically at a desktop browser. So "native Android (and eventually iOS)
+only" is a real limitation, but a much less crippling one than "this only
+reaches a minority of realistic listening sessions." The corrected framing:
+native-only excludes the web build specifically, but not necessarily the
+platforms where this feature would actually get used most.
+
+**Cost — genuinely not the blocker.** EDRLab's published LCP fee for a small
+organization (under €300K in digital publication revenue) is **€300/year ≈
+$350 USD/year** (EUR/USD ≈ 1.16, checked 2026-08-17 — re-check before
+budgeting for real, this floats). That is on top of a separate EDRLab
+membership fee that is **not publicly listed** and would need to be
+requested directly from EDRLab before this is a complete number. Compare
+against the CASA figures already tracked in `VERIFICATION.md`/`BUSINESS.md`
+($693–770 one-time, ~$700/yr recurring) — this would be a second, much
+smaller annual line item, not a comparable cost.
+
+**Decision: park, don't scope further right now. Revisit if there's
+demonstrated demand** (e.g. Québec/French-market users specifically asking
+for Prêt Numérique support — see `COMPETITORS.md`'s "lean into the French
+and Québec market" opportunity, which this would directly serve). Not
+building until then. If it's picked up later, remaining open questions are
+narrower than before: the exact EDRLab membership fee, whether Prêt
+Numérique/Cantook needs anything beyond generic LCP certification (likely
+not — interoperability with any certified reading system is the point of
+the standard, but not independently verified), and the real size of a
+Kotlin LCP integration against the existing native plugin architecture.
+
 ---
 
 ## E. More storage sources than Google Drive
