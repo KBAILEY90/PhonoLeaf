@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#3E8E6B">
+<meta name="description" content="Calibre organise votre bibliothèque numérique, mais ne la lit pas à voix haute. Voici l'étape unique pour faire passer votre bibliothèque Calibre dans PhonoLeaf.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%233E8E6B'/%3E%3Cpath d='M50 24 C68 38 68 66 50 82 C32 66 32 38 50 24 Z' fill='%23F4F1E8'/%3E%3Cpath d='M50 82 L50 90' stroke='%23F4F1E8' stroke-width='3.2' stroke-linecap='round'/%3E%3Cpath d='M35 53 Q40 42 45 53 T55 53 T65 53' fill='none' stroke='%233E8E6B' stroke-width='3.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<title>Comment écouter votre bibliothèque Calibre à voix haute · PhonoLeaf</title>
+<link rel="canonical" href="https://phonoleaf.com/blog/read-calibre-library-aloud-fr.html">
+<link rel="alternate" hreflang="en" href="https://phonoleaf.com/blog/read-calibre-library-aloud.html">
+<link rel="alternate" hreflang="fr-ca" href="https://phonoleaf.com/blog/read-calibre-library-aloud-fr.html">
+<link rel="alternate" hreflang="x-default" href="https://phonoleaf.com/blog/read-calibre-library-aloud.html">
+<meta property="og:type" content="article">
+<meta property="og:locale" content="fr_CA">
+<meta property="og:title" content="Comment écouter votre bibliothèque Calibre à voix haute · PhonoLeaf">
+<meta property="og:description" content="Calibre organise vos livres numériques, elle ne les raconte pas. Voici l'étape unique pour que votre bibliothèque Calibre se fasse lire dans une voix naturelle.">
+<meta property="og:url" content="https://phonoleaf.com/blog/read-calibre-library-aloud-fr.html">
+<meta name="twitter:card" content="summary_large_image">
+<meta property="og:image" content="https://phonoleaf.com/brand/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="PhonoLeaf : transformez vos livres numériques en livres audio">
+<meta name="twitter:image" content="https://phonoleaf.com/brand/og-image.png">
+<script>
+(function () {
+  try {
+    var saved = localStorage.getItem('pl_lang');
+    if (saved === 'en') { location.replace('read-calibre-library-aloud.html'); }
+  } catch (e) {}
+})();
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Est-ce que PhonoLeaf s'intègre directement à Calibre ?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Pas directement. PhonoLeaf se connecte à un dossier Google Drive, donc faire passer une bibliothèque Calibre demande une étape de transition : copier ou synchroniser votre dossier Calibre vers Drive."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Est-ce que mes métadonnées Calibre, comme les couvertures, seront conservées ?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "PhonoLeaf lit les métadonnées et la couverture intégrées directement dans le fichier EPUB, donc les couvertures et les titres apparaissent généralement correctement sans étape supplémentaire."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Et les livres protégés par un verrou numérique dans ma bibliothèque Calibre ?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "PhonoLeaf n'ouvre que les EPUB sans verrou numérique. Les livres encore protégés dans votre bibliothèque Calibre ne fonctionneront pas, comme dans n'importe quel autre lecteur EPUB sans retrait de la protection."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Dois-je recopier mes fichiers à chaque fois ?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Non. Une fois le dossier connecté, tout ce que vous y ajoutez plus tard apparaît automatiquement dans PhonoLeaf. C'est donc une configuration unique, pas une corvée répétée."
+      }
+    }
+  ]
+}
+</script>
+<style>
+  :root {
+    --bg:        #F4F1E8;
+    --surface:   #FBF9F2;
+    --card:      #FFFFFF;
+    --accent:    #3E8E6B;
+    --accent2:   #C98A3C;
+    --text:      #1E2A22;
+    --text-dim:  #6E7A70;
+    --line:      #E6E1D3;
+    --font-ui:   'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg:#0F1310; --surface:#161B14; --card:#1D241B;
+      --accent:#6FC598; --accent2:#E0A857;
+      --text:#E8ECE1; --text-dim:#97A290; --line:#2A3225;
+    }
+  }
+  @font-face {
+    font-family:'Manrope'; font-style:normal; font-weight:100 900;
+    font-display:swap; src:url('../fonts/manrope.woff2') format('woff2');
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 400 1rem/1.65 var(--font-ui);
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 2.5rem 1.5rem 5rem; }
+  .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 3rem; }
+  .brand { display: flex; align-items: center; gap: 0.6rem; text-decoration: none; color: var(--text); }
+  .brand svg { flex-shrink: 0; }
+  .brand span { font-weight: 800; font-size: 1.15rem; letter-spacing: -0.01em; }
+  .langswitch { font-size: 0.8rem; }
+  .langswitch a, .langswitch b { text-decoration: none; padding: 0.2rem 0.4rem; }
+  .langswitch a { color: var(--text-dim); }
+  .langswitch b { color: var(--text); }
+
+  .hero { text-align: center; margin-bottom: 3.5rem; }
+  .hero .mark { margin-bottom: 1.2rem; }
+  h1 { font-size: 2rem; font-weight: 800; margin: 0 0 0.6rem; letter-spacing: -0.02em; line-height: 1.25; }
+  .tagline { color: var(--accent2); font-weight: 700; font-size: 0.95rem; letter-spacing: 0.02em; margin-bottom: 0.6rem; }
+  .dateline { color: var(--text-dim); font-size: 0.82rem; margin-bottom: 1.1rem; }
+  .lede { color: var(--text-dim); font-size: 1.05rem; max-width: 34rem; margin: 0 auto 1.8rem; }
+  .cta {
+    display: inline-block; background: var(--accent); color: #fff; text-decoration: none;
+    font-weight: 700; font-size: 0.98rem; padding: 0.8rem 1.7rem; border-radius: 999px;
+  }
+  .cta-note { display: block; color: var(--text-dim); font-size: 0.82rem; margin-top: 0.8rem; }
+
+  h2 { font-size: 1.2rem; font-weight: 700; margin: 2.8rem 0 0.9rem; color: var(--accent); }
+  p { margin: 0 0 1rem; }
+  a { color: var(--accent); }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.9rem; margin: 1.2rem 0 1rem; }
+  .feat {
+    background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 1.1rem 1.2rem;
+  }
+  .feat b { display: block; margin-bottom: 0.25rem; font-size: 0.95rem; }
+  .feat span { color: var(--text-dim); font-size: 0.88rem; }
+
+  .steps { list-style: none; padding: 0; margin: 0 0 1rem; counter-reset: s; }
+  .steps li {
+    position: relative; padding-left: 2.6rem; margin-bottom: 1.1rem; counter-increment: s;
+  }
+  .steps li::before {
+    content: counter(s); position: absolute; left: 0; top: 0.05rem;
+    width: 1.75rem; height: 1.75rem; border-radius: 50%;
+    background: var(--accent); color: #fff;
+    font-size: 0.85rem; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .steps b { display: block; }
+  .steps span { color: var(--text-dim); font-size: 0.93rem; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+    padding: 1.2rem 1.4rem; margin: 1.4rem 0; font-size: 0.92rem;
+  }
+  .card b { display: block; margin-bottom: 0.3rem; }
+  ul { margin: 0 0 1rem; padding-left: 1.3rem; }
+  li { margin-bottom: 0.45rem; }
+  .foot { margin-top: 3.5rem; padding-top: 1.5rem; border-top: 1px solid var(--line); color: var(--text-dim); font-size: 0.82rem; }
+
+  /* FAQ */
+  .faq-item { margin-bottom: 1.3rem; }
+  .faq-item b { display: block; margin-bottom: 0.3rem; font-size: 0.98rem; }
+  .faq-item p { color: var(--text-dim); margin: 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <a class="brand" href="../home-fr.html">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="28" height="28" aria-hidden="true"><rect width="100" height="100" rx="22" fill="#3E8E6B"/><path d="M50 24 C68 38 68 66 50 82 C32 66 32 38 50 24 Z" fill="#F4F1E8"/><path d="M50 82 L50 90" stroke="#F4F1E8" stroke-width="3.2" stroke-linecap="round"/><path d="M35 53 Q40 42 45 53 T55 53 T65 53" fill="none" stroke="#3E8E6B" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span>PhonoLeaf</span>
+    </a>
+    <div class="langswitch">
+      <a href="read-calibre-library-aloud.html" onclick="try{localStorage.setItem('pl_lang','en')}catch(e){}">EN</a> ·
+      <b>FR</b>
+    </div>
+  </div>
+
+  <div class="hero">
+    <div class="mark">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="76" height="76" aria-hidden="true"><rect width="100" height="100" rx="22" fill="#3E8E6B"/><path d="M50 24 C68 38 68 66 50 82 C32 66 32 38 50 24 Z" fill="#F4F1E8"/><path d="M50 82 L50 90" stroke="#F4F1E8" stroke-width="3.2" stroke-linecap="round"/><path d="M35 53 Q40 42 45 53 T55 53 T65 53" fill="none" stroke="#3E8E6B" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+    <h1>Comment écouter votre bibliothèque Calibre à voix haute</h1>
+    <div class="tagline">Aucun module requis, juste un dossier</div>
+    <div class="dateline">Publié le 19 août 2026</div>
+    <p class="lede">
+      Calibre, c'est là que beaucoup de lecteurs méticuleux gardent leur
+      bibliothèque organisée, étiquetée et convertie dans le format voulu.
+      Ce qu'elle n'est pas conçue pour faire, c'est vous en lire le contenu
+      dans une voix qui donne envie d'écouter.
+    </p>
+    <a class="cta" href="../index.html">Ouvrir PhonoLeaf</a>
+    <span class="cta-note">Essai gratuit de 7 jours · Connexion avec Google · Rien à installer</span>
+  </div>
+
+  <h2>Calibre organise, elle ne raconte pas</h2>
+  <p>
+    Le lecteur intégré de Calibre a bien une option de lecture à voix
+    haute, mais elle s'appuie sur la voix de synthèse déjà installée sur
+    votre ordinateur, la même voix plate et mécanique intégrée à votre
+    système. C'est fonctionnel, mais rarement quelque chose qu'on choisit
+    d'écouter pour tout un roman.
+  </p>
+
+  <h2>Faire passer votre bibliothèque dans PhonoLeaf</h2>
+  <p>
+    PhonoLeaf ne s'intègre pas directement à Calibre. Elle se connecte à un
+    dossier Google Drive, donc le pont entre les deux demande une étape
+    supplémentaire, pas une corvée continue.
+  </p>
+  <ol class="steps">
+    <li>
+      <b>Trouvez votre dossier de bibliothèque Calibre</b>
+      <span>C'est un simple dossier de fichiers EPUB sur votre ordinateur, celui que vous avez indiqué à Calibre lors de sa configuration.</span>
+    </li>
+    <li>
+      <b>Copiez-le ou synchronisez-le vers Google Drive</b>
+      <span>Glissez le dossier dans Drive, ou pointez l'application de synchronisation de Drive vers lui. Dans les deux cas, c'est une configuration unique, pas quelque chose à répéter par livre.</span>
+    </li>
+    <li>
+      <b>Connectez ce dossier dans PhonoLeaf</b>
+      <span>Connectez-vous avec Google et choisissez le dossier. Chaque EPUB sans verrou numérique devient quelque chose sur lequel vous pouvez appuyer sur lecture.</span>
+    </li>
+  </ol>
+
+  <div class="card">
+    <b>Une note sur les verrous numériques</b>
+    Les bibliothèques Calibre peuvent contenir des livres provenant de
+    toutes sortes de sources, et certains peuvent encore être protégés par
+    un verrou numérique. PhonoLeaf n'ouvre que les EPUB sans verrou, comme
+    n'importe quel lecteur EPUB standard.
+  </div>
+
+  <h2>Foire aux questions</h2>
+  <div class="faq-item">
+    <b>Est-ce que PhonoLeaf s'intègre directement à Calibre ?</b>
+    <p>Pas directement. PhonoLeaf se connecte à un dossier Google Drive, donc faire passer une bibliothèque Calibre demande une étape de transition : copier ou synchroniser votre dossier Calibre vers Drive.</p>
+  </div>
+  <div class="faq-item">
+    <b>Est-ce que mes métadonnées Calibre, comme les couvertures, seront conservées ?</b>
+    <p>PhonoLeaf lit les métadonnées et la couverture intégrées directement dans le fichier EPUB, donc les couvertures et les titres apparaissent généralement correctement sans étape supplémentaire.</p>
+  </div>
+  <div class="faq-item">
+    <b>Et les livres protégés par un verrou numérique dans ma bibliothèque Calibre ?</b>
+    <p>PhonoLeaf n'ouvre que les EPUB sans verrou numérique. Les livres encore protégés dans votre bibliothèque Calibre ne fonctionneront pas, comme dans n'importe quel autre lecteur EPUB sans retrait de la protection.</p>
+  </div>
+  <div class="faq-item">
+    <b>Dois-je recopier mes fichiers à chaque fois ?</b>
+    <p>Non. Une fois le dossier connecté, tout ce que vous y ajoutez plus tard apparaît automatiquement dans PhonoLeaf. C'est donc une configuration unique, pas une corvée répétée.</p>
+  </div>
+
+  <p>
+    En savoir plus sur <a href="../read-ebooks-aloud-fr.html">lire vos livres numériques à voix haute</a>
+    ou <a href="../google-drive-audiobooks-fr.html">écouter vos livres numériques Google Drive</a>.
+  </p>
+
+  <div class="foot">
+    <a href="index-fr.html">Blogue</a> ·
+    <a href="../home-fr.html">À propos de PhonoLeaf</a> ·
+    <a href="../privacy-fr.html">Politique de confidentialité</a> ·
+    <a href="../terms-fr.html">Conditions d'utilisation</a> ·
+    <a href="../index.html">Ouvrir l'application</a><br><br>
+    Contact : <a href="mailto:support@phonoleaf.com">support@phonoleaf.com</a>
+  </div>
+
+</div>
+<!-- Cloudflare Web Analytics --><script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "cbc3149663944543a36ea8d6090ec58b"}'></script><!-- End Cloudflare Web Analytics -->
+</body>
+</html>

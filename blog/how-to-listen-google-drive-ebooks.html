@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#3E8E6B">
+<meta name="description" content="If your ebooks are already sitting in a Google Drive folder, here's how to actually listen to them, and what stays private when you connect it.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%233E8E6B'/%3E%3Cpath d='M50 24 C68 38 68 66 50 82 C32 66 32 38 50 24 Z' fill='%23F4F1E8'/%3E%3Cpath d='M50 82 L50 90' stroke='%23F4F1E8' stroke-width='3.2' stroke-linecap='round'/%3E%3Cpath d='M35 53 Q40 42 45 53 T55 53 T65 53' fill='none' stroke='%233E8E6B' stroke-width='3.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<title>How to Listen to Your Google Drive Ebooks · PhonoLeaf</title>
+<link rel="canonical" href="https://phonoleaf.com/blog/how-to-listen-google-drive-ebooks.html">
+<link rel="alternate" hreflang="en" href="https://phonoleaf.com/blog/how-to-listen-google-drive-ebooks.html">
+<link rel="alternate" hreflang="fr-ca" href="https://phonoleaf.com/blog/how-to-listen-google-drive-ebooks-fr.html">
+<link rel="alternate" hreflang="x-default" href="https://phonoleaf.com/blog/how-to-listen-google-drive-ebooks.html">
+<meta property="og:type" content="article">
+<meta property="og:title" content="How to Listen to Your Google Drive Ebooks · PhonoLeaf">
+<meta property="og:description" content="A folder of EPUBs in Google Drive is one sign-in away from becoming an audiobook library. Here's how it works and what stays private.">
+<meta property="og:url" content="https://phonoleaf.com/blog/how-to-listen-google-drive-ebooks.html">
+<meta name="twitter:card" content="summary_large_image">
+<meta property="og:image" content="https://phonoleaf.com/brand/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="PhonoLeaf: turn your ebooks into audiobooks">
+<meta name="twitter:image" content="https://phonoleaf.com/brand/og-image.png">
+<script>
+(function () {
+  try {
+    var saved = localStorage.getItem('pl_lang');
+    var prefersFr = (navigator.languages || [navigator.language || 'en'])
+      .some(function (l) { return /^fr/i.test(l); });
+    var wantFr = saved ? saved === 'fr' : prefersFr;
+    if (wantFr) { location.replace('how-to-listen-google-drive-ebooks-fr.html'); }
+  } catch (e) {}
+})();
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Do I need to move my files anywhere?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "No. PhonoLeaf reads them straight from wherever they already sit in your Drive. Nothing is copied to another server."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What happens when I add a new book later?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "It appears in your library on its own the next time PhonoLeaf checks the folder. No re-import step."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Can PhonoLeaf edit or delete anything in my Drive?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "No. It requests read-only access, which can view and download files but cannot modify, move, or delete anything."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Does this work with subfolders?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "PhonoLeaf reads the EPUBs directly inside the folder you connect. If your books are spread across several subfolders, point it at the one that holds the ones you want to listen to, or a parent folder that contains them."
+      }
+    }
+  ]
+}
+</script>
+<style>
+  :root {
+    --bg:        #F4F1E8;
+    --surface:   #FBF9F2;
+    --card:      #FFFFFF;
+    --accent:    #3E8E6B;
+    --accent2:   #C98A3C;
+    --text:      #1E2A22;
+    --text-dim:  #6E7A70;
+    --line:      #E6E1D3;
+    --font-ui:   'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg:#0F1310; --surface:#161B14; --card:#1D241B;
+      --accent:#6FC598; --accent2:#E0A857;
+      --text:#E8ECE1; --text-dim:#97A290; --line:#2A3225;
+    }
+  }
+  @font-face {
+    font-family:'Manrope'; font-style:normal; font-weight:100 900;
+    font-display:swap; src:url('../fonts/manrope.woff2') format('woff2');
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 400 1rem/1.65 var(--font-ui);
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 2.5rem 1.5rem 5rem; }
+  .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 3rem; }
+  .brand { display: flex; align-items: center; gap: 0.6rem; text-decoration: none; color: var(--text); }
+  .brand svg { flex-shrink: 0; }
+  .brand span { font-weight: 800; font-size: 1.15rem; letter-spacing: -0.01em; }
+  .langswitch { font-size: 0.8rem; }
+  .langswitch a, .langswitch b { text-decoration: none; padding: 0.2rem 0.4rem; }
+  .langswitch a { color: var(--text-dim); }
+  .langswitch b { color: var(--text); }
+
+  .hero { text-align: center; margin-bottom: 3.5rem; }
+  .hero .mark { margin-bottom: 1.2rem; }
+  h1 { font-size: 2rem; font-weight: 800; margin: 0 0 0.6rem; letter-spacing: -0.02em; line-height: 1.25; }
+  .tagline { color: var(--accent2); font-weight: 700; font-size: 0.95rem; letter-spacing: 0.02em; margin-bottom: 0.6rem; }
+  .dateline { color: var(--text-dim); font-size: 0.82rem; margin-bottom: 1.1rem; }
+  .lede { color: var(--text-dim); font-size: 1.05rem; max-width: 34rem; margin: 0 auto 1.8rem; }
+  .cta {
+    display: inline-block; background: var(--accent); color: #fff; text-decoration: none;
+    font-weight: 700; font-size: 0.98rem; padding: 0.8rem 1.7rem; border-radius: 999px;
+  }
+  .cta-note { display: block; color: var(--text-dim); font-size: 0.82rem; margin-top: 0.8rem; }
+
+  h2 { font-size: 1.2rem; font-weight: 700; margin: 2.8rem 0 0.9rem; color: var(--accent); }
+  p { margin: 0 0 1rem; }
+  a { color: var(--accent); }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.9rem; margin: 1.2rem 0 1rem; }
+  .feat {
+    background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 1.1rem 1.2rem;
+  }
+  .feat b { display: block; margin-bottom: 0.25rem; font-size: 0.95rem; }
+  .feat span { color: var(--text-dim); font-size: 0.88rem; }
+
+  .steps { list-style: none; padding: 0; margin: 0 0 1rem; counter-reset: s; }
+  .steps li {
+    position: relative; padding-left: 2.6rem; margin-bottom: 1.1rem; counter-increment: s;
+  }
+  .steps li::before {
+    content: counter(s); position: absolute; left: 0; top: 0.05rem;
+    width: 1.75rem; height: 1.75rem; border-radius: 50%;
+    background: var(--accent); color: #fff;
+    font-size: 0.85rem; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .steps b { display: block; }
+  .steps span { color: var(--text-dim); font-size: 0.93rem; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+    padding: 1.2rem 1.4rem; margin: 1.4rem 0; font-size: 0.92rem;
+  }
+  .card b { display: block; margin-bottom: 0.3rem; }
+  ul { margin: 0 0 1rem; padding-left: 1.3rem; }
+  li { margin-bottom: 0.45rem; }
+  .foot { margin-top: 3.5rem; padding-top: 1.5rem; border-top: 1px solid var(--line); color: var(--text-dim); font-size: 0.82rem; }
+
+  /* FAQ */
+  .faq-item { margin-bottom: 1.3rem; }
+  .faq-item b { display: block; margin-bottom: 0.3rem; font-size: 0.98rem; }
+  .faq-item p { color: var(--text-dim); margin: 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <a class="brand" href="../home.html">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="28" height="28" aria-hidden="true"><rect width="100" height="100" rx="22" fill="#3E8E6B"/><path d="M50 24 C68 38 68 66 50 82 C32 66 32 38 50 24 Z" fill="#F4F1E8"/><path d="M50 82 L50 90" stroke="#F4F1E8" stroke-width="3.2" stroke-linecap="round"/><path d="M35 53 Q40 42 45 53 T55 53 T65 53" fill="none" stroke="#3E8E6B" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span>PhonoLeaf</span>
+    </a>
+    <div class="langswitch">
+      <b>EN</b> ·
+      <a href="how-to-listen-google-drive-ebooks-fr.html" onclick="try{localStorage.setItem('pl_lang','fr')}catch(e){}">FR</a>
+    </div>
+  </div>
+
+  <div class="hero">
+    <div class="mark">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="76" height="76" aria-hidden="true"><rect width="100" height="100" rx="22" fill="#3E8E6B"/><path d="M50 24 C68 38 68 66 50 82 C32 66 32 38 50 24 Z" fill="#F4F1E8"/><path d="M50 82 L50 90" stroke="#F4F1E8" stroke-width="3.2" stroke-linecap="round"/><path d="M35 53 Q40 42 45 53 T55 53 T65 53" fill="none" stroke="#3E8E6B" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+    <h1>How to listen to your Google Drive ebooks</h1>
+    <div class="tagline">If they're already in Drive, you're one sign-in away</div>
+    <div class="dateline">Published August 19, 2026</div>
+    <p class="lede">
+      A lot of people end up with a folder of EPUBs quietly sitting in
+      Google Drive, and no easy way to actually listen to any of them.
+      Here's how to close that gap.
+    </p>
+    <a class="cta" href="../index.html">Open PhonoLeaf</a>
+    <span class="cta-note">Free 7-day trial · Sign in with Google · Nothing to install</span>
+  </div>
+
+  <h2>Where those files usually come from</h2>
+  <p>
+    It's rarely one source. A Calibre export backed up to the cloud, a
+    download from a store that doesn't lock its files, a personal digitized
+    collection, a file a friend or family member sent along. Over a few
+    years it adds up to a real library, just not one anything is set up to
+    read aloud.
+  </p>
+
+  <h2>Connect once, not per book</h2>
+  <ol class="steps">
+    <li>
+      <b>Sign in with Google</b>
+      <span>PhonoLeaf asks for read-only access to Drive, nothing more.</span>
+    </li>
+    <li>
+      <b>Choose the folder</b>
+      <span>Pick the one your EPUBs live in. Every DRM-free file inside shows up with its cover art.</span>
+    </li>
+    <li>
+      <b>It stays in sync</b>
+      <span>Add a new book to that folder later and it appears in your library on its own, no re-import.</span>
+    </li>
+  </ol>
+
+  <h2>What stays private</h2>
+  <p>
+    PhonoLeaf's access to your Drive is read-only: it can see and download
+    the files in the folder you choose, and nothing else. It cannot create,
+    edit, move, or delete anything in your Drive. The natural voice that
+    reads your books is generated on your own device, not by sending your
+    book's text to a third-party server. There's more on that in
+    <a href="on-device-text-to-speech-privacy.html">why on-device text to speech is more private</a>.
+  </p>
+
+  <div class="card">
+    <b>One folder, any source</b>
+    It doesn't matter whether the EPUBs came from Calibre, a bookstore
+    export, or a decade of scattered downloads. If they're DRM-free and
+    sitting in a Drive folder, PhonoLeaf can read them.
+  </div>
+
+  <h2>Frequently asked questions</h2>
+  <div class="faq-item">
+    <b>Do I need to move my files anywhere?</b>
+    <p>No. PhonoLeaf reads them straight from wherever they already sit in your Drive. Nothing is copied to another server.</p>
+  </div>
+  <div class="faq-item">
+    <b>What happens when I add a new book later?</b>
+    <p>It appears in your library on its own the next time PhonoLeaf checks the folder. No re-import step.</p>
+  </div>
+  <div class="faq-item">
+    <b>Can PhonoLeaf edit or delete anything in my Drive?</b>
+    <p>No. It requests read-only access, which can view and download files but cannot modify, move, or delete anything.</p>
+  </div>
+  <div class="faq-item">
+    <b>Does this work with subfolders?</b>
+    <p>PhonoLeaf reads the EPUBs directly inside the folder you connect. If your books are spread across several subfolders, point it at the one that holds the ones you want to listen to, or a parent folder that contains them.</p>
+  </div>
+
+  <p>
+    Read more about <a href="../google-drive-audiobooks.html">listening to your Google Drive ebooks</a>
+    or <a href="../read-ebooks-aloud.html">reading your ebooks aloud</a>.
+  </p>
+
+  <div class="foot">
+    <a href="index.html">Blog</a> ·
+    <a href="../home.html">About PhonoLeaf</a> ·
+    <a href="../privacy.html">Privacy Policy</a> ·
+    <a href="../terms.html">Terms of Service</a> ·
+    <a href="../index.html">Open the app</a><br><br>
+    Contact: <a href="mailto:support@phonoleaf.com">support@phonoleaf.com</a>
+  </div>
+
+</div>
+<!-- Cloudflare Web Analytics --><script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "cbc3149663944543a36ea8d6090ec58b"}'></script><!-- End Cloudflare Web Analytics -->
+</body>
+</html>

@@ -150,6 +150,78 @@
     <xhtml:link rel="alternate" hreflang="x-default" href="https://phonoleaf.com/text-to-speech-dyslexia.html"/>
   </url>
   <url>
+    <loc>https://phonoleaf.com/blog/index.html</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://phonoleaf.com/blog/index.html"/>
+    <xhtml:link rel="alternate" hreflang="fr-ca" href="https://phonoleaf.com/blog/index-fr.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://phonoleaf.com/blog/index.html"/>
+  </url>
+  <url>
+    <loc>https://phonoleaf.com/blog/index-fr.html</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://phonoleaf.com/blog/index.html"/>
+    <xhtml:link rel="alternate" hreflang="fr-ca" href="https://phonoleaf.com/blog/index-fr.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://phonoleaf.com/blog/index.html"/>
+  </url>
+  <url>
+    <loc>https://phonoleaf.com/blog/how-to-turn-ebook-into-audiobook.html</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://phonoleaf.com/blog/how-to-turn-ebook-into-audiobook.html"/>
+    <xhtml:link rel="alternate" hreflang="fr-ca" href="https://phonoleaf.com/blog/how-to-turn-ebook-into-audiobook-fr.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://phonoleaf.com/blog/how-to-turn-ebook-into-audiobook.html"/>
+  </url>
+  <url>
+    <loc>https://phonoleaf.com/blog/how-to-turn-ebook-into-audiobook-fr.html</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://phonoleaf.com/blog/how-to-turn-ebook-into-audiobook.html"/>
+    <xhtml:link rel="alternate" hreflang="fr-ca" href="https://phonoleaf.com/blog/how-to-turn-ebook-into-audiobook-fr.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://phonoleaf.com/blog/how-to-turn-ebook-into-audiobook.html"/>
+  </url>
+  <url>
+    <loc>https://phonoleaf.com/blog/how-to-listen-google-drive-ebooks.html</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://phonoleaf.com/blog/how-to-listen-google-drive-ebooks.html"/>
+    <xhtml:link rel="alternate" hreflang="fr-ca" href="https://phonoleaf.com/blog/how-to-listen-google-drive-ebooks-fr.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://phonoleaf.com/blog/how-to-listen-google-drive-ebooks.html"/>
+  </url>
+  <url>
+    <loc>https://phonoleaf.com/blog/how-to-listen-google-drive-ebooks-fr.html</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://phonoleaf.com/blog/how-to-listen-google-drive-ebooks.html"/>
+    <xhtml:link rel="alternate" hreflang="fr-ca" href="https://phonoleaf.com/blog/how-to-listen-google-drive-ebooks-fr.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://phonoleaf.com/blog/how-to-listen-google-drive-ebooks.html"/>
+  </url>
+  <url>
+    <loc>https://phonoleaf.com/blog/read-calibre-library-aloud.html</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://phonoleaf.com/blog/read-calibre-library-aloud.html"/>
+    <xhtml:link rel="alternate" hreflang="fr-ca" href="https://phonoleaf.com/blog/read-calibre-library-aloud-fr.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://phonoleaf.com/blog/read-calibre-library-aloud.html"/>
+  </url>
+  <url>
+    <loc>https://phonoleaf.com/blog/read-calibre-library-aloud-fr.html</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://phonoleaf.com/blog/read-calibre-library-aloud.html"/>
+    <xhtml:link rel="alternate" hreflang="fr-ca" href="https://phonoleaf.com/blog/read-calibre-library-aloud-fr.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://phonoleaf.com/blog/read-calibre-library-aloud.html"/>
+  </url>
+  <url>
+    <loc>https://phonoleaf.com/blog/on-device-text-to-speech-privacy.html</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://phonoleaf.com/blog/on-device-text-to-speech-privacy.html"/>
+    <xhtml:link rel="alternate" hreflang="fr-ca" href="https://phonoleaf.com/blog/on-device-text-to-speech-privacy-fr.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://phonoleaf.com/blog/on-device-text-to-speech-privacy.html"/>
+  </url>
+  <url>
+    <loc>https://phonoleaf.com/blog/on-device-text-to-speech-privacy-fr.html</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://phonoleaf.com/blog/on-device-text-to-speech-privacy.html"/>
+    <xhtml:link rel="alternate" hreflang="fr-ca" href="https://phonoleaf.com/blog/on-device-text-to-speech-privacy-fr.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://phonoleaf.com/blog/on-device-text-to-speech-privacy.html"/>
+  </url>
+  <url>
+    <loc>https://phonoleaf.com/blog/best-text-to-speech-apps-2026.html</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://phonoleaf.com/blog/best-text-to-speech-apps-2026.html"/>
+    <xhtml:link rel="alternate" hreflang="fr-ca" href="https://phonoleaf.com/blog/best-text-to-speech-apps-2026-fr.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://phonoleaf.com/blog/best-text-to-speech-apps-2026.html"/>
+  </url>
+  <url>
+    <loc>https://phonoleaf.com/blog/best-text-to-speech-apps-2026-fr.html</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://phonoleaf.com/blog/best-text-to-speech-apps-2026.html"/>
+    <xhtml:link rel="alternate" hreflang="fr-ca" href="https://phonoleaf.com/blog/best-text-to-speech-apps-2026-fr.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://phonoleaf.com/blog/best-text-to-speech-apps-2026.html"/>
+  </url>
+  <url>
     <loc>https://phonoleaf.com/terms.html</loc>
     <xhtml:link rel="alternate" hreflang="en" href="https://phonoleaf.com/terms.html"/>
     <xhtml:link rel="alternate" hreflang="fr-ca" href="https://phonoleaf.com/terms-fr.html"/>

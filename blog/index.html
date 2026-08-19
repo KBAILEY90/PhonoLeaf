@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#3E8E6B">
+<meta name="description" content="Guides on turning your ebooks into audiobooks, listening to your Google Drive library, and how on-device text to speech works.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%233E8E6B'/%3E%3Cpath d='M50 24 C68 38 68 66 50 82 C32 66 32 38 50 24 Z' fill='%23F4F1E8'/%3E%3Cpath d='M50 82 L50 90' stroke='%23F4F1E8' stroke-width='3.2' stroke-linecap='round'/%3E%3Cpath d='M35 53 Q40 42 45 53 T55 53 T65 53' fill='none' stroke='%233E8E6B' stroke-width='3.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<title>Blog · PhonoLeaf</title>
+<link rel="canonical" href="https://phonoleaf.com/blog/index.html">
+<link rel="alternate" hreflang="en" href="https://phonoleaf.com/blog/index.html">
+<link rel="alternate" hreflang="fr-ca" href="https://phonoleaf.com/blog/index-fr.html">
+<link rel="alternate" hreflang="x-default" href="https://phonoleaf.com/blog/index.html">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Blog · PhonoLeaf">
+<meta property="og:description" content="Guides on turning your ebooks into audiobooks, listening to your Google Drive library, and how on-device text to speech works.">
+<meta property="og:url" content="https://phonoleaf.com/blog/index.html">
+<meta name="twitter:card" content="summary_large_image">
+<meta property="og:image" content="https://phonoleaf.com/brand/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="PhonoLeaf: turn your ebooks into audiobooks">
+<meta name="twitter:image" content="https://phonoleaf.com/brand/og-image.png">
+<script>
+(function () {
+  try {
+    var saved = localStorage.getItem('pl_lang');
+    var prefersFr = (navigator.languages || [navigator.language || 'en'])
+      .some(function (l) { return /^fr/i.test(l); });
+    var wantFr = saved ? saved === 'fr' : prefersFr;
+    if (wantFr) { location.replace('index-fr.html'); }
+  } catch (e) {}
+})();
+</script>
+<style>
+  :root {
+    --bg:        #F4F1E8;
+    --surface:   #FBF9F2;
+    --card:      #FFFFFF;
+    --accent:    #3E8E6B;
+    --accent2:   #C98A3C;
+    --text:      #1E2A22;
+    --text-dim:  #6E7A70;
+    --line:      #E6E1D3;
+    --font-ui:   'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg:#0F1310; --surface:#161B14; --card:#1D241B;
+      --accent:#6FC598; --accent2:#E0A857;
+      --text:#E8ECE1; --text-dim:#97A290; --line:#2A3225;
+    }
+  }
+  @font-face {
+    font-family:'Manrope'; font-style:normal; font-weight:100 900;
+    font-display:swap; src:url('../fonts/manrope.woff2') format('woff2');
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 400 1rem/1.65 var(--font-ui);
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 2.5rem 1.5rem 5rem; }
+  .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 3rem; }
+  .brand { display: flex; align-items: center; gap: 0.6rem; text-decoration: none; color: var(--text); }
+  .brand svg { flex-shrink: 0; }
+  .brand span { font-weight: 800; font-size: 1.15rem; letter-spacing: -0.01em; }
+  .langswitch { font-size: 0.8rem; }
+  .langswitch a, .langswitch b { text-decoration: none; padding: 0.2rem 0.4rem; }
+  .langswitch a { color: var(--text-dim); }
+  .langswitch b { color: var(--text); }
+
+  .hero { text-align: center; margin-bottom: 3rem; }
+  h1 { font-size: 1.9rem; font-weight: 800; margin: 0 0 0.6rem; letter-spacing: -0.02em; line-height: 1.25; }
+  .lede { color: var(--text-dim); font-size: 1.02rem; max-width: 34rem; margin: 0 auto; }
+  a { color: var(--accent); }
+
+  .postlist { display: flex; flex-direction: column; gap: 0.9rem; }
+  .post {
+    display: block; background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+    padding: 1.2rem 1.4rem; text-decoration: none; color: var(--text);
+  }
+  .post b { display: block; font-size: 1.02rem; margin-bottom: 0.35rem; }
+  .post span { color: var(--text-dim); font-size: 0.9rem; }
+
+  .foot { margin-top: 3.5rem; padding-top: 1.5rem; border-top: 1px solid var(--line); color: var(--text-dim); font-size: 0.82rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <a class="brand" href="../home.html">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="28" height="28" aria-hidden="true"><rect width="100" height="100" rx="22" fill="#3E8E6B"/><path d="M50 24 C68 38 68 66 50 82 C32 66 32 38 50 24 Z" fill="#F4F1E8"/><path d="M50 82 L50 90" stroke="#F4F1E8" stroke-width="3.2" stroke-linecap="round"/><path d="M35 53 Q40 42 45 53 T55 53 T65 53" fill="none" stroke="#3E8E6B" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span>PhonoLeaf</span>
+    </a>
+    <div class="langswitch">
+      <b>EN</b> ·
+      <a href="index-fr.html" onclick="try{localStorage.setItem('pl_lang','fr')}catch(e){}">FR</a>
+    </div>
+  </div>
+
+  <div class="hero">
+    <h1>The PhonoLeaf blog</h1>
+    <p class="lede">Guides on turning ebooks into something you can listen to, and how PhonoLeaf approaches it.</p>
+  </div>
+
+  <div class="postlist">
+    <a class="post" href="how-to-turn-ebook-into-audiobook.html">
+      <b>How to turn any ebook into an audiobook</b>
+      <span>Three ways to do it, and the one that skips uploading, waiting, and downloading.</span>
+    </a>
+    <a class="post" href="how-to-listen-google-drive-ebooks.html">
+      <b>How to listen to your Google Drive ebooks</b>
+      <span>If your EPUBs are already in Drive, you're one sign-in away.</span>
+    </a>
+    <a class="post" href="read-calibre-library-aloud.html">
+      <b>How to read your Calibre library aloud</b>
+      <span>No plugin needed, just a folder.</span>
+    </a>
+    <a class="post" href="on-device-text-to-speech-privacy.html">
+      <b>Why on-device text to speech is more private</b>
+      <span>The book stays on your phone. So does every sentence it reads.</span>
+    </a>
+    <a class="post" href="best-text-to-speech-apps-2026.html">
+      <b>The best text to speech apps for books you already own (2026)</b>
+      <span>What to look for, and where PhonoLeaf fits.</span>
+    </a>
+  </div>
+
+  <div class="foot">
+    <a href="../home.html">About PhonoLeaf</a> ·
+    <a href="../privacy.html">Privacy Policy</a> ·
+    <a href="../terms.html">Terms of Service</a> ·
+    <a href="../index.html">Open the app</a><br><br>
+    Contact: <a href="mailto:support@phonoleaf.com">support@phonoleaf.com</a>
+  </div>
+
+</div>
+<!-- Cloudflare Web Analytics --><script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "cbc3149663944543a36ea8d6090ec58b"}'></script><!-- End Cloudflare Web Analytics -->
+</body>
+</html>

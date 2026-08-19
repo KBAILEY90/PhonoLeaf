@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#3E8E6B">
+<meta name="description" content="Three real ways to turn an ebook you own into something you can listen to, and why connecting your Google Drive to PhonoLeaf skips most of the wait.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%233E8E6B'/%3E%3Cpath d='M50 24 C68 38 68 66 50 82 C32 66 32 38 50 24 Z' fill='%23F4F1E8'/%3E%3Cpath d='M50 82 L50 90' stroke='%23F4F1E8' stroke-width='3.2' stroke-linecap='round'/%3E%3Cpath d='M35 53 Q40 42 45 53 T55 53 T65 53' fill='none' stroke='%233E8E6B' stroke-width='3.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<title>How to Turn Any Ebook Into an Audiobook · PhonoLeaf</title>
+<link rel="canonical" href="https://phonoleaf.com/blog/how-to-turn-ebook-into-audiobook.html">
+<link rel="alternate" hreflang="en" href="https://phonoleaf.com/blog/how-to-turn-ebook-into-audiobook.html">
+<link rel="alternate" hreflang="fr-ca" href="https://phonoleaf.com/blog/how-to-turn-ebook-into-audiobook-fr.html">
+<link rel="alternate" hreflang="x-default" href="https://phonoleaf.com/blog/how-to-turn-ebook-into-audiobook.html">
+<meta property="og:type" content="article">
+<meta property="og:title" content="How to Turn Any Ebook Into an Audiobook · PhonoLeaf">
+<meta property="og:description" content="Three real ways to turn an ebook you own into something you can listen to, and the one that skips uploading, waiting, and downloading.">
+<meta property="og:url" content="https://phonoleaf.com/blog/how-to-turn-ebook-into-audiobook.html">
+<meta name="twitter:card" content="summary_large_image">
+<meta property="og:image" content="https://phonoleaf.com/brand/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="PhonoLeaf: turn your ebooks into audiobooks">
+<meta name="twitter:image" content="https://phonoleaf.com/brand/og-image.png">
+<script>
+(function () {
+  try {
+    var saved = localStorage.getItem('pl_lang');
+    var prefersFr = (navigator.languages || [navigator.language || 'en'])
+      .some(function (l) { return /^fr/i.test(l); });
+    var wantFr = saved ? saved === 'fr' : prefersFr;
+    if (wantFr) { location.replace('how-to-turn-ebook-into-audiobook-fr.html'); }
+  } catch (e) {}
+})();
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Does PhonoLeaf create an audio file I can download?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "No, and that's deliberate. PhonoLeaf generates the voice live as you read, so there's no MP3 to manage, store, or run out of space for. Press play and it reads; close the app and it remembers where you stopped."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Do I need to convert my ebook file first?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "No conversion step. If it's a DRM-free EPUB sitting in your Google Drive, it appears in your PhonoLeaf library as soon as you connect the folder."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What if my ebook has DRM?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "PhonoLeaf can't open DRM-protected files, and won't try to strip the protection. It reads EPUBs you're free to open in any reader."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Is this free to try?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes, a free 7-day trial with full access, then $5.99 a month or $49.99 a year."
+      }
+    }
+  ]
+}
+</script>
+<style>
+  :root {
+    --bg:        #F4F1E8;
+    --surface:   #FBF9F2;
+    --card:      #FFFFFF;
+    --accent:    #3E8E6B;
+    --accent2:   #C98A3C;
+    --text:      #1E2A22;
+    --text-dim:  #6E7A70;
+    --line:      #E6E1D3;
+    --font-ui:   'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg:#0F1310; --surface:#161B14; --card:#1D241B;
+      --accent:#6FC598; --accent2:#E0A857;
+      --text:#E8ECE1; --text-dim:#97A290; --line:#2A3225;
+    }
+  }
+  @font-face {
+    font-family:'Manrope'; font-style:normal; font-weight:100 900;
+    font-display:swap; src:url('../fonts/manrope.woff2') format('woff2');
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 400 1rem/1.65 var(--font-ui);
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 2.5rem 1.5rem 5rem; }
+  .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 3rem; }
+  .brand { display: flex; align-items: center; gap: 0.6rem; text-decoration: none; color: var(--text); }
+  .brand svg { flex-shrink: 0; }
+  .brand span { font-weight: 800; font-size: 1.15rem; letter-spacing: -0.01em; }
+  .langswitch { font-size: 0.8rem; }
+  .langswitch a, .langswitch b { text-decoration: none; padding: 0.2rem 0.4rem; }
+  .langswitch a { color: var(--text-dim); }
+  .langswitch b { color: var(--text); }
+
+  .hero { text-align: center; margin-bottom: 3.5rem; }
+  .hero .mark { margin-bottom: 1.2rem; }
+  h1 { font-size: 2rem; font-weight: 800; margin: 0 0 0.6rem; letter-spacing: -0.02em; line-height: 1.25; }
+  .tagline { color: var(--accent2); font-weight: 700; font-size: 0.95rem; letter-spacing: 0.02em; margin-bottom: 0.6rem; }
+  .dateline { color: var(--text-dim); font-size: 0.82rem; margin-bottom: 1.1rem; }
+  .lede { color: var(--text-dim); font-size: 1.05rem; max-width: 34rem; margin: 0 auto 1.8rem; }
+  .cta {
+    display: inline-block; background: var(--accent); color: #fff; text-decoration: none;
+    font-weight: 700; font-size: 0.98rem; padding: 0.8rem 1.7rem; border-radius: 999px;
+  }
+  .cta-note { display: block; color: var(--text-dim); font-size: 0.82rem; margin-top: 0.8rem; }
+
+  h2 { font-size: 1.2rem; font-weight: 700; margin: 2.8rem 0 0.9rem; color: var(--accent); }
+  p { margin: 0 0 1rem; }
+  a { color: var(--accent); }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.9rem; margin: 1.2rem 0 1rem; }
+  .feat {
+    background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 1.1rem 1.2rem;
+  }
+  .feat b { display: block; margin-bottom: 0.25rem; font-size: 0.95rem; }
+  .feat span { color: var(--text-dim); font-size: 0.88rem; }
+
+  .steps { list-style: none; padding: 0; margin: 0 0 1rem; counter-reset: s; }
+  .steps li {
+    position: relative; padding-left: 2.6rem; margin-bottom: 1.1rem; counter-increment: s;
+  }
+  .steps li::before {
+    content: counter(s); position: absolute; left: 0; top: 0.05rem;
+    width: 1.75rem; height: 1.75rem; border-radius: 50%;
+    background: var(--accent); color: #fff;
+    font-size: 0.85rem; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .steps b { display: block; }
+  .steps span { color: var(--text-dim); font-size: 0.93rem; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+    padding: 1.2rem 1.4rem; margin: 1.4rem 0; font-size: 0.92rem;
+  }
+  .card b { display: block; margin-bottom: 0.3rem; }
+  ul { margin: 0 0 1rem; padding-left: 1.3rem; }
+  li { margin-bottom: 0.45rem; }
+  .foot { margin-top: 3.5rem; padding-top: 1.5rem; border-top: 1px solid var(--line); color: var(--text-dim); font-size: 0.82rem; }
+
+  /* FAQ */
+  .faq-item { margin-bottom: 1.3rem; }
+  .faq-item b { display: block; margin-bottom: 0.3rem; font-size: 0.98rem; }
+  .faq-item p { color: var(--text-dim); margin: 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <a class="brand" href="../home.html">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="28" height="28" aria-hidden="true"><rect width="100" height="100" rx="22" fill="#3E8E6B"/><path d="M50 24 C68 38 68 66 50 82 C32 66 32 38 50 24 Z" fill="#F4F1E8"/><path d="M50 82 L50 90" stroke="#F4F1E8" stroke-width="3.2" stroke-linecap="round"/><path d="M35 53 Q40 42 45 53 T55 53 T65 53" fill="none" stroke="#3E8E6B" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span>PhonoLeaf</span>
+    </a>
+    <div class="langswitch">
+      <b>EN</b> ·
+      <a href="how-to-turn-ebook-into-audiobook-fr.html" onclick="try{localStorage.setItem('pl_lang','fr')}catch(e){}">FR</a>
+    </div>
+  </div>
+
+  <div class="hero">
+    <div class="mark">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="76" height="76" aria-hidden="true"><rect width="100" height="100" rx="22" fill="#3E8E6B"/><path d="M50 24 C68 38 68 66 50 82 C32 66 32 38 50 24 Z" fill="#F4F1E8"/><path d="M50 82 L50 90" stroke="#F4F1E8" stroke-width="3.2" stroke-linecap="round"/><path d="M35 53 Q40 42 45 53 T55 53 T65 53" fill="none" stroke="#3E8E6B" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+    <h1>How to turn any ebook into an audiobook</h1>
+    <div class="tagline">Three ways to do it, and one that skips the wait</div>
+    <div class="dateline">Published August 19, 2026</div>
+    <p class="lede">
+      You already own the book. You'd just rather listen to it on the drive
+      home than stare at a screen. Here's what that actually takes, and the
+      one route that doesn't involve uploading a file and waiting around.
+    </p>
+    <a class="cta" href="../index.html">Open PhonoLeaf</a>
+    <span class="cta-note">Free 7-day trial · Sign in with Google · Nothing to install</span>
+  </div>
+
+  <h2>Option 1: buy the audiobook edition</h2>
+  <p>
+    The obvious route. It works well when the book you want happens to have
+    a professionally narrated audiobook edition, and you're willing to pay
+    for it separately from the copy you already own. The catch is that a lot
+    of books never get one, especially older titles, niche nonfiction, and
+    most self-published work. And if you already bought the ebook, you're
+    paying twice for the same story.
+  </p>
+
+  <h2>Option 2: upload it to a conversion tool</h2>
+  <p>
+    A number of sites will take an EPUB, run it through text-to-speech, and
+    hand you back an MP3. It works, but it means uploading your file to a
+    server you don't control, waiting for the job to finish, then downloading
+    and managing yet another file on top of the ebook you already have. For
+    a single short story that's a minor annoyance. For an entire shelf, it
+    adds up fast.
+  </p>
+
+  <h2>Option 3: connect your library and press play</h2>
+  <p>
+    PhonoLeaf skips both the purchase and the conversion. It connects
+    directly to the Google Drive folder your EPUBs already live in and reads
+    them aloud on the spot, in a natural voice generated on your device.
+    Nothing to upload, nothing to wait on, nothing to download afterward.
+  </p>
+  <ol class="steps">
+    <li>
+      <b>Connect your Drive folder</b>
+      <span>Sign in with Google and point PhonoLeaf at the folder your EPUBs are in.</span>
+    </li>
+    <li>
+      <b>Your library appears</b>
+      <span>Every DRM-free EPUB in that folder shows up with its real cover art, no export or conversion step.</span>
+    </li>
+    <li>
+      <b>Press play</b>
+      <span>A natural, on-device voice starts reading immediately, and picks up exactly where you left off next time.</span>
+    </li>
+  </ol>
+
+  <div class="card">
+    <b>What you need</b>
+    A Google account, a folder of DRM-free EPUB files, and about a minute to
+    connect them. New books added to that folder later show up on their own,
+    no re-import required.
+  </div>
+
+  <h2>Frequently asked questions</h2>
+  <div class="faq-item">
+    <b>Does PhonoLeaf create an audio file I can download?</b>
+    <p>No, and that's deliberate. PhonoLeaf generates the voice live as you read, so there's no MP3 to manage, store, or run out of space for. Press play and it reads; close the app and it remembers where you stopped.</p>
+  </div>
+  <div class="faq-item">
+    <b>Do I need to convert my ebook file first?</b>
+    <p>No conversion step. If it's a DRM-free EPUB sitting in your Google Drive, it appears in your PhonoLeaf library as soon as you connect the folder.</p>
+  </div>
+  <div class="faq-item">
+    <b>What if my ebook has DRM?</b>
+    <p>PhonoLeaf can't open DRM-protected files, and won't try to strip the protection. It reads EPUBs you're free to open in any reader.</p>
+  </div>
+  <div class="faq-item">
+    <b>Is this free to try?</b>
+    <p>Yes, a free 7-day trial with full access, then $5.99 a month or $49.99 a year.</p>
+  </div>
+
+  <p>
+    Read more about <a href="../epub-to-audiobook.html">turning an EPUB into an audiobook</a>
+    or <a href="../google-drive-audiobooks.html">listening to your Google Drive ebooks</a>.
+  </p>
+
+  <div class="foot">
+    <a href="index.html">Blog</a> ·
+    <a href="../home.html">About PhonoLeaf</a> ·
+    <a href="../privacy.html">Privacy Policy</a> ·
+    <a href="../terms.html">Terms of Service</a> ·
+    <a href="../index.html">Open the app</a><br><br>
+    Contact: <a href="mailto:support@phonoleaf.com">support@phonoleaf.com</a>
+  </div>
+
+</div>
+<!-- Cloudflare Web Analytics --><script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "cbc3149663944543a36ea8d6090ec58b"}'></script><!-- End Cloudflare Web Analytics -->
+</body>
+</html>
