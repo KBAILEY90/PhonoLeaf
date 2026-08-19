@@ -467,15 +467,17 @@ you two weeks.
       "Unable to use narrower scopes"** (owner, 2026-08-05). Reply text below.
 - [x] **12. Google's response: APPROVED.** Google did not push back on
       `drive.readonly` again — it moved straight to the CASA requirement
-      instead, which is the confirmation the pushback worked. **AL1 CASA is
-      now due by November 3, 2026.** See the CASA section at the top of this
-      file for the full email and what it means.
-- [ ] **13. Complete the AL1 CASA assessment before Nov 3, 2026.** AL1 only
-      (not AL2 — that tier is for Google Workspace Marketplace badging, not
-      relevant here). Status: **Eydle engaged, invoice paid (2026-08-10)** —
-      see "Decision: Eydle, invoice paid" below. Onboarding (Letter of
-      Engagement, Evidence Questionnaire, Test Environment setup) not yet
-      started.
+      instead, which is the confirmation the pushback worked. **AL1 CASA was
+      originally due by November 3, 2026** — see the CASA section at the top
+      of this file for the full email. **Superseded 2026-08-19: Eydle's
+      extension request was accepted, new deadline January 2, 2027.**
+- [ ] **13. Complete the AL1 CASA assessment before Jan 2, 2027** (extended
+      from the original Nov 3, 2026 date — see the "park" decision below).
+      AL1 only (not AL2 — that tier is for Google Workspace Marketplace
+      badging, not relevant here). Status: **parked by design** — the
+      payments backend is being built first so one assessment covers the
+      finished product; package stays with Eydle (engaged, invoice paid
+      2026-08-10) but not yet submitted as complete.
 - [ ] **14. Once CASA is complete, reply to Google's email to confirm** — the
       email requires a direct reply after addressing the requirement, not
       just completing it silently.
@@ -788,6 +790,15 @@ sent back to Eydle as a completed package yet. `PAYMENTS_SPEC.md` §12 ("what
 adding a backend does to the CASA assessment") already documents exactly
 which answers change once the backend exists — that section is the bridge
 between this decision and the eventual real submission.
+
+**Extension confirmed granted (2026-08-19): new deadline is January 2, 2027.**
+Eydle's extension request (submitted off the forwarded Google email, per the
+plan above) was accepted. This roughly quadruples the runway from the
+original Nov 3, 2026 date, and directly de-risks the "keep building/marketing
+while CASA sits parked" question that came up the same day — there is now
+real room to finish the payments backend and submit one assessment covering
+the finished product without the deadline forcing a rushed no-backend
+submission instead.
 
 ### Play Store track — can run in parallel
 
