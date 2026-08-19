@@ -3871,3 +3871,40 @@ follow-up, not built now.
   device-verified** — whether the Custom Highlight API actually paints (not
   just avoids throwing) depends on the WebView/browser engine version;
   worth a real on-device check.
+
+**Owner confirmed working on web the same day.** Native/Android still needs
+a device check for whether the Custom Highlight API actually paints there.
+
+**Quick-access reader toggle added same day (owner request): "can we add
+the option on the reader itself?"** A settings-only toggle meant leaving
+the reader to turn this on/off. Added `#hl-btn`, a new icon-only button in
+`.reader-top` between the back arrow and the chapters hamburger (a simple
+hand-drawn "highlighted text lines" icon — primitive `<line>`/`<rect>`
+shapes, not a memorized icon-font path, per the notification-icon lesson
+elsewhere in this file about not guessing icon designs), toggled via
+`TTS.toggleFollowAlong()`.
+- **Consolidated into one entry point** so the Settings checkbox and the
+  reader button can never disagree: `TTS.setFollowAlong(on)` now owns the
+  localStorage write and both UI syncs (`TTS._syncFollowAlongUI()`);
+  `Settings.setFollowAlong` is a one-line delegate to it, and
+  `Settings.render()`'s old inline checkbox sync was replaced by the same
+  shared sync call.
+- **Turning it on while a chunk is actively playing starts highlighting
+  immediately, mid-chunk**, rather than waiting for the next chunk —
+  `_startHighlight` rebuilds its schedule from the chunk plus the audio's
+  current duration regardless of how far playback already is, so calling it
+  again mid-stream correctly lands on the right word instead of restarting
+  from word 0 (guarded on `this.active && !this._audio.paused &&
+  this._engineNow() !== 'web'`, so it's a no-op when paused or on the web
+  Speech fallback path).
+  `TTS._syncFollowAlongUI()` is also called once from `Reader.open()` so the
+  button reflects the persisted setting correctly on a fresh book open, not
+  just after a Settings visit.
+- Verified in a browser harness: the button's `aria-label`/`title` and its
+  `.on` class toggling in both directions (button → Settings checkbox,
+  Settings → button); confirmed toggling ON mid-chunk (audio already 75%
+  through a synthetic clip) immediately registers the correct current word,
+  where before the toggle there was no highlight at all (since it was off
+  when that chunk started). Screenshotted the reader top bar in both on/off
+  states to confirm the icon renders clearly and doesn't crowd the existing
+  back/chapters buttons. Not device-verified.

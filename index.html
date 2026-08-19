@@ -364,6 +364,7 @@
       transition: background 0.15s;
     }
     .icon-btn:hover { background: var(--overlay); }
+    #hl-btn.on { color: var(--accent); }
 
     /* Wraps .books-grid + the A-Z scrubber so the scrubber can be positioned
        absolutely against the grid's own box (pinned to its right edge,
@@ -1364,6 +1365,9 @@
     <div class="reader-top-center">
       <div class="reader-top-info" id="rs-chapter"></div>
     </div>
+    <button class="icon-btn" id="hl-btn" onclick="TTS.toggleFollowAlong()" aria-label="Follow along highlighting" data-i18n-title="follow_along" title="Follow along highlighting">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><rect x="3" y="10.3" width="18" height="5.4" rx="1.2" fill="currentColor" stroke="none" opacity="0.35"/><line x1="4" y1="13" x2="20" y2="13"/><line x1="4" y1="19" x2="14" y2="19"/></svg>
+    </button>
     <button class="icon-btn" onclick="ChapterModal.open()" aria-label="Chapters">&#9776;</button>
   </div>
 
@@ -3043,7 +3047,7 @@ const Settings = {
     // voice, and only on mobile (desktop installs add variants, not quality).
     const vh = document.getElementById('vh-row'); if (vh) vh.style.display = (dead && VoiceHelp.available()) ? '' : 'none';
     const wl = document.getElementById('set-wakelock'); if (wl) wl.checked = localStorage.getItem('pl_wakelock') !== 'false';
-    const fa = document.getElementById('set-followalong'); if (fa) fa.checked = localStorage.getItem('pl_followalong') === 'true';
+    TTS._syncFollowAlongUI();
     const f = document.getElementById('set-folder'); if (f) f.textContent = activeFolder() || I18n.t('not_selected');
     const a = document.getElementById('set-account'); if (a) a.textContent = State.userName ? I18n.t('signed_in_as', { name: State.userName }) : I18n.t('signed_in');
     // Language packs: hidden on the web build (no plugin to ask). Pre-warm the
@@ -3078,10 +3082,7 @@ const Settings = {
     if (!on) TTS._releaseWakeLock();
     else if (TTS.active) TTS._acquireWakeLock();
   },
-  setFollowAlong(on) {
-    try { localStorage.setItem('pl_followalong', on ? 'true' : 'false'); } catch (_) {}
-    if (!on) TTS._clearHighlight();
-  },
+  setFollowAlong(on) { TTS.setFollowAlong(on); },
 };
 
 // --- Stats page (from listening data + cached epub metadata) ---
@@ -4347,6 +4348,7 @@ const Reader = {
     document.getElementById('rs-chapter').textContent = '–';
     document.getElementById('tts-prog').style.width = '0%';
     document.getElementById('speed-select').value = TTS.rate;
+    TTS._syncFollowAlongUI();
     TTS.stop();
     TTS._bgSection = null; TTS._bgChars = null; // stop() now preserves these across a pause — a NEW book must not inherit them
     TTS._lastText = ''; // new book — allow the first section's text to load fresh
@@ -5680,6 +5682,28 @@ const TTS = {
   // better mechanism for later.
   _followAlongEnabled() {
     try { return localStorage.getItem('pl_followalong') === 'true'; } catch (_) { return false; }
+  },
+  // Single entry point for both the Settings toggle and the reader's own
+  // quick-access button, so they can never disagree or duplicate logic.
+  // Turning it ON while a chunk is actively playing starts highlighting
+  // immediately (mid-chunk), rather than waiting for the next chunk —
+  // _startHighlight rebuilds its schedule from the chunk + current audio
+  // duration regardless of how far playback already is, so this correctly
+  // lands on the right word instead of restarting from word 0.
+  setFollowAlong(on) {
+    try { localStorage.setItem('pl_followalong', on ? 'true' : 'false'); } catch (_) {}
+    if (!on) this._clearHighlight();
+    else if (this.active && this._audio && !this._audio.paused && this._engineNow() !== 'web') {
+      const chunk = this.chunks[this.idx];
+      if (chunk) this._startHighlight(chunk, this._gen);
+    }
+    this._syncFollowAlongUI();
+  },
+  toggleFollowAlong() { this.setFollowAlong(!this._followAlongEnabled()); },
+  _syncFollowAlongUI() {
+    const on = this._followAlongEnabled();
+    const btn = document.getElementById('hl-btn'); if (btn) btn.classList.toggle('on', on);
+    const cb = document.getElementById('set-followalong'); if (cb) cb.checked = on;
   },
 
   // Maps a chunk's words back to real DOM Ranges. Returns null (fail closed,
