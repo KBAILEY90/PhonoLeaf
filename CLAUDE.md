@@ -2295,10 +2295,9 @@ system text-size/motion settings, and tap target size. Findings and fixes:
 - Existing tap targets were already reasonable (`.ctrl-btn` 40–50px,
   `.tab` a full flex column, `.icon-btn` ~35px effective with its padding) —
   no changes made there.
-- **Not done, flagged as a bigger feature per BACKLOG.md**: follow-along
-  word/sentence highlighting while reading aloud. Genuinely useful for
-  dyslexia/ADHD but a real build (needs word-level timing from the TTS
-  engine), not part of this pass.
+- ~~Not done, flagged as a bigger feature per BACKLOG.md: follow-along
+  word/sentence highlighting~~ — **SHIPPED 2026-08-19, approximate timing.**
+  See "Follow-along word highlighting" near the end of this file.
 - Verified in a browser harness: the delegated keydown listener fires
   `.click()` on Enter for a `role="button"` element; the sign-in screen
   renders with no console errors after the viewport/CSS changes; the
@@ -3752,3 +3751,123 @@ and fixed, in priority order:
    default that could change in a future major version, and now directly
    backs the claim in Config 2 of the CASA questionnaire. Verified the
    setting reaches the built app via `npm run sync`.
+
+## Follow-along word highlighting (approximate timing, 2026-08-19)
+
+BACKLOG.md section F flagged this as a strong accessibility win for
+dyslexia/ADHD but noted it needs word-level timing the TTS engine doesn't
+provide. **Confirmed directly against sherpa-onnx's own source** (both the
+Kotlin binding, `sherpa-onnx/kotlin-api/Tts.kt`, and the C++ core,
+`sherpa-onnx/csrc/offline-tts.h`): `generate()` returns only
+`{samples, sampleRate}` — no timing of any kind, at any layer, for either
+Kokoro or Piper. VITS-family models compute a per-phoneme duration
+internally as part of synthesis, but it's consumed inside the ONNX graph and
+never exposed as an output; getting it out would mean re-exporting the
+underlying models with an added output tensor, which we don't control.
+True per-word alignment is off the table.
+
+**Shipped instead: approximate timing.** Each chunk's total spoken duration
+is knowable (`a.duration` once the shared `<audio>` element resolves it);
+distribute that duration across the chunk's words proportionally by
+character count, and highlight whichever word's time window contains the
+current playback position. Not frame-accurate, but delivers the real
+accessibility benefit (visually tracking roughly where the voice is).
+**Scope: native/Kokoro `<audio>`-element path only** (`TTS._playAudio`,
+what `_engineNow()` routes to for essentially every real session) — the Web
+Speech device-voice fallback (`_speakWeb`) has a different, better mechanism
+available (real `onboundary` events) that's a deliberate, separate
+follow-up, not built now.
+
+- **Word→DOM mapping is the hard part, not the timing math.** A chunk's
+  `.node` (set in `_chunksFromSegments`) is the whole source block element,
+  but `_split()` breaks a long paragraph into several ≤220-char chunks that
+  all share the same `.node` — so matching by searching for `chunk.text`
+  inside the node's flattened text lands on the wrong slice for chunk 2+ (and
+  headings get a synthetic trailing period that isn't in the DOM). Fixed by
+  matching on **word count** instead: `TTS._buildWordSchedule(chunk)` sums
+  the `/\S+/g` word counts of earlier chunks sharing the same `.node` to find
+  `wordStart`, then walks the block's real text nodes with a `TreeWalker`
+  and slices out exactly this chunk's words. Needs no changes to
+  `_chunksFromSegments`/`_split`/`loadPageText` — fully additive.
+- **A real bug caught by testing, not assumed away**: a word split across
+  DOM nodes by inline formatting with no surrounding whitespace (e.g.
+  `extra<em>ordinar</em>ily`) was first tokenized as three separate "words"
+  instead of one, since a naive per-text-node `/\S+/g` scan resets at each
+  node boundary. Fixed with a merge-across-nodes tokenizer in
+  `_buildWordSchedule`: a word that reaches exactly to the end of one text
+  node stays "pending" and is merged with the next node's leading fragment
+  if it starts at that node's very first character (no intervening
+  whitespace node), only flushed as a complete word once whitespace is
+  actually encountered. Verified in a browser harness with a synthetic
+  `extra<em>ordinar</em>ily` node: the merged word now correctly reports as
+  one `Range` spanning multiple text nodes, and a `Hello <em>world</em>!`
+  case correctly merges `world!` (no space before the `!`) while keeping
+  `Hello` separate.
+- **Rendering: CSS Custom Highlight API, not DOM mutation.** Wrapping words
+  in `<span>`s would mean mutating the iframe DOM that epub.js owns and
+  re-renders — fragile, per the existing warning about `section.load()`
+  corrupting epub.js's document reference. Instead `CSS.highlights`/
+  `Highlight`/`::highlight()` highlights a `Range` with **zero DOM
+  mutation**. Confirmed against the vendored `vendor/epub.min.js` that
+  `themes.register()`/`select()` is a thin pass-through to a real
+  `CSSStyleSheet.insertRule` against the iframe's own stylesheet — so
+  `'::highlight(pl-spoken)': {...}` was added as a third key in the same
+  object `Reader.applyReadTheme()` already passes to `themes.register('kb',
+  {...})`, no separate `<style>`-injection fallback needed. Follows that
+  function's existing convention of hardcoding light/dark hex literals
+  (derived from `--accent`) rather than `getComputedStyle`, since the iframe
+  can't see the outer `:root` vars either way. `CSS.highlights` is a
+  per-document registry — always resolved from the **iframe's own
+  `contentWindow`**, never the outer app window; feature-detected and
+  silently no-op'd if unsupported.
+- **Duration source: `a.duration`, not the native plugin's `durationMs`.**
+  `_playAudio` also plays the WASM/browser-Kokoro path (`_synthKokoro`, web
+  build), which returns only a blob URL with no duration metadata — so
+  `durationMs` (native-plugin-only) can't be the unified source across both
+  branches. `a.duration` after a short `loadedmetadata` wait (capped ~300ms,
+  fails closed to no-highlight for that chunk, never delays playback) works
+  for both. Since `a.currentTime`/`a.duration` already reflect the
+  rate-adjusted real-time position while `a.duration` stays intrinsic,
+  `currentTime / duration` is rate-invariant automatically — no special
+  handling needed when the user changes speed mid-chunk.
+- **Driven by `requestAnimationFrame`, not `timeupdate`** (fires too
+  coarsely, ~250ms typical, for snappy per-word sync), gen-stamped exactly
+  like every other async callback in the file (`gen !== this._gen` bails),
+  only touching `CSS.highlights` when the active word index actually
+  changes.
+- **Teardown is one choke point, not three.** `_stopAudio()` is already
+  called from every path that leaves a chunk (`stop()`, `skipPage()`,
+  `_bgNav()`) — `TTS._clearHighlight()` (cancels the rAF handle, clears the
+  `CSS.highlights` registration, resets schedule state, never throws) is
+  the first line inside `_stopAudio()` itself rather than patched into three
+  call sites separately.
+- **Fails closed on**: the Settings toggle being off, `TTS._bgMode` (no live
+  rendered page during background reading — confirmed this guard is
+  load-bearing, not redundant, since background mode's
+  `_currentSectionChunksWithNodes` deliberately reuses the same live iframe
+  document normal reading uses), a missing/disconnected `chunk.node`,
+  unsupported `CSS.highlights`, or a word-count reconciliation failure.
+  Never throws, never blocks playback.
+- **Settings toggle**, copying the "Keep screen on" pattern exactly: new
+  `#set-followalong` row, `pl_followalong` localStorage key, **default OFF**
+  (unlike wakelock's default-on) since this is a new, approximate, visually
+  distinctive change that shouldn't surprise existing users — opt-in.
+  `follow_along`/`follow_along_sub` i18n keys added to both `en`/`fr`
+  `STRINGS` blocks.
+- Verified end-to-end in a browser harness: built a synthetic iframe with
+  real epub-like markup (including the inline-tag word-split case above and
+  a multi-chunk-per-block case), confirmed `_buildWordSchedule` slices the
+  correct words for each chunk in a split paragraph (chunk 2 doesn't restart
+  from word 0); played a real `<audio>` element against a synthetic silent
+  WAV (as a `blob:` URL — the CSP's `media-src 'self' blob:` correctly
+  rejected a first attempt using a `data:` URL, confirming the CSP is doing
+  its job) and confirmed the highlight tracks forward correctly as
+  `currentTime` advances (first word at t=0, a middle word at the
+  proportional halfway point, the last word near the end); confirmed
+  `_stopAudio()` cleanly tears down the highlight and cancels the rAF
+  handle; confirmed `_bgMode` prevents any highlight from being registered;
+  confirmed the Settings toggle round-trips through `localStorage` and
+  `Settings.render()` syncs the checkbox correctly in both languages. **Not
+  device-verified** — whether the Custom Highlight API actually paints (not
+  just avoids throwing) depends on the WebView/browser engine version;
+  worth a real on-device check.

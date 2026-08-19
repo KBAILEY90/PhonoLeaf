@@ -1270,6 +1270,10 @@
         <div><div class="sr-k" data-i18n="keep_screen_on">Keep screen on</div><div class="sr-sub" data-i18n="keep_screen_on_sub">While audio is playing</div></div>
         <label class="tog"><input type="checkbox" id="set-wakelock" onchange="Settings.setWakeLock(this.checked)"><span class="tog-track"></span></label>
       </div>
+      <div class="set-row">
+        <div><div class="sr-k" data-i18n="follow_along">Follow along highlighting</div><div class="sr-sub" data-i18n="follow_along_sub">Highlight each word as it's read</div></div>
+        <label class="tog"><input type="checkbox" id="set-followalong" onchange="Settings.setFollowAlong(this.checked)"><span class="tog-track"></span></label>
+      </div>
     </div>
     <div class="set-group" id="voice-quality-group">
       <!-- ALWAYS visible. It used to appear only in fallback mode, which meant
@@ -1761,6 +1765,7 @@ const STRINGS = {
     default_speed: 'Default speed',
     voice: 'Voice', voice_sub_default: 'System default', change: 'Change',
     keep_screen_on: 'Keep screen on', keep_screen_on_sub: 'While audio is playing',
+    follow_along: 'Follow along highlighting', follow_along_sub: "Highlight each word as it's read",
     natural_voice: 'Upgraded voice', natural_voice_checking: 'Checking…',
     natural_voice_dead: 'Unavailable on this device — using the Built-in voice',
     natural_voice_kokoro: 'On — Upgraded voice, generated on your device',
@@ -1925,6 +1930,7 @@ const STRINGS = {
     default_speed: 'Vitesse par défaut',
     voice: 'Voix', voice_sub_default: 'Voix du système', change: 'Modifier',
     keep_screen_on: 'Garder l’écran allumé', keep_screen_on_sub: 'Pendant la lecture audio',
+    follow_along: 'Surlignage des mots lus', follow_along_sub: 'Chaque mot est surligné à mesure qu’il est lu',
     natural_voice: 'Voix améliorée', natural_voice_checking: 'Vérification…',
     natural_voice_dead: 'Non disponible sur cet appareil — voix intégrée utilisée',
     natural_voice_kokoro: 'Activée — voix améliorée, générée sur votre appareil',
@@ -3037,6 +3043,7 @@ const Settings = {
     // voice, and only on mobile (desktop installs add variants, not quality).
     const vh = document.getElementById('vh-row'); if (vh) vh.style.display = (dead && VoiceHelp.available()) ? '' : 'none';
     const wl = document.getElementById('set-wakelock'); if (wl) wl.checked = localStorage.getItem('pl_wakelock') !== 'false';
+    const fa = document.getElementById('set-followalong'); if (fa) fa.checked = localStorage.getItem('pl_followalong') === 'true';
     const f = document.getElementById('set-folder'); if (f) f.textContent = activeFolder() || I18n.t('not_selected');
     const a = document.getElementById('set-account'); if (a) a.textContent = State.userName ? I18n.t('signed_in_as', { name: State.userName }) : I18n.t('signed_in');
     // Language packs: hidden on the web build (no plugin to ask). Pre-warm the
@@ -3070,6 +3077,10 @@ const Settings = {
     try { localStorage.setItem('pl_wakelock', on ? 'true' : 'false'); } catch (_) {}
     if (!on) TTS._releaseWakeLock();
     else if (TTS.active) TTS._acquireWakeLock();
+  },
+  setFollowAlong(on) {
+    try { localStorage.setItem('pl_followalong', on ? 'true' : 'false'); } catch (_) {}
+    if (!on) TTS._clearHighlight();
   },
 };
 
@@ -4672,6 +4683,10 @@ const Reader = {
     const dark = Theme.isDark();
     const bg = dark ? '#14160F' : '#F3F0E7';   // softly dimmed page (not stark white)
     const fg = dark ? '#CDD0C4' : '#2b2b2b';
+    // Follow-along highlight color — the iframe is a separate document and
+    // can't see the outer :root CSS vars, so this is a literal derived from
+    // --accent (same convention bg/fg above already follow), not var(--accent).
+    const hl = dark ? 'rgba(111,197,152,0.35)' : 'rgba(62,142,107,0.28)';
     try {
       // Measure the chrome overlays so content isn't hidden under them.
       // Both are position:absolute over #viewer; absolute elements still have
@@ -4682,6 +4697,7 @@ const Reader = {
         'body': { background: bg + ' !important', color: fg + ' !important',
                   'padding': `${topH}px 5% ${botH}px !important`, 'line-height': '1.65 !important' },
         'p': { 'line-height': '1.65 !important' },
+        '::highlight(pl-spoken)': { 'background-color': hl },
       });
       State.rendition.themes.select('kb');
     } catch (_) {}
@@ -4822,6 +4838,12 @@ const TTS = {
   },
   _gapT: null,  // timer for inter-chunk pauses (chapter/subtitle gaps)
   _preIdx: -1,  // chunk index whose pre-pause has already been applied
+
+  // --- Follow-along highlighting (approximate — see _buildWordSchedule) -----
+  _hlRaf: null,      // requestAnimationFrame handle for the active highlight loop
+  _hlSchedule: null, // [{start,end,range}] time windows (seconds) for the playing chunk
+  _hlWordIdx: -1,    // index into _hlSchedule currently highlighted (-1 = none yet)
+  _hlDoc: null,       // the iframe document the current highlight is registered against
 
   _bgMode: false,   // reading spine text directly with the screen off (see _bgAdvance)
   _bgSpineIdx: 0,   // spine section index the background reader is currently in
@@ -5634,6 +5656,7 @@ const TTS = {
     return this._audio;
   },
   _stopAudio() {
+    this._clearHighlight(); // one choke point — every path that leaves a chunk calls _stopAudio()
     const a = this._audio;
     if (a) { a.onended = a.onerror = null; a.pause(); a.removeAttribute('src'); }
     if (this._preSynth) { // release an unused prefetched chunk
@@ -5643,6 +5666,151 @@ const TTS = {
     // Tell native to drop any queued generation — otherwise leaving the reader
     // leaves seconds of dead inference pegging the CPU (froze the UI).
     try { this._nativeTts()?.cancel(); } catch (_) {}
+  },
+
+  // --- Follow-along highlighting (approximate — see _buildWordSchedule) -----
+  // No TTS engine we use exposes real per-word timing (confirmed against
+  // sherpa-onnx's own source: GeneratedAudio is just {samples, sampleRate},
+  // at both the Kotlin binding and the C++ core, for Kokoro AND Piper). So
+  // this distributes each chunk's KNOWN total audio duration across its
+  // words proportionally by character count, and highlights whichever
+  // word's time window contains the current playback position. Native/
+  // Kokoro audio-element path only (v1) — the Web Speech fallback isn't
+  // covered here; it has real onboundary events available as a separate,
+  // better mechanism for later.
+  _followAlongEnabled() {
+    try { return localStorage.getItem('pl_followalong') === 'true'; } catch (_) { return false; }
+  },
+
+  // Maps a chunk's words back to real DOM Ranges. Returns null (fail closed,
+  // never guess) on anything unexpected — a block can produce several chunks
+  // (_split() breaks a long paragraph into <=220-char pieces that all share
+  // the same .node), so this locates the exact slice of the block's words
+  // this chunk corresponds to by WORD COUNT, not by string search (a
+  // string search would land on the wrong slice for chunk 2+ of a split
+  // paragraph, and headings get a synthetic trailing period that isn't in
+  // the DOM). Never touches _chunksFromSegments/_split/loadPageText.
+  _buildWordSchedule(chunk) {
+    try {
+      if (!chunk || !chunk.node) return null;
+      const iframe = document.querySelector('#viewer iframe');
+      const doc = iframe && iframe.contentDocument;
+      if (!doc || !chunk.node.isConnected || chunk.node.ownerDocument !== doc) return null;
+
+      let wordStart = 0;
+      for (let i = this.idx - 1; i >= 0 && this.chunks[i] && this.chunks[i].node === chunk.node; i--) {
+        wordStart += (this.chunks[i].text.match(/\S+/g) || []).length;
+      }
+      const chunkWordCount = (chunk.text.match(/\S+/g) || []).length;
+      if (!chunkWordCount) return null;
+
+      // Same /\S+/g per-word tokenization loadPageText() already uses for its
+      // page-edge Range measurement, walked across the whole block here — but
+      // merged ACROSS text-node boundaries: an inline tag with no surrounding
+      // whitespace (e.g. extra<em>ordinar</em>ily) splits one real word into
+      // several separate text nodes, and a naive per-node scan would wrongly
+      // treat "extra"/"ordinar"/"ily" as three words instead of one.
+      const walker = doc.createTreeWalker(chunk.node, NodeFilter.SHOW_TEXT, null);
+      const blockWords = [];
+      let pending = null; // a word-in-progress that might continue into the next node
+      const flush = () => { if (pending) { blockWords.push(pending); pending = null; } };
+      let node;
+      while ((node = walker.nextNode())) {
+        const s = node.nodeValue;
+        if (!s) continue;
+        if (!s.trim()) { flush(); continue; } // a whitespace-only node breaks any pending word
+        const re = /\S+/g; let m;
+        while ((m = re.exec(s))) {
+          const atNodeStart = m.index === 0;
+          if (atNodeStart && pending) {
+            pending.endNode = node; pending.end = m.index + m[0].length; pending.text += m[0];
+          } else {
+            flush();
+            pending = { node, start: m.index, endNode: node, end: m.index + m[0].length, text: m[0] };
+          }
+          const reachesNodeEnd = (m.index + m[0].length) === s.length;
+          if (!reachesNodeEnd) flush(); // followed by whitespace within this same node — word is complete
+        }
+      }
+      flush();
+      if (blockWords.length < wordStart + chunkWordCount) return null; // can't reconcile — fail closed
+
+      const words = blockWords.slice(wordStart, wordStart + chunkWordCount);
+      const totalChars = words.reduce((n, w) => n + w.text.length, 0);
+      if (!totalChars) return null;
+
+      const ranges = words.map(w => {
+        const r = doc.createRange();
+        r.setStart(w.node, w.start);
+        r.setEnd(w.endNode, w.end);
+        return { weight: w.text.length, range: r };
+      });
+      return { ranges, totalChars };
+    } catch (_) { return null; }
+  },
+
+  // Called once native/Kokoro audio is actually playing. Waits briefly for a
+  // real duration, builds the word schedule, then drives the highlight via
+  // the CSS Custom Highlight API — never mutates the epub iframe's DOM
+  // (wrapping words in <span>s would fight epub.js's own rendering; see the
+  // section.load() corruption warning near _currentSectionChunksWithNodes).
+  async _startHighlight(chunk, gen) {
+    if (this._bgMode) return; // no live rendered page during background reading
+    const a = this._audio;
+    if (!a) return;
+    if (isNaN(a.duration) || !isFinite(a.duration)) {
+      await new Promise(res => {
+        a.addEventListener('loadedmetadata', res, { once: true });
+        setTimeout(res, 300);
+      });
+    }
+    if (!this.active || gen !== this._gen) return;
+    if (isNaN(a.duration) || !isFinite(a.duration) || a.duration <= 0) return;
+
+    const built = this._buildWordSchedule(chunk);
+    if (!built) return;
+
+    const iframe = document.querySelector('#viewer iframe');
+    const iw = iframe && iframe.contentWindow;
+    if (!iw || !iw.CSS || !iw.CSS.highlights || typeof iw.Highlight !== 'function') return; // unsupported — silent no-op
+    if (!this.active || gen !== this._gen) return; // re-check after the awaits above
+
+    let t = 0;
+    const schedule = built.ranges.map(({ weight, range }) => {
+      const dur = a.duration * (weight / built.totalChars);
+      const win = { start: t, end: t + dur, range };
+      t += dur;
+      return win;
+    });
+
+    this._clearHighlight();
+    this._hlDoc = iframe.contentDocument;
+    this._hlSchedule = schedule;
+    this._hlWordIdx = -1;
+
+    const tick = () => {
+      if (!this.active || gen !== this._gen || this._hlSchedule !== schedule) return;
+      const now = a.currentTime;
+      let i = schedule.findIndex(w => now >= w.start && now < w.end);
+      if (i === -1 && schedule.length && now >= schedule[schedule.length - 1].end) i = schedule.length - 1;
+      if (i !== -1 && i !== this._hlWordIdx) {
+        this._hlWordIdx = i;
+        try { iw.CSS.highlights.set('pl-spoken', new iw.Highlight(schedule[i].range)); } catch (_) {}
+      }
+      this._hlRaf = requestAnimationFrame(tick);
+    };
+    this._hlRaf = requestAnimationFrame(tick);
+  },
+
+  // Cancels the highlight loop and clears the registered CSS Highlight.
+  // Never throws — the iframe's window may already be gone if a section
+  // changed underneath (a new spine section = a fresh contentDocument).
+  _clearHighlight() {
+    if (this._hlRaf) { cancelAnimationFrame(this._hlRaf); this._hlRaf = null; }
+    try { if (this._hlDoc && this._hlDoc.defaultView) this._hlDoc.defaultView.CSS.highlights.delete('pl-spoken'); } catch (_) {}
+    this._hlSchedule = null;
+    this._hlWordIdx = -1;
+    this._hlDoc = null;
   },
   // The native Capacitor Kokoro plugin (sherpa-onnx), or null on the web / in a
   // build without it. When present it's the preferred engine — native
@@ -5954,11 +6122,12 @@ const TTS = {
         if (chunk.post) { clearTimeout(this._gapT); this._gapT = setTimeout(() => { if (this.active && gen === this._gen) this._speak(); }, chunk.post); }
         else this._speak();
       };
-      a.onerror = () => { if (this.active && gen === this._gen) this._speakWeb(chunk, gen); };
+      a.onerror = () => { this._clearHighlight(); if (this.active && gen === this._gen) this._speakWeb(chunk, gen); };
       a.src = url;
       a.playbackRate = this.rate;
       try { a.preservesPitch = true; } catch (_) {}
       await a.play();
+      if (this._followAlongEnabled()) this._startHighlight(chunk, gen); // no-ops safely if unsupported/disabled
       // Hide synthesis latency: prepare the next chunk while this one plays.
       const n = this.chunks[this.idx + 1];
       if (n) this._preSynth = { key: gen + ':' + (this.idx + 1), p: this._synth(n.text).catch(() => null) };
