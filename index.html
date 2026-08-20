@@ -4612,7 +4612,14 @@ const LocalBooks = {
       if (req !== 'granted') return null;
     }
     const out = [];
-    for await (const [name, entryHandle] of handle.values()) {
+    // FileSystemDirectoryHandle.values() yields bare handles, NOT [name,
+    // handle] pairs — only .entries() does that (mirrors Map's keys()/
+    // values()/entries() split). Destructuring values()'s output as a pair
+    // made every single file throw "is not iterable" the instant the loop
+    // tried to unpack it — the exact "(.for is not iterable)" reported on
+    // web (owner-reported 2026-08-20, reproducible every time, unlike the
+    // native path this was originally misdiagnosed against).
+    for await (const [name, entryHandle] of handle.entries()) {
       if (entryHandle.kind !== 'file') continue;
       if (!/\.epub$/i.test(name)) continue;
       out.push({
