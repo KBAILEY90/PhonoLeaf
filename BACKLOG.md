@@ -230,6 +230,15 @@ and reduces dependence on one provider. Feasibility:
   mechanism. See `CLAUDE.md`'s "Local device file import" section for the
   full build and bug-fix history. Desktop USB import was never a separate
   case to build — the same file picker covers it on any platform.
+  **Extended 2026-08-20** with connect-a-folder + manual refresh (owner
+  follow-up: picking a folder in the one-shot picker "wasn't working,"
+  correctly — that picker only ever did individual files). This DID need
+  a real new native plugin (`LocalFolderPlugin.kt`, Android's Storage
+  Access Framework folder-tree picker), the first plugin in this codebase
+  to launch an activity and get a result back. Settings' two rows ("Drive
+  folder" / "Local books") also collapsed into one "Books folder" entry
+  point choosing Drive vs. this device. See `CLAUDE.md`'s "Connect a local
+  folder, with manual refresh" section.
 - **Dropbox** (HTTP API) and **OneDrive / Microsoft Graph**: both feasible on web
   and native; each needs its own OAuth app and, like Google, its own review and
   upkeep, so treat each as a real cost.

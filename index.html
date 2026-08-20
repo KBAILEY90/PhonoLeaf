@@ -1328,12 +1328,9 @@
         <button class="set-link" data-i18n="sign_out" onclick="App.signOut()">Sign out</button>
       </div>
       <div class="set-row">
-        <div><div class="sr-k" data-i18n="drive_folder">Drive folder</div><div class="sr-sub" id="set-folder" data-i18n="not_selected">Not selected</div></div>
+        <div><div class="sr-k" data-i18n="books_folder">Books folder</div><div class="sr-sub" id="set-books-folder-sub" data-i18n="not_selected">Not selected</div></div>
+        <button class="set-link" id="set-books-refresh" data-i18n="refresh" style="display:none" onclick="Settings.refreshBooksFolder()">Refresh</button>
         <button class="set-link" data-i18n="change" onclick="Settings.changeFolder()">Change</button>
-      </div>
-      <div class="set-row">
-        <div><div class="sr-k" data-i18n="local_books">Local books</div><div class="sr-sub" id="set-local-count" data-i18n="local_books_none">None imported</div></div>
-        <button class="set-link" data-i18n="import_from_device" onclick="document.getElementById('local-import-input').click()">Import from device</button>
       </div>
     </div>
     <div class="set-group">
@@ -1545,6 +1542,18 @@
     <div class="fb-crumbs" id="fb-crumbs"></div>
     <div id="fb-list"></div>
     <button class="fb-use" id="fb-use" onclick="FolderBrowser.useCurrent()">Use this folder</button>
+  </div>
+</div>
+
+<!-- ============== BOOKS FOLDER CHOOSER (Drive vs this device) ============== -->
+<div class="modal-backdrop" id="folderchooser-modal" onclick="FolderChooser.close(event)">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title" data-i18n="choose_books_folder">Choose your books folder</div>
+    <div id="fc-list"></div>
+    <div style="text-align:center;margin-top:0.9rem">
+      <button class="set-link" data-i18n="import_files_instead" onclick="FolderChooser.close();document.getElementById('local-import-input').click()">Import individual files instead</button>
+    </div>
   </div>
 </div>
 
@@ -1801,6 +1810,20 @@ const STRINGS = {
     import_summary_ok: '{ok} book(s) imported', import_summary_with_failures: '{ok} of {total} imported, {failed} skipped (not a valid EPUB file)',
     remove_local_confirm: 'Remove this book from PhonoLeaf? It was imported from your device, so this deletes the only copy PhonoLeaf has.',
     remove_local_book: 'Remove this book', local_book_removed: 'Book removed',
+    books_folder: 'Books folder',
+    books_folder_drive: 'Google Drive: {name}', books_folder_device: 'This device: {name}',
+    books_folder_both: 'Google Drive + this device',
+    google_drive: 'Google Drive', this_device: 'This device',
+    connect: 'Connect', refresh: 'Refresh', disconnect: 'Disconnect',
+    import_files_instead: 'Import individual files instead',
+    disconnect_folder_confirm: 'Disconnect this device folder? Books already imported from it stay in your library, only the connection is removed.',
+    local_folder_disconnected: 'Folder disconnected',
+    refreshing_ellipsis: 'Refreshing…',
+    local_folder_up_to_date: 'Already up to date',
+    local_folder_unavailable: 'Not available on this device',
+    local_folder_connect_failed: 'Could not connect that folder',
+    local_folder_web_unsupported: 'Connecting a folder isn’t supported in this browser, so pick files instead',
+    local_folder_reconnect_needed: 'Permission to that folder was lost. Reconnect it to refresh.',
     send_feedback: 'Send feedback', send_feedback_sub: 'Ideas or anything on your mind', open: 'Open',
     report_bug: 'Report a bug', report_bug_sub: 'Tell us what went wrong',
     app_language: 'App language', app_language_sub: 'Translates the whole app',
@@ -1971,6 +1994,20 @@ const STRINGS = {
     import_summary_ok: '{ok} livre(s) importé(s)', import_summary_with_failures: '{ok} sur {total} importés, {failed} ignorés (fichier EPUB non valide)',
     remove_local_confirm: 'Retirer ce livre de PhonoLeaf ? Il a été importé depuis votre appareil, donc ceci supprime la seule copie que PhonoLeaf possède.',
     remove_local_book: 'Retirer ce livre', local_book_removed: 'Livre retiré',
+    books_folder: 'Dossier de livres',
+    books_folder_drive: 'Google Drive : {name}', books_folder_device: 'Cet appareil : {name}',
+    books_folder_both: 'Google Drive + cet appareil',
+    google_drive: 'Google Drive', this_device: 'Cet appareil',
+    connect: 'Connecter', refresh: 'Actualiser', disconnect: 'Déconnecter',
+    import_files_instead: 'Importer des fichiers individuels à la place',
+    disconnect_folder_confirm: 'Déconnecter ce dossier de l’appareil ? Les livres déjà importés restent dans votre bibliothèque, seule la connexion est supprimée.',
+    local_folder_disconnected: 'Dossier déconnecté',
+    refreshing_ellipsis: 'Actualisation…',
+    local_folder_up_to_date: 'Déjà à jour',
+    local_folder_unavailable: 'Non disponible sur cet appareil',
+    local_folder_connect_failed: 'Impossible de connecter ce dossier',
+    local_folder_web_unsupported: 'La connexion d’un dossier n’est pas prise en charge dans ce navigateur, choisissez des fichiers à la place',
+    local_folder_reconnect_needed: 'L’autorisation pour ce dossier a été perdue. Reconnectez-le pour actualiser.',
     send_feedback: 'Envoyer des commentaires', send_feedback_sub: 'Idées ou tout ce qui vous passe par la tête', open: 'Ouvrir',
     report_bug: 'Signaler un problème', report_bug_sub: 'Dites-nous ce qui n’a pas fonctionné',
     app_language: 'Langue de l’application', app_language_sub: 'Traduit toute l’application',
@@ -3068,17 +3105,26 @@ const Settings = {
     const vh = document.getElementById('vh-row'); if (vh) vh.style.display = (dead && VoiceHelp.available()) ? '' : 'none';
     const wl = document.getElementById('set-wakelock'); if (wl) wl.checked = localStorage.getItem('pl_wakelock') !== 'false';
     TTS._syncFollowAlongUI();
-    const f = document.getElementById('set-folder'); if (f) f.textContent = activeFolder() || I18n.t('not_selected');
     const a = document.getElementById('set-account'); if (a) a.textContent = State.userName ? I18n.t('signed_in_as', { name: State.userName }) : I18n.t('signed_in');
-    const lc = document.getElementById('set-local-count');
-    if (lc) { const n = LocalBooks.list().length; lc.textContent = n ? I18n.t('local_books_count', { n }) : I18n.t('local_books_none'); }
+    const bf = document.getElementById('set-books-folder-sub');
+    if (bf) {
+      const drive = activeFolder();
+      const local = LocalBooks.folderInfo();
+      bf.textContent = drive && local.connected ? I18n.t('books_folder_both')
+        : drive ? I18n.t('books_folder_drive', { name: drive })
+        : local.connected ? I18n.t('books_folder_device', { name: local.name })
+        : I18n.t('not_selected');
+    }
+    const br = document.getElementById('set-books-refresh');
+    if (br) br.style.display = LocalBooks.folderInfo().connected ? '' : 'none';
     // Language packs: hidden on the web build (no plugin to ask). Pre-warm the
     // status cache so opening the modal doesn't show a "Checking…" beat.
     VoicePacks.refresh();
     const lpg = document.getElementById('langpacks-group');
     if (lpg) lpg.style.display = VoicePacks.available() ? '' : 'none';
   },
-  changeFolder() { FolderBrowser.open(); },
+  changeFolder() { FolderChooser.open(); },
+  refreshBooksFolder() { LocalBooks.refreshFolder(); },
   setLang(l) { I18n.setLang(l); },
   // Give the neural voice a fresh chance on this device: clear the cached speed
   // verdict, reset the strike-out, and re-warm (the probe reruns after load).
@@ -3354,6 +3400,37 @@ const FolderBrowser = {
   },
   useCurrent() { const c = this._cur(); this.close(); setFolder(c.id, c.name); },
   close(e) { if (!e || e.target.classList.contains('modal-backdrop')) document.getElementById('browser-modal').classList.remove('open'); },
+};
+
+// Books folder chooser: Google Drive vs this device. Each row uses the
+// non-clickable-container + explicit action button shape (.voice-item with
+// cursor:default) already established by VoicePacks' own state-dependent
+// rows, since "this device" needs multiple state-dependent actions
+// (Connect vs. Refresh+Disconnect) a single onclick row can't express.
+const FolderChooser = {
+  open() { document.getElementById('folderchooser-modal').classList.add('open'); this._render(); },
+  close(e) { if (!e || e.target.classList.contains('modal-backdrop')) document.getElementById('folderchooser-modal').classList.remove('open'); },
+  _render() {
+    const driveName = activeFolder();
+    const local = LocalBooks.folderInfo();
+    const driveRight = `<button class="set-link" onclick="FolderChooser.close();FolderBrowser.open()">${I18n.t('change')}</button>`;
+    const localRight = local.connected
+      ? `<button class="set-link" onclick="FolderChooser.close();Settings.refreshBooksFolder()">${I18n.t('refresh')}</button>`
+        + `<button class="set-link danger" onclick="FolderChooser.confirmDisconnect()">${I18n.t('disconnect')}</button>`
+      : `<button class="set-link" onclick="FolderChooser.close();LocalBooks.connectFolder()">${I18n.t('connect')}</button>`;
+    document.getElementById('fc-list').innerHTML = `
+      <div class="voice-item" style="cursor:default">
+        <div><div class="voice-name">${I18n.t('google_drive')}</div><div class="voice-lang">${esc(driveName || I18n.t('not_selected'))}</div></div>
+        ${driveRight}
+      </div>
+      <div class="voice-item" style="cursor:default">
+        <div><div class="voice-name">${I18n.t('this_device')}</div><div class="voice-lang">${esc(local.connected ? local.name : I18n.t('not_selected'))}</div></div>
+        ${localRight}
+      </div>`;
+  },
+  confirmDisconnect() {
+    ConfirmModal.show(() => { this.close(); LocalBooks.disconnectFolder(); }, I18n.t('disconnect_folder_confirm'), I18n.t('disconnect'));
+  },
 };
 
 // Typed-folder fallback (replaces the native prompt so the wording is ours).
@@ -4369,38 +4446,46 @@ const LocalBooks = {
   // is a real system boundary, unlike a Drive download that was already
   // valid when it was originally added), stores the bytes, and eagerly
   // captures cover + metadata so the library grid never needs to fall back
-  // to a Drive download for a book that has none. Awaited serially so every
-  // imported book's cover is ready before the caller re-renders the grid.
+  // to a Drive download for a book that has none. Shared by both the
+  // one-shot file-input path (import, below) and the connected-folder
+  // refresh path (refreshFolder) — one validate/timeout/BookCache/Covers
+  // pipeline, so a bug fixed in one path is fixed in both. Saves the index
+  // per-file rather than once at the end of a batch, so partial progress
+  // survives the app/tab being killed mid-import.
+  async _importOneBuffer(buf, name, size) {
+    let book = null;
+    try {
+      book = ePub(buf);
+      // ePub().ready never REJECTS on genuinely malformed input (confirmed
+      // in testing — a non-EPUB file just hangs forever, not a thrown
+      // error a try/catch would ever see) — so a bare await here could
+      // freeze the whole batch, including every file queued after it.
+      // Race it against a timeout instead; a real epub, even a large one,
+      // parses in well under this.
+      await Promise.race([
+        book.ready,
+        new Promise((_, rej) => setTimeout(() => rej(new Error('open timed out')), 8000)),
+      ]);
+      const id = this._newId();
+      await BookCache.set(id, buf);
+      await Covers.fromBook(book, { id, size });
+      const idx = this._index();
+      idx[id] = { name, size, ts: Date.now() };
+      this._saveIndex(idx);
+      return id;
+    } catch (_) {
+      return null;
+    } finally {
+      if (book) { try { book.destroy(); } catch (_) {} }
+    }
+  },
   async import(fileList) {
-    const idx = this._index();
     let ok = 0; const failed = [];
     for (const file of Array.from(fileList)) {
-      let book = null;
-      try {
-        const buf = await file.arrayBuffer();
-        book = ePub(buf);
-        // ePub().ready never REJECTS on genuinely malformed input (confirmed
-        // in testing — a non-EPUB file just hangs forever, not a thrown
-        // error a try/catch would ever see) — so a bare await here could
-        // freeze the whole batch, including every file queued after it.
-        // Race it against a timeout instead; a real epub, even a large one,
-        // parses in well under this.
-        await Promise.race([
-          book.ready,
-          new Promise((_, rej) => setTimeout(() => rej(new Error('open timed out')), 8000)),
-        ]);
-        const id = this._newId();
-        await BookCache.set(id, buf);
-        await Covers.fromBook(book, { id, size: file.size });
-        idx[id] = { name: file.name, size: file.size, ts: Date.now() };
-        ok++;
-      } catch (_) {
-        failed.push(file.name);
-      } finally {
-        if (book) { try { book.destroy(); } catch (_) {} }
-      }
+      const buf = await file.arrayBuffer();
+      const id = await this._importOneBuffer(buf, file.name, file.size);
+      if (id) ok++; else failed.push(file.name);
     }
-    this._saveIndex(idx);
     return { ok, failed };
   },
   async remove(id) {
@@ -4429,6 +4514,189 @@ const LocalBooks = {
       Library.refresh();
       Settings.render();
     });
+  },
+
+  // --- Connected folder (SAF tree on native, File System Access API on web)
+  // — manual refresh, not background sync. pl_local_folder_name is the
+  // platform-agnostic "is something connected" signal (set on both
+  // platforms) so Settings can render synchronously with no IndexedDB round
+  // trip. pl_local_folder_uri is native-only (the SAF tree URI); the web
+  // handle itself lives in LocalFolderHandle, since a FileSystemDirectoryHandle
+  // isn't string-serializable. pl_local_folder_map ({filename: localId}) is
+  // which files from THIS connected folder are already imported — separate
+  // from pl_local_books (the general index) so a refresh only imports NEW
+  // files by name, not everything again.
+  _folderMap() { try { return JSON.parse(localStorage.getItem('pl_local_folder_map') || '{}'); } catch (_) { return {}; } },
+  _saveFolderMap(m) { try { localStorage.setItem('pl_local_folder_map', JSON.stringify(m)); } catch (_) {} },
+
+  folderInfo() {
+    const name = (() => { try { return localStorage.getItem('pl_local_folder_name') || ''; } catch (_) { return ''; } })();
+    return { connected: !!name, name };
+  },
+
+  async connectFolder() {
+    if (App.isNative()) {
+      const plugin = App._plugin('LocalFolder');
+      if (!plugin) { toast(I18n.t('local_folder_unavailable')); return; }
+      let res;
+      try { res = await plugin.pickFolder(); } catch (_) { toast(I18n.t('local_folder_connect_failed')); return; }
+      if (!res || !res.uri) return; // user cancelled — quiet
+      let prevUri = null;
+      try { prevUri = localStorage.getItem('pl_local_folder_uri'); } catch (_) {}
+      try {
+        localStorage.setItem('pl_local_folder_uri', res.uri);
+        localStorage.setItem('pl_local_folder_name', res.name || I18n.t('folder_fallback'));
+      } catch (_) {}
+      // Reconnecting the SAME folder must not reset the "already imported"
+      // map, or the next refresh would re-import every file in it as
+      // duplicates (_importOneBuffer always mints a fresh id).
+      if (res.uri !== prevUri) this._saveFolderMap({});
+      Settings.render();
+      await this.refreshFolder();
+      return;
+    }
+    if (!window.showDirectoryPicker) {
+      toast(I18n.t('local_folder_web_unsupported'));
+      document.getElementById('local-import-input').click();
+      return;
+    }
+    let handle;
+    try { handle = await window.showDirectoryPicker({ mode: 'read' }); }
+    catch (e) { if (e && e.name === 'AbortError') return; toast(I18n.t('local_folder_connect_failed')); return; }
+    let prevName = null;
+    try { prevName = localStorage.getItem('pl_local_folder_name'); } catch (_) {}
+    try { await LocalFolderHandle.set(handle); } catch (_) {}
+    try { localStorage.setItem('pl_local_folder_name', handle.name || I18n.t('folder_fallback')); } catch (_) {}
+    if ((handle.name || '') !== prevName) this._saveFolderMap({});
+    Settings.render();
+    await this.refreshFolder();
+  },
+
+  async _listNative() {
+    const plugin = App._plugin('LocalFolder');
+    if (!plugin) return null;
+    const uri = (() => { try { return localStorage.getItem('pl_local_folder_uri'); } catch (_) { return null; } })();
+    if (!uri) return null;
+    const res = await plugin.listFolder({ uri }); // throws on revoked permission — caller catches
+    return (res.files || []).map(f => ({
+      name: f.name, size: f.size,
+      readBuffer: async () => BookCache._b64ToBuf((await plugin.readFile({ uri: f.uri })).data),
+    }));
+  },
+
+  async _listWeb() {
+    const handle = await LocalFolderHandle.get();
+    if (!handle) return null;
+    // Re-verify rather than assume access silently persisted (the
+    // documented File System Access pattern) — must run inside THIS
+    // user-gesture call chain (the Refresh button's own onclick), no await
+    // before it.
+    const perm = await handle.queryPermission({ mode: 'read' });
+    if (perm !== 'granted') {
+      const req = await handle.requestPermission({ mode: 'read' });
+      if (req !== 'granted') return null;
+    }
+    const out = [];
+    for await (const [name, entryHandle] of handle.values()) {
+      if (entryHandle.kind !== 'file') continue;
+      if (!/\.epub$/i.test(name)) continue;
+      out.push({
+        name, size: undefined,
+        readBuffer: async () => (await entryHandle.getFile()).arrayBuffer(),
+      });
+    }
+    return out;
+  },
+
+  async refreshFolder() {
+    const info = this.folderInfo();
+    if (!info.connected) return;
+    toast(I18n.t('refreshing_ellipsis'), 0);
+    let entries = null;
+    try {
+      entries = App.isNative() ? await this._listNative() : await this._listWeb();
+    } catch (_) {
+      entries = null; // native SecurityException (revoked permission), etc.
+    }
+    hideToast();
+    if (entries === null) { toast(I18n.t('local_folder_reconnect_needed')); return; }
+    const map = this._folderMap();
+    const toImport = entries.filter(e => !map[e.name]);
+    let ok = 0; const failed = [];
+    for (const e of toImport) {
+      const buf = await e.readBuffer().catch(() => null);
+      if (!buf) { failed.push(e.name); continue; }
+      const id = await this._importOneBuffer(buf, e.name, e.size);
+      if (id) { map[e.name] = id; ok++; } else { failed.push(e.name); }
+    }
+    this._saveFolderMap(map);
+    if (!toImport.length) {
+      toast(I18n.t('local_folder_up_to_date'));
+    } else {
+      toast(failed.length
+        ? I18n.t('import_summary_with_failures', { ok, total: toImport.length, failed: failed.length })
+        : I18n.t('import_summary_ok', { ok }));
+    }
+    Library.refresh();
+    Settings.render();
+  },
+
+  async disconnectFolder() {
+    try {
+      localStorage.removeItem('pl_local_folder_uri');
+      localStorage.removeItem('pl_local_folder_name');
+      localStorage.removeItem('pl_local_folder_map');
+    } catch (_) {}
+    if (!App.isNative()) { try { await LocalFolderHandle.clear(); } catch (_) {} }
+    Settings.render();
+    toast(I18n.t('local_folder_disconnected'));
+  },
+};
+
+// --- LocalFolderHandle: the one FileSystemDirectoryHandle for a connected
+// "this device" folder (web only — native has no handle, just the SAF tree
+// URI already in localStorage). A SEPARATE tiny IndexedDB database, same
+// reasoning as BookCache being separate from CoverCache: nothing here should
+// risk another store's schema.
+const LocalFolderHandle = {
+  _db: null,
+  _open() {
+    if (this._db) return this._db;
+    this._db = new Promise((resolve, reject) => {
+      const r = indexedDB.open('phonoleaf-localfolder', 1);
+      r.onupgradeneeded = () => { if (!r.result.objectStoreNames.contains('handles')) r.result.createObjectStore('handles'); };
+      r.onsuccess = () => resolve(r.result);
+      r.onerror  = () => reject(r.error);
+    });
+    return this._db;
+  },
+  async get() {
+    try {
+      const db = await this._open();
+      return await new Promise(resolve => {
+        const req = db.transaction('handles', 'readonly').objectStore('handles').get('dir');
+        req.onsuccess = () => resolve(req.result || null);
+        req.onerror  = () => resolve(null);
+      });
+    } catch (_) { return null; }
+  },
+  async set(handle) {
+    const db = await this._open();
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction('handles', 'readwrite');
+      tx.objectStore('handles').put(handle, 'dir');
+      tx.oncomplete = resolve;
+      tx.onerror = () => reject(tx.error);
+    });
+  },
+  async clear() {
+    try {
+      if (this._db) { const db = await this._db; db.close(); this._db = null; }
+      await new Promise(resolve => {
+        const req = indexedDB.deleteDatabase('phonoleaf-localfolder');
+        req.onsuccess = req.onerror = req.onblocked = () => resolve();
+      });
+    } catch (_) {}
   },
 };
 
@@ -7122,6 +7390,10 @@ const MyData = {
     // Drive offline copy is local data by that description same as a
     // local import's only copy.
     try { await BookCache.clear(); } catch (_) {}
+    // An orphaned File System Access handle (connected local folder, web
+    // only) isn't "erased" by the pl_* sweep above — that only clears the
+    // localStorage pointer, not the IndexedDB-stored handle itself.
+    try { await LocalFolderHandle.clear(); } catch (_) {}
     // Also remove any downloaded native voice packs — otherwise "delete all my
     // data" quietly leaves 70-300+ MB of voice models on disk, AND breaks the
     // onboarding prompt on next sign-in: VoicePacks.maybeOnboard() correctly

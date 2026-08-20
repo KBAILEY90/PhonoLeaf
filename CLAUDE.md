@@ -4107,3 +4107,168 @@ persistent re-sync, no iOS work (no iOS build exists yet).
   filtering ever hides a real `.epub` file whose provider mis-declared its
   type (if so, broaden `accept` and lean on the `ePub()`-open validation as
   the real filter instead).
+
+## Connect a local folder, with manual refresh (2026-08-20)
+
+Owner follow-up on local import: picking a folder in the file picker
+"wasn't working" — turned out to be expected, not a bug (Capacitor's file
+chooser bridge only builds `ACTION_GET_CONTENT`, individual files, no
+folder-tree support — confirmed by grepping its source, no
+`webkitdirectory`/`ACTION_OPEN_DOCUMENT_TREE` handling anywhere). The
+owner asked for a folder that "stays updated" via a manual Refresh instead
+of true background sync, and to unify Settings' two rows ("Drive folder" /
+"Local books") into one "Books folder" entry point choosing Drive vs. this
+device.
+
+- **The first plugin in this codebase that launches an activity and gets a
+  *result* back.** Every existing plugin (`PhonoLeafTtsPlugin`,
+  `SecureStoragePlugin`, `EmailComposerPlugin`) only fires an intent and
+  forgets (e.g. opening the mail app). Picking a folder needs Android's
+  Storage Access Framework `ACTION_OPEN_DOCUMENT_TREE`, which returns a
+  result the app must receive. **Verified directly against the installed
+  Capacitor 8.4.2 core source**, not assumed or copied from an example (no
+  installed plugin package uses this pattern, so there was nothing to copy
+  from): `Plugin.startActivityForResult(call, intent, callbackName)`
+  paired with a method annotated `@ActivityCallback` taking exactly
+  `(PluginCall call, ActivityResult result)` — this contract is spelled
+  out in Capacitor's own source (down to the exact rejection message it
+  throws if a callback's signature doesn't match). New file
+  `LocalFolderPlugin.kt`, three methods:
+  - `pickFolder()` — launches the tree picker; on success takes a
+    **persistable** URI permission (`FLAG_GRANT_READ_URI_PERMISSION`) —
+    without this the grant dies with the process, breaking "connect once,
+    refresh later" on next launch; resolves `{uri, name}`. On cancel,
+    resolves `{uri: null}` (a clean no-op signal, not an error).
+  - `listFolder({uri})` — lists `.epub` children via
+    `DocumentFile.fromTreeUri(...).listFiles()`, **re-derived fresh on
+    every call** rather than caching child URIs across restarts (sidesteps
+    SAF's known stale-child-URI footgun — only the tree URI is ever
+    persisted). A revoked permission throws `SecurityException` → reject,
+    so JS can prompt to reconnect.
+  - `readFile({uri})` — reads a child URI's bytes, base64-encodes them,
+    resolves `{data: base64}`. **Deliberately matches
+    `@capacitor/filesystem`'s own `readFile` response shape** so JS
+    decodes with the exact same `BookCache._b64ToBuf()` helper already
+    written for the Filesystem plugin — no second decoder needed, and this
+    reuse was confirmed working end to end in the mocked-native harness
+    below.
+  New Gradle dependency: `androidx.documentfile:documentfile:1.0.1` (wraps
+  SAF tree URIs, avoids hand-rolling `DocumentsContract` column queries;
+  no new transitive deps beyond `androidx.core`, already present).
+- **Web: `showDirectoryPicker()`, feature-detected, never assumed
+  available.** Confirmed via research: Chromium-only (Chrome/Edge/Opera),
+  Safari and Firefox support neither in any version. A returned
+  `FileSystemDirectoryHandle` is natively structured-clone-storable by the
+  browser (a real handle, not a plain object — see the testing note
+  below) — persisted in a new tiny IndexedDB store, `LocalFolderHandle`,
+  mirroring `BookCache`/`CoverCache`'s exact shape (own DB
+  `phonoleaf-localfolder`, one store, fixed key since only one folder
+  connects at a time). Permission is re-verified on every refresh via
+  `queryPermission`/`requestPermission`, called with no `await` ahead of
+  it so it stays inside the Refresh button's user-gesture context (a
+  documented requirement of the API). **Genuinely unverified: whether
+  `showDirectoryPicker` exists at all inside the Capacitor Android
+  WebView** (as opposed to a real browser tab) — so `connectFolder()`'s
+  web branch degrades to the existing one-shot file input, with an
+  explanatory toast, whenever the API is absent. Nothing breaks either way.
+- **JS extends `LocalBooks` rather than forking a parallel module.**
+  Refactored `import()`'s per-file body out into
+  `_importOneBuffer(buf, name, size)` (validate-by-opening with the
+  existing 8s timeout race, `BookCache.set`, `Covers.fromBook`, index
+  write) so the one-shot file-input path and the new folder-refresh path
+  share one pipeline — a bug fixed in one is fixed in both. New:
+  `folderInfo()`, `connectFolder()`, `refreshFolder()`, `_listNative()`,
+  `_listWeb()`, `disconnectFolder()`.
+- **A real correctness catch made during design, not caught by testing
+  this time but reasoned through directly**: reconnecting the *same*
+  already-connected folder must not reset `pl_local_folder_map` (the
+  "already imported from this folder" index), or the next refresh would
+  re-import every file in it as duplicates — `_importOneBuffer` always
+  mints a fresh id, it has no way to recognize "I already have this
+  content under a different id." `connectFolder()` now compares the newly
+  picked folder's identity (`uri` on native, `handle.name` on web,
+  acknowledged as a weaker signal there but the best available) against
+  what was previously stored, and only resets the map when they actually
+  differ. **Verified directly in the harness**: reconnecting the same
+  mocked folder left the map byte-for-byte identical, and a subsequent
+  refresh correctly found nothing new to import.
+- **`refreshFolder()` centralizes its "reconnect needed" toast in one
+  place**, deliberately not inside `_listWeb()`/`_listNative()`
+  themselves — an earlier draft had `_listWeb()` toast on its own denied
+  permission while the "Refreshing…" toast (shown with duration 0,
+  meaning "stays up until explicitly hidden") was still on screen, which
+  would have raced the two toasts and then prematurely hidden the
+  *second* one right after showing it. Fixed by having both list functions
+  return `null` on any failure and letting `refreshFolder()` call
+  `hideToast()` once, then show exactly one outcome toast, regardless of
+  whether the failure was a thrown native `SecurityException` or a denied
+  web permission.
+- **Settings unified**: the two existing rows collapsed into one "Books
+  folder" row (label + composed sub-text: "Google Drive: {name}" / "This
+  device: {name}" / "Google Drive + this device" / "Not selected"), a
+  Refresh button shown only when a local folder is connected, and a
+  "Change" button opening a new `FolderChooser` modal. That modal reuses
+  the app's existing generic `.modal-backdrop`/`.modal-sheet` chrome
+  (already used verbatim by six other modals, confirmed before adding
+  anything new) and the `.voice-item` row pattern `VoicePacks` already
+  uses for its own state-dependent action rows (`style="cursor:default"`
+  override, since `.voice-item` defaults to `cursor:pointer` for
+  single-click rows, which this isn't) — the right template specifically
+  *because* the device row needs multiple state-dependent actions
+  (Connect vs. Refresh+Disconnect) a single clickable row can't express.
+  Disconnecting confirms first via the existing `ConfirmModal` (explicit
+  that books already imported stay in the library — only the connection
+  is removed, matching how changing/removing a Drive folder never deletes
+  cached books or progress either). The old one-shot "import individual
+  files" capability stays reachable as a static secondary link at the
+  bottom of the chooser, not its own Settings row — it still has
+  independent value (one odd file that isn't in the connected folder) a
+  connected folder doesn't replace.
+- **`MyData.deleteAll()`** gets one more line, `LocalFolderHandle.clear()`
+  — the generic `pl_*` sweep already clears the folder *pointer*
+  (`pl_local_folder_uri`/`_name`/`_map`), same as it already does for
+  `pl_local_books`, but the web IndexedDB-stored handle itself needs
+  explicit clearing, same reasoning as `BookCache.clear()` before it.
+- **Old `drive_folder`/`local_books`/`local_books_none`/`local_books_count`
+  i18n keys deliberately left in place, unused** — cheap, and removing
+  them risks missing some other reference; a real cleanup pass can verify
+  and remove them later if wanted.
+- **A real testing lesson, not a bug**: the first harness pass mocked a
+  `FileSystemDirectoryHandle` as a plain JS object with function
+  properties (`queryPermission`, `values`, etc.) and got a silent
+  zero-books result. Root cause: `LocalFolderHandle.set()`'s IndexedDB
+  `put()` throws `DataCloneError` on an object containing functions
+  (structured clone can't serialize them) — caught by the existing
+  try/catch and swallowed, exactly as designed for a real failure, just
+  triggered here by an artificial one. Real `FileSystemDirectoryHandle`
+  objects have special native browser support for structured cloning that
+  a hand-rolled mock can't replicate; fixed by stubbing
+  `LocalFolderHandle.get()`/`set()` directly to hand back the mock
+  in-memory instead of round-tripping it through real IndexedDB, which
+  correctly isolates and tests `LocalBooks`' own logic rather than the
+  browser's native handle-cloning support (out of scope to fake). A second
+  mocking gap (`App.isNative()` stubbed true without also stubbing
+  `Capacitor.Plugins.Filesystem`, which `BookCache.set` separately checks
+  on the native path) produced the same "zero books imported" symptom for
+  a completely different, equally artificial reason — worth remembering
+  next time a native-path harness silently imports zero books: check
+  every plugin the call chain touches, not just the one the test is
+  actually about.
+- Verified end-to-end in a browser harness: web connect → refresh →
+  reconnect-same-folder (no duplicate map reset) → disconnect (folder
+  cleared, books retained) → denied-permission refresh (map untouched,
+  correct toast); native connect → refresh (full pipeline: `pickFolder` →
+  `listFolder` → `readFile`'s base64 decoded via the reused
+  `BookCache._b64ToBuf` → `BookCache.set` → `_importOneBuffer` →
+  `Covers.fromBook`) → cancel (`{uri:null}`, connection unchanged) →
+  simulated `SecurityException` (same reconnect-needed toast as the web
+  path); the chooser modal's two rows render the correct state-dependent
+  buttons in both the connected and not-connected states; the disconnect
+  confirmation shows the right message and only disconnects on confirm;
+  French labels render correctly. **Not device-verified** — the Kotlin
+  cannot be compiled or run here (no JDK/Android SDK, as with every other
+  native change in this project); the plugin is written and reviewed
+  carefully against Capacitor's real, verified API contract, but a real
+  device is needed to confirm `showDirectoryPicker` inside the WebView,
+  that the SAF permission survives a real app kill + relaunch, and that
+  `DocumentFile.listFiles()` is fast enough on a large real folder.

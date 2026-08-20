@@ -70,6 +70,10 @@ dependencies {
     // a known AndroidX quirk) + androidx.media.app.NotificationCompat.MediaStyle,
     // for PlaybackService's lock-screen transport controls.
     implementation "androidx.media:media:1.7.0"
+    // DocumentFile wraps Storage Access Framework tree URIs (LocalFolderPlugin's
+    // connect-a-folder feature) — avoids hand-rolling DocumentsContract column
+    // queries. Small, stable, no transitive deps beyond androidx.core (already present).
+    implementation "androidx.documentfile:documentfile:1.0.1"
     implementation project(':capacitor-android')
     // Native neural TTS: Kokoro via sherpa-onnx (on-device, gapless on phones).
     // Prebuilt AAR (v1.13.4) committed in libs/ — sherpa-onnx has no Maven
