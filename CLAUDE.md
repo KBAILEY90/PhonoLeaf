@@ -4272,3 +4272,100 @@ device.
   device is needed to confirm `showDirectoryPicker` inside the WebView,
   that the SAF permission survives a real app kill + relaunch, and that
   `DocumentFile.listFiles()` is fast enough on a large real folder.
+
+## Bug: local folder refresh on web threw "is not iterable" (2026-08-20)
+
+Owner-reported the very first time this shipped: connecting/refreshing a
+local folder on web always failed with "Permission to that folder was lost.
+Reconnect it to refresh." The first two response rounds were a
+misdiagnosis — the report initially read as a native-Android permission
+issue (device tests earlier the same day were all native), so two rounds of
+diagnostic-only fixes went into `_listNative()`/the Kotlin plugin, neither
+of which could have touched the real bug. **The owner then clarified they
+were testing on web**, which reframed the whole investigation.
+
+**Root cause, found and reproduced live, not guessed**: `_listWeb()` called
+`handle.values()` and destructured each result as `[name, entryHandle]` —
+but per the File System Access spec, `FileSystemDirectoryHandle.values()`
+yields bare handle objects, not `[name, handle]` pairs (mirrors `Map`'s
+`keys()`/`values()`/`entries()` split — only `.entries()` returns pairs).
+Destructuring a bare handle as a 2-tuple threw `TypeError: .for is not
+iterable` on literally every file in the folder, matching the exact text
+reported. **Confirmed directly in a live browser using OPFS**
+(`navigator.storage.getDirectory()` — same `FileSystemDirectoryHandle`
+class, no folder-picker gesture needed to test it): reproduced the exact
+error string with `values()`, then confirmed `entries()` yields correct
+`[name, handle]` pairs and fixed it. Changed `_listWeb()`'s one line from
+`handle.values()` to `handle.entries()`.
+**Process lesson**: the two earlier diagnostic-only commits weren't wasted
+(the native-side error tagging in `_listNative()` is still a real
+improvement, and the `writeWav` gain-cap fix landed in the same push,
+unrelated but reported at the same time — see below) but neither could have
+found this, because the failure was never on the path they instrumented.
+When a report's platform isn't stated, ask before spending a round chasing
+the wrong code path.
+
+**Reported in the same message, unrelated**: audiobook volume "sometimes
+very loud, sometimes less" while listening continuously in the car. Traced
+to `PhonoLeafTtsPlugin.kt`'s `writeWav()`, which peak-normalizes each
+synthesized clip (one per sentence/paragraph chunk) independently to ~0.95,
+with correction gain capped at 6x (+15.6dB). Real speech has genuine
+dynamic range — a quiet or trailing-off sentence has a much lower natural
+peak than an emphatic one — so correcting each clip independently to the
+same target erases that range and can swing a quiet sentence up to 6x
+louder than its neighbors. Lowered the cap to 2x (+6dB): still corrects the
+documented cross-model loudness gap (vctk quieter than libritts) this
+existed for, just far more gently. **Not a full fix** — a proper one would
+normalize once per model/session rather than per clip, or use RMS instead
+of peak — this is a conservative, low-risk, easily-tunable reduction.
+**Not device-verified** — no JDK/Android SDK in this environment; needs a
+real listen to confirm 2x is gentle enough, or whether it needs to go lower.
+
+## Onboarding now offers Drive or local device, and Settings row renamed (2026-08-20)
+
+Owner feedback: onboarding only ever auto-opened the Google Drive folder
+browser, even though a local device connection is now an equally real,
+persistent source (see "Connect a local folder" above) — a user who wanted
+to start with local books had no way to say so at setup time. Also renamed
+the Settings row from "Books folder" to **"Book Folders"** (EN) / "Dossiers
+de livres" (FR), matching that both sources are first-class and can coexist.
+
+- **`App._promptFolderIfNeeded()`** now opens `FolderChooser` (in onboarding
+  mode) instead of jumping straight to `FolderBrowser` (Drive-only) —
+  `FolderChooser` already existed for exactly this choice (built for the
+  Settings "Change" flow), so this reuses it rather than building a new
+  screen. Passing `true` renders a short intro banner ("Add your books" /
+  explainer) above the two rows, matching the exact pattern `LangPacksModal`
+  already established for its own onboarding intro
+  (`open(onboarding)`/`_onboarding` flag) — except `FolderChooser` doesn't
+  need a persisted flag, since picking either option closes the modal
+  immediately with no async re-render loop to survive in between.
+- **A real latent bug found and fixed while touching this**:
+  `hasChosenFolder()` (gates the onboarding prompt) only ever checked the
+  Drive folder id/name — a local-only connection was invisible to it, so a
+  local-only user would have been re-prompted for a Drive folder on *every
+  single launch*. This was harmless before today (nothing could reach a
+  local-only state during onboarding, since onboarding only offered Drive)
+  but would have surfaced the moment this feature shipped. Now also checks
+  `LocalBooks.folderInfo().connected`.
+- **Voice-pack onboarding (`VoicePacks.maybeOnboard()`) previously only
+  fired from `setFolder()`** (the Drive path) — a user who connected only a
+  local folder during the new choice step would never have been prompted to
+  download a voice. Added the same `setTimeout(() => VoicePacks.maybeOnboard(),
+  400)` call to both branches of `LocalBooks.connectFolder()` (native and
+  web). Safe to call from multiple sources — `maybeOnboard()` already guards
+  itself to fire at most once ever.
+- **Drive's row button now reads "Connect" while nothing is picked, "Change"
+  once something is** — previously always said "Change," which read oddly
+  against an empty "Not selected" value once this modal became the
+  onboarding entry point (the local-device row already had this Connect/
+  Refresh+Disconnect split; Drive's was the odd one out).
+- Verified live in a browser: `hasChosenFolder()` correctly flips to `true`
+  for a local-only connection (previously `false`); the "Book Folders" label
+  renders correctly in both languages; the onboarding intro banner shows
+  only when opened with `onboarding=true` and never otherwise; the Drive
+  button correctly reads "Connect" vs "Change" depending on whether a folder
+  is already set; screenshotted the full onboarding chooser to confirm the
+  layout. Not device-verified for native (nothing here touches native code,
+  but the onboarding trigger itself — `App._promptFolderIfNeeded()` — is
+  exercised identically on both platforms since it's pure JS).

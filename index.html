@@ -1677,8 +1677,11 @@ function activeFolderId() {
   try { return localStorage.getItem('pl_folder_id') || ''; } catch (_) { return ''; }
 }
 // Has the user chosen a books folder yet? Gates the onboarding folder prompt.
+// Must check BOTH sources — a local-only connection used to be invisible
+// here (only Drive was checked), so a local-only user got re-prompted for
+// a Drive folder on every single launch.
 function hasChosenFolder() {
-  return !!(activeFolderId() || activeFolder());
+  return !!(activeFolderId() || activeFolder() || LocalBooks.folderInfo().connected);
 }
 
 // --- Utilities -------------------------------------------
@@ -1810,7 +1813,7 @@ const STRINGS = {
     import_summary_ok: '{ok} book(s) imported', import_summary_with_failures: '{ok} of {total} imported, {failed} skipped (not a valid EPUB file)',
     remove_local_confirm: 'Remove this book from PhonoLeaf? It was imported from your device, so this deletes the only copy PhonoLeaf has.',
     remove_local_book: 'Remove this book', local_book_removed: 'Book removed',
-    books_folder: 'Books folder',
+    books_folder: 'Book Folders',
     books_folder_drive: 'Google Drive: {name}', books_folder_device: 'This device: {name}',
     books_folder_both: 'Google Drive + this device',
     google_drive: 'Google Drive', this_device: 'This device',
@@ -1899,6 +1902,9 @@ const STRINGS = {
     voice_tier_high: 'Upgraded', voice_tier_standard: 'Standard', voice_prefix: 'Voice: ',
     gender_female: 'female', gender_male: 'male',
 
+    // Books folder chooser — onboarding intro
+    choose_books_source_title: 'Add your books',
+    choose_books_source_body: 'Connect Google Drive, or add books stored on this device — you can use either, or both, any time in Settings.',
     // Language packs modal
     language_packs_title: 'Language Packs',
     pick_voice_title: 'Pick a voice to download',
@@ -1994,7 +2000,7 @@ const STRINGS = {
     import_summary_ok: '{ok} livre(s) importé(s)', import_summary_with_failures: '{ok} sur {total} importés, {failed} ignorés (fichier EPUB non valide)',
     remove_local_confirm: 'Retirer ce livre de PhonoLeaf ? Il a été importé depuis votre appareil, donc ceci supprime la seule copie que PhonoLeaf possède.',
     remove_local_book: 'Retirer ce livre', local_book_removed: 'Livre retiré',
-    books_folder: 'Dossier de livres',
+    books_folder: 'Dossiers de livres',
     books_folder_drive: 'Google Drive : {name}', books_folder_device: 'Cet appareil : {name}',
     books_folder_both: 'Google Drive + cet appareil',
     google_drive: 'Google Drive', this_device: 'Cet appareil',
@@ -2083,6 +2089,9 @@ const STRINGS = {
     voice_tier_high: 'Améliorée', voice_tier_standard: 'Standard', voice_prefix: 'Voix : ',
     gender_female: 'femme', gender_male: 'homme',
 
+    // Sélecteur de dossiers de livres — intro d'accueil
+    choose_books_source_title: 'Ajoutez vos livres',
+    choose_books_source_body: 'Connectez Google Drive, ou ajoutez des livres stockés sur cet appareil — vous pouvez utiliser l’un, l’autre, ou les deux, en tout temps dans les Paramètres.',
     // Packs de langue
     language_packs_title: 'Packs de langue',
     pick_voice_title: 'Choisir une voix à télécharger',
@@ -3408,17 +3417,31 @@ const FolderBrowser = {
 // rows, since "this device" needs multiple state-dependent actions
 // (Connect vs. Refresh+Disconnect) a single onclick row can't express.
 const FolderChooser = {
-  open() { document.getElementById('folderchooser-modal').classList.add('open'); this._render(); },
+  // onboarding=true adds a short explainer above the two options (first
+  // run, before any source is picked — see App._promptFolderIfNeeded).
+  // No persisted flag needed (unlike LangPacksModal): this modal has no
+  // async re-render loop to survive — picking either option closes it
+  // immediately.
+  open(onboarding) { document.getElementById('folderchooser-modal').classList.add('open'); this._render(!!onboarding); },
   close(e) { if (!e || e.target.classList.contains('modal-backdrop')) document.getElementById('folderchooser-modal').classList.remove('open'); },
-  _render() {
+  _render(onboarding) {
     const driveName = activeFolder();
     const local = LocalBooks.folderInfo();
-    const driveRight = `<button class="set-link" onclick="FolderChooser.close();FolderBrowser.open()">${I18n.t('change')}</button>`;
+    const intro = onboarding
+      ? `<div class="voice-item" style="cursor:default">
+           <div><div class="voice-name">${I18n.t('choose_books_source_title')}</div>
+           <div class="voice-lang">${I18n.t('choose_books_source_body')}</div></div>
+         </div>`
+      : '';
+    // "Change" once something's picked, "Connect" while nothing is — matches
+    // the local row's own Connect/Refresh+Disconnect split instead of always
+    // reading "Change" against an empty "Not selected" value.
+    const driveRight = `<button class="set-link" onclick="FolderChooser.close();FolderBrowser.open()">${I18n.t(driveName ? 'change' : 'connect')}</button>`;
     const localRight = local.connected
       ? `<button class="set-link" onclick="FolderChooser.close();Settings.refreshBooksFolder()">${I18n.t('refresh')}</button>`
         + `<button class="set-link danger" onclick="FolderChooser.confirmDisconnect()">${I18n.t('disconnect')}</button>`
       : `<button class="set-link" onclick="FolderChooser.close();LocalBooks.connectFolder()">${I18n.t('connect')}</button>`;
-    document.getElementById('fc-list').innerHTML = `
+    document.getElementById('fc-list').innerHTML = intro + `
       <div class="voice-item" style="cursor:default">
         <div><div class="voice-name">${I18n.t('google_drive')}</div><div class="voice-lang">${esc(driveName || I18n.t('not_selected'))}</div></div>
         ${driveRight}
@@ -3577,10 +3600,12 @@ const App = {
     }
   },
 
-  // On first onboarding (no folder chosen yet), prompt the user to pick their
-  // Google Drive books folder rather than assuming one.
+  // On first onboarding (no source chosen yet), let the user pick WHERE
+  // their books come from first — Google Drive or this device — rather
+  // than assuming Drive (owner feedback 2026-08-20: onboarding only ever
+  // suggested Drive, even though both are now first-class sources).
   _promptFolderIfNeeded() {
-    if (!hasChosenFolder()) setTimeout(() => FolderBrowser.open(), 300);
+    if (!hasChosenFolder()) setTimeout(() => FolderChooser.open(true), 300);
   },
 
   _saveAuth(token, expiresIn) {
@@ -4553,6 +4578,11 @@ const LocalBooks = {
       if (res.uri !== prevUri) this._saveFolderMap({});
       Settings.render();
       await this.refreshFolder();
+      // Voice-pack onboarding used to only fire from setFolder() (the Drive
+      // path) — a user who connected only a local folder never saw it.
+      // maybeOnboard() already guards itself to fire at most once ever, so
+      // calling it from both sources is safe.
+      setTimeout(() => VoicePacks.maybeOnboard(), 400);
       return;
     }
     if (!window.showDirectoryPicker) {
@@ -4570,6 +4600,7 @@ const LocalBooks = {
     if ((handle.name || '') !== prevName) this._saveFolderMap({});
     Settings.render();
     await this.refreshFolder();
+    setTimeout(() => VoicePacks.maybeOnboard(), 400);
   },
 
   async _listNative() {
