@@ -3433,13 +3433,15 @@ const FolderChooser = {
            <div class="voice-lang">${I18n.t('choose_books_source_body')}</div></div>
          </div>`
       : '';
-    // "Change" once something's picked, "Connect" while nothing is — matches
-    // the local row's own Connect/Refresh+Disconnect split instead of always
-    // reading "Change" against an empty "Not selected" value.
+    // "Change" once something's picked, "Connect" while nothing is — same
+    // pattern on BOTH rows now (owner feedback 2026-08-20: the local row's
+    // only connected-state action used to be "Disconnect", unlike Drive's
+    // "Change"; connectFolder() already handles picking a NEW folder
+    // cleanly when one is already connected, so Change just reuses it).
     const driveRight = `<button class="set-link" onclick="FolderChooser.close();FolderBrowser.open()">${I18n.t(driveName ? 'change' : 'connect')}</button>`;
     const localRight = local.connected
       ? `<button class="set-link" onclick="FolderChooser.close();Settings.refreshBooksFolder()">${I18n.t('refresh')}</button>`
-        + `<button class="set-link danger" onclick="FolderChooser.confirmDisconnect()">${I18n.t('disconnect')}</button>`
+        + `<button class="set-link" onclick="FolderChooser.close();LocalBooks.connectFolder()">${I18n.t('change')}</button>`
       : `<button class="set-link" onclick="FolderChooser.close();LocalBooks.connectFolder()">${I18n.t('connect')}</button>`;
     document.getElementById('fc-list').innerHTML = intro + `
       <div class="voice-item" style="cursor:default">
@@ -3450,9 +3452,6 @@ const FolderChooser = {
         <div><div class="voice-name">${I18n.t('this_device')}</div><div class="voice-lang">${esc(local.connected ? local.name : I18n.t('not_selected'))}</div></div>
         ${localRight}
       </div>`;
-  },
-  confirmDisconnect() {
-    ConfirmModal.show(() => { this.close(); LocalBooks.disconnectFolder(); }, I18n.t('disconnect_folder_confirm'), I18n.t('disconnect'));
   },
 };
 
@@ -4704,17 +4703,6 @@ const LocalBooks = {
     }
     Library.refresh();
     Settings.render();
-  },
-
-  async disconnectFolder() {
-    try {
-      localStorage.removeItem('pl_local_folder_uri');
-      localStorage.removeItem('pl_local_folder_name');
-      localStorage.removeItem('pl_local_folder_map');
-    } catch (_) {}
-    if (!App.isNative()) { try { await LocalFolderHandle.clear(); } catch (_) {} }
-    Settings.render();
-    toast(I18n.t('local_folder_disconnected'));
   },
 };
 

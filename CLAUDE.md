@@ -4359,7 +4359,8 @@ de livres" (FR), matching that both sources are first-class and can coexist.
   once something is** — previously always said "Change," which read oddly
   against an empty "Not selected" value once this modal became the
   onboarding entry point (the local-device row already had this Connect/
-  Refresh+Disconnect split; Drive's was the odd one out).
+  Refresh+Disconnect split; Drive's was the odd one out — since superseded,
+  see directly below).
 - Verified live in a browser: `hasChosenFolder()` correctly flips to `true`
   for a local-only connection (previously `false`); the "Book Folders" label
   renders correctly in both languages; the onboarding intro banner shows
@@ -4369,3 +4370,43 @@ de livres" (FR), matching that both sources are first-class and can coexist.
   layout. Not device-verified for native (nothing here touches native code,
   but the onboarding trigger itself — `App._promptFolderIfNeeded()` — is
   exercised identically on both platforms since it's pure JS).
+
+## Local device row: "Disconnect" replaced with "Change" (2026-08-20)
+
+Owner feedback the same day: the local device row's only connected-state
+action was "Disconnect" — unlike the Drive row's "Change," which lets you
+pick a different folder without severing anything first. Asked whether to
+replace Disconnect with Change entirely or keep both; owner chose replace.
+
+- `FolderChooser._render()`'s `localRight` (connected state) is now
+  **Refresh + Change** instead of Refresh + Disconnect. "Change" reuses
+  `LocalBooks.connectFolder()` directly — it already handles picking a NEW
+  folder cleanly when one is already connected (compares the new folder's
+  identity against the old one before deciding whether to reset the
+  "already imported" map, per the original connect-a-folder design), so no
+  new logic was needed. Refresh is kept — it's genuinely necessary (Drive's
+  row has no equivalent because `Library.refresh()` re-fetches Drive live on
+  every call, but it does NOT re-scan a connected local folder for new
+  files; `LocalBooks.refreshFolder()` is the only thing that does).
+- **`FolderChooser.confirmDisconnect()` and `LocalBooks.disconnectFolder()`
+  deleted outright**, not left as dead code — the button was their only
+  caller, and grepping confirmed nothing else in the app (including
+  `MyData.deleteAll()`, which clears the same localStorage keys directly
+  via its own generic `pl_*` sweep plus an explicit `LocalFolderHandle.clear()`
+  call) ever called either. The `disconnect`/`disconnect_folder_confirm`/
+  `local_folder_disconnected` i18n string VALUES were deliberately left in
+  place — matches this file's own established precedent (see the
+  `drive_folder`/`local_books*` keys note elsewhere) that unused translation
+  strings are cheap to leave and risk-free, unlike actual dead executable
+  code, which was removed.
+- **Net effect: there is no longer a way to fully stop using a connected
+  local folder from this screen** — only to replace it with a different one.
+  Flagged explicitly to the owner before building (a real capability
+  tradeoff, not just a label change) and confirmed as the intended design,
+  not an oversight.
+- Verified live in a browser: not-connected state still shows a single
+  "Connect" button; connected state shows exactly "Refresh" + "Change" (no
+  "Disconnect" anywhere); `LocalBooks.disconnectFolder` and
+  `FolderChooser.confirmDisconnect` are both `undefined` after the change;
+  screenshotted the connected-state row to confirm the visual match with
+  Drive's single-action pattern; no new console errors.
