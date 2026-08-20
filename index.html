@@ -4615,8 +4615,20 @@ const LocalBooks = {
     let entries = null;
     try {
       entries = App.isNative() ? await this._listNative() : await this._listWeb();
-    } catch (_) {
-      entries = null; // native SecurityException (revoked permission), etc.
+    } catch (e) {
+      // Was previously a bare catch (_) that discarded the real error,
+      // leaving only a generic "reconnect needed" toast no matter what
+      // actually went wrong (revoked permission, a provider that doesn't
+      // support persistable grants, a plugin registration problem, etc.) —
+      // impossible to diagnose from the device alone. Now logged to Diag
+      // (see pl_diag / BugReport's diagnostics) and folded into the toast
+      // itself so the real cause is visible without needing Logcat.
+      entries = null;
+      const msg = String((e && e.message) || e || 'unknown error');
+      Diag.push({ e: 'localfolder-list-fail', msg: msg.slice(0, 200) });
+      hideToast();
+      toast(I18n.t('local_folder_reconnect_needed') + ' (' + msg.slice(0, 120) + ')', 6000);
+      return;
     }
     hideToast();
     if (entries === null) { toast(I18n.t('local_folder_reconnect_needed')); return; }
