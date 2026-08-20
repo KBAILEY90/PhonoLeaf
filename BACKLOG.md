@@ -247,9 +247,16 @@ off and differentiates.
   labelled button so it is reachable with TalkBack/VoiceOver.
 - Respect the system settings for larger text, high contrast, and reduced motion.
 - Large tap targets and a simple onboarding.
-- **Follow along highlighting**: highlight the word or sentence as it is read.
-  This is a strong aid for dyslexia and ADHD and a genuine differentiator. Bigger
-  build; flag as a feature candidate.
+- ~~**Follow along highlighting**: highlight the word or sentence as it is
+  read. This is a strong aid for dyslexia and ADHD and a genuine
+  differentiator. Bigger build; flag as a feature candidate.~~ **[DONE
+  2026-08-19]** Shipped with approximate timing (proportional character-count
+  distribution of each chunk's known audio duration across its words, since
+  the TTS engine doesn't expose real per-word alignment). Settings toggle
+  plus a quick-access button in the reader's bottom pill, default off. See
+  `CLAUDE.md`'s "Follow-along word highlighting" section for the full build
+  and bug-fix history (native/Kokoro path only for v1; Web Speech fallback
+  not covered).
 
 ---
 
