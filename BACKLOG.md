@@ -220,10 +220,16 @@ Kotlin LCP integration against the existing native plugin architecture.
 
 **[RESEARCH + CODE later] Add alternatives to Google Drive.** Broadens the market
 and reduces dependence on one provider. Feasibility:
-- **Local / device import** (a file picker to add ebooks straight from the device
+- ~~**Local / device import** (a file picker to add ebooks straight from the device
   or a USB import on desktop). Easiest and highest value: no third party OAuth, and
   it also enables the "copy DRM free books in" use case and true offline. Do this
-  first.
+  first.~~ **[DONE 2026-08-19]** Shipped as an additional book source
+  alongside Drive, Google sign-in still required. No native plugin needed
+  (Capacitor's own bridge already wires `<input type="file">` to Android's
+  file picker); bytes reuse the existing `BookCache` offline-storage
+  mechanism. See `CLAUDE.md`'s "Local device file import" section for the
+  full build and bug-fix history. Desktop USB import was never a separate
+  case to build — the same file picker covers it on any platform.
 - **Dropbox** (HTTP API) and **OneDrive / Microsoft Graph**: both feasible on web
   and native; each needs its own OAuth app and, like Google, its own review and
   upkeep, so treat each as a real cost.

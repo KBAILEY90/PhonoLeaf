@@ -3969,3 +3969,141 @@ just to text that had scrolled off-screen, which is indistinguishable from
   1-8 ("one"..."eight", which would have been off-screen on page 1); and a
   chunk whose claimed text genuinely isn't in the DOM still fails closed
   (returns `null`) rather than guessing or throwing.
+
+## Local device file import (2026-08-19)
+
+`BACKLOG.md` section E flagged broadening beyond Google Drive as real
+product value, and named local device import as the one to build first: no
+third-party OAuth app to build and get reviewed, and it directly enables
+both "copy DRM-free books in" and genuine offline from a completely fresh
+install. **Google sign-in stays mandatory** (already decided elsewhere in
+this file: entitlement/payments are being built around the Google account
+id) — this is a new book *source* inside the authenticated app, not a way
+to skip sign-in. v1 is one-shot import only: no folder-watching, no
+persistent re-sync, no iOS work (no iOS build exists yet).
+
+- **No native plugin needed — verified by reading Capacitor's own source,
+  not assumed.** `node_modules/@capacitor/android`'s
+  `BridgeWebChromeClient.onShowFileChooser` already wires a plain
+  `<input type="file">` to Android's native Storage Access Framework
+  picker, mapping the HTML `accept` attribute to `Intent.EXTRA_MIME_TYPES`.
+  No custom plugin, no third-party dependency, no `MainActivity.java`
+  change, no new manifest permission — the exact same mechanism the
+  bug-report photo attachment already uses (`#bug-photo`,
+  `BugReport.onPhotoChange`). Reading is even simpler here:
+  `file.arrayBuffer()` needs no Capacitor-bridge base64 round trip, unlike
+  the photo-attach flow, which only base64-encodes because it hands off to
+  `EmailComposerPlugin`.
+  New hidden `<input id="local-import-input" type="file"
+  accept=".epub,application/epub+zip" multiple hidden
+  onchange="LocalBooks._onPick(this)">`, static body markup, triggered from
+  Settings, the Home empty state, and both Library empty states.
+- **Identity: `'local:' + crypto.randomUUID()`.** No `source` field added
+  to the book object — every place that needs to tell a local book from a
+  Drive one just checks the id prefix. `Drive.listEpubs` entries are
+  `{id, name, thumbnailLink, size}`; local entries are `{id, name, size}`
+  (no `thumbnailLink`, harmless — `Library._itemHTML`'s cover fallback
+  chain already tolerates that).
+- **Storage: `BookCache` reused exactly as-is, zero changes.** It was
+  already fully source-agnostic (`set(id, buf)` takes any string id and any
+  `ArrayBuffer`) — built originally for caching Drive downloads offline
+  (see the Offline entry earlier in this file), it needed nothing new to
+  also hold locally-imported bytes as their *only* copy. `Reader.open()`
+  needed **zero changes**: it already checks `BookCache.get(book.id)`
+  before ever touching `Drive.download`, so a cached book behaves
+  identically regardless of source.
+- **Cover/metadata captured eagerly at import time, not lazily.**
+  `Covers.fromBook(book, meta)` (already existed, used by `Reader.open` for
+  every book) takes an already-open epub.js `Book` plus `{id, size}`,
+  captures metadata via `Meta.capture` internally, and caches the cover
+  blob under key `` `${id}:${size||''}` ``. Calling it once per file at
+  import time — open with `ePub(buf)`, await ready, call `Covers.fromBook`,
+  `book.destroy()` — means `Covers.loadAll()`/`Covers._one()` (which WOULD
+  call `Drive.download` on a cache miss) instead gets a `CoverCache` hit
+  later and never reaches that Drive-specific branch. **No changes needed
+  to `Covers._one`.**
+- **A real bug caught by testing, not assumed away: `ePub(buf).ready` does
+  not reject on malformed input — it hangs forever.** The plan was to use
+  "does `ePub()` open successfully" as the validation for a user-picked
+  file (a genuine system boundary, unlike a Drive download that was already
+  valid when originally added). A try/catch around that call looked
+  sufficient, but testing a 5-byte garbage file directly confirmed the
+  promise never resolves and never rejects — a try/catch never sees a hang.
+  Left unfixed, one bad file anywhere in an import batch would have frozen
+  the entire batch (including every file queued after it) with the
+  "Importing…" toast stuck up forever, no way out short of reloading the
+  app. Fixed by racing `book.ready` against an 8-second timeout inside
+  `LocalBooks.import()`'s per-file try block, treating a timeout the same
+  as a real validation failure (file skipped, name collected for the
+  summary toast). Verified directly: an isolated 5-byte file times out and
+  rejects at 8s as designed (confirmed via `Promise.race` in a harness);
+  a 3-file batch (2 valid synthetic EPUBs + 1 garbage file) completes in
+  ~8s total (not 24s, not forever) with the 2 valid files correctly
+  imported and the bad one correctly skipped.
+- **`Library.load()`'s empty-state branch needed a real structural fix, not
+  just an assignment reorder.** The "no Drive folder configured" branch
+  showed the "choose a folder" prompt and returned early *unconditionally*
+  on `!fid` — a signed-in user with only local imports and no Drive folder
+  would have hit that branch first and never seen their own books. Fixed by
+  computing the merged list (`Library._withLocal(books)`, concatenating
+  `LocalBooks.asBookEntries()`) *before* the empty-state decision, and
+  keying that decision on the merged list's length instead of on `!fid`
+  alone. The "empty Drive folder" branch needed no equivalent change — once
+  assignment order was fixed there, its existing `!State.books.length`
+  check was already checking the merged list. `Library._driveBooks` now
+  holds the raw Drive-only list separately, so `_cacheBookList`'s
+  folder-scoped Drive-outage snapshot never gets polluted with local
+  entries. New `Library.refresh()` re-merges and re-renders without a Drive
+  network round trip, used after import/remove instead of a full
+  `Library.load()`.
+- **`Library._offlineBtnHTML(id)` branches on the id prefix.** A local book
+  can't be "un-cached" back to a remote source, so its card gets a delete
+  button (new `_ICON_TRASH`, a simple stroke-primitive shape matching this
+  file's established icon convention, not a memorized complex path)
+  instead of the save/remove-offline toggle — no change needed to
+  `_itemHTML` itself, since both the grid card and table row already pull
+  their action button from this one function. New `Library.removeLocal(id)`
+  uses the existing `ConfirmModal.show(cb, msg, okLabel)` pattern
+  (destructive — PhonoLeaf holds the only copy).
+- **Deletion thoroughness fix, directly motivated by this feature.**
+  `MyData.deleteAll()` already deleted `CoverCache`'s `'phonoleaf'`
+  IndexedDB and swept every `pl_*` localStorage key, but never touched
+  `BookCache`'s actual storage (`'phonoleaf-offline'` IndexedDB on web, the
+  native `books/` directory) — a pre-existing gap that was harmless while
+  `BookCache` only ever held copies of things Drive still had, but becomes
+  a real correctness problem once it can hold a locally-imported book's
+  *only* copy. New **`BookCache.clear()`** — native: one `rmdir({recursive:
+  true})` call; web: closes the memoized DB connection before
+  `indexedDB.deleteDatabase(...)` (deleting with an open handle can hang) —
+  wipes ALL cached book bytes, Drive-offline copies and local imports
+  alike, matching the Settings row's own promise to "erase local data."
+  Also new **`CoverCache.remove(key)`** (mirrors `set`'s transaction shape),
+  called from `LocalBooks.remove()` so a removed local book's cover blob
+  doesn't linger forever with no folder-rescan to ever evict it — unlike
+  `Meta`, which has no per-id remove and doesn't need one (UUIDs never
+  collide, so an orphaned metadata string is genuinely harmless).
+  Verified directly: `BookCache.clear()` leaves a fresh `_open()` connection
+  reporting a real 0 count in the IndexedDB store (not just an empty
+  localStorage index), and `CoverCache.remove()` round-trips correctly.
+- **UI entry points**: a new Settings row ("Local books" / "{n} imported")
+  mirrors the existing "Drive folder" row exactly, count synced in
+  `Settings.render()` alongside the existing folder/account lines. Both
+  Library empty states and Home's empty state gained a second button,
+  `Library._importBtn()`, alongside the existing `_pickBtn()`. No
+  management modal for v1 — removal already lives on the grid card itself.
+- Verified end-to-end in a browser harness against two REAL synthetic EPUBs
+  built with the vendored JSZip (not mocked file objects): full import →
+  `BookCache`/`Meta`/`Covers` all populated correctly → book appears in the
+  grid with the delete button, not the offline toggle → `Library.load()`
+  with zero Drive folder configured shows the local books directly instead
+  of the "choose a folder" prompt → removal via the grid's delete button
+  (real `ConfirmModal` open + confirm) correctly removes only the targeted
+  book, leaving the other one cached and in the grid → French labels and
+  the removal-confirmation message render correctly. **Not device-verified**
+  — same caveat as every native-adjacent claim in this file, though the
+  central "no plugin needed" finding was reached by reading Capacitor's own
+  installed source directly rather than assumed, so the main open question
+  on-device is narrower than usual: whether Android's SAF picker's MIME
+  filtering ever hides a real `.epub` file whose provider mis-declared its
+  type (if so, broaden `accept` and lean on the `ePub()`-open validation as
+  the real filter instead).

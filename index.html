@@ -1331,6 +1331,10 @@
         <div><div class="sr-k" data-i18n="drive_folder">Drive folder</div><div class="sr-sub" id="set-folder" data-i18n="not_selected">Not selected</div></div>
         <button class="set-link" data-i18n="change" onclick="Settings.changeFolder()">Change</button>
       </div>
+      <div class="set-row">
+        <div><div class="sr-k" data-i18n="local_books">Local books</div><div class="sr-sub" id="set-local-count" data-i18n="local_books_none">None imported</div></div>
+        <button class="set-link" data-i18n="import_from_device" onclick="document.getElementById('local-import-input').click()">Import from device</button>
+      </div>
     </div>
     <div class="set-group">
       <div class="set-row">
@@ -1526,6 +1530,11 @@
     </div>
   </div>
 </div>
+
+<!-- Hidden file input for local device import (LocalBooks) — Capacitor's own
+     Android bridge wires this to the native Storage Access Framework picker
+     with no plugin required, same as the bug-report photo input. -->
+<input id="local-import-input" type="file" accept=".epub,application/epub+zip" multiple hidden onchange="LocalBooks._onPick(this)">
 
 <!-- ============== FOLDER BROWSER (themed, sorted) ============== -->
 <div class="modal-backdrop" id="browser-modal" onclick="FolderBrowser.close(event)">
@@ -1787,6 +1796,11 @@ const STRINGS = {
     data_exported: 'Data exported', data_export_failed: 'Could not export data',
     google_account: 'Google account', signed_in: 'Signed in', signed_in_as: 'Signed in as {name}', sign_out: 'Sign out',
     drive_folder: 'Drive folder', not_selected: 'Not selected',
+    local_books: 'Local books', local_books_none: 'None imported', local_books_count: '{n} imported',
+    import_from_device: 'Import from device', importing_ellipsis: 'Importing…',
+    import_summary_ok: '{ok} book(s) imported', import_summary_with_failures: '{ok} of {total} imported, {failed} skipped (not a valid EPUB file)',
+    remove_local_confirm: 'Remove this book from PhonoLeaf? It was imported from your device, so this deletes the only copy PhonoLeaf has.',
+    remove_local_book: 'Remove this book', local_book_removed: 'Book removed',
     send_feedback: 'Send feedback', send_feedback_sub: 'Ideas or anything on your mind', open: 'Open',
     report_bug: 'Report a bug', report_bug_sub: 'Tell us what went wrong',
     app_language: 'App language', app_language_sub: 'Translates the whole app',
@@ -1952,6 +1966,11 @@ const STRINGS = {
     data_exported: 'Données exportées', data_export_failed: 'Impossible d’exporter les données',
     google_account: 'Compte Google', signed_in: 'Connecté', signed_in_as: 'Connecté en tant que {name}', sign_out: 'Se déconnecter',
     drive_folder: 'Dossier Drive', not_selected: 'Non sélectionné',
+    local_books: 'Livres locaux', local_books_none: 'Aucun importé', local_books_count: '{n} importés',
+    import_from_device: 'Importer depuis l’appareil', importing_ellipsis: 'Importation…',
+    import_summary_ok: '{ok} livre(s) importé(s)', import_summary_with_failures: '{ok} sur {total} importés, {failed} ignorés (fichier EPUB non valide)',
+    remove_local_confirm: 'Retirer ce livre de PhonoLeaf ? Il a été importé depuis votre appareil, donc ceci supprime la seule copie que PhonoLeaf possède.',
+    remove_local_book: 'Retirer ce livre', local_book_removed: 'Livre retiré',
     send_feedback: 'Envoyer des commentaires', send_feedback_sub: 'Idées ou tout ce qui vous passe par la tête', open: 'Ouvrir',
     report_bug: 'Signaler un problème', report_bug_sub: 'Dites-nous ce qui n’a pas fonctionné',
     app_language: 'Langue de l’application', app_language_sub: 'Traduit toute l’application',
@@ -2370,7 +2389,7 @@ const Home = {
         </div>`;
     } else {
       contEl.innerHTML = books.length ? '' : (State.ready
-        ? `<div class="home-empty">${I18n.t('home_choose_folder')}</div>${Library._pickBtn()}`
+        ? `<div class="home-empty">${I18n.t('home_choose_folder')}</div>${Library._pickBtn()}${Library._importBtn()}`
         : `<div class="home-empty">${I18n.t('home_loading_library')}</div>`);
     }
 
@@ -3051,6 +3070,8 @@ const Settings = {
     TTS._syncFollowAlongUI();
     const f = document.getElementById('set-folder'); if (f) f.textContent = activeFolder() || I18n.t('not_selected');
     const a = document.getElementById('set-account'); if (a) a.textContent = State.userName ? I18n.t('signed_in_as', { name: State.userName }) : I18n.t('signed_in');
+    const lc = document.getElementById('set-local-count');
+    if (lc) { const n = LocalBooks.list().length; lc.textContent = n ? I18n.t('local_books_count', { n }) : I18n.t('local_books_none'); }
     // Language packs: hidden on the web build (no plugin to ask). Pre-warm the
     // status cache so opening the modal doesn't show a "Checking…" beat.
     VoicePacks.refresh();
@@ -3755,6 +3776,19 @@ const Library = {
       return (c && c.folderId === folderId && Array.isArray(c.books)) ? c.books : null;
     } catch (_) { return null; }
   },
+  // Local imports ride alongside whatever Drive returned (or didn't) — kept
+  // OUT of _cacheBookList's snapshot, which stays a pure Drive-outage
+  // fallback keyed to one folder, so it can never get polluted with
+  // entries that have nothing to do with that folder.
+  _driveBooks: [],
+  _withLocal(books) { return (books || []).concat(LocalBooks.asBookEntries()); },
+  // Cheap re-render after an import/remove — no Drive network round trip,
+  // just re-merges the cached Drive list with the current local list.
+  refresh() {
+    State.books = this._withLocal(this._driveBooks);
+    this.render();
+    Home.render();
+  },
 
   async load() {
     const grid = document.getElementById('books-grid');
@@ -3764,16 +3798,30 @@ const Library = {
     try {
       if (!fid && folder) fid = await Drive.findFolder(folder);
       if (!fid) {
-        State.books = []; State.ready = true;
-        grid.innerHTML = `<div class="empty"><p>${I18n.t('library_choose_folder1')}<br>${I18n.t('library_choose_folder2')}</p>${this._pickBtn()}</div>`;
+        // No Drive folder configured — a signed-in user with only local
+        // imports must still see their library here, not the "choose a
+        // folder" prompt, so the empty-state decision has to key off the
+        // MERGED list, not off !fid alone.
+        this._driveBooks = [];
+        State.books = this._withLocal(this._driveBooks);
+        State.ready = true;
+        if (!State.books.length) {
+          grid.innerHTML = `<div class="empty"><p>${I18n.t('library_choose_folder1')}<br>${I18n.t('library_choose_folder2')}</p>${this._pickBtn()}${this._importBtn()}</div>`;
+          Home.render();
+          return;
+        }
+        this.render();
         Home.render();
+        Covers.loadAll();
+        Meta.fetchAll(State.books);
         return;
       }
-      State.books = await Drive.listEpubs(fid);
+      this._driveBooks = await Drive.listEpubs(fid);
       State.ready = true;
-      this._cacheBookList(fid, State.books);
+      this._cacheBookList(fid, this._driveBooks); // Drive-only snapshot, never the merged list
+      State.books = this._withLocal(this._driveBooks);
       if (!State.books.length) {
-        grid.innerHTML = `<div class="empty"><p>${I18n.t('library_no_ebooks_in')}<br><strong>"${esc(folder)}"</strong>.</p>${this._pickBtn()}</div>`;
+        grid.innerHTML = `<div class="empty"><p>${I18n.t('library_no_ebooks_in')}<br><strong>"${esc(folder)}"</strong>.</p>${this._pickBtn()}${this._importBtn()}</div>`;
         Home.render();
         return;
       }
@@ -3789,7 +3837,9 @@ const Library = {
       // falls through to the normal error path below.
       const cached = fid ? this._cachedBookList(fid) : null;
       if (cached && cached.length) {
-        State.books = cached; State.ready = true;
+        this._driveBooks = cached;
+        State.books = this._withLocal(this._driveBooks);
+        State.ready = true;
         this.render();
         Home.render();
         toast(I18n.t('offline_showing_cached_library'));
@@ -3833,6 +3883,7 @@ const Library = {
   // to Android's alpha-silhouette extraction that made that case unforgiving.
   _ICON_DOWNLOAD: '<svg viewBox="0 0 24 24" width="14" height="14"><path d="M12 3v10" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M7 9l5 5 5-5" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 19h14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg>',
   _ICON_SAVED: '<svg viewBox="0 0 24 24" width="14" height="14"><path d="M5 12l5 5 9-9" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  _ICON_TRASH: '<svg viewBox="0 0 24 24" width="14" height="14"><path d="M4 7h16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M9 7V4h6v3" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M6 7l1 13h10l1-13" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>',
 
   // Explicit save/remove-for-offline control (BACKLOG.md C item 3, the
   // "explicit control" half — auto-cache-on-open is the other half, see
@@ -3840,7 +3891,13 @@ const Library = {
   // row's trailing button; .book-cover .offline-btn is what makes it an
   // absolute-positioned corner badge specifically in grid mode (see CSS) —
   // as a direct child of .book-row it just flows normally instead.
+  // A locally-imported book has no remote copy to fall back to, so it
+  // can't be "un-cached" — this slot becomes a real delete instead.
   _offlineBtnHTML(id) {
+    if (id.startsWith('local:')) {
+      const label = I18n.t('remove_local_book');
+      return `<button class="offline-btn" data-offline-id="${esc(id)}" onclick="event.stopPropagation(); Library.removeLocal('${esc(id)}')" aria-label="${esc(label)}" title="${esc(label)}">${this._ICON_TRASH}</button>`;
+    }
     const saved = BookCache.has(id);
     const label = I18n.t(saved ? 'remove_offline' : 'save_offline');
     return `<button class="offline-btn${saved ? ' saved' : ''}" data-offline-id="${esc(id)}" onclick="event.stopPropagation(); Library.toggleOffline('${esc(id)}')" aria-label="${esc(label)}" title="${esc(label)}">${saved ? this._ICON_SAVED : this._ICON_DOWNLOAD}</button>`;
@@ -3876,6 +3933,17 @@ const Library = {
       toast(I18n.t(wasSaved ? 'remove_offline_failed' : 'save_offline_failed', { msg: e.message }));
     }
     this._refreshOfflineBadge(id); // reflects the true current state either way
+  },
+  // Destructive — PhonoLeaf holds the ONLY copy of a locally-imported book,
+  // unlike a Drive book's offline cache, which is just a copy of something
+  // that still exists remotely. Confirm first.
+  removeLocal(id) {
+    ConfirmModal.show(() => {
+      LocalBooks.remove(id).then(() => {
+        this.refresh();
+        toast(I18n.t('local_book_removed'));
+      });
+    }, I18n.t('remove_local_confirm'), I18n.t('remove'));
   },
 
   // Shared per-book markup for both the grid card and the table row — same
@@ -4047,6 +4115,9 @@ const Library = {
   _pickBtn() {
     return `<button onclick="FolderBrowser.open()" style="margin-top:1rem;padding:0.6rem 1.2rem;background:var(--accent);color:#fff;border:none;border-radius:10px;font:500 0.85rem var(--font-ui);cursor:pointer">${I18n.t('choose_folder_btn')}</button>`;
   },
+  _importBtn() {
+    return `<button onclick="document.getElementById('local-import-input').click()" style="margin-top:1rem;margin-left:0.5rem;padding:0.6rem 1.2rem;background:transparent;color:var(--accent);border:1px solid var(--accent);border-radius:10px;font:500 0.85rem var(--font-ui);cursor:pointer">${I18n.t('import_from_device')}</button>`;
+  },
 };
 
 // --- Cover cache (IndexedDB) ------------------------------
@@ -4119,6 +4190,18 @@ const CoverCache = {
       const db = await this._open();
       await new Promise(resolve => {
         const req = db.transaction('covers', 'readwrite').objectStore('covers').put(blob, key);
+        req.onsuccess = () => resolve();
+        req.onerror  = () => resolve();
+      });
+    } catch (_) {}
+  },
+  // A local import's cover has no folder rescan to ever refresh/evict it,
+  // so removing the book must also remove its cached cover blob explicitly.
+  async remove(key) {
+    try {
+      const db = await this._open();
+      await new Promise(resolve => {
+        const req = db.transaction('covers', 'readwrite').objectStore('covers').delete(key);
         req.onsuccess = () => resolve();
         req.onerror  = () => resolve();
       });
@@ -4239,6 +4322,113 @@ const BookCache = {
     const idx = this._index();
     delete idx[id];
     this._saveIndex(idx);
+  },
+  // Wholesale wipe, for "delete my data" — deletes every cached book,
+  // Drive-offline copies and local imports alike, not just one id at a
+  // time. The Settings row promising "erase local data" makes a Drive
+  // offline copy in here local data too, same as a local import's only copy.
+  async clear() {
+    if (App.isNative()) {
+      const fs = App._plugin('Filesystem');
+      if (fs) { try { await fs.rmdir({ path: 'books', directory: 'DATA', recursive: true }); } catch (_) {} }
+    } else {
+      try {
+        if (this._db) { const db = await this._db; db.close(); this._db = null; }
+        await new Promise(resolve => {
+          const req = indexedDB.deleteDatabase('phonoleaf-offline');
+          req.onsuccess = req.onerror = req.onblocked = () => resolve();
+        });
+      } catch (_) {}
+    }
+    this._persisted = false;
+    this._saveIndex({});
+  },
+};
+
+// --- LocalBooks: DRM-free EPUBs imported straight from device storage,
+// an additional book source alongside a connected Drive folder (BACKLOG.md
+// E). One-shot import, not a synced folder: bytes go straight into
+// BookCache (same mechanism Drive downloads already use for offline
+// copies), so Reader.open needs no changes at all — a book whose bytes are
+// already cached takes the cache-hit branch regardless of where they came
+// from. Ids are 'local:'-prefixed so every place that must tell a local
+// book apart from a Drive one can do it with a single prefix check, with
+// no new field needed on the book object itself.
+const LocalBooks = {
+  _index() { try { return JSON.parse(localStorage.getItem('pl_local_books') || '{}'); } catch (_) { return {}; } },
+  _saveIndex(idx) { try { localStorage.setItem('pl_local_books', JSON.stringify(idx)); } catch (_) {} },
+  list() { return Object.keys(this._index()); },
+  asBookEntries() {
+    const idx = this._index();
+    return Object.keys(idx).map(id => ({ id, name: idx[id].name, size: idx[id].size }));
+  },
+  _newId() {
+    return 'local:' + (crypto.randomUUID ? crypto.randomUUID() : (Date.now().toString(36) + Math.random().toString(36).slice(2)));
+  },
+  // Reads, validates (opening with ePub() IS the validation — a picked file
+  // is a real system boundary, unlike a Drive download that was already
+  // valid when it was originally added), stores the bytes, and eagerly
+  // captures cover + metadata so the library grid never needs to fall back
+  // to a Drive download for a book that has none. Awaited serially so every
+  // imported book's cover is ready before the caller re-renders the grid.
+  async import(fileList) {
+    const idx = this._index();
+    let ok = 0; const failed = [];
+    for (const file of Array.from(fileList)) {
+      let book = null;
+      try {
+        const buf = await file.arrayBuffer();
+        book = ePub(buf);
+        // ePub().ready never REJECTS on genuinely malformed input (confirmed
+        // in testing — a non-EPUB file just hangs forever, not a thrown
+        // error a try/catch would ever see) — so a bare await here could
+        // freeze the whole batch, including every file queued after it.
+        // Race it against a timeout instead; a real epub, even a large one,
+        // parses in well under this.
+        await Promise.race([
+          book.ready,
+          new Promise((_, rej) => setTimeout(() => rej(new Error('open timed out')), 8000)),
+        ]);
+        const id = this._newId();
+        await BookCache.set(id, buf);
+        await Covers.fromBook(book, { id, size: file.size });
+        idx[id] = { name: file.name, size: file.size, ts: Date.now() };
+        ok++;
+      } catch (_) {
+        failed.push(file.name);
+      } finally {
+        if (book) { try { book.destroy(); } catch (_) {} }
+      }
+    }
+    this._saveIndex(idx);
+    return { ok, failed };
+  },
+  async remove(id) {
+    const idx = this._index();
+    const entry = idx[id];
+    try { await BookCache.remove(id); } catch (_) {}
+    if (entry) { try { await CoverCache.remove(id + ':' + (entry.size || '')); } catch (_) {} }
+    if (Covers.urls[id]) { URL.revokeObjectURL(Covers.urls[id]); delete Covers.urls[id]; }
+    if (State.progress[id]) { delete State.progress[id]; State.saveProgress(); }
+    delete idx[id];
+    this._saveIndex(idx);
+  },
+  // Mostly defensive/for symmetry — pl_local_books is already a pl_* key,
+  // so MyData.deleteAll()'s generic sweep clears it regardless.
+  wipeAll() { this._saveIndex({}); },
+  _onPick(input) {
+    if (!input.files || !input.files.length) return;
+    const files = input.files;
+    input.value = ''; // allow re-picking the same file later
+    toast(I18n.t('importing_ellipsis'), 0);
+    this.import(files).then(({ ok, failed }) => {
+      hideToast();
+      toast(failed.length
+        ? I18n.t('import_summary_with_failures', { ok, total: files.length, failed: failed.length })
+        : I18n.t('import_summary_ok', { ok }));
+      Library.refresh();
+      Settings.render();
+    });
   },
 };
 
@@ -6927,6 +7117,11 @@ const MyData = {
       for (const k of Object.keys(localStorage)) if (this._isOurs(k)) localStorage.removeItem(k);
     } catch (_) {}
     try { indexedDB.deleteDatabase('phonoleaf'); } catch (_) {}
+    // Wipes ALL cached book bytes, Drive-offline copies and local imports
+    // alike — the row's own subtitle promises "erase local data," and a
+    // Drive offline copy is local data by that description same as a
+    // local import's only copy.
+    try { await BookCache.clear(); } catch (_) {}
     // Also remove any downloaded native voice packs — otherwise "delete all my
     // data" quietly leaves 70-300+ MB of voice models on disk, AND breaks the
     // onboarding prompt on next sign-in: VoicePacks.maybeOnboard() correctly
