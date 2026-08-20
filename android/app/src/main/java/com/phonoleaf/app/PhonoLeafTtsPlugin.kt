@@ -880,9 +880,24 @@
             // Peak-normalize each clip to a consistent level so different models/
             // voices match in loudness (the vctk/UK model is quieter than the
             // libritts/US one). Gain capped so near-silent clips aren't blown up.
+            // CAP LOWERED 6x -> 2x (owner-reported 2026-08-20: listening to a full
+            // audiobook in the car, volume noticeably jumped between sentences —
+            // "sometimes very loud, sometimes less"). Root cause: this normalizes
+            // PER CLIP (one clip = one sentence/paragraph chunk), and real speech
+            // has genuine dynamic range — a quiet or trailing-off sentence has a
+            // much lower natural peak than an emphatic one. Correcting each clip
+            // independently to the SAME peak erases that range and, at up to 6x
+            // (+15.6dB), makes quiet sentences swing audibly louder than their
+            // neighbors. 2x (+6dB) still fixes the original cross-model loudness
+            // gap this existed for, just far more gently — not a full fix (a
+            // proper one would normalize once per model/session, not per clip,
+            // or use RMS instead of peak) but a low-risk, easily-tunable
+            // reduction in how far any single sentence can jump. Not device-
+            // verified — no JDK/Android SDK in this environment; needs a real
+            // listen to confirm whether 2x is gentle enough or needs to go lower.
             var peak = 0f
             for (s in samples) { val a = if (s < 0f) -s else s; if (a > peak) peak = a }
-            val gain = if (peak > 0.001f) minOf(6f, 0.95f / peak) else 1f
+            val gain = if (peak > 0.001f) minOf(2f, 0.95f / peak) else 1f
             fun str(s: String) = out.write(s.toByteArray(Charsets.US_ASCII))
             fun i32(v: Int) { out.write(v and 0xff); out.write((v ushr 8) and 0xff); out.write((v ushr 16) and 0xff); out.write((v ushr 24) and 0xff) }
             fun i16(v: Int) { out.write(v and 0xff); out.write((v ushr 8) and 0xff) }

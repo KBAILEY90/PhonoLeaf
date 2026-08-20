@@ -4577,7 +4577,22 @@ const LocalBooks = {
     if (!plugin) return null;
     const uri = (() => { try { return localStorage.getItem('pl_local_folder_uri'); } catch (_) { return null; } })();
     if (!uri) return null;
-    const res = await plugin.listFolder({ uri }); // throws on revoked permission — caller catches
+    // A prior "(.for is not iterable)" report could not be pinned to a line
+    // from the generic catch in refreshFolder() alone — that phrasing isn't
+    // produced by any code in this function, so the failure is most likely
+    // inside the native call itself (plugin registration / bridge / Kotlin
+    // side) rather than the .map() below. Tagging each step's own failure
+    // (call vs shape-of-response) so the NEXT report is actually locatable
+    // instead of another unlocatable generic message.
+    let res;
+    try {
+      res = await plugin.listFolder({ uri }); // throws on revoked permission — caller catches
+    } catch (e) {
+      const msg = String((e && e.message) || e || 'unknown error');
+      throw new Error('[listFolder call] ' + msg);
+    }
+    if (!res || typeof res !== 'object') throw new Error('[listFolder response] not an object: ' + String(res));
+    if (res.files != null && !Array.isArray(res.files)) throw new Error('[listFolder response] files is not an array: ' + typeof res.files);
     return (res.files || []).map(f => ({
       name: f.name, size: f.size,
       readBuffer: async () => BookCache._b64ToBuf((await plugin.readFile({ uri: f.uri })).data),
