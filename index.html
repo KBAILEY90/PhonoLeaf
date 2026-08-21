@@ -3439,9 +3439,16 @@ const FolderChooser = {
     // "Change"; connectFolder() already handles picking a NEW folder
     // cleanly when one is already connected, so Change just reuses it).
     const driveRight = `<button class="set-link" onclick="FolderChooser.close();FolderBrowser.open()">${I18n.t(driveName ? 'change' : 'connect')}</button>`;
+    // .voice-item is `justify-content:space-between` over its flex CHILDREN —
+    // two bare sibling buttons became three children total (label, Refresh,
+    // Change), so space-between spread them across the whole row instead of
+    // keeping the pair together (owner-reported: "really far apart"). Wrapped
+    // in one flex container so the row goes back to its normal 2-child shape.
     const localRight = local.connected
-      ? `<button class="set-link" onclick="FolderChooser.close();Settings.refreshBooksFolder()">${I18n.t('refresh')}</button>`
+      ? `<div style="display:flex;gap:1rem">`
+        + `<button class="set-link" onclick="FolderChooser.close();Settings.refreshBooksFolder()">${I18n.t('refresh')}</button>`
         + `<button class="set-link" onclick="FolderChooser.close();LocalBooks.connectFolder()">${I18n.t('change')}</button>`
+        + `</div>`
       : `<button class="set-link" onclick="FolderChooser.close();LocalBooks.connectFolder()">${I18n.t('connect')}</button>`;
     document.getElementById('fc-list').innerHTML = intro + `
       <div class="voice-item" style="cursor:default">
