@@ -1014,6 +1014,23 @@
     #exit-hint.show { opacity: 1; }
     .eh-box { background: var(--surface); color: var(--text); padding: 0.9rem 1.4rem; border-radius: 14px; font: 500 0.95rem var(--font-ui); box-shadow: 0 8px 30px rgba(0,0,0,0.3); }
 
+    /* Feature tour: spotlight coachmarks. #tour-hole IS the dimmed backdrop
+       (a box-shadow with a huge spread paints everything outside it, leaving
+       a see-through "hole" over the real element — no SVG/canvas needed).
+       The whole overlay blocks clicks (deliberately not click-through to the
+       spotlighted element — Next/Skip are the only way to advance, so a real
+       action like Play/Voice-picker/navigation can't fire mid-explanation). */
+    #tour-overlay { display: none; position: fixed; inset: 0; z-index: 500; }
+    #tour-overlay.show { display: block; }
+    #tour-hole { position: fixed; border-radius: 12px; border: 2px solid var(--accent); box-shadow: 0 0 0 9999px rgba(0,0,0,0.7); transition: top 0.25s, left 0.25s, width 0.25s, height 0.25s; }
+    #tour-tip { position: fixed; background: var(--surface); color: var(--text); border-radius: 14px; padding: 1rem 1.1rem; max-width: min(88vw, 22rem); box-shadow: 0 8px 30px rgba(0,0,0,0.35); transition: top 0.25s, bottom 0.25s; }
+    #tour-tip-title { font: 600 0.95rem var(--font-ui); margin-bottom: 0.3rem; }
+    #tour-tip-body { font: 400 0.85rem var(--font-ui); color: var(--text-dim); line-height: 1.4; margin-bottom: 0.85rem; }
+    .tour-tip-actions { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; }
+    .tour-skip { background: none; border: none; color: var(--text-dim); font: 500 0.85rem var(--font-ui); cursor: pointer; padding: 0.4rem 0; }
+    #tour-tip-progress { font: 500 0.75rem var(--font-ui); color: var(--text-dim); }
+    .tour-next { background: var(--accent); color: #fff; border: none; border-radius: 10px; padding: 0.55rem 1.15rem; font: 500 0.85rem var(--font-ui); cursor: pointer; }
+
     /* Seek scrubber + drag popup (chapter + position) */
     .scrub { -webkit-appearance: none; appearance: none; width: 100%; height: 4px; border-radius: 2px; background: var(--track); outline: none; }
     .scrub::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: var(--accent); cursor: pointer; }
@@ -1367,7 +1384,7 @@
     <div class="reader-top-center">
       <div class="reader-top-info" id="rs-chapter"></div>
     </div>
-    <button class="icon-btn" onclick="ChapterModal.open()" aria-label="Chapters">&#9776;</button>
+    <button class="icon-btn" id="chapters-btn" onclick="ChapterModal.open()" aria-label="Chapters">&#9776;</button>
   </div>
 
   <div id="viewer">
@@ -1605,6 +1622,20 @@
 <div id="toast"></div>
 <div id="scrub-pop"></div>
 <div id="exit-hint"><div class="eh-box" data-i18n="swipe_again_to_leave">Swipe again to leave</div></div>
+
+<!-- ============== FEATURE TOUR (spotlight coachmarks) ============== -->
+<div id="tour-overlay">
+  <div id="tour-hole"></div>
+  <div id="tour-tip">
+    <div id="tour-tip-title"></div>
+    <div id="tour-tip-body"></div>
+    <div class="tour-tip-actions">
+      <button class="tour-skip" onclick="Tour.skip()" data-i18n="skip">Skip</button>
+      <span id="tour-tip-progress"></span>
+      <button class="tour-next" id="tour-next-btn" onclick="Tour.next()">Next</button>
+    </div>
+  </div>
+</div>
 
 <!-- ============== SCRIPTS ============== -->
 <!-- Self-hosted (not CDN): a compromised CDN could otherwise run arbitrary JS
@@ -1905,6 +1936,16 @@ const STRINGS = {
     // Books folder chooser — onboarding intro
     choose_books_source_title: 'Add your books',
     choose_books_source_body: 'Connect Google Drive, or add books stored on this device — you can use either, or both, any time in Settings.',
+    // Feature tour (spotlight coachmarks)
+    skip: 'Skip', next: 'Next', tour_done: 'Got it',
+    tour_step_of: '{n} of {total}',
+    tour_home_library_title: 'Your library', tour_home_library_body: 'Every book you’ve added lives here.',
+    tour_home_stats_title: 'Your stats', tour_home_stats_body: 'Track your listening time and streaks here.',
+    tour_home_settings_title: 'Settings', tour_home_settings_body: 'Add more books or change your voice here.',
+    tour_reader_play_title: 'Play', tour_reader_play_body: 'Tap to start or pause listening.',
+    tour_reader_voice_title: 'Voice', tour_reader_voice_body: 'Pick which voice reads to you.',
+    tour_reader_highlight_title: 'Follow along', tour_reader_highlight_body: 'Highlights each word as it’s read aloud.',
+    tour_reader_chapters_title: 'Chapters', tour_reader_chapters_body: 'Jump to any chapter in the book.',
     // Language packs modal
     language_packs_title: 'Language Packs',
     pick_voice_title: 'Pick a voice to download',
@@ -2092,6 +2133,16 @@ const STRINGS = {
     // Sélecteur de dossiers de livres — intro d'accueil
     choose_books_source_title: 'Ajoutez vos livres',
     choose_books_source_body: 'Connectez Google Drive, ou ajoutez des livres stockés sur cet appareil — vous pouvez utiliser l’un, l’autre, ou les deux, en tout temps dans les Paramètres.',
+    // Visite guidée (info-bulles en surbrillance)
+    skip: 'Passer', next: 'Suivant', tour_done: 'Compris',
+    tour_step_of: '{n} sur {total}',
+    tour_home_library_title: 'Votre bibliothèque', tour_home_library_body: 'Tous vos livres ajoutés se trouvent ici.',
+    tour_home_stats_title: 'Vos statistiques', tour_home_stats_body: 'Suivez votre temps d’écoute et vos séquences ici.',
+    tour_home_settings_title: 'Paramètres', tour_home_settings_body: 'Ajoutez des livres ou changez de voix ici.',
+    tour_reader_play_title: 'Lecture', tour_reader_play_body: 'Touchez pour démarrer ou mettre en pause.',
+    tour_reader_voice_title: 'Voix', tour_reader_voice_body: 'Choisissez la voix qui vous lit.',
+    tour_reader_highlight_title: 'Suivi du texte', tour_reader_highlight_body: 'Surligne chaque mot au fur et à mesure de la lecture.',
+    tour_reader_chapters_title: 'Chapitres', tour_reader_chapters_body: 'Accédez directement à n’importe quel chapitre.',
     // Packs de langue
     language_packs_title: 'Packs de langue',
     pick_voice_title: 'Choisir une voix à télécharger',
@@ -3462,6 +3513,126 @@ const FolderChooser = {
   },
 };
 
+// Feature tour: spotlight coachmarks over the REAL, live UI (not a mockup
+// screen) — owner asked not just for explanatory slides but for slides
+// that highlight where to click. No prior coachmark/spotlight pattern
+// existed in this codebase; #tour-hole's box-shadow-with-a-huge-spread is
+// a plain CSS trick for a dimmed backdrop with a see-through "hole" over
+// the target element, no SVG/canvas needed. The overlay deliberately
+// blocks ALL clicks except its own Next/Skip — every spotlighted target
+// (tab nav, reader playback/pickers) has a real side effect that shouldn't
+// fire mid-explanation, so nothing is click-through.
+const Tour = {
+  _steps: [], _idx: 0, _onEnd: null, _resizeBound: false,
+  start(steps, doneKey, onEnd) {
+    if (!steps || !steps.length) return;
+    // Set the "seen" flag on START, not on finish — same convention as
+    // VoicePacks.maybeOnboard()'s pl_packs_onboarded (set before the modal
+    // even opens). Needed here specifically because the reader tour's
+    // trigger (_onRelocated) can fire again while a first tour is still
+    // showing (every page relocation re-checks it); setting eagerly is
+    // what makes a second concurrent call a clean no-op instead of
+    // restarting the tour mid-way.
+    if (doneKey) { try { localStorage.setItem(doneKey, '1'); } catch (_) {} }
+    this._steps = steps; this._idx = 0; this._onEnd = onEnd || null;
+    if (!this._resizeBound) { window.addEventListener('resize', () => this._reposition()); this._resizeBound = true; }
+    document.getElementById('tour-overlay').classList.add('show');
+    this._show();
+  },
+  _show() {
+    const step = this._steps[this._idx];
+    const el = document.querySelector(step.selector);
+    if (!el) { this._advance(); return; } // fail closed: skip a step whose target isn't present
+    document.getElementById('tour-tip-title').textContent = I18n.t(step.titleKey);
+    document.getElementById('tour-tip-body').textContent = I18n.t(step.bodyKey);
+    document.getElementById('tour-tip-progress').textContent =
+      I18n.t('tour_step_of', { n: this._idx + 1, total: this._steps.length });
+    document.getElementById('tour-next-btn').textContent =
+      this._idx === this._steps.length - 1 ? I18n.t('tour_done') : I18n.t('next');
+    this._reposition();
+  },
+  _reposition() {
+    if (!this._steps.length) return;
+    const el = document.querySelector(this._steps[this._idx].selector);
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const pad = 8;
+    const hole = document.getElementById('tour-hole');
+    hole.style.top = (r.top - pad) + 'px';
+    hole.style.left = (r.left - pad) + 'px';
+    hole.style.width = (r.width + pad * 2) + 'px';
+    hole.style.height = (r.height + pad * 2) + 'px';
+    // Prefer the tip below the hole; flip above only when the target sits
+    // in the lower half of the screen and there's genuinely more room above.
+    const tip = document.getElementById('tour-tip');
+    tip.style.top = ''; tip.style.bottom = '';
+    if (r.top > window.innerHeight / 2) tip.style.bottom = (window.innerHeight - r.top + pad + 10) + 'px';
+    else tip.style.top = (r.bottom + pad + 10) + 'px';
+  },
+  next() { this._advance(); },
+  skip() { this._end(); },
+  _advance() { this._idx++; if (this._idx >= this._steps.length) this._end(); else this._show(); },
+  _end() {
+    document.getElementById('tour-overlay').classList.remove('show');
+    const cb = this._onEnd; this._onEnd = null;
+    if (cb) cb();
+  },
+
+  // --- Home tour: tab bar only. Deliberately does NOT call Nav.go() to
+  // actually navigate into Library/Stats/Settings — that does a real
+  // history.pushState + full content re-render tied into the app's real
+  // back-stack handling, so silently hopping tabs mid-tour risks
+  // corrupting it. Just spotlights each tab button in place. ---
+  _homeSteps() {
+    return [
+      { selector: '#tab-bar .tab[data-tab="library"]', titleKey: 'tour_home_library_title', bodyKey: 'tour_home_library_body' },
+      { selector: '#tab-bar .tab[data-tab="stats"]', titleKey: 'tour_home_stats_title', bodyKey: 'tour_home_stats_body' },
+      { selector: '#tab-bar .tab[data-tab="settings"]', titleKey: 'tour_home_settings_title', bodyKey: 'tour_home_settings_body' },
+    ];
+  },
+  // No single "initial setup finished" callback exists to hook: LangPacksModal
+  // has no Done button (backdrop-tap only) and VoicePacks.maybeOnboard()'s
+  // callers never await it, so a brand-new user's folder+voice setup can
+  // finish at any unpredictable time. Polls instead — retries every 800ms
+  // until nothing else is open and the user is actually looking at Home,
+  // which uniformly covers a slow new-user setup and a fast/no-setup
+  // returning user with the same logic.
+  maybeStartHomeTour() {
+    try { if (localStorage.getItem('pl_home_tour_seen')) return; } catch (_) { return; }
+    if (document.querySelector('.modal-backdrop.open, .confirm-backdrop.open') || Nav.current !== 'home') {
+      setTimeout(() => this.maybeStartHomeTour(), 800);
+      return;
+    }
+    this.start(this._homeSteps(), 'pl_home_tour_seen');
+  },
+
+  // --- Reader tour: first time a book is opened in FULL mode. ---
+  _readerSteps() {
+    return [
+      { selector: '#play-btn', titleKey: 'tour_reader_play_title', bodyKey: 'tour_reader_play_body' },
+      { selector: '#voice-btn', titleKey: 'tour_reader_voice_title', bodyKey: 'tour_reader_voice_body' },
+      { selector: '#hl-btn', titleKey: 'tour_reader_highlight_title', bodyKey: 'tour_reader_highlight_body' },
+      { selector: '#chapters-btn', titleKey: 'tour_reader_chapters_title', bodyKey: 'tour_reader_chapters_body' },
+    ];
+  },
+  // Called from _onRelocated, same ~400ms window as the normal auto-start-
+  // reading timer. Returns true iff it actually started the tour, which
+  // _onRelocated uses to null out _autoStartBook (see its own comment) —
+  // without that, the book would already be reading aloud, and #play-btn
+  // already showing .playing, while step 1 says "tap here to start
+  // listening." `minimized` is the only reliable "is this genuinely the
+  // visible full reader" signal (mode isn't stored anywhere after
+  // Reader.open() returns).
+  maybeStartReaderTour() {
+    try { if (localStorage.getItem('pl_reader_tour_seen')) return false; } catch (_) { return false; }
+    const rv = document.getElementById('reader-view');
+    if (!rv || rv.classList.contains('minimized')) return false;
+    Reader.showChrome(); // not revealChrome() — that re-arms a 5s auto-hide that could hide controls mid-tour
+    this.start(this._readerSteps(), 'pl_reader_tour_seen', () => Reader.hideChromeSoon());
+    return true;
+  },
+};
+
 // Typed-folder fallback (replaces the native prompt so the wording is ours).
 const FolderModal = {
   open() {
@@ -3587,6 +3758,10 @@ const App = {
     // done there. Silent by design (_kokoroWarm shows nothing); Settings →
     // Natural voice is where its state is reported.
     TTS._kokoroWarm();
+    // Feature tour: 500ms so it doesn't visually race _promptFolderIfNeeded's
+    // own 300ms timer. maybeStartHomeTour() itself polls/waits out however
+    // long the folder+voice setup chain actually takes (see its comment).
+    setTimeout(() => Tour.maybeStartHomeTour(), 500);
   },
 
   // "Keep me logged in": reuse a saved, unexpired token so reopening the app
@@ -5050,6 +5225,15 @@ const Reader = {
       // text is actually laid out so the audio matches the visible page.
       setTimeout(() => TTS._resumeRead(0), 30);
     }
+
+    // First-ever full-mode book open: suppress the normal auto-start-reading
+    // below so the reader tour's "tap here to start listening" step stays
+    // accurate. Without this, TTS.start() would fire under the tour (the
+    // same ~400ms window) and #play-btn would already show .playing while
+    // step 1 says "tap to start." maybeStartReaderTour() itself no-ops
+    // (returns false) once already seen or while minimized/mini-mode, so
+    // every subsequent open — and every mini-player open — is unaffected.
+    if (this._autoStartBook && Tour.maybeStartReaderTour()) this._autoStartBook = null;
 
     // Auto-start reading once the page has settled to the restored position
     // (relocation-driven so resume reads the saved page, not the previous one).

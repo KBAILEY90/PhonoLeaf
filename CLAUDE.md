@@ -4410,3 +4410,112 @@ replace Disconnect with Change entirely or keep both; owner chose replace.
   `FolderChooser.confirmDisconnect` are both `undefined` after the change;
   screenshotted the connected-state row to confirm the visual match with
   Drive's single-action pattern; no new console errors.
+
+## Feature tour: spotlight coachmarks (2026-08-20)
+
+Owner asked about a "slide-show onboarding" mentioned earlier, then
+clarified the real ask: not just explanatory slides, but slides that
+**highlight where to click** to actually use each feature — a coachmark/
+spotlight tour over the real, live UI, not a mockup screen. No such
+pattern existed anywhere in the codebase before this (confirmed by a full
+grep pass; the closest precedent, `#exit-hint`, is a plain dimmed backdrop
+with centered text, not element-relative).
+
+- **One reusable `Tour` module** (near `FolderChooser`/`LangPacksModal`)
+  drives one static overlay (`#tour-overlay`/`#tour-hole`/`#tour-tip`),
+  placed as a flat `<body>` child alongside `#toast`/`#scrub-pop`/
+  `#exit-hint` — deliberately **not** nested inside `#reader-view`/`#viewer`,
+  which get `transform`-based page-turn animations that would break a
+  `position:fixed` spotlight if it were a descendant (a new stacking/
+  containing-block context would clip the "hole" to the transformed
+  ancestor's box instead of the viewport). `#tour-hole` is the spotlight
+  ring: sized/positioned to the target's live `getBoundingClientRect()`,
+  with `box-shadow: 0 0 0 9999px rgba(0,0,0,0.7)` — the standard CSS trick
+  for a dimmed backdrop with a see-through hole, no SVG/canvas needed.
+  `z-index: 500`, confirmed free in the existing stack (tab-bar 150 <
+  modal-backdrop 200 < confirm-backdrop 201 < scrub-pop 300 < exit-hint
+  400 < **tour 500** < toast 999). **The overlay blocks all clicks except
+  its own Skip/Next** — every spotlighted target (tab nav, reader
+  playback/pickers) has a real side effect that shouldn't fire
+  mid-explanation, so nothing is click-through.
+- **The "seen" flag is set the moment a tour STARTS, not when it finishes**
+  — same convention `VoicePacks.maybeOnboard()` already uses for
+  `pl_packs_onboarded` (set before its modal even opens). This matters
+  concretely for the reader tour: `_onRelocated` can re-fire the trigger
+  while a first tour is still showing (every page relocation re-checks
+  it), and setting the flag eagerly is what makes a second concurrent call
+  a clean no-op instead of restarting the tour mid-way.
+- **Two independent tours, triggered completely differently, because their
+  targets exist at different moments:**
+  1. **Home tour** (3 steps: Library/Stats/Settings tab buttons).
+     Deliberately does **not** call `Nav.go()` to actually navigate into
+     those tabs — that does a real `history.pushState` plus a full content
+     re-render tied into the app's real back-stack handling, so silently
+     hopping tabs mid-tour risked corrupting it. Just spotlights the
+     button in place and captions what it's for.
+     **Trigger (`Tour.maybeStartHomeTour()`), called once from
+     `App._enterApp()` with a 500ms initial delay**, polls rather than
+     hooking a deterministic "setup finished" callback — there isn't one:
+     confirmed directly that `LangPacksModal` has no Done button at all
+     (backdrop-tap only) and `VoicePacks.maybeOnboard()`'s three call
+     sites never await it, so a brand-new user's folder+voice setup can
+     finish at any unpredictable time. Retries every 800ms until (a) not
+     already seen, (b) no `.modal-backdrop.open`/`.confirm-backdrop.open`
+     anywhere, and (c) `Nav.current === 'home'` (so it can't fire while the
+     user has already tapped into another tab during the backoff window).
+     This one mechanism uniformly covers a brand-new user (waits out
+     however long setup takes) and a returning user with nothing to set up
+     (fires almost immediately, since no modal ever opens).
+  2. **Reader tour** (4 steps: `#play-btn`, `#voice-btn`, `#hl-btn`,
+     `#chapters-btn` — the last needed a new `id="chapters-btn"` added,
+     confirmed safe: that button previously shared only class `.icon-btn`
+     with the reader's back button, and nothing in the codebase selects on
+     `.icon-btn` alone). **Trigger** hooked into `_onRelocated`'s existing
+     ~400ms auto-start timer area, gated on `!localStorage.pl_reader_tour_seen`
+     AND `!#reader-view.classList.contains('minimized')` — the only
+     reliable "is this genuinely the visible full reader, not the hidden
+     mini-player" signal, since `mode` isn't stored anywhere after
+     `Reader.open()` returns. Calls `Reader.showChrome()` (not
+     `revealChrome()`, which re-arms a 5s auto-hide that could hide
+     controls mid-tour) before showing, `Reader.hideChromeSoon()` when the
+     tour ends to resume normal fade-while-reading behavior.
+  - **A real race, found during planning, not by testing**: `Reader.open()`
+    sets `_autoStartBook` unconditionally for every open, and the SAME
+    ~400ms timer that would trigger the reader tour also starts real audio
+    playback via `TTS.start()` — so without handling this, a first-ever
+    book would already be reading aloud (and `#play-btn` already showing
+    `.playing`) while the tour's first step says "tap here to start
+    listening." **Decided with the owner: suppress the very first
+    auto-start.** `_onRelocated` now nulls `_autoStartBook` whenever
+    `Tour.maybeStartReaderTour()` returns `true` (meaning it actually
+    started the tour), so playback waits until the user acts instead of
+    starting underneath the tour. This only affects the very first-ever
+    full-mode book open on a device (one-time, matches the flag) — every
+    subsequent open, and every mini-player open (where
+    `maybeStartReaderTour()` returns `false` due to the `minimized` check),
+    is completely unaffected.
+- **Scope, decided with the owner**: reader tour is 4 steps (play, voice,
+  follow-along highlighting, chapters) rather than a shorter 2-step
+  (play+voice) cut — covers every reader control at the cost of one more
+  tap through on first use.
+- No `esc()` needed for tour captions — confirmed the existing convention
+  never escapes static app copy pulled from `STRINGS` via `I18n.t()`, only
+  externally-sourced strings (filenames, error messages, chapter/voice
+  names).
+- Verified live in a browser: the poll correctly defers while a modal is
+  open and fires within one 800ms retry once it closes; all 3 home-tour
+  steps target the exact right tab buttons in order with correct captions
+  and a live step counter; Skip works from mid-tour and sets the same
+  "seen" flag as finishing; neither tour re-fires once its flag is set;
+  the reader tour's 4 steps target the exact right elements
+  (`play-btn`/`voice-btn`/`hl-btn`/`chapters-btn`) in order;
+  `Reader.showChrome()` is called and chrome is confirmed visible before
+  the first step renders; `Reader.hideChromeSoon()` fires on completion;
+  the `minimized` gate correctly blocks the reader tour for the mini-player
+  case; the `_autoStartBook` suppression correctly nulls it exactly when
+  the reader tour starts; French captions render correctly
+  (`I18n.setLang('fr')`); screenshotted the rendered spotlight ring +
+  caption card at a 375px viewport to confirm legible rendering, correct
+  above/below tip placement relative to the target, and no overflow. **Not
+  device-verified** — same caveat as every UI-only change in this file,
+  though nothing here touches native code.
