@@ -30,3 +30,31 @@ TRIAL_DAYS = "7"
 # Added later, once their prerequisite in PAYMENTS_SPEC.md §11 exists:
 #   STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, PLAY_SERVICE_ACCOUNT_JSON,
 #   EYDLE_LAB_SECRET (staging only)
+
+# Staging environment (PAYMENTS_SPEC.md §11 #9 / §12): the next CASA
+# assessment's DAST scan needs a URL that maps to a subdomain of an
+# Authorized domain registered with Google — a *.workers.dev URL doesn't
+# qualify. Deliberately a SEPARATE environment (own KV namespace below),
+# not a route pointed at the production Worker/data — §12 also calls for a
+# staging-only, environment-gated auth-bypass route for the lab's test
+# account later, which must be physically absent from production.
+# Deploy with: npx wrangler deploy --env staging
+# custom_domain=true asks Cloudflare to manage the DNS record + SSL cert
+# for this route itself — needs `zone:edit` on the account (this session's
+# token is zone:read only), so the deploy will likely stop short of fully
+# provisioning it. Finishing that from the dashboard (Workers & Pages →
+# this Worker → Settings → Domains & Routes → Add Custom Domain →
+# api.staging.phonoleaf.com) is a ~30s manual step from there.
+[env.staging]
+routes = [
+  { pattern = "api.staging.phonoleaf.com", custom_domain = true }
+]
+
+[env.staging.vars]
+GOOGLE_CLIENT_ID = "88179965472-codmbgtm99mgik9qke2kucbvfkbug3ul.apps.googleusercontent.com"
+GOOGLE_ANDROID_CLIENT_ID = "88179965472-cs9869nsk2b9i00v5ebo8sd9mrq9kmmn.apps.googleusercontent.com"
+TRIAL_DAYS = "7"
+
+[[env.staging.kv_namespaces]]
+binding = "ENTITLEMENTS"
+id = "13b20759b4d64e3db1b149a163bf62a3"

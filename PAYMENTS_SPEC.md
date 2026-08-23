@@ -197,7 +197,7 @@ lead times, and several are strictly ordered.
 | 6 | Play Developer API service account | `/verify-play` | Owner + Code | Created in Cloud Console, granted access in Play Console. Produces a JSON key (see §12 secrets). |
 | 7 | Cloudflare Workers + KV namespace | everything | Code | Free tier is sufficient at launch. Account already exists (DNS is there). |
 | 8 | `openid` scope on the OAuth consent screen | identity (§1) | Owner | See the warning below. |
-| 9 | `api.staging.phonoleaf.com` subdomain | the CASA DAST scan | Owner + Code | See §12. Must exist before the next assessment, not during it. |
+| 9 | ~~`api.staging.phonoleaf.com` subdomain~~ | the CASA DAST scan | Owner + Code | **DONE 2026-08-21.** See §12 and `worker/README.md`'s "Staging environment" section. |
 
 > **Do not add the `openid` scope while a CASA assessment is open.** Google's
 > verification email states: *"if you plan on adding or removing restricted

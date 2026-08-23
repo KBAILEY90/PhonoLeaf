@@ -93,8 +93,41 @@ devDependency only — it never ships in the deployed Worker.
 npx wrangler deploy
 ```
 
-Not deployed anywhere yet — this only exists locally until you choose to
-run this.
+The Worker is live on Cloudflare (`*.workers.dev`), a side effect of the
+first `wrangler secret put` — see `PAYMENTS_SPEC.md` §9 step 1. It is not
+called from the app.
+
+## Staging environment (`api.staging.phonoleaf.com`)
+
+`PAYMENTS_SPEC.md` §11 #9 / §12: the next CASA assessment's DAST scan needs
+a URL mapping to a subdomain of a Google-authorized domain — a
+`*.workers.dev` URL doesn't qualify. **Set up 2026-08-21**, deliberately a
+SEPARATE environment from production, not a route pointed at production
+data — §12 also calls for a staging-only auth-bypass route for the lab's
+test account later, which must be physically absent from the production
+Worker, so keeping the environments separate from day one avoids that ever
+being bolted onto production under deadline pressure.
+
+- Own KV namespace (`ENTITLEMENTS_STAGING`, bound as `ENTITLEMENTS` inside
+  the `staging` environment) and its own `SUB_HASH_PEPPER` /
+  `ENTITLEMENT_JWT_PRIVATE_KEY` secrets — freshly generated, not shared
+  with production, so a leak during a third-party security scan can't
+  touch real entitlement data.
+- `wrangler.toml`'s `[env.staging]` block routes
+  `api.staging.phonoleaf.com` to this environment via a Cloudflare
+  **Custom Domain** (`custom_domain = true`), which self-provisions the
+  DNS record and SSL certificate — confirmed working with only this
+  account's existing `zone:read` token (no `zone:edit` needed, contrary to
+  the initial assumption that DNS write access would be required).
+- Deploy: `npx wrangler deploy --env staging`. Secrets:
+  `npx wrangler secret put NAME --env staging`.
+- **Verified live 2026-08-21**: `https://api.staging.phonoleaf.com/`
+  returns `{"ok":true,"service":"phonoleaf-entitlement"}`, and
+  `/entitlement` correctly 401s without a token — matching production's
+  behavior on the same routes. The SSL certificate took a few minutes to
+  finish issuing after `wrangler deploy` first reported the custom domain
+  provisioned; that lag is normal for a freshly created Cloudflare custom
+  domain.
 
 ## Not wired up yet, deliberately
 
