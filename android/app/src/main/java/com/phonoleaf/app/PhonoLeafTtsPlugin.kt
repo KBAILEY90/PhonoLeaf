@@ -99,6 +99,12 @@
         // live at once; a ring of 8 means a slot is never reused while still playing.
         private var fileCounter = 0
         private val RING = 8
+        // Per-model loudness calibration (see writeWav's resolveGain) — only ever
+        // touched from genExecutor's single-thread queue, so no synchronization
+        // needed despite being shared mutable state.
+        private class GainCalib { var count = 0; var peakSum = 0f; var locked: Float? = null }
+        private val gainCalib = HashMap<String, GainCalib>()
+        private val GAIN_CALIB_CLIPS = 4
         // Per-model version tag for the ".ready-$tag" marker file. MUST be
         // per-model, not a single shared string — a single shared constant was
         // the actual bug behind "both French/Spanish voices sound identical"
@@ -850,7 +856,7 @@
                     val ratio = genMs.toFloat() / maxOf(1, durationMs)
                     Log.i("PhonoLeafTts",
                         "gen=${genMs}ms audio=${durationMs}ms ratio=${"%.2f".format(ratio)} chars=${text.length}")
-                    val f = writeWavFile(audio.samples, audio.sampleRate)
+                    val f = writeWavFile(model, audio.samples, audio.sampleRate)
                     val ret = JSObject()
                     ret.put("path", f.absolutePath)
                     ret.put("durationMs", durationMs)
@@ -866,38 +872,53 @@
         // Write a mono 16-bit PCM WAV into cacheDir and return the file. Filenames
         // are reused round-robin (RING slots) so the cache never grows unbounded;
         // with prefetch only ~2 files are live, so a slot is free long before reuse.
-        private fun writeWavFile(samples: FloatArray, sampleRate: Int): File {
+        private fun writeWavFile(model: String, samples: FloatArray, sampleRate: Int): File {
             val dir = File(context.cacheDir, "tts").apply { mkdirs() }
             val f = File(dir, "s${fileCounter++ % RING}.wav")
             BufferedOutputStream(FileOutputStream(f)).use { out ->
-                writeWav(out, samples, sampleRate)
+                writeWav(model, out, samples, sampleRate)
             }
             return f
         }
-    
-        private fun writeWav(out: OutputStream, samples: FloatArray, sampleRate: Int) {
+
+        // Owner-reported 2026-08-20, then AGAIN 2026-08-21 ("only lasts about one
+        // sentence then goes back") after the first fix (a lower gain cap) only
+        // reduced the symptom instead of removing its cause. The cause was always
+        // that gain was recomputed PER CLIP (one clip = one sentence/paragraph):
+        // real speech has genuine dynamic range, so a quiet or trailing-off
+        // sentence has a much lower natural peak than its neighbors, and
+        // correcting each clip independently to the same target erases that
+        // range — exactly matching "one sentence, then back to normal." Fixed
+        // for real this time by calibrating gain ONCE per model per session
+        // (average peak of the first few clips), then reusing that fixed value
+        // for every later clip from that model. This preserves the model's own
+        // natural sentence-to-sentence dynamics (a quiet line stays quieter than
+        // an emphatic one, as synthesized) while still correcting the real
+        // cross-model gap this existed for (vctk quieter than libritts) — once,
+        // at calibration time, not every sentence. Only the first few clips of
+        // a session (or after switching models) can still show the old
+        // per-clip behavior, during the brief calibration window itself. Not
+        // device-verified — no JDK/Android SDK in this environment.
+        private fun resolveGain(model: String, peak: Float): Float {
+            val c = gainCalib.getOrPut(model) { GainCalib() }
+            c.locked?.let { return it }
+            if (peak <= 0.001f) return 1f
+            c.count++
+            c.peakSum += peak
+            val provisional = minOf(2f, 0.95f / peak)
+            if (c.count >= GAIN_CALIB_CLIPS) {
+                val g = minOf(2f, 0.95f / (c.peakSum / c.count))
+                c.locked = g
+                return g
+            }
+            return provisional
+        }
+
+        private fun writeWav(model: String, out: OutputStream, samples: FloatArray, sampleRate: Int) {
             val n = samples.size
-            // Peak-normalize each clip to a consistent level so different models/
-            // voices match in loudness (the vctk/UK model is quieter than the
-            // libritts/US one). Gain capped so near-silent clips aren't blown up.
-            // CAP LOWERED 6x -> 2x (owner-reported 2026-08-20: listening to a full
-            // audiobook in the car, volume noticeably jumped between sentences —
-            // "sometimes very loud, sometimes less"). Root cause: this normalizes
-            // PER CLIP (one clip = one sentence/paragraph chunk), and real speech
-            // has genuine dynamic range — a quiet or trailing-off sentence has a
-            // much lower natural peak than an emphatic one. Correcting each clip
-            // independently to the SAME peak erases that range and, at up to 6x
-            // (+15.6dB), makes quiet sentences swing audibly louder than their
-            // neighbors. 2x (+6dB) still fixes the original cross-model loudness
-            // gap this existed for, just far more gently — not a full fix (a
-            // proper one would normalize once per model/session, not per clip,
-            // or use RMS instead of peak) but a low-risk, easily-tunable
-            // reduction in how far any single sentence can jump. Not device-
-            // verified — no JDK/Android SDK in this environment; needs a real
-            // listen to confirm whether 2x is gentle enough or needs to go lower.
             var peak = 0f
             for (s in samples) { val a = if (s < 0f) -s else s; if (a > peak) peak = a }
-            val gain = if (peak > 0.001f) minOf(2f, 0.95f / peak) else 1f
+            val gain = resolveGain(model, peak)
             fun str(s: String) = out.write(s.toByteArray(Charsets.US_ASCII))
             fun i32(v: Int) { out.write(v and 0xff); out.write((v ushr 8) and 0xff); out.write((v ushr 16) and 0xff); out.write((v ushr 24) and 0xff) }
             fun i16(v: Int) { out.write(v and 0xff); out.write((v ushr 8) and 0xff) }
