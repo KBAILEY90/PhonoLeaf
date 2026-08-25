@@ -109,6 +109,31 @@ don't let it go stale the way `BACKLOG.md`'s old "Next up" section did.
       (2026-08-05); CASA being parked rather than resolved means this is
       still on hold, not forgotten.
 
+## Product ideas, raised 2026-08-24 — not scoped, not started
+
+Logged as-is, no design work done yet.
+
+- [ ] **"Mark as finished" below 100%.** The last few pages of a book are
+      often glossary/acknowledgments/about-the-author matter that a reader
+      has no intent to listen to, so a book someone genuinely finished the
+      story of may never hit the 100% that Stats' "finished" count currently
+      requires. Needs a decision on the mechanism (a manual "mark as
+      finished" action vs. an automatic threshold like 95%) before building.
+- [ ] **Spotify-Wrap-style annual review.** A personalized yearly summary
+      (books read, hours listened, streaks, etc.), presumably shareable.
+      Would build on the existing `Stats`/`pl_stats` data already tracked
+      per day and per book — no new data collection needed, just a new
+      view/export.
+- [ ] **Gamification, Duolingo-style?** Open question, not a decision —
+      streaks, XP, badges, that kind of thing. Needs to be weighed against
+      the app's current tone/positioning before deciding whether it fits.
+- [ ] **Should the app have a deliberate tone/voice** (humorous, sassy,
+      etc.) rather than the current neutral/functional copy? Affects
+      toasts, onboarding copy, empty states, and marketing copy throughout
+      — a real brand-voice decision, not a code change, and probably worth
+      deciding before or alongside the gamification question above since
+      they'd need to agree with each other.
+
 ## SWOT research (ready to launch as a background task)
 
 Competitors already vetted for this project (each has a live comparison
