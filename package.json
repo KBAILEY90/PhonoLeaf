@@ -6,6 +6,8 @@
   "scripts": {
     "stage": "node scripts/stage-www.js",
     "sync": "node scripts/stage-www.js && npx cap sync android",
+    "stage:test": "node scripts/stage-test.js",
+    "sync:test": "node scripts/stage-test.js && npx cap sync android",
     "open": "npx cap open android"
   },
   "dependencies": {

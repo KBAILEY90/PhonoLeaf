@@ -4600,3 +4600,23 @@ device-verified beyond the corner-radius bug the owner caught by eye** — if
 anything else looks visually off on a real phone, check for another
 `appearance: auto`-style native-chrome override before assuming the
 authored CSS is wrong.
+
+**Correction the same day: pushing this to GitHub Pages does NOT reach the
+native app.** Owner tested on the native Android app expecting to see it
+there and saw nothing — the native shell is a WebView pointed at a LOCALLY
+BUNDLED `www/index.html`, baked into the APK at build time
+(`scripts/stage-www.js`); it never fetches anything from phonoleaf.com over
+the network, so nothing pushed to the website can ever reach an
+already-installed native build. Added **`scripts/stage-test.js`** +
+`npm run stage:test` / `npm run sync:test` (mirrors `stage-www.js`/`sync`
+exactly, substituting `index.green.html` → `www/index.html` in place of the
+real `index.html`) so the redesign can be staged into a native TEST build
+without touching the real `index.html` at all. To actually see it on
+device: `npm run sync:test` (stages + copies into the `android/` project),
+then the normal `npm run open` → Run ▶ loop from the "How to deploy"
+section below. **Not run through Android Studio here** — no JDK/Android
+SDK in this environment, same as every other native change in this file;
+only the file-copy half (`stage:test`) was verified directly (`www/index.html`
+confirmed byte-identical to `index.green.html` afterward). To go back to
+the real app, run the normal `npm run sync` again — it re-stages the real
+`index.html` and overwrites the test copy.
