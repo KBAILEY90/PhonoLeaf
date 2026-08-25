@@ -4519,3 +4519,84 @@ with centered text, not element-relative).
   above/below tip placement relative to the target, and no overflow. **Not
   device-verified** — same caveat as every UI-only change in this file,
   though nothing here touches native code.
+
+## Redesign test page — `index.green.html` (2026-08-25, Phase 1 only)
+
+A separate, standalone file, **not linked from anywhere in the live app and
+not precached by `sw.js`** — reachable only if someone navigates to
+`phonoleaf.com/index.green.html` directly. `index.html` (what every current
+user actually gets) is completely untouched by this. Exists to let the owner
+test a deeper redesign, sourced from a Claude Design project ("PhonoLeaf
+mobile app design", the "Shelf"/"Green Ink" direction), on a real domain —
+Google sign-in only works from authorized origins (`phonoleaf.com`,
+`kbailey90.github.io`), not `localhost`, so a plain local preview can't
+exercise real sign-in/Drive/erase-my-data end to end.
+
+**Scope shipped is explicitly Phase 1 of 3** (IA rename + visual system +
+copy — see `PhonoLeaf Redesign.dc.html` in that Claude Design project for
+the full spec this was scoped down from):
+- **Tab bar renamed** Home→Now, Library→Shelves, Stats→Log, Settings→You
+  (`tab_now`/`tab_shelves`/`tab_log`/`tab_you` in `STRINGS`, EN+FR). Only the
+  *displayed* label changed — internal identifiers (`data-tab="home"`,
+  `Nav.go('home')`, view ids) were deliberately left alone since renaming
+  them has zero user-visible effect and only adds regression surface.
+- **Visual system** (sharp `2px` corners, hairline-separated rows instead of
+  cards, hard non-blurred shadows, underline-style chip pickers for
+  speed/quality) was already substantially in place from an earlier,
+  narrower design import this same file started from; this pass mainly
+  cleaned up the handful of remaining soft corners/blurred shadows that
+  earlier pass missed (reader page-count pill, a few inline-style leftovers
+  in JS-generated markup, the folder-name modal).
+- **Sign-in screen** gained the design's confirmed feature-row treatment
+  (hairline rows, monospace right-hand tags: "Read-only, always / nothing is
+  uploaded", "Voices run on the phone / works offline", "No account of ours
+  / no server", `si_feat1..3_l/_r` keys) in both languages. The existing
+  mandatory Google sign-in button and 3-step onboarding were kept as-is —
+  the design mockup's dual "choose a local folder / connect Drive" CTA
+  implies sign-in is optional, which isn't true here (entitlement is being
+  built around the Google account id, see the payments roadmap item), so
+  that part of the mockup wasn't imported.
+- **New dedicated `EraseModal`**, replacing the plain `ConfirmModal` for
+  `MyData.deleteAll()` specifically (every other destructive confirm in the
+  app — stats reset, remove a book, etc. — is untouched, still on
+  `ConfirmModal`): itemized hairline rows with live-computed counts
+  ("Progress in {n} books", "{n}h of listening history", both from
+  `State.progress`/`Stats.data` — no new data collection, just reading what
+  already exists), static rows for settings/offline-books (deleted) vs.
+  Google Drive files (untouched), and a text input that only enables the
+  destructive button once the user types `ERASE` (case-insensitive). New
+  `erase_*` keys in `STRINGS`, EN+FR.
+- **Real, unrelated bug found and fixed while testing this on a real
+  device**: every `<button>`/`<input>`/`<select>`/`<textarea>` in the WHOLE
+  app (not just this test page — this predates the redesign entirely) had
+  `appearance: auto`, meaning it relied on the browser's native OS chrome
+  rather than the CSS `border-radius` actually written. Chromium happens to
+  render it close enough to the authored style that this was never
+  noticed, but Safari/iOS and Android's WebView are well known for imposing
+  a native rounded-pill shape on buttons regardless of `border-radius`
+  unless `appearance` is explicitly reset — invisible on the OLD rounded
+  design (native rounding blended right in) and only became obvious once
+  sharp corners were a deliberate, visible commitment. Fixed with one global
+  rule right after the existing `*` box-sizing reset:
+  `button, input, select, textarea { -webkit-appearance: none; appearance:
+  none; }`. **This fix is currently only in `index.green.html`** — if the
+  redesign is ever merged into the real `index.html`, or if this turns out
+  to visibly affect the LIVE app too, port this one rule over separately;
+  it's a real, general CSS gap, not specific to the redesign.
+
+**Explicitly NOT in this pass** (Phase 2/3, not started): the "On this
+phone" storage-manager screen, in-book full-text search, the formal
+motion/gesture system (the file specifies exact durations/easings — not
+wired up as a system yet), and the ~40-label accessibility pass beyond
+what the app already has.
+
+Verified: syntax-checked
+(`node -e "...compileFunction..."`), manually reviewed the erase-flow JS
+for correctness, and browser-tested at a 375px viewport — tab bar labels in
+both languages, the sign-in feature rows, and the erase dialog's dynamic
+counts + type-to-confirm gate (disabled until exact match, case-insensitive,
+enables/disables live) all confirmed working, zero console errors. **Not
+device-verified beyond the corner-radius bug the owner caught by eye** — if
+anything else looks visually off on a real phone, check for another
+`appearance: auto`-style native-chrome override before assuming the
+authored CSS is wrong.
