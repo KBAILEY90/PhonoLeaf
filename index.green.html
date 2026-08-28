@@ -1252,7 +1252,7 @@
        slowed down; a future multi-step carousel can slice this same content
        across slides without rewriting it. -->
   <div class="si-wrap">
-    <div class="seg lang-seg si-langtoggle" role="group" aria-label="Language">
+    <div class="seg lang-seg si-langtoggle" role="group" aria-label="Language" data-i18n-aria-label="aria_language">
       <button data-lang="en" onclick="I18n.setLang('en')">EN</button>
       <button data-lang="fr" onclick="I18n.setLang('fr')">FR</button>
     </div>
@@ -1324,7 +1324,7 @@
     </div>
     <div class="home-title" id="home-title" data-i18n="home_title">Home</div>
     <div id="home-continue"></div>
-    <div class="stat-row" id="home-stats" onclick="Nav.go('stats')" style="cursor:pointer" role="button" tabindex="0" aria-label="Open Stats"></div>
+    <div class="stat-row" id="home-stats" onclick="Nav.go('stats')" style="cursor:pointer" role="button" tabindex="0" aria-label="Open Stats" data-i18n-aria-label="aria_open_stats"></div>
     <div class="sec-label"><span data-i18n="jump_back_in">Jump back in</span> <a onclick="Nav.go('library')" role="button" tabindex="0" data-i18n="see_all">See all</a></div>
     <div class="cover-row" id="home-recent"></div>
   </div>
@@ -1335,25 +1335,25 @@
   <div class="lib-header">
     <h2 data-i18n="library_title">Library</h2>
     <div class="header-actions">
-      <div class="lib-view-toggle" id="lib-view-toggle" role="group" aria-label="Library view">
-        <button data-view="2" onclick="Library.setView('2')" data-i18n-title="lib_view_2" aria-label="2 per row">
+      <div class="lib-view-toggle" id="lib-view-toggle" role="group" aria-label="Library view" data-i18n-aria-label="aria_library_view">
+        <button data-view="2" onclick="Library.setView('2')" data-i18n-title="lib_view_2" aria-label="2 per row" data-i18n-aria-label="lib_view_2">
           <svg width="17" height="17" viewBox="0 0 17 17"><rect x="0" y="1" width="7" height="15" rx="1.2" fill="currentColor"/><rect x="10" y="1" width="7" height="15" rx="1.2" fill="currentColor"/></svg>
         </button>
-        <button data-view="3" onclick="Library.setView('3')" data-i18n-title="lib_view_3" aria-label="3 per row">
+        <button data-view="3" onclick="Library.setView('3')" data-i18n-title="lib_view_3" aria-label="3 per row" data-i18n-aria-label="lib_view_3">
           <svg width="17" height="17" viewBox="0 0 17 17"><rect x="0" y="2" width="4.2" height="13" rx="1" fill="currentColor"/><rect x="6.4" y="2" width="4.2" height="13" rx="1" fill="currentColor"/><rect x="12.8" y="2" width="4.2" height="13" rx="1" fill="currentColor"/></svg>
         </button>
-        <button data-view="4" onclick="Library.setView('4')" data-i18n-title="lib_view_4" aria-label="4 per row">
+        <button data-view="4" onclick="Library.setView('4')" data-i18n-title="lib_view_4" aria-label="4 per row" data-i18n-aria-label="lib_view_4">
           <svg width="17" height="17" viewBox="0 0 17 17"><rect x="0" y="3" width="3" height="11" rx="0.8" fill="currentColor"/><rect x="4.7" y="3" width="3" height="11" rx="0.8" fill="currentColor"/><rect x="9.4" y="3" width="3" height="11" rx="0.8" fill="currentColor"/><rect x="14.1" y="3" width="3" height="11" rx="0.8" fill="currentColor"/></svg>
         </button>
-        <button data-view="table" onclick="Library.setView('table')" data-i18n-title="lib_view_table" aria-label="List view">
+        <button data-view="table" onclick="Library.setView('table')" data-i18n-title="lib_view_table" aria-label="List view" data-i18n-aria-label="lib_view_table">
           <svg width="17" height="17" viewBox="0 0 17 17"><rect x="0" y="2" width="17" height="2.6" rx="1" fill="currentColor"/><rect x="0" y="7.2" width="17" height="2.6" rx="1" fill="currentColor"/><rect x="0" y="12.4" width="17" height="2.6" rx="1" fill="currentColor"/></svg>
         </button>
       </div>
-      <button class="icon-btn" onclick="Library.refresh()" title="Refresh" aria-label="Refresh library">&#8634;</button>
+      <button class="icon-btn" onclick="Library.refresh()" title="Refresh" aria-label="Refresh library" data-i18n-aria-label="aria_refresh_library">&#8634;</button>
     </div>
   </div>
   <div class="lib-search">
-    <input id="lib-search" type="search" placeholder="Search your books" data-i18n-placeholder="search_placeholder" oninput="Library.filter(this.value)" aria-label="Search your books">
+    <input id="lib-search" type="search" placeholder="Search your books" data-i18n-placeholder="search_placeholder" oninput="Library.filter(this.value)" aria-label="Search your books" data-i18n-aria-label="search_placeholder">
   </div>
   <div class="books-grid-wrap" id="books-grid-wrap">
     <div class="books-grid scrolly" id="books-grid">
@@ -1370,7 +1370,7 @@
     <div class="set-group">
       <div class="set-row">
         <div><div class="sr-k" data-i18n="theme">Theme</div><div class="sr-sub" data-i18n="theme_sub">Light, dark, or match device</div></div>
-        <div class="seg" id="theme-seg">
+        <div class="seg" id="theme-seg" role="group" aria-label="Theme" data-i18n-aria-label="theme">
           <button data-mode="light" data-i18n="theme_light" onclick="Settings.setTheme('light')">Light</button>
           <button data-mode="dark" data-i18n="theme_dark" onclick="Settings.setTheme('dark')">Dark</button>
           <button data-mode="auto" data-i18n="theme_auto" onclick="Settings.setTheme('auto')">Auto</button>
@@ -1378,7 +1378,7 @@
       </div>
       <div class="set-row">
         <div><div class="sr-k" data-i18n="app_language">App language</div><div class="sr-sub" data-i18n="app_language_sub">Translates the Settings tab</div></div>
-        <div class="seg lang-seg" id="lang-seg">
+        <div class="seg lang-seg" id="lang-seg" role="group" aria-label="App language" data-i18n-aria-label="app_language">
           <button data-lang="en" onclick="Settings.setLang('en')">EN</button>
           <button data-lang="fr" onclick="Settings.setLang('fr')">FR</button>
         </div>
@@ -1400,12 +1400,12 @@
         <button class="set-link" data-i18n="change" onclick="VoiceModal.open()">Change</button>
       </div>
       <div class="set-row">
-        <div><div class="sr-k" data-i18n="keep_screen_on">Keep screen on</div><div class="sr-sub" data-i18n="keep_screen_on_sub">While audio is playing</div></div>
-        <label class="tog"><input type="checkbox" id="set-wakelock" onchange="Settings.setWakeLock(this.checked)"><span class="tog-track"></span></label>
+        <div><div class="sr-k" id="keep-screen-on-label" data-i18n="keep_screen_on">Keep screen on</div><div class="sr-sub" data-i18n="keep_screen_on_sub">While audio is playing</div></div>
+        <label class="tog"><input type="checkbox" id="set-wakelock" aria-labelledby="keep-screen-on-label" onchange="Settings.setWakeLock(this.checked)"><span class="tog-track"></span></label>
       </div>
       <div class="set-row">
-        <div><div class="sr-k" data-i18n="follow_along">Follow along highlighting</div><div class="sr-sub" data-i18n="follow_along_sub">Highlight each word as it's read</div></div>
-        <label class="tog"><input type="checkbox" id="set-followalong" onchange="Settings.setFollowAlong(this.checked)"><span class="tog-track"></span></label>
+        <div><div class="sr-k" id="follow-along-label" data-i18n="follow_along">Follow along highlighting</div><div class="sr-sub" data-i18n="follow_along_sub">Highlight each word as it's read</div></div>
+        <label class="tog"><input type="checkbox" id="set-followalong" aria-labelledby="follow-along-label" onchange="Settings.setFollowAlong(this.checked)"><span class="tog-track"></span></label>
       </div>
     </div>
     <div class="set-group" id="voice-quality-group">
@@ -1415,7 +1415,7 @@
            Now it reports either state, with an "i" explainer either way. -->
       <div class="set-row" id="neural-row">
         <div>
-          <div class="sr-k"><span data-i18n="natural_voice">Natural voice</span><button class="sr-info" onclick="VoiceInfo.open()" aria-label="About the natural voice">i</button></div>
+          <div class="sr-k"><span data-i18n="natural_voice">Natural voice</span><button class="sr-info" onclick="VoiceInfo.open()" aria-label="About the natural voice" data-i18n-aria-label="voiceinfo_title">i</button></div>
           <div class="sr-sub" id="neural-sub" data-i18n="natural_voice_checking">Checking&hellip;</div>
         </div>
         <span class="set-stat" id="neural-status" data-i18n="on">On</span>
@@ -1494,11 +1494,11 @@
   <div id="tts-prog-line"><div id="tts-prog"></div></div>
 
   <div class="reader-top">
-    <button class="icon-btn" onclick="Reader.back()" aria-label="Back to home" style="color:var(--text)"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg></button>
+    <button class="icon-btn" onclick="Reader.back()" aria-label="Back to home" data-i18n-aria-label="aria_back_home" style="color:var(--text)"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg></button>
     <div class="reader-top-center">
       <div class="reader-top-info" id="rs-chapter"></div>
     </div>
-    <button class="icon-btn" id="chapters-btn" onclick="ChapterModal.open()" aria-label="Chapters">&#9776;</button>
+    <button class="icon-btn" id="chapters-btn" onclick="ChapterModal.open()" aria-label="Chapters" data-i18n-aria-label="chapters_title">&#9776;</button>
   </div>
 
   <div id="viewer">
@@ -1510,21 +1510,21 @@
 
   <div class="reader-touch" id="reader-touch"></div>
   <div id="tap-fb" aria-hidden="true"></div>
-  <button class="reader-edge re-left" onclick="Reader.turnPage(-1)" aria-label="Previous page">
+  <button class="reader-edge re-left" onclick="Reader.turnPage(-1)" aria-label="Previous page" data-i18n-aria-label="aria_prev_page">
     <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
   </button>
-  <button class="reader-edge re-right" onclick="Reader.turnPage(1)" aria-label="Next page">
+  <button class="reader-edge re-right" onclick="Reader.turnPage(1)" aria-label="Next page" data-i18n-aria-label="aria_next_page">
     <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
   </button>
 
   <div class="reader-bottom">
-    <input type="range" class="scrub" id="reader-scrub" min="0" max="1000" value="0" aria-label="Seek through book">
+    <input type="range" class="scrub" id="reader-scrub" min="0" max="1000" value="0" aria-label="Seek through book" data-i18n-aria-label="aria_seek_book">
     <div class="reader-meta"><span id="tts-chapter"></span></div>
     <div class="tts-pill">
-      <button class="ctrl-btn nav" onclick="Reader.turnPage(-1)" aria-label="Previous">&#9664;&#9664;</button>
-      <button class="ctrl-btn play" id="play-btn" onclick="TTS.toggle()" aria-label="Play or pause"></button>
-      <button class="ctrl-btn nav" onclick="Reader.turnPage(1)" aria-label="Next">&#9654;&#9654;</button>
-      <select class="speed-select" id="speed-select" onchange="TTS.setRate(+this.value)" aria-label="Speed">
+      <button class="ctrl-btn nav" onclick="Reader.turnPage(-1)" aria-label="Previous" data-i18n-aria-label="aria_prev">&#9664;&#9664;</button>
+      <button class="ctrl-btn play" id="play-btn" onclick="TTS.toggle()" aria-label="Play or pause" data-i18n-aria-label="aria_play_pause"></button>
+      <button class="ctrl-btn nav" onclick="Reader.turnPage(1)" aria-label="Next" data-i18n-aria-label="next">&#9654;&#9654;</button>
+      <select class="speed-select" id="speed-select" onchange="TTS.setRate(+this.value)" aria-label="Speed" data-i18n-aria-label="aria_speed">
         <option value="0.5">0.5&times;</option>
         <option value="0.75">0.75&times;</option>
         <option value="1" selected>1.0&times;</option>
@@ -1533,7 +1533,7 @@
         <option value="1.75">1.75&times;</option>
         <option value="2">2.0&times;</option>
       </select>
-      <button class="icon-btn hl-pill" id="hl-btn" onclick="TTS.toggleFollowAlong()" aria-label="Follow along highlighting" data-i18n-title="follow_along" title="Follow along highlighting">
+      <button class="icon-btn hl-pill" id="hl-btn" onclick="TTS.toggleFollowAlong()" aria-label="Follow along highlighting" data-i18n-aria-label="follow_along" data-i18n-title="follow_along" title="Follow along highlighting">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><rect x="3" y="10.3" width="18" height="5.4" rx="1.2" fill="currentColor" stroke="none" opacity="0.35"/><line x1="4" y1="13" x2="20" y2="13"/><line x1="4" y1="19" x2="14" y2="19"/></svg>
       </button>
       <button class="pill-btn" id="voice-btn" onclick="VoiceModal.open()">Voice</button>
@@ -1672,7 +1672,7 @@
       <div class="erase-row"><span data-i18n="erase_row5_l">Your Google Drive files</span><span class="er-safe" data-i18n="erase_row5_r">untouched</span></div>
     </div>
     <p class="erase-hint"><span data-i18n="erase_hint_pre">Type</span> <b>ERASE</b> <span data-i18n="erase_hint_post">to confirm. Export first if you want a copy — it takes a second.</span></p>
-    <input class="erase-input" id="erase-input" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="Type ERASE to confirm" oninput="EraseModal.checkInput()">
+    <input class="erase-input" id="erase-input" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="Type ERASE to confirm" data-i18n-aria-label="aria_erase_confirm" oninput="EraseModal.checkInput()">
     <div class="erase-btns">
       <button class="erase-cancel" onclick="EraseModal.close()" data-i18n="erase_keep">Keep my data</button>
       <button class="erase-ok" id="erase-ok-btn" disabled onclick="EraseModal._ok()" data-i18n="erase_confirm">Erase everything</button>
@@ -2123,6 +2123,16 @@ const STRINGS = {
 
     // Chapter / Folder / Confirm modals
     chapters_title: 'Chapters',
+    // Accessibility labels (data-i18n-aria-label targets) — previously
+    // hardcoded English regardless of app language, see accessibility pass.
+    aria_language: 'Language', aria_open_stats: 'Open Stats', aria_library_view: 'Library view',
+    aria_refresh_library: 'Refresh library', aria_back_home: 'Back to home',
+    aria_prev_page: 'Previous page', aria_next_page: 'Next page', aria_seek_book: 'Seek through book',
+    aria_prev: 'Previous', aria_play_pause: 'Play or pause', aria_speed: 'Speed',
+    aria_erase_confirm: 'Type ERASE to confirm', aria_open_reader: 'Open reader',
+    aria_group_breakdown: 'Group breakdown by', aria_continue: 'Continue {name}',
+    aria_open_folder: 'Open folder {name}', aria_open_book: 'Open {name}',
+    stat_bar_aria: '{label}: {minutes}',
     reset_stats_confirm: 'Are you sure you want to reset your listening data? This cannot be undone.', reset: 'Reset',
     choose_books_folder: 'Choose your books folder',
     fb_currently: 'Currently: {folder} — open a folder to browse, then tap “Use this folder”.',
@@ -2333,6 +2343,15 @@ const STRINGS = {
 
     // Chapitres / dossier / confirmation
     chapters_title: 'Chapitres',
+    // Étiquettes d'accessibilité (cibles data-i18n-aria-label)
+    aria_language: 'Langue', aria_open_stats: 'Ouvrir les statistiques', aria_library_view: 'Affichage de la bibliothèque',
+    aria_refresh_library: 'Actualiser la bibliothèque', aria_back_home: 'Retour à l’accueil',
+    aria_prev_page: 'Page précédente', aria_next_page: 'Page suivante', aria_seek_book: 'Naviguer dans le livre',
+    aria_prev: 'Précédent', aria_play_pause: 'Lecture ou pause', aria_speed: 'Vitesse',
+    aria_erase_confirm: 'Tapez ERASE pour confirmer', aria_open_reader: 'Ouvrir le lecteur',
+    aria_group_breakdown: 'Regrouper par', aria_continue: 'Continuer {name}',
+    aria_open_folder: 'Ouvrir le dossier {name}', aria_open_book: 'Ouvrir {name}',
+    stat_bar_aria: '{label} : {minutes}',
     reset_stats_confirm: 'Voulez-vous vraiment réinitialiser vos données d’écoute ? Cette action est irréversible.', reset: 'Réinitialiser',
     choose_books_folder: 'Choisissez votre dossier de livres',
     fb_currently: 'Actuellement : {folder} — ouvrez un dossier pour le parcourir, puis touchez « Utiliser ce dossier ».',
@@ -2413,15 +2432,18 @@ const I18n = {
   },
   // Walks every [data-i18n] (textContent), [data-i18n-title] (title attr,
   // for things like the theme segmented buttons where a shorter label reads
-  // better than reflowing the row), and [data-i18n-placeholder] (input/
-  // textarea placeholder text) under `root` and fills it from the current
-  // language. Safe to call repeatedly — it's just attribute/text updates, so
-  // re-running it on every render can't accumulate anything.
+  // better than reflowing the row), [data-i18n-placeholder] (input/
+  // textarea placeholder text), and [data-i18n-aria-label] (aria-label attr,
+  // for static screen-reader-only labels that were previously hardcoded
+  // English regardless of app language) under `root` and fills it from the
+  // current language. Safe to call repeatedly — it's just attribute/text
+  // updates, so re-running it on every render can't accumulate anything.
   apply(root) {
     if (!root) return;
     root.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = this.t(el.dataset.i18n); });
     root.querySelectorAll('[data-i18n-title]').forEach(el => { el.title = this.t(el.dataset.i18nTitle); });
     root.querySelectorAll('[data-i18n-placeholder]').forEach(el => { el.placeholder = this.t(el.dataset.i18nPlaceholder); });
+    root.querySelectorAll('[data-i18n-aria-label]').forEach(el => { el.setAttribute('aria-label', this.t(el.dataset.i18nAriaLabel)); });
     // Any language-toggle button group (Settings' own, plus the sign-in
     // screen's — see .lang-seg) stays in sync with the active language
     // wherever apply() runs, not just after Settings.render(). Keeps the two
@@ -2639,11 +2661,11 @@ const Home = {
             <div class="hh-k">${playing ? I18n.t('now_playing') : I18n.t('continue_')}</div>
             <div class="hh-title">${esc(t)}</div>
             <div class="hh-sub">${esc(sub)}</div>
-            <input type="range" class="scrub hh-scrub" min="0" max="1000" value="${Math.round((p.pct || 0) * 10)}" aria-label="Seek through book">
+            <input type="range" class="scrub hh-scrub" min="0" max="1000" value="${Math.round((p.pct || 0) * 10)}" aria-label="${esc(I18n.t('aria_seek_book'))}">
           </div>
           <div class="hh-btns">
-            <button class="hh-btn play${playing ? ' playing' : ''}" aria-label="Play or pause" onclick="Player.toggle(${hi})"></button>
-            <button class="hh-btn expand" aria-label="Open reader" onclick="Player.expand(${hi})"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+            <button class="hh-btn play${playing ? ' playing' : ''}" aria-label="${esc(I18n.t('aria_play_pause'))}" onclick="Player.toggle(${hi})"></button>
+            <button class="hh-btn expand" aria-label="${esc(I18n.t('aria_open_reader'))}" onclick="Player.expand(${hi})"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
           </div>
         </div>`;
     } else {
@@ -2666,7 +2688,7 @@ const Home = {
       .slice(0, 20);
     document.getElementById('home-recent').innerHTML = recent.map(({ b, i }) => {
       const t = b.name.replace(/\.epub$/i, ''), cov = Covers.urls[b.id];
-      return `<div class="cr-item" onclick="Player.play(${i})" role="button" tabindex="0" aria-label="Continue ${esc(t)}">
+      return `<div class="cr-item" onclick="Player.play(${i})" role="button" tabindex="0" aria-label="${esc(I18n.t('aria_continue', { name: t }))}">
         <div class="cr-cover" style="${cov ? `background-image:url('${esc(cov)}')` : ''}"></div>
         <div class="cr-title">${esc(t)}</div></div>`;
     }).join('') || `<div class="home-empty">${I18n.t('home_started_empty')}</div>`;
@@ -3413,11 +3435,11 @@ const StatsPage = {
        <div class="stat-row">${tile(books.length, I18n.t('stat_in_library'))}${tile(started, I18n.t('stat_started'))}${tile(finished, I18n.t('stat_finished'))}</div>
        <div class="sec-label">${I18n.t('listening_last_14')}</div>
        ${anyListening
-          ? `<div class="bars">${bars.map(b => { const fp = b.s ? Math.max(4, Math.round((b.s / maxSec) * 92)) : 0; return `<div class="bar" onclick="StatsPage.tapBar(this)" title="${esc(b.label)}"><span class="bar-val" style="bottom:${Math.min(fp + 3, 72)}px">${esc(fmtMin(b.s))}</span><div class="bar-fill" style="height:${fp}px"></div></div>`; }).join('')}</div>`
+          ? `<div class="bars">${bars.map(b => { const fp = b.s ? Math.max(4, Math.round((b.s / maxSec) * 92)) : 0; return `<div class="bar" onclick="StatsPage.tapBar(this)" title="${esc(b.label)}" role="button" tabindex="0" aria-label="${esc(I18n.t('stat_bar_aria', { label: b.label, minutes: fmtMin(b.s) }))}"><span class="bar-val" style="bottom:${Math.min(fp + 3, 72)}px">${esc(fmtMin(b.s))}</span><div class="bar-fill" style="height:${fp}px"></div></div>`; }).join('')}</div>`
           : `<div class="bars-empty">${I18n.t('no_listening_yet')}</div>`}
        ${books.length ? `
          <div class="sec-label">${I18n.t('breakdown')}
-           <select class="set-select" onchange="StatsPage.setGroup(this.value)" aria-label="Group breakdown by">
+           <select class="set-select" onchange="StatsPage.setGroup(this.value)" aria-label="${esc(I18n.t('aria_group_breakdown'))}">
              <option value="author"${this._group === 'author' ? ' selected' : ''}>${I18n.t('group_author')}</option>
              <option value="book"${this._group === 'book' ? ' selected' : ''}>${I18n.t('group_book')}</option>
              <option value="length"${this._group === 'length' ? ' selected' : ''}>${I18n.t('group_length')}</option>
@@ -3612,7 +3634,7 @@ const FolderBrowser = {
       });
       this._items = d.files || [];
       list.innerHTML = this._items.length ? this._items.map((f, i) =>
-        `<div class="fb-row" onclick="FolderBrowser.enter(${i})" role="button" tabindex="0" aria-label="Open folder ${esc(f.name)}">
+        `<div class="fb-row" onclick="FolderBrowser.enter(${i})" role="button" tabindex="0" aria-label="${esc(I18n.t('aria_open_folder', { name: f.name }))}">
            <svg class="fb-ico" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
            <span class="fb-name">${esc(f.name)}</span>
            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--text-dim);flex-shrink:0"><path d="M9 6l6 6-6 6"/></svg>
@@ -4418,7 +4440,7 @@ const Library = {
         <div class="book-meta">${esc(Meta.get(b.id)?.author || '')}</div>
       </div>`;
     const cls = isRow ? 'book-row' : 'book-card';
-    return `<div class="${cls}" data-book-id="${esc(b.id)}" onclick="Reader.open(${i})" role="button" tabindex="0" aria-label="Open ${esc(title)}">${coverHTML}${infoHTML}${isRow ? offlineBtn : ''}</div>`;
+    return `<div class="${cls}" data-book-id="${esc(b.id)}" onclick="Reader.open(${i})" role="button" tabindex="0" aria-label="${esc(I18n.t('aria_open_book', { name: title }))}">${coverHTML}${infoHTML}${isRow ? offlineBtn : ''}</div>`;
   },
 
   // Resolved display title for sorting/the A-Z scrubber — prefers the
