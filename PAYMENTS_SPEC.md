@@ -341,8 +341,10 @@ These need answers before coding, not during.
   margin) of every lifetime purchase gets set aside in a separate
   account/ledger line, untouched until that sale's 12-month refund window
   closes, rather than a lump sum or no formal reserve. **The exact
-  percentage is still undecided** — needs a real number before the
-  lifetime tier goes live for actual sales, tracked in `TODO.md`.
+  percentage is deliberately not pinned down here** — it's an ongoing
+  financial-operations call the owner makes with the bank/accountant once
+  the business account exists, not a one-time engineering decision to
+  pre-solve.
 - **Trial abuse: accepted as-is for now, mitigation deferred.** New
   Google accounts can still restart the 7-day trial indefinitely,
   matching the ToS language already drafted. Not being fixed now, but

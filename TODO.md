@@ -69,11 +69,13 @@ don't let it go stale the way `BACKLOG.md`'s old "Next up" section did.
       `PAYMENTS_SPEC.md` §13. **§13 now has zero open items — nothing left
       blocking the start of Stripe integration (§9 step 2) on the
       decisions front.**
-- [ ] **Lifetime reserve percentage.** The mechanism is decided (a % of
-      each lifetime sale, held separately — see above), but not the
-      actual number. Needs an owner call before the lifetime tier is
-      turned on for real sales — not urgent today since nothing sells
-      yet, but don't let it slip to "after the first lifetime sale."
+- [x] **Lifetime reserve percentage — not tracked as a task.** Owner call
+      2026-08-28: the mechanism (a % of each lifetime sale, held
+      separately) is the real decision and it's made; the exact number is
+      an ongoing operational/financial call the owner will make with the
+      bank/accountant once the business account exists, not a one-time
+      engineering blocker to pre-decide. Closed here rather than kept open
+      with nothing for anyone to act on.
 
 ## D1 migration (2026-08-28 — done, live in production and staging)
 
