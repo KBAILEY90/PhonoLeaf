@@ -26,14 +26,20 @@ system and without compromising the privacy story.
 
 ## 2. Backend: Cloudflare Worker + D1
 
-**Decided 2026-08-28 (§13): D1, not KV** — this section still describes the
-KV shape the deployed Worker actually runs today; the migration to a D1
-`entitlements` table (same fields, `sub_hash` as primary key) is tracked in
-`TODO.md` and not yet done. The record shape and endpoint list below are
-unaffected by the storage swap — only how they're persisted changes.
+**Decided 2026-08-28 (§13): D1, not KV.** Migrated the same day —
+`worker/src/entitlement.js` now runs parameterized D1 queries against an
+`entitlements` table (`migrations/0001_create_entitlements.sql`), keyed on
+`sub_hash` just like the KV record it replaces. **Code-complete, not yet
+deployed**: creating the real D1 database needs a Cloudflare login this
+environment doesn't have (`wrangler.toml` carries a
+`REPLACE_ME_RUN_WRANGLER_D1_CREATE` placeholder id) — see `worker/README.md`
+"Local setup" for the exact commands the owner still needs to run
+(`wrangler d1 create`, then `wrangler d1 migrations apply` remote + local),
+tracked in `TODO.md`. Verified so far only via local D1 emulation (no cloud
+auth required for that).
 
-A single Worker (the DNS is already at Cloudflare), today with a KV namespace
-`ENTITLEMENTS`, keyed by `sub_hash`:
+A single Worker (the DNS is already at Cloudflare) with a D1 database,
+`entitlements` table keyed by `sub_hash`:
 
 ```json
 {

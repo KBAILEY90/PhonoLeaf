@@ -57,48 +57,69 @@ don't let it go stale the way `BACKLOG.md`'s old "Next up" section did.
       strongly consistent (no post-payment paywall-flash risk) and cheaper
       per operation than KV at any scale PhonoLeaf will hit for a long time.
       Full reasoning and pricing numbers logged in `PAYMENTS_SPEC.md` §13.
-      **Real migration work still needed** — see "D1 migration" below.
+      **Code migration done same day** — see "D1 migration" below for
+      what's left (just the owner-side Cloudflare steps).
 - [ ] **Refund mechanics**, **lifetime shutdown reserve**, **trial abuse** —
       `PAYMENTS_SPEC.md` §13, all still open, needed before Stripe
       integration starts.
 
-## D1 migration (new, 2026-08-28 — the Worker is live on KV today)
+## D1 migration (2026-08-28 — code done, deploy still owner-side)
 
-The entitlement Worker is already built and deployed
-(`worker/`, per `PAYMENTS_SPEC.md` §9) on Cloudflare KV — real namespace
-IDs in `worker/wrangler.toml`, production + staging both live. It holds no
-real entitlement data yet (not called from the app), so this is a clean
-swap, not a data migration with records to carry over. Tasks, roughly in
-order:
+The entitlement Worker was already built and deployed (`worker/`, per
+`PAYMENTS_SPEC.md` §9) on Cloudflare KV. It held no real entitlement data
+(not called from the app yet), so this was a clean code swap, not a data
+migration. **KV fully removed from the codebase** — no `[[kv_namespaces]]`
+blocks, no `env.ENTITLEMENTS` references left anywhere in `worker/`.
 
-- [ ] **Design the D1 schema.** One `entitlements` table, `sub_hash TEXT
-      PRIMARY KEY`, columns matching the existing KV record shape
-      (`status`, `source`, `plan`, `trial_end`, `period_end`, `updated_at`).
-      Write it as a migration file (`wrangler d1 migrations create`), not a
-      hand-run `CREATE TABLE`.
-- [ ] **Create the D1 database** (`npx wrangler d1 create phonoleaf-entitlement`)
-      for both production and staging, same split as the current KV
-      namespaces (`env.staging` in `wrangler.toml`) — needs the owner's
-      Cloudflare login, same as the original KV namespace creation did.
-- [ ] **Rewrite `worker/src/entitlement.js`** off `env.ENTITLEMENTS.get/put`
+- [x] **Designed the D1 schema.** `worker/migrations/0001_create_entitlements.sql`
+      — one `entitlements` table, `sub_hash TEXT PRIMARY KEY`, same columns
+      as the old KV record (`status`, `source`, `plan`, `trial_end`,
+      `period_end`, `updated_at`).
+- [x] **Rewrote `worker/src/entitlement.js`** off `env.ENTITLEMENTS.get/put`
       onto D1 prepared statements (`env.DB.prepare(...).bind(...)`).
-      **Every query parameterized — no string-concatenated SQL, ever**
-      (`PAYMENTS_SPEC.md` §7's new rule; this is the one genuinely new
-      security surface D1 introduces that KV structurally couldn't have).
-- [ ] **Update `worker/wrangler.toml`**: replace both `[[kv_namespaces]]`
-      blocks (production + `env.staging`) with `[[d1_databases]]` bindings.
-- [ ] **Sweep KV references for accuracy** now that the architecture has
-      changed: `PAYMENTS_SPEC.md` §2 (currently flagged as pending, see
-      that section), `worker/README.md` (setup steps reference `wrangler kv
-      namespace create`), and code comments in `entitlement.js` /
-      `entitlement-jwt.js` that say "KV record."
-- [ ] **Re-verify functionally** the same way the KV version was verified
-      (§9): Node harness for the trial state machine / JWT sign+verify,
-      then a real `wrangler dev` pass against the local D1 binding, health
-      check + the `/entitlement` 401-without-a-token path.
-- [ ] **Redeploy** production + staging once verified. No app-facing change
-      — `GET /entitlement` and every other route's contract is identical;
-      this is purely what's behind them.
+      **Every query parameterized, `?` placeholders only** (`PAYMENTS_SPEC.md`
+      §7's new rule) — verified mechanically in the test harness below,
+      not just by eye.
+- [x] **Updated `worker/wrangler.toml`**: both `[[kv_namespaces]]` blocks
+      (production + `env.staging`) replaced with `[[d1_databases]]`
+      bindings (`binding = "DB"`). Real database ids are placeholders
+      (`REPLACE_ME_RUN_WRANGLER_D1_CREATE`) pending the step below —
+      wrangler fails loudly on a real deploy until they're filled in,
+      rather than silently pointing at the wrong thing.
+- [x] **Swept every KV reference** in `worker/`: `PAYMENTS_SPEC.md` §2,
+      `worker/README.md` (setup steps now say `wrangler d1 create` +
+      `d1 migrations apply`), and code comments in `entitlement.js` /
+      `entitlement-jwt.js`. Added `db:migrate:local` / `db:migrate:remote`
+      npm scripts.
+- [x] **Verified locally** (no Cloudflare account available in this
+      session, so this is as far as it goes from here): applied the
+      migration against local D1 emulation (`wrangler d1 migrations apply
+      --local`, works without cloud auth); ran the exact insert/select/
+      upsert SQL from `entitlement.js` directly via `wrangler d1 execute
+      --local` and confirmed the conflict-path upsert correctly moves a
+      trial row to active; ran `wrangler dev` locally and confirmed the
+      D1 binding loads plus the health check and `/entitlement`
+      401-without-a-token / malformed-JWT paths match the old KV
+      behavior exactly; ran a Node harness against the real
+      `entitlement.js` functions with a mocked D1 API (trial creation is
+      idempotent on a second lookup, the Stripe-webhook-style upsert
+      moves trial→active correctly, `effectiveStatus`'s expiry safety net
+      still works, an unseen hash reads as `none` not an error, and every
+      bound DB call used bare `?` placeholders with no stray
+      concatenation).
+- [ ] **Create the real D1 databases** (production `phonoleaf-entitlement`
+      + staging `phonoleaf-entitlement-staging`) and paste their ids into
+      `wrangler.toml` in place of the placeholders — needs the owner's
+      Cloudflare login (`npx wrangler login`), same as the original KV
+      namespace creation did. Exact commands in `worker/README.md` "Local
+      setup".
+- [ ] **Apply the migration to both real databases** (`wrangler d1
+      migrations apply <name> --remote`, or `npm run db:migrate:remote`
+      for production).
+- [ ] **Redeploy** production + staging (`npm run deploy` /
+      `wrangler deploy --env staging`) once the above two are done. No
+      app-facing change — `GET /entitlement` and every other route's
+      contract is identical, this is purely what's behind them.
 
 ## Actionable now, no blockers
 

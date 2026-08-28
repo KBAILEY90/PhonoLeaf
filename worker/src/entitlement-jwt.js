@@ -24,7 +24,7 @@ const LIFETIME_REFRESH = 60 * 60 * 24 * 365; // lifetime: long-lived, refreshed 
 
 /**
  * Signs an entitlement JWT: {status, plan, sub_hash, iat, exp}. Lifetime
- * entitlements get a long life since the KV record is meant to be
+ * entitlements get a long life since the D1 row is meant to be
  * permanent and must never be revoked by a backend change; everything
  * else gets the 7-day grace window so a plan change (or a lapsed
  * subscription) propagates within a week even if the app stays offline.
