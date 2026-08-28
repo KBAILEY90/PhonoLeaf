@@ -641,6 +641,34 @@ only ONE of them.**
   desktop-column CSS fix), so don't merge/push to `main` without the owner
   explicitly asking for that specific step.
 
+- **KNOWN GAP, unresolved, found 2026-08-28 — two divergent branches, each
+  missing real work the other has.** A separate branch, `claude/docs-code-
+  review-tam2pr`, ALSO has `index.green.html` changes — its own committed
+  Phase 2/3 of the redesign (the `--motion-fast/base/slow/ease` token
+  system, in-book full-text search, the storage manager "On this phone"
+  screen, and a fuller accessibility/aria-label i18n pass — 37 translated
+  aria-labels there vs. only 6 on `redesign/native-android-ship`) — but it
+  has NONE of the forest, the mini player, or anything else logged in this
+  file below. Neither branch is a superset: `claude/docs-code-review-
+  tam2pr`'s `index.green.html` is 8,437 lines with Phase 2/3 and no Round-3-
+  onward work; `redesign/native-android-ship`'s is 9,781 lines with
+  everything below and no Phase 2/3. Best guess at cause: this file was
+  found deleted and recovered from a generated build artifact at some point
+  (see `CLAUDE_HISTORY.md`) — if that recovery grabbed a copy predating
+  Phase 2/3, every session since (this whole file's own history below
+  included) has been unknowingly built on the regressed base, while this
+  file's own text kept claiming Phase 2/3 was done. **Not yet reconciled.**
+  A real merge is needed — diff the two branches' `index.green.html`
+  carefully and port Phase 2/3's features into the current branch (or vice
+  versa), verifying nothing silently drops either direction — do not
+  attempt a blind `git merge` on this file, the scale of independent
+  parallel changes on both sides makes conflict markers likely to be
+  unresolvable automatically. Until this is done, whichever branch gets
+  checked out determines which half of the redesign you're looking at —
+  check `git branch --show-current` before assuming `index.green.html`
+  reflects "the redesign," and warn the owner immediately if it doesn't
+  match what's described below.
+
 - A second Claude session has also pushed to `main` in the past — always
   `git fetch` and check `git log HEAD..origin/main` before pushing, rebase
   rather than clobber.
