@@ -24,10 +24,16 @@ system and without compromising the privacy story.
 - Store `sub` **hashed** (e.g. SHA-256 with a server secret) in the entitlement
   store so the payments data isn't trivially linkable to a Google identity.
 
-## 2. Backend: Cloudflare Worker + KV
+## 2. Backend: Cloudflare Worker + D1
 
-A single Worker (the DNS is already at Cloudflare) with a KV namespace
-`ENTITLEMENTS`. KV value keyed by `sub_hash`:
+**Decided 2026-08-28 (§13): D1, not KV** — this section still describes the
+KV shape the deployed Worker actually runs today; the migration to a D1
+`entitlements` table (same fields, `sub_hash` as primary key) is tracked in
+`TODO.md` and not yet done. The record shape and endpoint list below are
+unaffected by the storage swap — only how they're persisted changes.
+
+A single Worker (the DNS is already at Cloudflare), today with a KV namespace
+`ENTITLEMENTS`, keyed by `sub_hash`:
 
 ```json
 {
@@ -115,6 +121,11 @@ conversion and it fits the Worker as source of truth model.
 
 ## 7. Security & privacy
 
+- **D1 queries only via parameterized prepared statements** (`.bind()`),
+  never string-concatenated SQL. KV had no query language and so no SQL
+  injection surface at all; D1 does, and it's exactly the kind of finding
+  a CASA DAST scan tests for (§12). No raw string interpolation into a
+  query, anywhere, ever — including internal-only admin/debug scripts.
 - Verify Google ID tokens on every authed call (signature via Google JWKS, `aud`,
   `iss`, `exp`). Reject otherwise.
 - Verify Stripe webhook signatures and Play/Apple receipts **server side**, never
@@ -220,6 +231,14 @@ count as a significant change."* Today's questionnaire answers lean heavily on
 it makes the next assessment predictable instead of a surprise, and it lets the
 backend be **designed to pass** rather than remediated afterwards.
 
+**D1 vs. KV (decided 2026-08-28, §13) doesn't change any of this.** The DAST
+scan, OpenAPI spec, staging domain, and bypass-endpoint requirements below are
+all triggered by "a backend/API exists at all" — they don't care what storage
+sits behind it. The one real addition: D1 is a SQL database, so injection is
+now a real class of finding the scan can surface, where KV structurally
+couldn't have one. Mitigated by the parameterized-queries-only rule in §7 —
+if that rule holds, this changes nothing about assessment scope or cost.
+
 ### Answers that must be rewritten
 | ID | Today | After a backend |
 |---|---|---|
@@ -287,22 +306,32 @@ These need answers before coding, not during.
   charged and the number promised are always the same USD figure. GST+QST
   calculation is unaffected — it still runs against the one USD amount.
 
+**Resolved (owner, 2026-08-28):**
+- **D1 for entitlement generally, not KV.** Originally leaning KV (cheaper,
+  simpler), but a pricing check turned up that D1 is now *both* strongly
+  consistent *and* cheaper per operation than KV at any scale PhonoLeaf will
+  realistically hit for a long time (D1: 25B reads / 50M writes included per
+  month on Workers Paid, at $0.001 / $1.00 per million respectively past
+  that; KV: 10M / 1M included, at $0.50 / $5.00 per million past that) — so
+  this isn't a cost-vs-consistency tradeoff, D1 wins both. The one added
+  cost is engineering: a real schema/migrations instead of a plain
+  get/put, and D1 introduces a vulnerability class KV structurally can't
+  have (SQL injection) — see §7's new rule on parameterized queries.
+  **Real migration required**, not just a spec change: the Worker is
+  already built and deployed on KV (real namespace IDs in
+  `worker/wrangler.toml`, live on `*.workers.dev`, per §9) — though it
+  holds no real entitlement data yet (not called from the app), so this is
+  a clean swap, not a data migration. See `TODO.md` for the task list.
+
 **Still open:**
-1. **KV vs D1 for entitlement generally.** KV is eventually consistent (writes
-   can take seconds to propagate globally). The signed-JWT + offline-grace
-   design in §6 mostly absorbs that, but a user who pays and immediately
-   reloads could briefly still see the paywall. Acceptable? Or use D1 for
-   strong consistency here too? (Separate from the lifetime-cap counter above,
-   which is now decided as D1/Durable-Object regardless — this item is about
-   the general entitlement-check path.)
-2. **Refund mechanics.** The ToS promises a 14-day web money-back window.
+1. **Refund mechanics.** The ToS promises a 14-day web money-back window.
    Manual (owner issues refunds in the Stripe dashboard) or automated? Manual
    is fine at low volume and needs no code — but it needs to actually happen
    within 14 days.
-3. **Lifetime shutdown reserve.** The ToS commits to a 12-month refund window
+2. **Lifetime shutdown reserve.** The ToS commits to a 12-month refund window
    for lifetime buyers if the product is discontinued. That is a real
    liability against revenue that should not be spent as profit — decide the
    reserve policy before selling any.
-4. **Trial abuse.** §3 accepts that new Google accounts can restart the trial.
+3. **Trial abuse.** §3 accepts that new Google accounts can restart the trial.
    Confirm that is still acceptable, since it is a deliberate choice rather
    than an oversight.

@@ -52,9 +52,53 @@ don't let it go stale the way `BACKLOG.md`'s old "Next up" section did.
       scoped or built; needs the paywall/entitlement system to exist first
       (same as the rest of this section), and a decision on prompt
       frequency/placement so it doesn't nag.
-- [ ] **KV vs D1 for entitlement generally**, **refund mechanics**,
-      **lifetime shutdown reserve**, **trial abuse** — `PAYMENTS_SPEC.md`
-      §13, all still open, needed before Stripe integration starts.
+- [x] **KV vs D1 for entitlement generally.** **Decided 2026-08-28: D1.**
+      Turned out not to be a cost-vs-consistency tradeoff — D1 is both
+      strongly consistent (no post-payment paywall-flash risk) and cheaper
+      per operation than KV at any scale PhonoLeaf will hit for a long time.
+      Full reasoning and pricing numbers logged in `PAYMENTS_SPEC.md` §13.
+      **Real migration work still needed** — see "D1 migration" below.
+- [ ] **Refund mechanics**, **lifetime shutdown reserve**, **trial abuse** —
+      `PAYMENTS_SPEC.md` §13, all still open, needed before Stripe
+      integration starts.
+
+## D1 migration (new, 2026-08-28 — the Worker is live on KV today)
+
+The entitlement Worker is already built and deployed
+(`worker/`, per `PAYMENTS_SPEC.md` §9) on Cloudflare KV — real namespace
+IDs in `worker/wrangler.toml`, production + staging both live. It holds no
+real entitlement data yet (not called from the app), so this is a clean
+swap, not a data migration with records to carry over. Tasks, roughly in
+order:
+
+- [ ] **Design the D1 schema.** One `entitlements` table, `sub_hash TEXT
+      PRIMARY KEY`, columns matching the existing KV record shape
+      (`status`, `source`, `plan`, `trial_end`, `period_end`, `updated_at`).
+      Write it as a migration file (`wrangler d1 migrations create`), not a
+      hand-run `CREATE TABLE`.
+- [ ] **Create the D1 database** (`npx wrangler d1 create phonoleaf-entitlement`)
+      for both production and staging, same split as the current KV
+      namespaces (`env.staging` in `wrangler.toml`) — needs the owner's
+      Cloudflare login, same as the original KV namespace creation did.
+- [ ] **Rewrite `worker/src/entitlement.js`** off `env.ENTITLEMENTS.get/put`
+      onto D1 prepared statements (`env.DB.prepare(...).bind(...)`).
+      **Every query parameterized — no string-concatenated SQL, ever**
+      (`PAYMENTS_SPEC.md` §7's new rule; this is the one genuinely new
+      security surface D1 introduces that KV structurally couldn't have).
+- [ ] **Update `worker/wrangler.toml`**: replace both `[[kv_namespaces]]`
+      blocks (production + `env.staging`) with `[[d1_databases]]` bindings.
+- [ ] **Sweep KV references for accuracy** now that the architecture has
+      changed: `PAYMENTS_SPEC.md` §2 (currently flagged as pending, see
+      that section), `worker/README.md` (setup steps reference `wrangler kv
+      namespace create`), and code comments in `entitlement.js` /
+      `entitlement-jwt.js` that say "KV record."
+- [ ] **Re-verify functionally** the same way the KV version was verified
+      (§9): Node harness for the trial state machine / JWT sign+verify,
+      then a real `wrangler dev` pass against the local D1 binding, health
+      check + the `/entitlement` 401-without-a-token path.
+- [ ] **Redeploy** production + staging once verified. No app-facing change
+      — `GET /entitlement` and every other route's contract is identical;
+      this is purely what's behind them.
 
 ## Actionable now, no blockers
 
