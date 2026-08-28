@@ -59,9 +59,21 @@ don't let it go stale the way `BACKLOG.md`'s old "Next up" section did.
       Full reasoning and pricing numbers logged in `PAYMENTS_SPEC.md` §13.
       **Fully migrated and live as of 2026-08-28** — see "D1 migration"
       below.
-- [ ] **Refund mechanics**, **lifetime shutdown reserve**, **trial abuse** —
-      `PAYMENTS_SPEC.md` §13, all still open, needed before Stripe
-      integration starts.
+- [x] **Refund mechanics, lifetime shutdown reserve, trial abuse — all
+      decided 2026-08-28.** Refunds: manual via Stripe dashboard for now
+      (automating it is a post-launch item, see below). Lifetime reserve:
+      a % of each sale held separately until that sale's 12-month window
+      closes — mechanism decided, **exact percentage still needed before
+      lifetime sales go live** (see below). Trial abuse: accepted as-is,
+      mitigation deferred to post-launch (see below). Full reasoning in
+      `PAYMENTS_SPEC.md` §13. **§13 now has zero open items — nothing left
+      blocking the start of Stripe integration (§9 step 2) on the
+      decisions front.**
+- [ ] **Lifetime reserve percentage.** The mechanism is decided (a % of
+      each lifetime sale, held separately — see above), but not the
+      actual number. Needs an owner call before the lifetime tier is
+      turned on for real sales — not urgent today since nothing sells
+      yet, but don't let it slip to "after the first lifetime sale."
 
 ## D1 migration (2026-08-28 — done, live in production and staging)
 
@@ -206,6 +218,14 @@ blocks, no `env.ENTITLEMENTS` references left anywhere in `worker/`.
       deliberately deferred until OAuth verification fully resolved
       (2026-08-05); CASA being parked rather than resolved means this is
       still on hold, not forgotten.
+- [ ] **Automate refunds**, 2026-08-28 owner call — manual via Stripe
+      dashboard is fine to launch with; revisit once volume makes that
+      painful. `PAYMENTS_SPEC.md` §13.
+- [ ] **Trial abuse mitigation**, 2026-08-28 owner call — new Google
+      accounts can restart the 7-day trial indefinitely today, accepted
+      deliberately at launch. Candidate approach when it's worth building:
+      tie trial eligibility to a Stripe Radar payment-method fingerprint
+      or a device signal. `PAYMENTS_SPEC.md` §13.
 
 ## Product ideas, raised 2026-08-24 — not scoped, not started
 

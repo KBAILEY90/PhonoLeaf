@@ -331,16 +331,22 @@ These need answers before coding, not during.
   `worker/wrangler.toml`, live on `*.workers.dev`, per §9) — though it
   holds no real entitlement data yet (not called from the app), so this is
   a clean swap, not a data migration. See `TODO.md` for the task list.
-
-**Still open:**
-1. **Refund mechanics.** The ToS promises a 14-day web money-back window.
-   Manual (owner issues refunds in the Stripe dashboard) or automated? Manual
-   is fine at low volume and needs no code — but it needs to actually happen
-   within 14 days.
-2. **Lifetime shutdown reserve.** The ToS commits to a 12-month refund window
-   for lifetime buyers if the product is discontinued. That is a real
-   liability against revenue that should not be spent as profit — decide the
-   reserve policy before selling any.
-3. **Trial abuse.** §3 accepts that new Google accounts can restart the trial.
-   Confirm that is still acceptable, since it is a deliberate choice rather
-   than an oversight.
+- **Refund mechanics: manual for now.** Owner issues refunds via the
+  Stripe dashboard within the 14-day web window. No code needed at
+  launch. **Automating this is deliberately deferred, not forgotten** —
+  logged as a post-launch item in `TODO.md`, worth revisiting once volume
+  makes manual handling painful.
+- **Lifetime shutdown reserve: a percentage of each lifetime sale, held
+  separately.** Mechanism decided — a fixed % (or the $129 price minus a
+  margin) of every lifetime purchase gets set aside in a separate
+  account/ledger line, untouched until that sale's 12-month refund window
+  closes, rather than a lump sum or no formal reserve. **The exact
+  percentage is still undecided** — needs a real number before the
+  lifetime tier goes live for actual sales, tracked in `TODO.md`.
+- **Trial abuse: accepted as-is for now, mitigation deferred.** New
+  Google accounts can still restart the 7-day trial indefinitely,
+  matching the ToS language already drafted. Not being fixed now, but
+  not being ignored either — logged as a post-launch item in `TODO.md`
+  (candidate approach: tie trial eligibility to a Stripe Radar
+  payment-method fingerprint or device signal, real engineering work when
+  it's worth doing).
