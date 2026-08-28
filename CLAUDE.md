@@ -629,6 +629,18 @@ only ONE of them.**
   Entirely local; **no push is involved, and pushing does not ship it**.
   Conversely a change to `index.green.html` alone never reaches the website.
 
+- **Current branch state (2026-08-28)**: this whole native/web split, plus
+  every redesign item logged below, is committed on `redesign/native-
+  android-ship` (pushed to origin, not merged) — **not on `main`**.
+  `main`/`origin/main` still point at `d1fc64e`, identical to what's live
+  on phonoleaf.com right now. The owner has already run `npm run sync` and
+  verified the redesign locally, and is doing the Android Studio build /
+  Play Console upload themselves from that branch's working tree. Merging
+  this branch into `main` and pushing is a separate, not-yet-taken step —
+  it WOULD change the live website (the branch's `index.html` picked up a
+  desktop-column CSS fix), so don't merge/push to `main` without the owner
+  explicitly asking for that specific step.
+
 - A second Claude session has also pushed to `main` in the past — always
   `git fetch` and check `git log HEAD..origin/main` before pushing, rebase
   rather than clobber.
