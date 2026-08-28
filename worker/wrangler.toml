@@ -2,6 +2,16 @@ name = "phonoleaf-entitlement"
 main = "src/index.js"
 compatibility_date = "2025-06-01"
 
+# Explicit rather than left to Wrangler's defaults (2026-08-28, after the
+# first `deploy` warned both were unset). No custom domain exists for
+# production yet, so it needs workers.dev; Preview URLs (a separate public
+# URL per deployed version, persisting even after a newer version ships)
+# add exposed surface this backend doesn't have a use for — `wrangler dev`
+# covers local testing and the staging environment below covers
+# pre-production testing, so there's no gap this would fill.
+workers_dev = true
+preview_urls = false
+
 # Cloudflare D1: entitlement records, keyed by sub_hash (PAYMENTS_SPEC.md §2).
 # Migrated off KV (2026-08-28) — D1 turned out both strongly consistent AND
 # cheaper per-operation than KV at any scale this app will realistically
@@ -59,6 +69,12 @@ TRIAL_DAYS = "7"
 routes = [
   { pattern = "api.staging.phonoleaf.com", custom_domain = true }
 ]
+# Reachable ONLY via the custom domain above — a workers.dev fallback
+# would defeat the point of keeping staging on a separate, deliberately
+# chosen URL (§12), and Preview URLs are off for the same
+# minimal-surface reasoning as production above.
+workers_dev = false
+preview_urls = false
 
 [env.staging.vars]
 GOOGLE_CLIENT_ID = "88179965472-codmbgtm99mgik9qke2kucbvfkbug3ul.apps.googleusercontent.com"
