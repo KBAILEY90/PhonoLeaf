@@ -4620,3 +4620,134 @@ only the file-copy half (`stage:test`) was verified directly (`www/index.html`
 confirmed byte-identical to `index.green.html` afterward). To go back to
 the real app, run the normal `npm run sync` again — it re-stages the real
 `index.html` and overwrites the test copy.
+
+## Redesign test page — Phase 2/3, all four items (2026-08-28)
+
+Owner asked to build all four items Phase 1 had explicitly scoped out
+(storage manager, in-book search, motion/gesture system, accessibility
+pass). All in `index.green.html` only — `index.html` untouched throughout.
+Planned formally (read-only research via three parallel Explore agents,
+then a written plan the owner reviewed and approved) before any code was
+written, given the size — four separate features, one large single-file
+app. Built and committed one at a time, each independently verified.
+
+**Motion/gesture system**: added `--motion-fast: 0.15s` / `--motion-base:
+0.25s` / `--motion-slow: 0.4s` / `--motion-ease: ease` custom properties
+near `:root`, formalizing the duration tiers the app's ~20 transitions/
+animations already clustered into rather than picking new values. All 20
+rules now reference the tokens; the two `linear` progress-bar fills
+(`.tts-prog-fill`, `#tts-prog`) normalized to the shared `ease` — the one
+intentional visual-timing change, everything else a 1:1 substitution.
+Deliberately left untouched: `spin`/`tapfb` (continuous-loop/one-shot
+effects outside the fast/base/slow taxonomy — forcing them into a tier
+would have changed their felt duration, which the plan didn't authorize),
+and page-turn animation entirely — see the gotcha below. The blanket
+`prefers-reduced-motion` override needed no changes: it clamps computed
+`animation-duration`/`transition-duration` regardless of whether the
+source is a literal or a `var()`.
+
+**Found mid-plan, not part of the original ask**: `index.green.html`
+already contained an experimental page-turn slide animation (`@keyframes
+pageNext`/`pagePrev`, `.turn-next`/`.turn-prev`, `_turnAnim()`) that does
+**not** exist in the live `index.html` and isn't mentioned anywhere in
+this file before now. The code's own comment calls it a "v1... first
+pass." This sits in real tension with this file's own "Page turns are
+instant, not animated... do not re-attempt without reading history first"
+gotcha (see the Reader/page-turning section) — that gotcha is about
+`index.html`; whether/how it should apply to `index.green.html`'s already-
+started experiment was never decided. Left completely untouched and
+explicitly excluded from the new motion system given the extensive
+documented fragility of page-turn logic elsewhere (blank-page skip,
+forward-overshoot corrector, generation guards, background-mode
+handling). **Still needs an owner decision** — finish the v1 experiment,
+port the "instant" behavior here instead, or drop it — before this
+redesign is ever merged into `index.html`.
+
+**Accessibility pass**: a fresh, from-scratch audit (not the ~40-label
+list from the original Claude Design source, which isn't accessible from
+an agent session — that file lives locally on the owner's machine).
+Fixed: the Stats bar chart's `.bar` elements were click-only with just a
+`title` tooltip, now real `role="button" tabindex="0"` with a dynamic
+`aria-label`; two Settings toggles ("Keep screen on", "Follow along
+highlighting") had their visible label in a sibling, unassociated `div`,
+now linked via `aria-labelledby`; the theme and app-language segmented
+controls in Settings were missing `role="group"`, added to match the
+sign-in language toggle and library-view toggle, which already had it.
+**A real, previously undocumented bug found in the process**: every
+static `aria-label` in the file (27 of them) was hardcoded English
+regardless of the app's language setting, while dynamic ones already
+flowed through `I18n.t()` — French screen-reader users were getting
+English announcements throughout the app. Fixed by introducing a
+`data-i18n-aria-label` attribute, handled by `I18n.apply()` the same way
+`data-i18n-title`/`data-i18n-placeholder` already are, and migrating all
+27 to it — reusing existing `STRINGS` keys where the text already matched
+(`lib_view_2/3/4/table`, `follow_along`, `chapters_title`, `next`,
+`search_placeholder`, `voiceinfo_title`, `app_language`, `theme`) and
+adding 18 new EN/FR keys where it didn't. Owner call: the "EN"/"FR"
+language-toggle buttons keep their bare two-letter text, no added
+`aria-label`, even though every other icon-only/ambiguous control got one.
+
+**Storage manager ("On this phone")**: new Settings row opens a
+`StorageModal`, deliberately mirroring `MyData.deleteAll()`'s exact sweep
+list (the authoritative "what PhonoLeaf stores locally" inventory) so the
+two can't drift apart — cached books (from `BookCache`'s existing
+`pl_offline_books` index, which already records exact per-book bytes, no
+new measurement needed), voice packs (native only, sized via
+`VoicePacks`' existing `approxBytes` estimate table — a static per-model
+number on the Kotlin side, not a live disk scan, called out as "approx."
+in the UI), cover cache, and connected folders. `CoverCache` had no
+size/clear helper before this — added `CoverCache.size()` (a cursor-sum
+over the `covers` IndexedDB store, since every entry is a Blob with no
+existing per-item index to read) and `CoverCache.clear()` (an object-store
+clear, faster to reopen from than `MyData.deleteAll()`'s
+`indexedDB.deleteDatabase`). Connected-folder detection checks both Drive
+(`activeFolder()`) and a local device folder (`LocalBooks.folderInfo()`)
+independently, since `FolderChooser` already lets both be connected at
+once — an earlier draft only checked Drive and would have silently missed
+a local-only connection. New `fmtBytes()` helper routes sizes through
+`STRINGS` (`kb`/`mb`/`gb` keys) so the unit itself is localized (French
+"Ko"/"Mo"/"Go"), not just the number; verified its threshold/rounding
+behavior — including true-zero vs. rounds-to-zero — with an isolated Node
+harness before wiring it in.
+
+**In-book full-text search**: new search button in the reader top bar,
+next to Chapters. Lazy, per-book, in-memory indexing (no persistence
+across sessions) that deliberately reuses `TTS`'s already-proven
+spine-walk/extraction/CFI machinery instead of reinventing it: walks
+`book.spine.spineItems`, reading the currently-rendered section straight
+from the live iframe (`TTS._currentSectionChunksWithNodes`) and every
+other section via `section.load()` + `TTS._sectionSegments`'s
+block-grouped extraction (`TTS._loadSectionChunksWithNodes`) — the exact
+same "never `section.load()` the live section" rule `TTS`'s own
+background reader depends on already, since doing so corrupts epub.js's
+internal reference for later `display()` calls. Yields between sections
+via a chunked `setTimeout(fn, 0)` loop (no `requestIdleCallback` precedent
+existed anywhere in this codebase, and support is inconsistent across the
+WebView/Safari targets this app cares about) so indexing a long book never
+blocks the UI; results render incrementally as each section finishes,
+guarded by a build-token counter so switching books mid-index discards the
+stale build cleanly instead of racing it. Case-insensitive substring
+match, ~40 characters of context on each side, capped at 200 results.
+Jump-to-result builds a DOM `Range` over the matching chunk's source block
+element and calls `section.cfiFromRange(range)` — the exact mechanism
+`TTS._bgCfi()` already uses — then routes through `TTS.skipPage` the same
+way `ChapterModal.jump()` does, so playback state stays consistent.
+Verified the matching/highlighting logic (substring search across
+sections, excerpt truncation with correct ellipsis placement, the offset
+math that positions `<mark>`, the 200-result cap, and — the one real
+injection-adjacent risk in this feature — that highlight markup escapes
+the before/match/after pieces of an excerpt independently rather than
+indexing into an already-escaped string, which would have been wrong the
+moment an excerpt contained `&`/`<`/`>` near a match) with an isolated
+Node harness run against code confirmed byte-identical to what shipped.
+
+**Verified throughout, all four items**: the documented syntax check
+(`node -e "...compileFunction..."`) and a `<style>` block brace-balance
+check after every single edit, not just at the end; new `STRINGS` keys
+checked for accidental duplicate definitions; new HTML markup checked for
+tag balance. **Not device/real-book tested** — this environment has no
+way to run the app end-to-end (no real EPUB/Google account/Android
+device), same limitation as every other feature built without device
+access in this file's history. All four features stay confined to
+`index.green.html`; porting any of Phase 1/2/3 into the live `index.html`
+remains a separate, deliberate decision nothing here makes automatically.

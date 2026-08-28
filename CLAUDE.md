@@ -100,17 +100,31 @@ The inline script is organized into plain object "modules": `CONFIG`,
 A standalone, unlinked file (not part of the live app, not precached) for
 testing a deeper visual redesign ("Green Ink"/"Shelf" direction, sourced
 from a Claude Design project) before committing to it. `index.html` is
-untouched by it. Currently **Phase 1 only**: tab bar renamed (Now/Shelves/
-Log/You — display labels only, internal `Nav`/`data-tab` identifiers
-unchanged), sharp `2px`-corner visual system, sign-in feature-row copy, and
-a dedicated type-to-confirm `EraseModal` for `MyData.deleteAll()`. Also
-fixed here (a general, pre-existing gap, not redesign-specific): every
-`<button>`/`<input>`/`<select>`/`<textarea>` needs an explicit
-`appearance: none` reset, or Safari/WebView renders native rounded chrome
-regardless of `border-radius`. **Not yet ported to the real `index.html`.**
-See `CLAUDE_HISTORY.md` for the full Phase 1/2/3 scope split and what's
-still outstanding (storage manager, in-book search, motion/gesture system,
-full accessibility pass) before treating this as done.
+untouched by it. **Phase 1, 2, and 3 all shipped here as of 2026-08-28**:
+Phase 1 — tab bar renamed (Now/Shelves/Log/You — display labels only,
+internal `Nav`/`data-tab` identifiers unchanged), sharp `2px`-corner visual
+system, sign-in feature-row copy, a dedicated type-to-confirm `EraseModal`
+for `MyData.deleteAll()`, and (a general, pre-existing gap, not
+redesign-specific) an `appearance: none` reset on every
+`<button>`/`<input>`/`<select>`/`<textarea>`. Phase 2/3 — a
+`--motion-fast/base/slow/ease` CSS token system (deliberately excluding
+page-turn animation, see the gotcha below), an accessibility pass
+(including localizing every `aria-label` via a new `data-i18n-aria-label`
+convention — they were all hardcoded English before this), a storage
+manager ("On this phone" in Settings), and lazy in-book full-text search
+(reader top bar). **Still not ported to the real `index.html`** — that
+stays a separate, deliberate future decision. See `CLAUDE_HISTORY.md` for
+the full build/verification trail of each phase.
+
+**Gotcha found during Phase 2/3, unresolved**: `index.green.html` already
+carries an undocumented experimental page-turn slide animation
+(`pageNext`/`pagePrev` keyframes, `_turnAnim()`) that predates the Phase
+2/3 work and does not exist in the live `index.html`. It sits in tension
+with the "Page turns are instant, not animated... do not re-attempt
+without reading history first" gotcha below, which is about `index.html`.
+Left untouched and explicitly excluded from the new motion system —
+needs a deliberate decision (finish it, port the "instant" behavior here
+instead, or drop it) before this redesign is ever merged into `index.html`.
 `scratchpad`-style working files (`design_redesign.dc.html`,
 `PhonoLeaf Redesign.dc.html`) are local reference copies of the Claude
 Design source, not part of the shipped app.

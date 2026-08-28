@@ -178,9 +178,40 @@ blocks, no `env.ENTITLEMENTS` references left anywhere in `worker/`.
       question, not mechanical**: follow-up 6, whether the `@Voice`
       comparison page needs a different frame since it's the one
       competitor whose positioning already overlaps PhonoLeaf's directly.
-- [ ] **App redesign exploration with the `design` skill.** Ready whenever
-      wanted — needs a scoping conversation first (which screens/flows,
-      what direction), not a blind "redesign everything" pass.
+- [x] **Redesign Phase 2/3, all four items, done 2026-08-28**
+      (`index.green.html` only, still not ported to `index.html`):
+      - **Motion/gesture system**: `--motion-fast/base/slow/ease` CSS
+        tokens, formalizing the durations the app's ~20 transitions
+        already clustered into. Deliberately excludes page-turn animation
+        (`pageNext`/`pagePrev`/`_turnAnim`) — see the flag below.
+      - **Accessibility pass**: Stats bar chart keyboard/aria gap, two
+        unlinked Settings toggles, two segmented controls missing
+        `role="group"`, and a real bug found along the way — every static
+        `aria-label` in the file was hardcoded English regardless of app
+        language; introduced `data-i18n-aria-label` and localized all 27.
+      - **Storage manager** ("On this phone"): new Settings screen showing
+        cached books, voice packs, cover cache (new `CoverCache.size()`/
+        `clear()`), and connected folders, mirroring `MyData.deleteAll()`'s
+        sweep list so the inventory can't drift from what erase-everything
+        actually clears.
+      - **In-book full-text search**: lazy per-book in-memory indexing
+        reusing TTS's spine-walk/CFI machinery, chunked so indexing a long
+        book never blocks the UI, jump-to-result via the same
+        `cfiFromRange` mechanism `TTS._bgCfi()` already uses.
+      **Flagged, not resolved**: `index.green.html` already had an
+      undocumented experimental page-turn slide animation pre-dating this
+      work (`pageNext`/`pagePrev`/`_turnAnim`), which sits in tension with
+      `CLAUDE.md`'s "page turns are instant, not animated... do not
+      re-attempt without reading history" gotcha for the real app. Left
+      untouched and excluded from the new motion system — worth a
+      deliberate decision (port it, finish it, or drop it) before this
+      redesign is ever merged into `index.html`, not something to resolve
+      as a side effect of Phase 2/3.
+      **Not yet done**: porting any of Phase 1/2/3 into the live
+      `index.html` — still a separate, deliberate future decision, not
+      automatic. Also not done: device/real-book testing of the new
+      screens (this was built and verified by inspection/local checks
+      only, per `CLAUDE.md`'s no-test-suite convention).
 - [x] **Stale doc cleanup**, surfaced 2026-08-20, **done 2026-08-28**:
       `BACKLOG.md` section H (Kokoro-on-strong-devices) now marked DONE
       with a pointer to `CLAUDE.md`'s "Voice engine" section; section F's
