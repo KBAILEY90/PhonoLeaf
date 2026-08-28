@@ -107,12 +107,12 @@ blocks, no `env.ENTITLEMENTS` references left anywhere in `worker/`.
       still works, an unseen hash reads as `none` not an error, and every
       bound DB call used bare `?` placeholders with no stray
       concatenation).
-- [ ] **Create the real D1 databases** (production `phonoleaf-entitlement`
-      + staging `phonoleaf-entitlement-staging`) and paste their ids into
-      `wrangler.toml` in place of the placeholders — needs the owner's
-      Cloudflare login (`npx wrangler login`), same as the original KV
-      namespace creation did. Exact commands in `worker/README.md` "Local
-      setup".
+- [x] **Created the real D1 databases**, 2026-08-28 (owner, via
+      `npx wrangler login` + `wrangler d1 create`): production
+      `phonoleaf-entitlement` (`b5c17050-89e4-490d-98d4-10d8ab3dcaf8`) and
+      staging `phonoleaf-entitlement-staging`
+      (`4b5de02b-d72d-41e3-9cbb-bc2932eca035`). Both ids are now in
+      `worker/wrangler.toml`, replacing the placeholders.
 - [ ] **Apply the migration to both real databases** (`wrangler d1
       migrations apply <name> --remote`, or `npm run db:migrate:remote`
       for production).

@@ -7,12 +7,12 @@ compatibility_date = "2025-06-01"
 # cheaper per-operation than KV at any scale this app will realistically
 # hit; see PAYMENTS_SPEC.md §13 for the full reasoning.
 #
-# Create the database once (needs a Cloudflare login — `npx wrangler login`
-# first if you haven't), then paste the id it prints below in place of the
-# REPLACE_ME placeholder:
-#   npx wrangler d1 create phonoleaf-entitlement
-# Apply the schema (migrations/0001_create_entitlements.sql):
+# Database created 2026-08-28 (`npx wrangler d1 create phonoleaf-entitlement`).
+# Still needed before this is live: apply the schema
+# (migrations/0001_create_entitlements.sql) to the real database, then
+# deploy:
 #   npx wrangler d1 migrations apply phonoleaf-entitlement --remote
+#   npx wrangler deploy
 # For local dev, `wrangler dev` runs entirely against a local emulated D1
 # file (no cloud auth needed, never touches production data) — apply the
 # same migration locally first:
@@ -20,7 +20,7 @@ compatibility_date = "2025-06-01"
 [[d1_databases]]
 binding = "DB"
 database_name = "phonoleaf-entitlement"
-database_id = "REPLACE_ME_RUN_WRANGLER_D1_CREATE"
+database_id = "b5c17050-89e4-490d-98d4-10d8ab3dcaf8"
 migrations_dir = "migrations"
 
 [vars]
@@ -66,10 +66,11 @@ GOOGLE_ANDROID_CLIENT_ID = "88179965472-cs9869nsk2b9i00v5ebo8sd9mrq9kmmn.apps.go
 TRIAL_DAYS = "7"
 
 # Own database from production (§12: a leak during a third-party security
-# scan against staging can't touch real entitlement data). Create with:
-#   npx wrangler d1 create phonoleaf-entitlement-staging
+# scan against staging can't touch real entitlement data). Created
+# 2026-08-28. Apply the schema + deploy the same way as production above,
+# targeting this database name and --env staging.
 [[env.staging.d1_databases]]
 binding = "DB"
 database_name = "phonoleaf-entitlement-staging"
-database_id = "REPLACE_ME_RUN_WRANGLER_D1_CREATE"
+database_id = "4b5de02b-d72d-41e3-9cbb-bc2932eca035"
 migrations_dir = "migrations"

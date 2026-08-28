@@ -29,14 +29,14 @@ system and without compromising the privacy story.
 **Decided 2026-08-28 (§13): D1, not KV.** Migrated the same day —
 `worker/src/entitlement.js` now runs parameterized D1 queries against an
 `entitlements` table (`migrations/0001_create_entitlements.sql`), keyed on
-`sub_hash` just like the KV record it replaces. **Code-complete, not yet
-deployed**: creating the real D1 database needs a Cloudflare login this
-environment doesn't have (`wrangler.toml` carries a
-`REPLACE_ME_RUN_WRANGLER_D1_CREATE` placeholder id) — see `worker/README.md`
-"Local setup" for the exact commands the owner still needs to run
-(`wrangler d1 create`, then `wrangler d1 migrations apply` remote + local),
-tracked in `TODO.md`. Verified so far only via local D1 emulation (no cloud
-auth required for that).
+`sub_hash` just like the KV record it replaces. **Databases created**
+(owner, 2026-08-28): both production (`phonoleaf-entitlement`) and staging
+(`phonoleaf-entitlement-staging`) exist, real ids are in `wrangler.toml`.
+**Still not deployed**: the schema migration hasn't been applied to either
+real database yet, and neither Worker has been redeployed — see
+`worker/README.md` "Local setup" for the exact commands, tracked in
+`TODO.md`. Verified so far only via local D1 emulation (no cloud auth
+required for that).
 
 A single Worker (the DNS is already at Cloudflare) with a D1 database,
 `entitlements` table keyed by `sub_hash`:
