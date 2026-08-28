@@ -962,6 +962,7 @@
     .stat b { font: 1.4rem ui-monospace, Menlo, monospace; font-weight: 400; display: block; }
     .stat span { font-size: 0.64rem; color: var(--text-dim); }
     .sec-label { font-size: 0.82rem; font-weight: 500; margin-bottom: 0.65rem; display: flex; justify-content: space-between; align-items: center; }
+    .storage-total { font-size: 0.95rem; font-weight: 600; color: var(--text-dim); margin-bottom: 1rem; }
     .sec-label a { font-size: 0.72rem; color: var(--accent); cursor: pointer; font-weight: 400; }
     .cover-row { display: flex; gap: 0.7rem; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 0.3rem; }
     .cr-item { flex: 0 0 88px; cursor: pointer; }
@@ -1445,6 +1446,10 @@
          there is no server to request anything from. -->
     <div class="set-group">
       <div class="set-row">
+        <div><div class="sr-k" data-i18n="storage_title">On this phone</div><div class="sr-sub" data-i18n="storage_sub">See what's using space, free some up</div></div>
+        <button class="set-link" data-i18n="view" onclick="StorageModal.open()">View</button>
+      </div>
+      <div class="set-row">
         <div><div class="sr-k" data-i18n="export_data">Export my data</div><div class="sr-sub" data-i18n="export_data_sub">Download everything stored on this device</div></div>
         <button class="set-link" data-i18n="export" onclick="MyData.export()">Export</button>
       </div>
@@ -1593,6 +1598,16 @@
     <div class="modal-handle"></div>
     <div class="modal-title" data-i18n="chapters_title">Chapters</div>
     <div id="chapter-list"></div>
+  </div>
+</div>
+
+<!-- ============== STORAGE MODAL ("On this phone") ============== -->
+<div class="modal-backdrop" id="storage-modal" onclick="StorageModal.close(event)">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title" data-i18n="storage_title">On this phone</div>
+    <div id="storage-total" class="storage-total"></div>
+    <div id="storage-sections"></div>
   </div>
 </div>
 
@@ -1923,6 +1938,18 @@ function esc(s) {
   return String(s ?? '').replace(/[&<>"']/g, c => _escMap[c]);
 }
 
+// Human-readable byte size for the storage manager — routes through
+// STRINGS (kb/mb/gb keys) so the unit itself is localized too (French
+// uses "Ko"/"Mo"/"Go", not "KB"/"MB"/"GB").
+function fmtBytes(bytes) {
+  const b = bytes || 0;
+  // Math.max(1, ...) only kicks in for a genuinely non-zero size that would
+  // otherwise round down to 0 KB — true zero stays "0 KB", not "1 KB".
+  if (b < 1024 * 1024) return I18n.t('kb', { kb: b === 0 ? 0 : Math.max(1, Math.round(b / 1024)) });
+  if (b < 1024 * 1024 * 1024) return I18n.t('mb', { mb: Math.round(b / (1024 * 1024) * 10) / 10 });
+  return I18n.t('gb', { gb: Math.round(b / (1024 * 1024 * 1024) * 10) / 10 });
+}
+
 // --- Theme ------------------------------------------------
 const Theme = {
   mode() { try { return localStorage.getItem('pl_theme') || 'auto'; } catch (_) { return 'auto'; } },
@@ -2133,6 +2160,13 @@ const STRINGS = {
     aria_group_breakdown: 'Group breakdown by', aria_continue: 'Continue {name}',
     aria_open_folder: 'Open folder {name}', aria_open_book: 'Open {name}',
     stat_bar_aria: '{label}: {minutes}',
+    // Storage manager ("On this phone")
+    storage_title: 'On this phone', storage_sub: "See what's using space, free some up",
+    view: 'View', storage_total_line: 'Using {total} total',
+    storage_books: 'Cached books', storage_packs: 'Voice packs', storage_covers: 'Cover images',
+    storage_folder: 'Connected folder', storage_folder_connected: 'Connected: {name}',
+    storage_none: 'None cached', clear: 'Clear', kb: '{kb} KB', gb: '{gb} GB',
+    storage_covers_cleared: 'Cover cache cleared',
     reset_stats_confirm: 'Are you sure you want to reset your listening data? This cannot be undone.', reset: 'Reset',
     choose_books_folder: 'Choose your books folder',
     fb_currently: 'Currently: {folder} — open a folder to browse, then tap “Use this folder”.',
@@ -2352,6 +2386,13 @@ const STRINGS = {
     aria_group_breakdown: 'Regrouper par', aria_continue: 'Continuer {name}',
     aria_open_folder: 'Ouvrir le dossier {name}', aria_open_book: 'Ouvrir {name}',
     stat_bar_aria: '{label} : {minutes}',
+    // Gestionnaire de stockage (« Sur cet appareil »)
+    storage_title: 'Sur cet appareil', storage_sub: 'Voir ce qui prend de la place, en libérer',
+    view: 'Afficher', storage_total_line: 'Utilise {total} au total',
+    storage_books: 'Livres en cache', storage_packs: 'Packs de voix', storage_covers: 'Images de couverture',
+    storage_folder: 'Dossier connecté', storage_folder_connected: 'Connecté : {name}',
+    storage_none: 'Aucun élément en cache', clear: 'Effacer', kb: '{kb} Ko', gb: '{gb} Go',
+    storage_covers_cleared: 'Cache des couvertures vidé',
     reset_stats_confirm: 'Voulez-vous vraiment réinitialiser vos données d’écoute ? Cette action est irréversible.', reset: 'Réinitialiser',
     choose_books_folder: 'Choisissez votre dossier de livres',
     fb_currently: 'Actuellement : {folder} — ouvrez un dossier pour le parcourir, puis touchez « Utiliser ce dossier ».',
@@ -4669,6 +4710,37 @@ const CoverCache = {
       const db = await this._open();
       await new Promise(resolve => {
         const req = db.transaction('covers', 'readwrite').objectStore('covers').delete(key);
+        req.onsuccess = () => resolve();
+        req.onerror  = () => resolve();
+      });
+    } catch (_) {}
+  },
+  // Storage manager support (no existing size/clear helper before this —
+  // every entry is a Blob, so a cursor sum is the only way to get a real
+  // total; there's no per-book index to read like BookCache's pl_offline_books).
+  async size() {
+    try {
+      const db = await this._open();
+      return await new Promise(resolve => {
+        let total = 0;
+        const cur = db.transaction('covers', 'readonly').objectStore('covers').openCursor();
+        cur.onsuccess = e => {
+          const c = e.target.result;
+          if (c) { total += (c.value && c.value.size) || 0; c.continue(); }
+          else resolve(total);
+        };
+        cur.onerror = () => resolve(total);
+      });
+    } catch (_) { return 0; }
+  },
+  // Clears the object store (not indexedDB.deleteDatabase, which
+  // MyData.deleteAll() uses — a store clear is faster to reopen from,
+  // and covers regenerate automatically on next view either way).
+  async clear() {
+    try {
+      const db = await this._open();
+      await new Promise(resolve => {
+        const req = db.transaction('covers', 'readwrite').objectStore('covers').clear();
         req.onsuccess = () => resolve();
         req.onerror  = () => resolve();
       });
@@ -7702,6 +7774,105 @@ const ChapterModal = {
   close(e) {
     if (!e || e.target.classList.contains('modal-backdrop'))
       document.getElementById('chapter-modal').classList.remove('open');
+  },
+};
+
+// --- Storage manager ("On this phone") ----------------------
+// Mirrors MyData.deleteAll()'s exact sweep list (the authoritative "what
+// PhonoLeaf stores locally" inventory) so nothing here is missing or
+// invented: cached books, voice packs, cover cache, connected folder.
+const StorageModal = {
+  _PACK_LABEL: { us: 'lang_en_us', gb: 'lang_en_gb', fr: 'lang_fr', de: 'lang_de', es: 'lang_es', kokoro: 'lang_en' },
+
+  async open() {
+    document.getElementById('storage-modal').classList.add('open');
+    await this.render();
+  },
+  close(e) {
+    if (!e || e.target.classList.contains('modal-backdrop'))
+      document.getElementById('storage-modal').classList.remove('open');
+  },
+
+  _section(label, bodyHTML) {
+    return `<div class="sec-label">${esc(label)}</div>${bodyHTML}`;
+  },
+  _row(name, size, removeCall, actionLabel) {
+    const right = removeCall
+      ? `<button class="set-link danger" onclick="${removeCall}">${esc(actionLabel || I18n.t('remove'))}</button>`
+      : `<span class="sr-sub">${esc(size)}</span>`;
+    return `<div class="set-row"><div><div class="sr-k">${esc(name)}</div>${removeCall ? `<div class="sr-sub">${esc(size)}</div>` : ''}</div>${right}</div>`;
+  },
+  _empty() {
+    return `<div class="set-row"><div class="sr-sub">${esc(I18n.t('storage_none'))}</div></div>`;
+  },
+
+  async render() {
+    // Cached books — pl_offline_books already stores exact bytes per book,
+    // no measurement needed. Cross-reference State.books for a display name
+    // (a book removed from the library but still cached falls back to its id).
+    const idx = BookCache._index();
+    const bookRows = Object.keys(idx).map(id => {
+      const meta = (State.books || []).find(b => b.id === id);
+      const name = (meta?.name || id).replace(/\.epub$/i, '');
+      return { id, name, bytes: idx[id].bytes || 0 };
+    }).sort((a, b) => b.bytes - a.bytes);
+    const booksTotal = bookRows.reduce((s, r) => s + r.bytes, 0);
+
+    // Voice packs — native only. approxBytes is a static per-model estimate
+    // table on the Kotlin side, not a live disk scan (see PhonoLeafTtsPlugin.kt).
+    // refresh() is safe/cheap to call every render (skips models it already
+    // knows) — needed here since nothing guarantees LangPacksModal.open()
+    // (the only other place that populates _status) already ran this session.
+    const packsAvailable = VoicePacks.available();
+    let packRows = [], packsTotal = 0;
+    if (packsAvailable) {
+      await VoicePacks.refresh();
+      packRows = VoicePacks.ALL_PACK_MODELS
+        .filter(m => VoicePacks._status[m]?.downloaded)
+        .map(m => ({ model: m, bytes: VoicePacks._status[m].approxBytes || 0 }));
+      packsTotal = packRows.reduce((s, r) => s + r.bytes, 0);
+    }
+
+    // Cover cache — no size/clear helper existed before this; see CoverCache.size/clear.
+    const coversBytes = await CoverCache.size();
+
+    // Connected folders — informational only, not a size. No disconnect
+    // action here, matching the existing deliberate design decision that
+    // folder disconnection isn't offered from Settings. Drive and a local
+    // device folder are independently connectable (see FolderChooser), so
+    // both are checked, not just one.
+    const connectedFolders = [activeFolder(), LocalBooks.folderInfo().name].filter(Boolean);
+
+    const grandTotal = booksTotal + packsTotal + coversBytes;
+    document.getElementById('storage-total').textContent = I18n.t('storage_total_line', { total: fmtBytes(grandTotal) });
+
+    document.getElementById('storage-sections').innerHTML = [
+      this._section(I18n.t('storage_books'), bookRows.length
+        ? bookRows.map(r => this._row(r.name, fmtBytes(r.bytes), `StorageModal.removeBook('${esc(r.id)}')`)).join('')
+        : this._empty()),
+      packsAvailable ? this._section(I18n.t('storage_packs'), packRows.length
+        ? packRows.map(r => this._row(I18n.t(this._PACK_LABEL[r.model] || r.model), fmtBytes(r.bytes), `StorageModal.removePack('${r.model}')`)).join('')
+        : this._empty()) : '',
+      this._section(I18n.t('storage_covers'), this._row(I18n.t('storage_covers'), fmtBytes(coversBytes), coversBytes ? `StorageModal.clearCovers()` : null, I18n.t('clear'))),
+      connectedFolders.length ? this._section(I18n.t('storage_folder'), connectedFolders.map(name =>
+        `<div class="set-row"><div class="sr-sub">${esc(I18n.t('storage_folder_connected', { name }))}</div></div>`).join('')) : '',
+    ].join('');
+  },
+
+  async removeBook(id) {
+    await BookCache.remove(id);
+    toast(I18n.t('removed_offline'));
+    Library._refreshOfflineBadge?.(id); // keep the library grid's download badge in sync
+    await this.render();
+  },
+  async removePack(model) {
+    await VoicePacks.remove(model); // already toasts + notifies on its own
+    await this.render();
+  },
+  async clearCovers() {
+    await CoverCache.clear();
+    toast(I18n.t('storage_covers_cleared'));
+    await this.render();
   },
 };
 
