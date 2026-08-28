@@ -57,13 +57,13 @@ don't let it go stale the way `BACKLOG.md`'s old "Next up" section did.
       strongly consistent (no post-payment paywall-flash risk) and cheaper
       per operation than KV at any scale PhonoLeaf will hit for a long time.
       Full reasoning and pricing numbers logged in `PAYMENTS_SPEC.md` §13.
-      **Code migration done same day** — see "D1 migration" below for
-      what's left (just the owner-side Cloudflare steps).
+      **Fully migrated and live as of 2026-08-28** — see "D1 migration"
+      below.
 - [ ] **Refund mechanics**, **lifetime shutdown reserve**, **trial abuse** —
       `PAYMENTS_SPEC.md` §13, all still open, needed before Stripe
       integration starts.
 
-## D1 migration (2026-08-28 — code done, deploy still owner-side)
+## D1 migration (2026-08-28 — done, live in production and staging)
 
 The entitlement Worker was already built and deployed (`worker/`, per
 `PAYMENTS_SPEC.md` §9) on Cloudflare KV. It held no real entitlement data
@@ -113,13 +113,22 @@ blocks, no `env.ENTITLEMENTS` references left anywhere in `worker/`.
       staging `phonoleaf-entitlement-staging`
       (`4b5de02b-d72d-41e3-9cbb-bc2932eca035`). Both ids are now in
       `worker/wrangler.toml`, replacing the placeholders.
-- [ ] **Apply the migration to both real databases** (`wrangler d1
-      migrations apply <name> --remote`, or `npm run db:migrate:remote`
-      for production).
-- [ ] **Redeploy** production + staging (`npm run deploy` /
-      `wrangler deploy --env staging`) once the above two are done. No
-      app-facing change — `GET /entitlement` and every other route's
-      contract is identical, this is purely what's behind them.
+- [x] **Applied the migration to both real databases**, 2026-08-28
+      (owner). Staging needed `--env staging` on the `migrations apply`
+      command (its D1 database is defined under
+      `[env.staging.d1_databases]`, not the top-level config) — hit and
+      fixed the "Couldn't find a D1 DB" error this caused, now documented
+      in `worker/README.md` and a `db:migrate:remote:staging` npm script
+      added so it doesn't happen again.
+- [x] **Redeployed** production + staging, 2026-08-28 (owner). Also made
+      `workers_dev`/`preview_urls` explicit in `wrangler.toml` in the same
+      pass (production: workers.dev on, Preview URLs off; staging:
+      neither — reachable only via its custom domain) after the first
+      deploy warned both were left to Wrangler's defaults. **D1 migration
+      is now fully complete and live** — KV is gone, both environments
+      run on D1 — production's `migrations apply --remote` reported
+      "No migrations to apply!" (already applied from an earlier pass),
+      and staging's succeeded once `--env staging` was added.
 
 ## Actionable now, no blockers
 

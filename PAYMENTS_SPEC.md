@@ -26,17 +26,20 @@ system and without compromising the privacy story.
 
 ## 2. Backend: Cloudflare Worker + D1
 
-**Decided 2026-08-28 (§13): D1, not KV.** Migrated the same day —
-`worker/src/entitlement.js` now runs parameterized D1 queries against an
+**Decided and fully migrated 2026-08-28 (§13): D1, not KV.**
+`worker/src/entitlement.js` runs parameterized D1 queries against an
 `entitlements` table (`migrations/0001_create_entitlements.sql`), keyed on
-`sub_hash` just like the KV record it replaces. **Databases created**
-(owner, 2026-08-28): both production (`phonoleaf-entitlement`) and staging
-(`phonoleaf-entitlement-staging`) exist, real ids are in `wrangler.toml`.
-**Still not deployed**: the schema migration hasn't been applied to either
-real database yet, and neither Worker has been redeployed — see
-`worker/README.md` "Local setup" for the exact commands, tracked in
-`TODO.md`. Verified so far only via local D1 emulation (no cloud auth
-required for that).
+`sub_hash` just like the KV record it replaces. **Live in both
+environments**: production (`phonoleaf-entitlement`) and staging
+(`phonoleaf-entitlement-staging`) databases created, migrated, and both
+Workers redeployed (owner, 2026-08-28) — KV is fully gone. See
+`TODO.md`'s "D1 migration" section for the full trail, including one
+real gotcha worth knowing if this is ever touched again: applying a
+migration to the staging database needs `--env staging` on the command
+(its `d1_databases` binding lives under `[env.staging]`, not the
+top-level config) — omitting it fails with "Couldn't find a D1 DB",
+now documented in `worker/README.md` and a `db:migrate:remote:staging`
+npm script.
 
 A single Worker (the DNS is already at Cloudflare) with a D1 database,
 `entitlements` table keyed by `sub_hash`:

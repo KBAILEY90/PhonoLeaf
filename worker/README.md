@@ -119,7 +119,12 @@ being bolted onto production under deadline pressure.
   with production, so a leak during a third-party security scan can't
   touch real entitlement data. Create + migrate it the same way as
   production (see "Local setup" above), substituting the staging database
-  name, then `npx wrangler d1 migrations apply phonoleaf-entitlement-staging --remote`.
+  name — **and add `--env staging`**, since this database is defined
+  under `[env.staging.d1_databases]`, not the top-level config:
+  `npx wrangler d1 migrations apply phonoleaf-entitlement-staging --remote --env staging`.
+  (Omitting `--env staging` fails with "Couldn't find a D1 DB with the
+  name or binding ... in your wrangler.toml file" — hit this exact error
+  2026-08-28, easy to repeat if this note isn't here.)
 - `wrangler.toml`'s `[env.staging]` block routes
   `api.staging.phonoleaf.com` to this environment via a Cloudflare
   **Custom Domain** (`custom_domain = true`), which self-provisions the
