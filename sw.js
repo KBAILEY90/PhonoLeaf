@@ -8,7 +8,7 @@
 // auto-saved on open plus an explicit "save for offline" control — a
 // separate, deliberate mechanism from anything in this file.
 
-const CACHE = 'phonoleaf-v56';
+const CACHE = 'phonoleaf-v57';
 const SHELL = [
   './',
   './index.html',

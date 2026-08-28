@@ -23,6 +23,14 @@ const FILES = [
   'manifest.json', 'sw.js',
   'home.html', 'privacy.html', 'terms.html',
   'home-fr.html', 'privacy-fr.html', 'terms-fr.html',
+  // The redesigned legal pages, staged under their own .green names (NOT
+  // substituted over privacy.html/terms.html the way index.green.html is
+  // over index.html) — index.green.html links to them by these exact
+  // names, so browser and native test builds resolve identically. The real
+  // privacy.html/terms.html above stay staged too: they're what the REAL
+  // index.html links to, and `npm run sync` must keep working unchanged.
+  'privacy.green.html', 'terms.green.html',
+  'privacy-fr.green.html', 'terms-fr.green.html',
 ];
 const DIRS = ['fonts', 'vendor'];
 

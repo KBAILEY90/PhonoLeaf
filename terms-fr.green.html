@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<!-- NO viewport-fit=cover — see privacy.green.html; matches the app so the
+     status-bar band behind the clock/battery is present and tinted the same. -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#EFE9DA" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0F1411" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%232F6B4F'/%3E%3Cpath d='M50 24 C68 38 68 66 50 82 C32 66 32 38 50 24 Z' fill='%23EFE9DA'/%3E%3Cpath d='M50 82 L50 90' stroke='%23EFE9DA' stroke-width='3.2' stroke-linecap='round'/%3E%3Cpath d='M35 53 Q40 42 45 53 T55 53 T65 53' fill='none' stroke='%232F6B4F' stroke-width='3.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<title>Conditions d'utilisation · PhonoLeaf</title>
+<script>
+(function () {
+  try {
+    var saved = localStorage.getItem('pl_lang');
+    if (saved === 'en') { location.replace('terms.green.html'); }
+  } catch (e) {}
+})();
+/* Mirror the app's own Light/Dark/Auto choice — see privacy.green.html for
+   the full rationale; same pl_theme key and same pre-paint pattern as
+   index.green.html's own init. */
+(function () {
+  try {
+    var t = localStorage.getItem('pl_theme');
+    if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
+  } catch (e) {}
+})();
+</script>
+<style>
+  :root {
+    --bg:        #EFE9DA;
+    --surface:   #F3EEE1;
+    --accent:    #2F6B4F;
+    --accent2:   #8C3B2F;
+    --text:      #17150F;
+    --text-dim:  #6B6455;
+    --line:      #D6CFBC;
+    --font-ui:   'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-read: 'Literata', Georgia, serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg:#0F1411; --surface:#121711;
+      --accent:#6FBF95; --accent2:#D07A6B;
+      --text:#E4EBE6; --text-dim:#7E8A83; --line:#24302A;
+    }
+  }
+  /* A forced Light/Dark choice in the app's Settings must win over the
+     device preference, exactly as it does in the app itself — same token
+     blocks, same source-order-wins pattern as index.green.html. */
+  [data-theme="light"] {
+    --bg:#EFE9DA; --surface:#F3EEE1;
+    --accent:#2F6B4F; --accent2:#8C3B2F;
+    --text:#17150F; --text-dim:#6B6455; --line:#D6CFBC;
+  }
+  [data-theme="dark"] {
+    --bg:#0F1411; --surface:#121711;
+    --accent:#6FBF95; --accent2:#D07A6B;
+    --text:#E4EBE6; --text-dim:#7E8A83; --line:#24302A;
+  }
+  @font-face {
+    font-family:'Manrope'; font-style:normal; font-weight:100 900;
+    font-display:swap; src:url('fonts/manrope.woff2') format('woff2');
+  }
+  @font-face {
+    font-family:'Literata'; font-style:normal; font-weight:100 900;
+    font-display:swap; src:url('fonts/literata.woff2') format('woff2');
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 400 0.94rem/1.65 var(--font-ui);
+    -webkit-font-smoothing: antialiased;
+  }
+  /* Header geometry matched to the app's own .app-header inside .scrolly —
+     see privacy.green.html for the full rationale. */
+  .wrap { max-width: 640px; margin: 0 auto; padding: 1.1rem 1.1rem 5rem; }
+  .topbar { display: flex; align-items: center; justify-content: space-between; padding-top: 0.2rem; margin-bottom: 2.1rem; }
+  .brand { display: flex; align-items: center; gap: 0.45rem; text-decoration: none; color: var(--text); }
+  .brand svg { flex-shrink: 0; }
+  .brand span { font: 600 0.82rem var(--font-ui); letter-spacing: -0.01em; color: var(--text); }
+  .langswitch { font: 0.78rem ui-monospace, Menlo, monospace; }
+  .langswitch a, .langswitch b { text-decoration: none; padding: 0.2rem 0.4rem; }
+  .langswitch a { color: var(--text-dim); }
+  .langswitch b { color: var(--accent); }
+  /* Same size/weight/tracking/top-margin as the app's shared .home-title. */
+  /* padding-top (not margin-top, which would collapse) matches
+     privacy.green.html — see its own comment. */
+  h1 { font: 400 1.625rem/1.15 var(--font-read); font-weight: 400; margin: 0 0 0.35rem; padding-top: 0.98rem; letter-spacing: -0.02em; }
+  .updated { color: var(--text-dim); font: 0.78rem ui-monospace, Menlo, monospace; margin-bottom: 1.8rem; }
+  section { padding: 1.3rem 0; border-top: 1px solid var(--line); }
+  section:last-of-type { border-bottom: 1px solid var(--line); }
+  h2 { font: 600 0.78rem var(--font-ui); letter-spacing: 0.04em; margin: 0 0 0.7rem; color: var(--accent); }
+  h3 { font: 600 0.82rem var(--font-read); margin: 1.1rem 0 0.45rem; color: var(--text); }
+  h3:first-child { margin-top: 0; }
+  p, li { color: var(--text); font-size: 0.88rem; }
+  p { margin: 0 0 0.8rem; }
+  p:last-child, ul:last-child { margin-bottom: 0; }
+  ul { margin: 0 0 0.8rem; padding-left: 1.2rem; }
+  li { margin-bottom: 0.4rem; }
+  strong { font-weight: 700; }
+  a { color: var(--accent); }
+  .foot { margin-top: 1.6rem; color: var(--text-dim); font-size: 0.8rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <a class="brand" href="home-fr.html">
+      <svg width="22" height="22" viewBox="0 0 100 100"><rect width="100" height="100" fill="#2F6B4F"/><path d="M50 24 C68 38 68 66 50 82 C32 66 32 38 50 24 Z" fill="#EFE9DA"/><path d="M50 82 L50 90" stroke="#EFE9DA" stroke-width="3.2" stroke-linecap="round"/><path d="M35 53 Q40 42 45 53 T55 53 T65 53" fill="none" stroke="#2F6B4F" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span>PhonoLeaf</span>
+    </a>
+    <div class="langswitch">
+      <a href="terms.green.html" onclick="try{localStorage.setItem('pl_lang','en')}catch(e){}">EN</a> ·
+      <b>FR</b>
+    </div>
+  </div>
+
+  <h1>Conditions d'utilisation</h1>
+  <div class="updated">En vigueur le 7 août 2026</div>
+
+  <p style="margin-bottom:1.3rem">En utilisant PhonoLeaf (« l'application »), vous acceptez les présentes conditions. Si vous ne les acceptez pas, veuillez ne pas utiliser l'application.</p>
+
+  <section>
+    <h2>Ceci n'est pas un avis juridique et n'a pas encore été révisé par un avocat</h2>
+    <p>Ce document a été rédigé pour décrire simplement le fonctionnement réel de PhonoLeaf. Avant de vous y fier à des fins de protection juridique, en particulier lorsque l'application quittera la phase de test et sera offerte au public, il est recommandé de le faire réviser par un avocat, notamment les sections sur la responsabilité et le droit applicable.</p>
+  </section>
+
+  <section>
+    <h2>Ce que fait l'application</h2>
+    <p>PhonoLeaf se connecte à un dossier de votre propre Google Drive, lit les fichiers epub qui s'y trouvent et vous les lit à voix haute au moyen d'une synthèse vocale exécutée sur votre appareil ou du moteur vocal intégré à celui-ci. L'application n'a aucun serveur ni infrastructure dorsale : elle fonctionne entièrement sur votre appareil et communique directement avec les services de Google.</p>
+  </section>
+
+  <section>
+    <h2>Votre compte et votre contenu</h2>
+    <ul>
+      <li>Vous êtes responsable de votre propre compte Google et des livres que vous choisissez de conserver dans votre Drive et d'y lire.</li>
+      <li>Vous devez détenir le droit de posséder et de lire tout fichier de livre que vous utilisez avec l'application. PhonoLeaf ne fournit, n'héberge ni ne distribue elle-même aucun contenu de livre.</li>
+      <li>L'application ne lit que le dossier que vous connectez explicitement, elle n'accède à aucune autre partie de votre Drive.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Utilisation acceptable</h2>
+    <p>Veuillez ne pas utiliser l'application pour tenter de perturber un service auquel elle se connecte (y compris les API de Google ou Open Library), de le rétro-concevoir à des fins malveillantes ou d'y obtenir un accès non autorisé.</p>
+  </section>
+
+  <section>
+    <h2>Aucune garantie</h2>
+    <p>PhonoLeaf est fournie « telle quelle » et « selon la disponibilité », sans garantie d'aucune sorte, expresse ou implicite, y compris, sans s'y limiter, les garanties de qualité marchande, d'adéquation à un usage particulier ou d'absence de contrefaçon. Nous ne garantissons pas que l'application sera ininterrompue, exempte d'erreurs ou compatible avec tous les appareils ou tous les fichiers de livre.</p>
+  </section>
+
+  <section>
+    <h2>Limitation de responsabilité</h2>
+    <p>Dans toute la mesure permise par la loi, la personne qui développe PhonoLeaf ne peut être tenue responsable des dommages indirects, accessoires, spéciaux ou punitifs, ni de toute perte de données découlant de votre utilisation de l'application. PhonoLeaf est un outil de lecture développé de façon indépendante, et non un service assorti d'une garantie de disponibilité ou de soutien.</p>
+  </section>
+
+  <section>
+    <h2>Droit applicable</h2>
+    <p>Les présentes conditions sont régies par les lois de la province de Québec et les lois fédérales du Canada qui y sont applicables, sans égard aux règles de conflit de lois. Si vous êtes un consommateur résidant au Québec, rien dans les présentes conditions ne limite les droits et protections que vous garantissent la <em>Loi sur la protection du consommateur</em> du Québec et les autres lois applicables en matière de protection du consommateur, lesquelles s'appliquent malgré toute disposition contraire des présentes; en cas de conflit entre une clause et ces protections impératives, ces protections prévalent.</p>
+  </section>
+
+  <section>
+    <h2>Tarifs et paiements</h2>
+    <!-- TODO : révision par un avocat, voir la section ci-dessus. Rédigé à partir
+         de BUSINESS.md §3; espaces réservés remplis avec USD / 14 jours /
+         30 jours / 12 mois comme valeurs de départ raisonnables, non encore
+         confirmées par un avocat. -->
+
+    <h3>Forfaits et prix</h3>
+    <p>PhonoLeaf est offerte sous forme d'abonnement payant à la suite d'un essai gratuit. Forfaits actuels (en dollars américains, taxes applicables en sus) :</p>
+    <ul>
+      <li><strong>Mensuel</strong> : 5,99 $ US par mois.</li>
+      <li><strong>Annuel</strong> : 49,99 $ US par année.</li>
+      <li><strong>Accès à vie « Membre fondateur »</strong> : un paiement unique de 129 $ US, offert en quantité limitée aux premiers abonnés (voir « Accès à vie » ci-dessous).</li>
+    </ul>
+    <p>Les prix sont affichés avant qu'un paiement vous soit demandé et peuvent changer avec le temps (voir « Modifications des prix »).</p>
+
+    <h3>Essai gratuit</h3>
+    <p>Les nouveaux abonnés peuvent commencer par un essai gratuit de 7 jours. <strong>À moins que vous ne l'annuliez avant la fin de l'essai, celui-ci se convertit automatiquement en abonnement payant</strong> (le forfait choisi) et votre mode de paiement est débité au prix alors en vigueur. Un seul essai par personne ou par compte. Vous pouvez annuler à tout moment pendant l'essai pour éviter d'être facturé (voir « Annulation »).</p>
+
+    <h3>Facturation et renouvellement automatique</h3>
+    <p>Les abonnements mensuels et annuels se <strong>renouvellent automatiquement</strong> à la fin de chaque période de facturation au prix alors en vigueur, et votre mode de paiement est débité, jusqu'à ce que vous annuliez. En vous abonnant, vous autorisez ces débits récurrents. Nous vous indiquerons le prix et la fréquence de facturation avant votre abonnement.</p>
+
+    <h3>Annulation</h3>
+    <p>Vous pouvez annuler à tout moment. L'annulation met fin aux renouvellements futurs; votre accès se poursuit jusqu'à la fin de la période déjà payée. Annulez depuis les paramètres de votre compte sur phonoleaf.com si vous vous êtes abonné sur le Web, ou depuis les paramètres d'abonnement de Google Play ou de l'App Store d'Apple si vous vous êtes abonné dans l'application.</p>
+
+    <h3>Remboursements</h3>
+    <p>Pour les abonnements achetés sur <strong>phonoleaf.com</strong> : si vous n'êtes pas satisfait, communiquez avec <a href="mailto:support@phonoleaf.com">support@phonoleaf.com</a> dans les <strong>14 jours</strong> suivant votre premier paiement pour obtenir un remboursement complet. Passé ce délai, les paiements déjà effectués ne sont pas remboursables, sauf lorsque la loi l'exige; l'annulation met fin aux débits futurs. Pour les achats effectués via le <strong>Google Play Store ou l'App Store d'Apple</strong>, les remboursements sont traités par cette boutique selon ses propres politiques, veuillez les demander à celle-ci.</p>
+
+    <h3>Accès à vie (« Membre fondateur »)</h3>
+    <p>Un achat d'accès à vie « Membre fondateur » est un paiement unique qui accorde l'accès pour la <strong>durée de vie du service PhonoLeaf</strong> (c'est-à-dire aussi longtemps que PhonoLeaf continue d'être offert) et non pour la durée de vie de l'acheteur. Il est lié à votre compte Google, n'est pas transférable et est offert en quantité limitée. Si PhonoLeaf est définitivement abandonné (voir « Disponibilité et abandon »), l'accès à vie prend fin à ce moment; les remboursements dans ce cas sont traités à cette section.</p>
+
+    <h3>Modifications des prix</h3>
+    <p>Nous pouvons modifier les prix des abonnements. Pour les abonnés existants, nous donnerons un préavis d'au moins <strong>30 jours</strong> avant qu'une modification de prix ne prenne effet à votre prochain renouvellement, et vous pourrez annuler avant cette date si vous n'êtes pas d'accord. Une modification de prix n'a aucune incidence sur un achat d'accès à vie déjà effectué.</p>
+
+    <h3>Taxes</h3>
+    <p>Les prix sont exprimés hors taxes, sauf indication contraire. Vous êtes responsable de toute taxe de vente, TVA, TPS/TVH/TVQ ou taxe similaire applicable, qui peut être ajoutée au moment du paiement ou perçue par la boutique d'applications.</p>
+
+    <h3>Disponibilité et abandon</h3>
+    <p>Nous pouvons modifier, suspendre ou abandonner PhonoLeaf (en tout ou en partie) moyennant un préavis raisonnable lorsque cela est possible. Si nous <strong>abandonnons définitivement</strong> le service : (a) pour les abonnés mensuels ou annuels, nous ne facturerons aucun renouvellement supplémentaire et rembourserons, lorsque cela est exigé ou raisonnable, la portion inutilisée d'une période prépayée; et (b) pour les acheteurs d'un accès à vie « Membre fondateur » au cours des <strong>12 mois</strong> précédents, nous accorderons un remboursement (complet ou calculé au prorata, à notre discrétion raisonnable). Notre responsabilité totale à l'égard du service est limitée aux sommes que vous nous avez versées au cours des <strong>12 mois</strong> précédant la réclamation, sauf lorsqu'une telle limite n'est pas permise par la loi.</p>
+
+    <h3>Achats via les boutiques d'applications</h3>
+    <p>Si vous achetez un abonnement ou un accès à vie via le Google Play Store ou l'App Store d'Apple, les conditions de cette boutique ainsi que ses politiques de facturation, d'annulation et de remboursement s'appliquent également et peuvent régir la transaction.</p>
+  </section>
+
+  <section>
+    <h2>Services de tiers</h2>
+    <p>L'application dépend de services qu'elle ne contrôle pas, principalement Google Drive / Connexion Google, et Open Library pour les métadonnées de livres. Leur disponibilité, leurs conditions et leurs pratiques de confidentialité leur sont propres; consultez les <a href="https://policies.google.com/terms" target="_blank" rel="noopener">Conditions d'utilisation de Google</a> pour la partie relative à Google.</p>
+  </section>
+
+  <section>
+    <h2>Modifications de l'application ou des présentes conditions</h2>
+    <p>L'application est en développement actif et peut évoluer; des fonctionnalités peuvent être ajoutées, modifiées ou retirées. Si les présentes conditions changent de façon importante, la version mise à jour sera publiée à la même adresse avec une nouvelle date d'entrée en vigueur.</p>
+  </section>
+
+  <section>
+    <h2>Résiliation</h2>
+    <p>Vous pouvez cesser d'utiliser l'application et révoquer son accès à votre compte Google à tout moment (Paramètres → Se déconnecter, ou directement via les <a href="https://myaccount.google.com/permissions" target="_blank" rel="noopener">autorisations de votre compte Google</a>). Nous pouvons également abandonner l'application à tout moment.</p>
+  </section>
+
+  <section>
+    <h2>Contact</h2>
+    <p>Questions au sujet des présentes conditions : <a href="mailto:support@phonoleaf.com">support@phonoleaf.com</a></p>
+  </section>
+
+  <div class="foot">
+    <a href="privacy-fr.green.html">Politique de confidentialité</a> · <a href="home-fr.html">Accueil PhonoLeaf</a>
+  </div>
+
+</div>
+</body>
+</html>

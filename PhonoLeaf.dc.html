@@ -1,0 +1,1162 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="_ds/phonoleaf-mobile-app-design-b39376b3-7df5-4898-b698-3fbcb8620fca/styles.css">
+  <script src="_ds/phonoleaf-mobile-app-design-b39376b3-7df5-4898-b698-3fbcb8620fca/_ds_bundle.js"></script>
+  <style>
+    body{margin:0;background:#e7e2d4;font-family:var(--font-ui,'Manrope',sans-serif);-webkit-tap-highlight-color:transparent}
+    a{color:var(--accent,#2F6B4F)}
+    a:hover{color:var(--accent2,#8C3B2F)}
+    ::-webkit-scrollbar{display:none}
+  </style>
+</helmet>
+
+<div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:40px 20px;box-sizing:border-box">
+
+  <div style="display:flex;align-items:center;gap:10px">
+    <span style="font:600 12px var(--font-ui,sans-serif);letter-spacing:.06em;text-transform:uppercase;color:#6b6455">PhonoLeaf — prototype</span>
+  </div>
+
+  <div style="width:393px;height:852px;border-radius:60px;background:#141311;box-shadow:0 30px 60px rgba(0,0,0,0.25);padding:14px;box-sizing:border-box;transform:translateZ(0)">
+    <div data-theme="{{ theme }}" style="width:100%;height:100%;border-radius:48px;overflow:hidden;background:var(--bg);position:relative;display:flex;flex-direction:column">
+
+      <div style="position:absolute;top:10px;left:50%;transform:translateX(-50%);width:96px;height:26px;border-radius:16px;background:#000;z-index:50"></div>
+
+      <sc-if value="{{ isNotPlayer }}" hint-placeholder-val="{{ true }}">
+        <div style="flex:none;display:flex;align-items:center;justify-content:space-between;padding:22px 20px 8px">
+          <div style="display:flex;align-items:center;gap:7px">
+            <img src="assets/phonoleaf-logo.svg" alt="PhonoLeaf" style="width:20px;height:20px;border-radius:4px;display:block" />
+            <span style="font:600 13px var(--font-ui);color:var(--text);letter-spacing:-0.01em">PhonoLeaf</span>
+          </div>
+          <span style="font:600 12px var(--font-mono);color:var(--text-dim)">9:41</span>
+        </div>
+
+        <sc-if value="{{ showBackBar }}" hint-placeholder-val="{{ false }}">
+          <div style="flex:none;display:flex;align-items:center;padding:0 16px 8px">
+            <x-import component-from-global-scope="PhonoLeafMobileAppDesign_b39376.IconButton" shape="square" tone="default" onClick="{{ goBack }}" hint-size="40px,40px">←</x-import>
+          </div>
+        </sc-if>
+
+        <div style="flex:1 1 auto;overflow-y:auto;overflow-x:hidden;padding:0 20px 20px">
+
+          <sc-if value="{{ isWelcome }}" hint-placeholder-val="{{ true }}">
+            <div style="min-height:600px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:6px;padding:20px 4px">
+              <img src="assets/phonoleaf-logo.svg" alt="PhonoLeaf" style="width:80px;height:80px;margin-bottom:10px" />
+              <div style="font:400 34px var(--font-read);color:var(--text);letter-spacing:-0.02em">PhonoLeaf</div>
+              <div style="font:15px var(--font-read);color:var(--text-dim);margin-bottom:6px">{{ tAppTagline }}</div>
+              <div style="font:13px/1.5 var(--font-ui);color:var(--text-dim);max-width:280px;margin-bottom:18px">{{ tSiLede }}</div>
+
+              <div style="width:100%;max-width:300px;display:flex;flex-direction:column;border-top:1px solid var(--line);margin-bottom:20px">
+                <sc-for list="{{ siSteps }}" as="step" hint-placeholder-count="3">
+                  <div style="display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid var(--line);text-align:left">
+                    <div style="font:11px var(--font-mono);color:var(--accent);flex:none;padding-top:2px">{{ step.num }}</div>
+                    <div>
+                      <div style="font:14px var(--font-read);color:var(--text)">{{ step.title }}</div>
+                      <div style="font:12px/1.4 var(--font-ui);color:var(--text-dim);margin-top:2px">{{ step.sub }}</div>
+                    </div>
+                  </div>
+                </sc-for>
+              </div>
+
+              <button onClick="{{ completeAuth }}" style="display:flex;align-items:center;justify-content:center;gap:10px;width:100%;max-width:300px;padding:13px 20px;background:#fff;color:#333;border:1px solid var(--line);border-radius:2px;font:600 14px var(--font-ui);cursor:pointer">
+                <svg width="18" height="18" viewBox="0 0 24 24">
+                  <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"></path>
+                  <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"></path>
+                  <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"></path>
+                  <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"></path>
+                </svg>
+                {{ tSignInGoogle }}
+              </button>
+
+              <div style="font:11px/1.5 var(--font-ui);color:var(--text-dim);max-width:280px;margin-top:16px"><strong>{{ tSiPrivacyB }}</strong> {{ tSiPrivacy }}</div>
+              <div style="font:11px var(--font-ui);color:var(--text-dim);margin-top:10px"><a href="javascript:void(0)" onClick="{{ goPrivacy }}">{{ tPrivacyLabel }}</a> · <a href="javascript:void(0)" onClick="{{ goTerms }}">{{ tTermsLabel }}</a></div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ isHome }}" hint-placeholder-val="{{ false }}">
+            <div style="padding-top:4px;display:flex;flex-direction:column;gap:24px">
+              <div>
+                <div style="font:600 12px var(--font-ui);letter-spacing:.06em;text-transform:uppercase;color:var(--text-dim)">{{ tGreetingKicker }}</div>
+                <div style="font:400 28px var(--font-read);color:var(--text);margin-top:2px">{{ userName }}</div>
+              </div>
+
+              <sc-if value="{{ showContinueListening }}" hint-placeholder-val="{{ false }}">
+                <div>
+                  <div style="font:600 13px var(--font-ui);color:var(--text);margin-bottom:12px">{{ tContinueListening }}</div>
+                  <div style="display:flex;gap:14px;overflow-x:auto;padding-bottom:4px">
+                    <sc-for list="{{ continueBooks }}" as="b" hint-placeholder-count="2">
+                      <div style="flex:none;width:120px">
+                        <div style="position:relative;--reveal:0" style-hover="--reveal:1">
+                          <x-import component-from-global-scope="PhonoLeafMobileAppDesign_b39376.BookCard" title="{{ b.title }}" author="{{ b.author }}" cover-color="{{ b.coverColor }}" onClick="{{ b.detailsClick }}" hint-size="120px,180px"></x-import>
+                          <div style="position:absolute;top:0;left:0;right:0;aspect-ratio:2/3;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;opacity:var(--reveal,0);transition:opacity .15s;background:rgba(0,0,0,0.4)">
+                            <div onClick="{{ b.playClick }}" style="background:var(--accent);color:#fff;font:600 11px var(--font-ui);padding:6px 10px;border-radius:2px;cursor:pointer">{{ tPlayShort }}</div>
+                            <div onClick="{{ b.detailsClick }}" style="background:none;color:#fff;border:1px solid #fff;font:600 11px var(--font-ui);padding:6px 10px;border-radius:2px;cursor:pointer">{{ tDetailsShort }}</div>
+                          </div>
+                        </div>
+                        <div style="margin-top:6px;height:3px;background:var(--track);border-radius:2px;overflow:hidden">
+                          <div style="height:100%;width:{{ b.progressPct }};background:var(--accent)"></div>
+                        </div>
+                        <div style="margin-top:4px;font:11px var(--font-mono);color:var(--text-dim);text-align:right">{{ b.progressPct }}</div>
+                      </div>
+                    </sc-for>
+                  </div>
+                </div>
+              </sc-if>
+
+              <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px">
+                <div style="background:var(--surface);border:1px solid var(--line);border-radius:2px;padding:16px;text-align:center">
+                  <div style="font:600 26px var(--font-mono);color:var(--accent)">{{ statStreak }}</div>
+                  <div style="font:11px var(--font-ui);color:var(--text-dim);margin-top:4px">{{ tStreakLabel }}</div>
+                </div>
+                <div style="background:var(--surface);border:1px solid var(--line);border-radius:2px;padding:16px;text-align:center">
+                  <div style="font:600 26px var(--font-mono);color:var(--accent)">{{ statMinutesWeek }}</div>
+                  <div style="font:11px var(--font-ui);color:var(--text-dim);margin-top:4px">{{ tMinutesWeekLabel }}</div>
+                </div>
+              </div>
+
+              <div>
+                <div style="font:600 13px var(--font-ui);color:var(--text);margin-bottom:12px">{{ tStillReadingLabel }}</div>
+                <div style="display:flex;flex-direction:column">
+                  <sc-for list="{{ stillReadingBooks }}" as="b" hint-placeholder-count="2">
+                    <div onClick="{{ b.detailsClick }}" style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line);cursor:pointer">
+                      <div style="width:40px;height:60px;flex:none;background:{{ b.coverColor }};border-radius:2px;display:flex;align-items:center;justify-content:center;color:var(--bg);font:400 1.3rem var(--font-read)">{{ b.initial }}</div>
+                      <div style="flex:1;min-width:0">
+                        <div style="font:600 14px var(--font-ui);color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ b.title }}</div>
+                        <div style="height:3px;background:var(--track);border-radius:2px;overflow:hidden;margin-top:6px">
+                          <div style="height:100%;width:{{ b.progressPct }};background:var(--accent)"></div>
+                        </div>
+                      </div>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ isSearch }}" hint-placeholder-val="{{ false }}">
+            <div style="padding-top:4px;display:flex;flex-direction:column;gap:18px">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+                <div style="font:400 26px var(--font-read);color:var(--text)">{{ tSearchTitle }}</div>
+                <div style="display:flex;gap:4px;flex:none">
+                  <sc-for list="{{ libraryViewOptions }}" as="v" hint-placeholder-count="4">
+                    <x-import component-from-global-scope="PhonoLeafMobileAppDesign_b39376.Chip" on="{{ v.active }}" onClick="{{ v.onClick }}" hint-size="auto,30px">{{ v.label }}</x-import>
+                  </sc-for>
+                </div>
+              </div>
+              <input value="{{ searchQuery }}" onInput="{{ onSearchInput }}" placeholder="{{ tSearchPlaceholder }}" style="font:15px var(--font-ui);color:var(--text);background:var(--surface);border:1px solid var(--line);border-radius:2px;padding:12px 14px" />
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <sc-for list="{{ genreChips }}" as="g" hint-placeholder-count="5">
+                  <x-import component-from-global-scope="PhonoLeafMobileAppDesign_b39376.Chip" on="{{ g.active }}" onClick="{{ g.onClick }}" hint-size="auto,32px">{{ g.label }}</x-import>
+                </sc-for>
+              </div>
+              <sc-if value="{{ isListView }}" hint-placeholder-val="{{ false }}">
+                <div style="display:flex;flex-direction:column">
+                  <sc-for list="{{ searchResults }}" as="b" hint-placeholder-count="4">
+                    <div onClick="{{ b.detailsClick }}" style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line);cursor:pointer">
+                      <div style="width:40px;height:60px;flex:none;background:{{ b.coverColor }};border-radius:2px;display:flex;align-items:center;justify-content:center;color:var(--bg);font:400 1.3rem var(--font-read)">{{ b.initial }}</div>
+                      <div style="flex:1;min-width:0">
+                        <div style="font:600 14px var(--font-ui);color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ b.title }}</div>
+                        <div style="font:12px var(--font-ui);color:var(--text-dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ b.author }}</div>
+                      </div>
+                    </div>
+                  </sc-for>
+                </div>
+              </sc-if>
+              <sc-if value="{{ isNotListView }}" hint-placeholder-val="{{ true }}">
+                <div style="display:grid;grid-template-columns:{{ shelvesGridTemplate }};gap:16px">
+                  <sc-for list="{{ searchResults }}" as="b" hint-placeholder-count="4">
+                    <div style="position:relative;min-width:0;--reveal:0" style-hover="--reveal:1">
+                      <x-import component-from-global-scope="PhonoLeafMobileAppDesign_b39376.BookCard" title="{{ b.title }}" author="{{ b.author }}" cover-color="{{ b.coverColor }}" onClick="{{ b.detailsClick }}" hint-size="100%,180px"></x-import>
+                      <div style="position:absolute;top:0;left:0;right:0;aspect-ratio:2/3;display:flex;flex-direction:{{ overlayDirection }};align-items:center;justify-content:center;gap:{{ overlayGap }};opacity:var(--reveal,0);transition:opacity .15s;background:rgba(0,0,0,0.4);padding:6px;box-sizing:border-box">
+                          <div onClick="{{ b.playClick }}" style="background:var(--accent);color:#fff;font:600 {{ overlayFontSize }} var(--font-ui);padding:{{ overlayPadding }};border-radius:2px;cursor:pointer;white-space:nowrap">{{ tPlayShort }}</div>
+                          <div onClick="{{ b.detailsClick }}" style="background:none;color:#fff;border:1px solid #fff;font:600 {{ overlayFontSize }} var(--font-ui);padding:{{ overlayPadding }};border-radius:2px;cursor:pointer;white-space:nowrap">{{ tDetailsShort }}</div>
+                      </div>
+                    </div>
+                  </sc-for>
+                </div>
+              </sc-if>
+              <sc-if value="{{ noResults }}" hint-placeholder-val="{{ false }}">
+                <div style="text-align:center;color:var(--text-dim);font:14px var(--font-ui);padding:30px 0">{{ tNoResults }}</div>
+              </sc-if>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ isPrivacy }}" hint-placeholder-val="{{ false }}">
+            <div style="padding-top:4px;display:flex;flex-direction:column;gap:16px">
+              <div style="font:400 26px var(--font-read);color:var(--text)">{{ tPrivacyTitle }}</div>
+              <div style="font:12px var(--font-ui);color:var(--text-dim)">{{ tPrivacyUpdated }}</div>
+              <div style="background:var(--accent);color:var(--bg);border-radius:2px;padding:14px;font:13px/1.6 var(--font-ui);box-shadow:var(--shadow-ink)"><strong>{{ tPrivacyShortLabel }}</strong> {{ tPrivacyShort }}</div>
+              <sc-for list="{{ privacySections }}" as="sec" hint-placeholder-count="6">
+                <div>
+                  <div style="font:600 14px var(--font-ui);color:var(--accent);margin-bottom:6px">{{ sec.heading }}</div>
+                  <div style="font:13px/1.6 var(--font-ui);color:var(--text)">{{ sec.body }}</div>
+                </div>
+              </sc-for>
+              <div style="font:12px var(--font-ui);color:var(--text-dim);border-top:1px solid var(--line);padding-top:16px">{{ tContactLabel }} <a href="javascript:void(0)">support@phonoleaf.com</a></div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ isTerms }}" hint-placeholder-val="{{ false }}">
+            <div style="padding-top:4px;display:flex;flex-direction:column;gap:16px">
+              <div style="font:400 26px var(--font-read);color:var(--text)">{{ tTermsTitle }}</div>
+              <div style="font:12px var(--font-ui);color:var(--text-dim)">{{ tTermsUpdated }}</div>
+              <sc-for list="{{ termsSections }}" as="sec" hint-placeholder-count="8">
+                <div>
+                  <div style="font:600 14px var(--font-ui);color:var(--accent);margin-bottom:6px">{{ sec.heading }}</div>
+                  <div style="font:13px/1.6 var(--font-ui);color:var(--text)">{{ sec.body }}</div>
+                </div>
+              </sc-for>
+              <div style="font:12px var(--font-ui);color:var(--text-dim);border-top:1px solid var(--line);padding-top:16px">{{ tContactLabel }} <a href="javascript:void(0)">support@phonoleaf.com</a></div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ isDetail }}" hint-placeholder-val="{{ false }}">
+            <div style="padding-top:4px;display:flex;flex-direction:column;gap:18px">
+              <div style="width:180px;height:270px;margin:0 auto;background:{{ selectedBook.coverColor }};border-radius:2px;box-shadow:var(--shadow-ink);display:flex;align-items:center;justify-content:center;color:var(--bg);font:400 4rem var(--font-read)">{{ selectedBook.initial }}</div>
+              <div style="text-align:center">
+                <div style="font:400 24px var(--font-read);color:var(--text)">{{ selectedBook.title }}</div>
+                <div style="font:14px var(--font-ui);color:var(--text-dim);margin-top:4px">{{ selectedBook.author }}</div>
+              </div>
+              <x-import component-from-global-scope="PhonoLeafMobileAppDesign_b39376.Button" variant="primary" onClick="{{ goPlayer }}" hint-size="100%,44px">{{ tPlayBtn }}</x-import>
+              <div>
+                <div style="font:600 12px var(--font-ui);letter-spacing:.04em;text-transform:uppercase;color:var(--text-dim);margin-bottom:8px">{{ tAboutLabel }}</div>
+                <div style="font:15px/1.6 var(--font-read);color:var(--text)">{{ selectedBook.description }}</div>
+              </div>
+              <div style="font:13px var(--font-mono);color:var(--text-dim)">{{ selectedBook.durationLabel }} · {{ selectedBook.genreLabel }}</div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ isStats }}" hint-placeholder-val="{{ false }}">
+            <div style="padding-top:4px;display:flex;flex-direction:column;gap:26px">
+              <div style="font:400 26px var(--font-read);color:var(--text)">{{ tStatsTitle }}</div>
+
+              <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px">
+                <div style="background:var(--surface);border:1px solid var(--line);border-radius:2px;padding:10px;text-align:center">
+                  <div style="font:600 17px var(--font-mono);color:var(--accent)">{{ statLibrary }}</div>
+                  <div style="font:10px var(--font-ui);color:var(--text-dim);margin-top:3px">{{ tLibraryLabel }}</div>
+                </div>
+                <div style="background:var(--surface);border:1px solid var(--line);border-radius:2px;padding:10px;text-align:center">
+                  <div style="font:600 17px var(--font-mono);color:var(--accent)">{{ statStarted }}</div>
+                  <div style="font:10px var(--font-ui);color:var(--text-dim);margin-top:3px">{{ tStartedLabel }}</div>
+                </div>
+                <div style="background:var(--surface);border:1px solid var(--line);border-radius:2px;padding:10px;text-align:center">
+                  <div style="font:600 17px var(--font-mono);color:var(--accent)">{{ statCompleted }}</div>
+                  <div style="font:10px var(--font-ui);color:var(--text-dim);margin-top:3px">{{ tCompletedLabel }}</div>
+                </div>
+                <div style="background:var(--surface);border:1px solid var(--line);border-radius:2px;padding:10px;text-align:center">
+                  <div style="font:600 17px var(--font-mono);color:var(--accent)">{{ statMinutesWeek }}</div>
+                  <div style="font:10px var(--font-ui);color:var(--text-dim);margin-top:3px">{{ tMinutesWeekLabel }}</div>
+                </div>
+                <div style="background:var(--surface);border:1px solid var(--line);border-radius:2px;padding:10px;text-align:center">
+                  <div style="font:600 17px var(--font-mono);color:var(--accent)">{{ statTotalMinutes }}</div>
+                  <div style="font:10px var(--font-ui);color:var(--text-dim);margin-top:3px">{{ tTotalMinutesLabel }}</div>
+                </div>
+                <div style="background:var(--surface);border:1px solid var(--line);border-radius:2px;padding:10px;text-align:center">
+                  <div style="font:600 17px var(--font-mono);color:var(--accent)">{{ statStreak }}</div>
+                  <div style="font:10px var(--font-ui);color:var(--text-dim);margin-top:3px">{{ tStreakLabel }}</div>
+                </div>
+              </div>
+
+              <div>
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+                  <div style="font:600 13px var(--font-ui);color:var(--text)">{{ tThisWeek }}</div>
+                  <div style="font:12px var(--font-mono);color:var(--accent)">{{ weekSelectedLabel }}</div>
+                </div>
+                <div style="display:flex;align-items:flex-end;gap:10px;height:120px">
+                  <sc-for list="{{ weekBars }}" as="d" hint-placeholder-count="7">
+                    <div onClick="{{ d.onClick }}" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end;cursor:pointer">
+                      <div style="width:100%;max-width:22px;height:{{ d.height }};background:{{ d.barColor }};border-radius:2px 2px 0 0"></div>
+                      <span style="font:11px var(--font-ui);color:{{ d.labelColor }}">{{ d.label }}</span>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+
+              <div>
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+                  <div style="font:600 13px var(--font-ui);color:var(--text)">{{ tBreakdownLabel }}</div>
+                  <select value="{{ statsDimension }}" onChange="{{ onDimensionChange }}" style="font:12px var(--font-ui);color:var(--text);background:var(--surface);border:1px solid var(--line);border-radius:2px;padding:6px 8px">
+                    <sc-for list="{{ dimensionOptions }}" as="d" hint-placeholder-count="4">
+                      <option value="{{ d.value }}">{{ d.label }}</option>
+                    </sc-for>
+                  </select>
+                </div>
+                <div style="display:flex;flex-direction:column;border:1px solid var(--line);border-radius:2px;overflow:hidden">
+                  <div style="display:flex;background:var(--surface);padding:8px 10px;font:600 10px var(--font-ui);letter-spacing:.04em;text-transform:uppercase;color:var(--text-dim)">
+                    <span style="flex:1.4">{{ tBreakdownLabel }}</span><span style="flex:1;text-align:right">{{ tMinLabel }}</span><span style="flex:1;text-align:right">{{ tStartedShort }}</span><span style="flex:1;text-align:right">{{ tReadShort }}</span>
+                  </div>
+                  <sc-for list="{{ breakdownRows }}" as="row" hint-placeholder-count="4">
+                    <div style="display:flex;padding:9px 10px;border-top:1px solid var(--line);font:12px var(--font-ui);color:var(--text)">
+                      <span style="flex:1.4;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ row.label }}</span>
+                      <span style="flex:1;text-align:right;font:12px var(--font-mono);color:var(--text-dim)">{{ row.minRead }}</span>
+                      <span style="flex:1;text-align:right;font:12px var(--font-mono);color:var(--text-dim)">{{ row.started }}</span>
+                      <span style="flex:1;text-align:right;font:12px var(--font-mono);color:var(--text-dim)">{{ row.read }}</span>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+
+              <div>
+                <button onClick="{{ resetListeningData }}" style="font:600 13px var(--font-ui);color:var(--accent2);background:none;border:1px solid var(--accent2);border-radius:2px;padding:10px 16px;cursor:pointer;width:100%">{{ tResetBtn }}</button>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ isSettings }}" hint-placeholder-val="{{ false }}">
+            <div style="padding-top:4px;display:flex;flex-direction:column">
+              <div style="font:400 26px var(--font-read);color:var(--text);margin-bottom:22px">{{ tSettingsTitle }}</div>
+
+              <div style="display:flex;flex-direction:column;padding:14px 0;gap:10px">
+                <div><div style="font:14px/1.3 var(--font-ui);color:var(--text)">{{ tThemeLabel }}</div><div style="font:12px var(--font-ui);color:var(--text-dim)">{{ tThemeSub }}</div></div>
+                <div style="display:flex;gap:6px">
+                  <x-import component-from-global-scope="PhonoLeafMobileAppDesign_b39376.Chip" on="{{ isThemeLight }}" onClick="{{ setThemeLight }}" hint-size="auto,32px">{{ tLightLabel }}</x-import>
+                  <x-import component-from-global-scope="PhonoLeafMobileAppDesign_b39376.Chip" on="{{ isThemeDark }}" onClick="{{ setThemeDark }}" hint-size="auto,32px">{{ tDarkLabel }}</x-import>
+                  <x-import component-from-global-scope="PhonoLeafMobileAppDesign_b39376.Chip" on="{{ isThemeAuto }}" onClick="{{ setThemeAuto }}" hint-size="auto,32px">{{ tAutoLabel }}</x-import>
+                </div>
+              </div>
+              <div style="display:flex;flex-direction:column;padding:14px 0;gap:10px;border-top:1px solid var(--line)">
+                <div><div style="font:14px var(--font-ui);color:var(--text)">{{ tAppLanguageLabel }}</div><div style="font:12px var(--font-ui);color:var(--text-dim)">{{ tAppLanguageSub }}</div></div>
+                <div style="display:flex;gap:6px">
+                  <x-import component-from-global-scope="PhonoLeafMobileAppDesign_b39376.Chip" on="{{ isLangEn }}" onClick="{{ setLangEn }}" hint-size="auto,32px">EN</x-import>
+                  <x-import component-from-global-scope="PhonoLeafMobileAppDesign_b39376.Chip" on="{{ isLangFr }}" onClick="{{ setLangFr }}" hint-size="auto,32px">FR</x-import>
+                </div>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px 0;border-top:1px solid var(--line)">
+                <span style="font:14px var(--font-ui);color:var(--text)">{{ tDefaultSpeedLabel }}</span>
+                <div style="position:relative">
+                  <x-import component-from-global-scope="PhonoLeafMobileAppDesign_b39376.Chip" onClick="{{ toggleSettingsSpeedMenu }}" hint-size="auto,32px">{{ speedLabel }}</x-import>
+                  <sc-if value="{{ settingsSpeedMenuOpen }}" hint-placeholder-val="{{ false }}">
+                    <div style="position:absolute;top:38px;right:0;background:var(--surface);border:1px solid var(--line);border-radius:2px;box-shadow:var(--shadow-ink);z-index:30;display:flex;flex-direction:column;min-width:64px;overflow:hidden">
+                      <sc-for list="{{ speedOptions }}" as="opt" hint-placeholder-count="5">
+                        <div onClick="{{ opt.onClick }}" style="padding:8px 12px;font:13px var(--font-mono);color:{{ opt.color }};cursor:pointer">{{ opt.label }}</div>
+                      </sc-for>
+                    </div>
+                  </sc-if>
+                </div>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px 0;border-top:1px solid var(--line)">
+                <div><div style="font:14px var(--font-ui);color:var(--text)">{{ tVoiceLabel }}</div><div style="font:12px var(--font-ui);color:var(--text-dim)">{{ tVoiceSub }}</div></div>
+                <button onClick="{{ openVoiceSheet }}" style="background:none;color:var(--accent);border:none;font:400 0.95rem var(--font-read);padding:2px;cursor:pointer">{{ tChangeLabel }}</button>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px 0;border-top:1px solid var(--line)">
+                <div><div style="font:14px var(--font-ui);color:var(--text)">{{ tKeepScreenOnLabel }}</div><div style="font:12px var(--font-ui);color:var(--text-dim)">{{ tKeepScreenOnSub }}</div></div>
+                <x-import component-from-global-scope="PhonoLeafMobileAppDesign_b39376.Chip" on="{{ keepScreenOn }}" onClick="{{ toggleKeepScreenOn }}" hint-size="auto,32px">{{ tOnLabel }}</x-import>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px 0;border-top:1px solid var(--line)">
+                <div><div style="font:14px var(--font-ui);color:var(--text)">{{ tFollowAlongLabel }}</div><div style="font:12px var(--font-ui);color:var(--text-dim)">{{ tFollowAlongSub }}</div></div>
+                <x-import component-from-global-scope="PhonoLeafMobileAppDesign_b39376.Chip" on="{{ followAlong }}" onClick="{{ toggleFollowAlong }}" hint-size="auto,32px">{{ tOnLabel }}</x-import>
+              </div>
+
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px 0;border-top:1px solid var(--line)">
+                <div style="position:relative"><div style="font:14px var(--font-ui);color:var(--text);display:flex;align-items:center;gap:4px">{{ tNaturalVoiceLabel }}<span onClick="{{ toggleNaturalVoiceInfo }}" style="color:var(--text-dim);cursor:pointer;font-size:12px">ⓘ</span></div><div style="font:12px var(--font-ui);color:var(--text-dim)">{{ tNaturalVoiceSub }}</div>
+                  <sc-if value="{{ naturalVoiceInfoOpen }}" hint-placeholder-val="{{ false }}">
+                    <div onClick="{{ closeNaturalVoiceInfo }}" style="position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:19"></div>
+                    <div style="position:absolute;top:100%;left:0;margin-top:6px;background:var(--surface);border:1px solid var(--line);border-radius:2px;box-shadow:var(--shadow-ink);padding:10px 12px;font:12px/1.5 var(--font-ui);color:var(--text);max-width:260px;z-index:20">{{ tNaturalVoiceInfo }}</div>
+                  </sc-if>
+                </div>
+                <button onClick="{{ retryNaturalVoice }}" style="background:none;border:none;font:400 0.95rem var(--font-read);padding:2px;cursor:pointer;color:{{ retryColor }}">{{ tRetryLabel }}</button>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px 0;border-top:1px solid var(--line)">
+                <div style="font:14px var(--font-ui);color:var(--text)">{{ tLanguagePacksLabel }}</div>
+                <button onClick="{{ openLangPacksSheet }}" style="flex:none;background:none;color:var(--accent);border:none;font:400 0.95rem var(--font-read);padding:2px;cursor:pointer">{{ tDownloadsLabel }}</button>
+              </div>
+
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px 0;border-top:1px solid var(--line)">
+                <div style="flex:1;min-width:0"><div style="font:14px var(--font-ui);color:var(--text)">{{ tExportDataLabel }}</div><div style="font:12px var(--font-ui);color:var(--text-dim)">{{ tExportDataSub }}</div></div>
+                <button onClick="{{ openExportSheet }}" style="flex:none;background:none;color:var(--accent);border:none;font:400 0.95rem var(--font-read);padding:2px;cursor:pointer">{{ tExportLabel }}</button>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px 0;border-top:1px solid var(--line)">
+                <div style="flex:1;min-width:0"><div style="font:14px var(--font-ui);color:var(--text)">{{ tDeleteDataLabel }}</div><div style="font:12px var(--font-ui);color:var(--text-dim)">{{ tDeleteDataSub }}</div></div>
+                <button onClick="{{ openDeleteSheet }}" style="flex:none;background:none;color:var(--accent2);padding:0.8rem 0.2rem;font-family:var(--font-read);font-weight:400;font-size:0.95rem;border:none;cursor:pointer">{{ tDeleteLabel }}</button>
+              </div>
+
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px 0;border-top:1px solid var(--line)">
+                <div><div style="font:14px var(--font-ui);color:var(--text)">{{ tGoogleAccountLabel }}</div><div style="font:12px var(--font-ui);color:var(--text-dim)">{{ tSignedInLabel }}</div></div>
+                <button onClick="{{ logout }}" style="background:none;color:var(--accent);border:none;font:400 0.95rem var(--font-read);padding:2px;cursor:pointer">{{ tSignOutLabel }}</button>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px 0;border-top:1px solid var(--line)">
+                <div><div style="font:14px var(--font-ui);color:var(--text)">{{ tBooksFolderLabel }}</div><div style="font:12px var(--font-ui);color:var(--text-dim)">{{ tBooksFolderSub }}</div></div>
+                <button onClick="{{ openFolderSheet }}" style="background:none;color:var(--accent);border:none;font:400 0.95rem var(--font-read);padding:2px;cursor:pointer">{{ tFolderActionLabel }}</button>
+              </div>
+
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px 0;border-top:1px solid var(--line)">
+                <div><div style="font:14px var(--font-ui);color:var(--text)">{{ tSendFeedbackLabel }}</div><div style="font:12px var(--font-ui);color:var(--text-dim)">{{ tSendFeedbackSub }}</div></div>
+                <button onClick="{{ openFeedbackSheet }}" style="background:none;color:var(--accent);border:none;font:400 0.95rem var(--font-read);padding:2px;cursor:pointer">{{ tOpenLabel }}</button>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px 0;border-top:1px solid var(--line)">
+                <div><div style="font:14px var(--font-ui);color:var(--text)">{{ tReportBugLabel }}</div><div style="font:12px var(--font-ui);color:var(--text-dim)">{{ tReportBugSub }}</div></div>
+                <button onClick="{{ openBugSheet }}" style="background:none;color:var(--accent);border:none;font:400 0.95rem var(--font-read);padding:2px;cursor:pointer">{{ tOpenLabel }}</button>
+              </div>
+
+              <div style="text-align:center;font:12px var(--font-ui);color:var(--text-dim);padding-top:22px">
+                {{ tFooterTagline }}<br/>
+                <a href="javascript:void(0)" onClick="{{ goPrivacy }}">{{ tPrivacyLabel }}</a> · <a href="javascript:void(0)" onClick="{{ goTerms }}">{{ tTermsLabel }}</a>
+              </div>
+            </div>
+          </sc-if>
+
+        </div>
+
+        <sc-if value="{{ showTabBar }}" hint-placeholder-val="{{ false }}">
+          <div style="flex:none">
+            <x-import component-from-global-scope="PhonoLeafMobileAppDesign_b39376.TabBar" tabs="{{ tabsList }}" active="{{ activeTab }}" onChange="{{ onTabChange }}" hint-size="100%,58px"></x-import>
+          </div>
+        </sc-if>
+      </sc-if>
+
+      <sc-if value="{{ isPlayer }}" hint-placeholder-val="{{ false }}">
+        <div style="position:relative;flex:1;display:flex;flex-direction:column;overflow:hidden">
+          <div onClick="{{ tapPage }}" style="flex:1;overflow-y:auto;padding:70px 28px 130px;cursor:pointer">
+            <div style="text-align:center;font:600 11px var(--font-ui);letter-spacing:.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:20px">{{ selectedBook.title }}</div>
+            <div style="font:17px/1.9 var(--font-read);color:var(--text)">
+              <sc-for list="{{ readerSentences }}" as="sen" hint-placeholder-count="6"><span style="background:{{ sen.bg }};color:{{ sen.color }};font-weight:{{ sen.weight }};padding:1px 2px;border-radius:2px;transition:background .3s">{{ sen.text }} </span></sc-for>
+            </div>
+          </div>
+
+          <sc-if value="{{ controlsVisible }}" hint-placeholder-val="{{ true }}">
+            <div style="position:absolute;top:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;padding:20px 16px 30px;background:linear-gradient(to bottom, var(--bg) 55%, transparent);pointer-events:none">
+              <div style="pointer-events:auto"><x-import component-from-global-scope="PhonoLeafMobileAppDesign_b39376.IconButton" shape="square" tone="default" onClick="{{ goBack }}" hint-size="40px,40px">←</x-import></div>
+              <div style="display:flex;align-items:center;gap:6px;pointer-events:auto">
+                <img src="assets/phonoleaf-logo.svg" alt="PhonoLeaf" style="width:18px;height:18px;border-radius:4px" />
+                <span style="font:600 12px var(--font-ui);color:var(--text)">PhonoLeaf</span>
+              </div>
+            </div>
+
+            <div style="position:absolute;bottom:0;left:0;right:0;background:var(--surface);border-top:1px solid var(--accent);padding:14px 20px 20px;display:flex;flex-direction:column;gap:14px">
+              <div>
+                <div onClick="{{ handleScrub }}" style="height:5px;background:var(--track);border-radius:3px;position:relative;cursor:pointer">
+                  <div style="height:100%;width:{{ progressPct }};background:var(--accent);border-radius:3px"></div>
+                </div>
+                <div style="display:flex;justify-content:space-between;margin-top:6px;font:11px var(--font-mono);color:var(--text-dim)">
+                  <span>{{ tPageLabel }} {{ currentPage }} / {{ totalPages }}</span><span>{{ progressPctNum }}%</span>
+                </div>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:center;gap:22px">
+                <x-import component-from-global-scope="PhonoLeafMobileAppDesign_b39376.IconButton" shape="round" tone="outline" onClick="{{ skipBack }}" hint-size="40px,40px">−15</x-import>
+                <x-import component-from-global-scope="PhonoLeafMobileAppDesign_b39376.IconButton" shape="round" tone="accent" size="{{ 60 }}" onClick="{{ togglePlay }}" hint-size="60px,60px">{{ playGlyph }}</x-import>
+                <x-import component-from-global-scope="PhonoLeafMobileAppDesign_b39376.IconButton" shape="round" tone="outline" onClick="{{ skipForward }}" hint-size="40px,40px">+15</x-import>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap">
+                <x-import component-from-global-scope="PhonoLeafMobileAppDesign_b39376.IconButton" shape="square" tone="default" onClick="{{ openSleepSheet }}" hint-size="36px,36px">☾</x-import>
+                <x-import component-from-global-scope="PhonoLeafMobileAppDesign_b39376.IconButton" shape="square" tone="default" onClick="{{ openChaptersSheet }}" hint-size="36px,36px">☰</x-import>
+                <x-import component-from-global-scope="PhonoLeafMobileAppDesign_b39376.IconButton" shape="square" tone="{{ followAlongTone }}" onClick="{{ toggleFollowAlong }}" hint-size="36px,36px">Aa</x-import>
+                <div style="position:relative">
+                  <x-import component-from-global-scope="PhonoLeafMobileAppDesign_b39376.Chip" onClick="{{ togglePlayerSpeedMenu }}" hint-size="auto,32px">{{ speedLabel }}</x-import>
+                  <sc-if value="{{ playerSpeedMenuOpen }}" hint-placeholder-val="{{ false }}">
+                    <div style="position:absolute;bottom:38px;left:0;background:var(--surface);border:1px solid var(--line);border-radius:2px;box-shadow:var(--shadow-ink);z-index:30;display:flex;flex-direction:column;min-width:64px;overflow:hidden">
+                      <sc-for list="{{ speedOptions }}" as="opt" hint-placeholder-count="5">
+                        <div onClick="{{ opt.onClick }}" style="padding:8px 12px;font:13px var(--font-mono);color:{{ opt.color }};cursor:pointer">{{ opt.label }}</div>
+                      </sc-for>
+                    </div>
+                  </sc-if>
+                </div>
+                <x-import component-from-global-scope="PhonoLeafMobileAppDesign_b39376.Chip" onClick="{{ openVoiceSheet }}" hint-size="auto,32px">{{ tVoiceChip }}</x-import>
+              </div>
+            </div>
+          </sc-if>
+        </div>
+      </sc-if>
+
+      <x-import component-from-global-scope="PhonoLeafMobileAppDesign_b39376.Sheet" open="{{ sleepSheetOpen }}" onClose="{{ closeSleepSheet }}" title="{{ tSleepTitle }}" hint-size="100%,auto">
+        <div style="position:relative;padding-top:4px">
+          <div style="position:absolute;top:-6px;right:0">
+            <x-import component-from-global-scope="PhonoLeafMobileAppDesign_b39376.Chip" on="{{ sleepIsChapterMode }}" onClick="{{ setSleepChapterMode }}" hint-size="auto,32px">{{ tSleepChapterOption }}</x-import>
+          </div>
+          <div style="text-align:center;font:13px var(--font-mono);color:var(--text-dim);margin-bottom:16px;padding-top:38px">{{ sleepSliderLabel }}</div>
+          <div onClick="{{ onSleepTrackClick }}" style="height:3px;background:var(--track);border-radius:2px;position:relative;cursor:pointer;margin:0 12px 8px">
+            <div style="height:100%;width:{{ sleepPct }};background:var(--accent);border-radius:2px"></div>
+            <div style="position:absolute;top:50%;left:{{ sleepPct }};width:22px;height:22px;background:var(--accent);border-radius:50%;transform:translate(-50%,-50%);box-shadow:var(--shadow-ink)"></div>
+          </div>
+        </div>
+      </x-import>
+
+      <x-import component-from-global-scope="PhonoLeafMobileAppDesign_b39376.Sheet" open="{{ chaptersSheetOpen }}" onClose="{{ closeChaptersSheet }}" title="{{ tChaptersTitle }}" hint-size="100%,auto">
+        <div style="display:flex;flex-direction:column">
+          <sc-for list="{{ chaptersList }}" as="ch" hint-placeholder-count="6">
+            <div onClick="{{ ch.onClick }}" style="display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--line);cursor:pointer;color:{{ ch.color }};font-weight:{{ ch.weight }}">
+              <span style="font:14px var(--font-ui)">{{ ch.label }}</span>
+              <span style="font:12px var(--font-mono);color:var(--text-dim)">{{ ch.timeLabel }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </x-import>
+
+      <x-import component-from-global-scope="PhonoLeafMobileAppDesign_b39376.Sheet" open="{{ voiceSheetOpen }}" onClose="{{ closeVoiceSheet }}" title="{{ tVoiceTitle }}" hint-size="100%,auto">
+        <div style="display:flex;flex-direction:column">
+          <sc-for list="{{ voiceOptions }}" as="v" hint-placeholder-count="4">
+            <div onClick="{{ v.onClick }}" style="display:flex;align-items:center;justify-content:space-between;padding:14px 4px;border-bottom:1px solid var(--line);cursor:pointer">
+              <span style="font:14px var(--font-ui);color:var(--text)">{{ v.label }}</span>
+              <span style="color:var(--accent);font:14px var(--font-ui);visibility:{{ v.checkVisibility }}">✓</span>
+            </div>
+          </sc-for>
+        </div>
+      </x-import>
+
+      <x-import component-from-global-scope="PhonoLeafMobileAppDesign_b39376.Sheet" open="{{ langPacksSheetOpen }}" onClose="{{ closeLangPacksSheet }}" title="{{ tLangPacksTitle }}" hint-size="100%,auto">
+        <div style="display:flex;flex-direction:column">
+          <sc-for list="{{ langPackOptions }}" as="p" hint-placeholder-count="3">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 4px;border-bottom:1px solid var(--line)">
+              <div>
+                <div style="font:14px var(--font-ui);color:var(--text)">{{ p.label }}</div>
+                <div style="font:12px var(--font-ui);color:var(--text-dim)">{{ p.sizeLabel }}</div>
+              </div>
+              <sc-if value="{{ p.downloaded }}" hint-placeholder-val="{{ false }}">
+                <button onClick="{{ p.onRemove }}" style="background:none;border:none;color:var(--accent2);font:600 12px var(--font-ui);padding:2px;cursor:pointer">{{ tRemoveLabel }}</button>
+              </sc-if>
+              <sc-if value="{{ p.notDownloaded }}" hint-placeholder-val="{{ true }}">
+                <button onClick="{{ p.onClick }}" style="background:none;border:none;color:var(--accent);font:600 12px var(--font-ui);padding:2px;cursor:pointer">{{ tDownloadLabel }}</button>
+              </sc-if>
+            </div>
+          </sc-for>
+        </div>
+      </x-import>
+
+      <x-import component-from-global-scope="PhonoLeafMobileAppDesign_b39376.Sheet" open="{{ exportSheetOpen }}" onClose="{{ closeExportSheet }}" title="{{ tExportDataLabel }}" hint-size="100%,auto">
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <div style="font:13px/1.6 var(--font-ui);color:var(--text-dim)">{{ tExportBody }}</div>
+          <x-import component-from-global-scope="PhonoLeafMobileAppDesign_b39376.Button" variant="primary" onClick="{{ confirmExport }}" hint-size="100%,44px">{{ tExportConfirm }}</x-import>
+        </div>
+      </x-import>
+
+      <x-import component-from-global-scope="PhonoLeafMobileAppDesign_b39376.Sheet" open="{{ deleteSheetOpen }}" onClose="{{ closeDeleteSheet }}" title="{{ tDeleteDataLabel }}" hint-size="100%,auto">
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <div style="font:13px/1.6 var(--font-ui);color:var(--text-dim)">{{ tDeleteBody }}</div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <label style="font:12px var(--font-ui);color:var(--text-dim)">{{ tDeleteTypeLabel }}</label>
+            <input type="text" value="{{ deleteConfirmText }}" onChange="{{ updateDeleteConfirmText }}" placeholder="{{ tDeleteWord }}" style="font:14px var(--font-ui);color:var(--text);background:var(--surface);border:1px solid var(--line);border-radius:2px;padding:10px 12px"/>
+          </div>
+          <button onClick="{{ confirmDelete }}" disabled="{{ deleteDisabled }}" style="width:100%;background:var(--accent2);color:#fff;border:none;border-radius:2px;font:600 14px var(--font-ui);padding:13px 20px;cursor:pointer;opacity:{{ deleteButtonOpacity }}">{{ tDeleteConfirm }}</button>
+        </div>
+      </x-import>
+
+      <x-import component-from-global-scope="PhonoLeafMobileAppDesign_b39376.Sheet" open="{{ folderSheetOpen }}" onClose="{{ closeFolderSheet }}" title="{{ tBooksFolderLabel }}" hint-size="100%,auto">
+        <div style="display:flex;flex-direction:column">
+          <sc-for list="{{ folderOptions }}" as="f" hint-placeholder-count="3">
+            <div onClick="{{ f.onClick }}" style="display:flex;align-items:center;justify-content:space-between;padding:14px 4px;border-bottom:1px solid var(--line);cursor:pointer">
+              <span style="font:14px var(--font-ui);color:var(--text)">{{ f.label }}</span>
+              <span style="color:var(--accent);font:400 0.9rem var(--font-read)">{{ f.actionLabel }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </x-import>
+
+      <x-import component-from-global-scope="PhonoLeafMobileAppDesign_b39376.Sheet" open="{{ driveFolderSheetOpen }}" onClose="{{ closeDriveFolderSheet }}" title="{{ tMyDriveLabel }}" hint-size="100%,auto">
+        <div style="display:flex;flex-direction:column">
+          <sc-for list="{{ driveFolders }}" as="d" hint-placeholder-count="3">
+            <div onClick="{{ d.onClick }}" style="display:flex;align-items:center;justify-content:space-between;padding:14px 4px;border-bottom:1px solid var(--line);cursor:pointer">
+              <span style="font:14px var(--font-ui);color:var(--text)">{{ d.label }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </x-import>
+      <input type="file" webkitdirectory="true" directory="true" multiple ref="{{ localFolderInputRef }}" onChange="{{ onLocalFolderPicked }}" style="display:none"/>
+
+      <x-import component-from-global-scope="PhonoLeafMobileAppDesign_b39376.Sheet" open="{{ feedbackSheetOpen }}" onClose="{{ closeFeedbackSheet }}" title="{{ tSendFeedbackLabel }}" hint-size="100%,auto">
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <textarea placeholder="{{ tFeedbackPlaceholder }}" rows="4" style="font:14px var(--font-ui);color:var(--text);background:var(--surface);border:1px solid var(--line);border-radius:2px;padding:12px 14px;resize:none"></textarea>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <label style="font:12px var(--font-ui);color:var(--text-dim)">{{ tYourEmailLabel }}</label>
+            <input type="email" value="{{ feedbackEmail }}" onChange="{{ updateFeedbackEmail }}" style="font:14px var(--font-ui);color:var(--text);background:var(--surface);border:1px solid var(--line);border-radius:2px;padding:10px 12px"/>
+          </div>
+          <x-import component-from-global-scope="PhonoLeafMobileAppDesign_b39376.Button" variant="primary" onClick="{{ closeFeedbackSheet }}" hint-size="100%,44px">{{ tSendLabel }}</x-import>
+        </div>
+      </x-import>
+
+      <x-import component-from-global-scope="PhonoLeafMobileAppDesign_b39376.Sheet" open="{{ bugSheetOpen }}" onClose="{{ closeBugSheet }}" title="{{ tReportBugLabel }}" hint-size="100%,auto">
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <textarea placeholder="{{ tBugPlaceholder }}" rows="4" style="font:14px var(--font-ui);color:var(--text);background:var(--surface);border:1px solid var(--line);border-radius:2px;padding:12px 14px;resize:none"></textarea>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <label style="font:12px var(--font-ui);color:var(--text-dim)">{{ tYourEmailLabel }}</label>
+            <input type="email" value="{{ bugEmail }}" onChange="{{ updateBugEmail }}" style="font:14px var(--font-ui);color:var(--text);background:var(--surface);border:1px solid var(--line);border-radius:2px;padding:10px 12px"/>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <label style="font:12px var(--font-ui);color:var(--text-dim)">{{ tAttachScreenshotLabel }}</label>
+            <label style="display:flex;align-items:center;justify-content:space-between;gap:10px;border:1px solid var(--line);border-radius:2px;padding:10px 12px;cursor:pointer">
+              <span style="font:14px var(--font-ui);color:var(--text-dim)">{{ bugFileLabel }}</span>
+              <span style="font:14px var(--font-ui);color:var(--accent)">{{ tChooseFileLabel }}</span>
+              <input type="file" accept="image/*" onChange="{{ updateBugFile }}" style="display:none"/>
+            </label>
+          </div>
+          <x-import component-from-global-scope="PhonoLeafMobileAppDesign_b39376.Button" variant="primary" onClick="{{ closeBugSheet }}" hint-size="100%,44px">{{ tSendLabel }}</x-import>
+        </div>
+      </x-import>
+
+    </div>
+  </div>
+
+  <div style="font:12px var(--font-ui);color:#8b8574">{{ footerHint }}</div>
+</div>
+</helmet>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;defaultTheme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;light&quot;,&quot;tsType&quot;:&quot;'light'|'dark'&quot;,&quot;options&quot;:[&quot;light&quot;,&quot;dark&quot;],&quot;section&quot;:&quot;Prototype defaults&quot;},&quot;defaultLanguage&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;en&quot;,&quot;tsType&quot;:&quot;'en'|'fr'&quot;,&quot;options&quot;:[&quot;en&quot;,&quot;fr&quot;],&quot;section&quot;:&quot;Prototype defaults&quot;},&quot;showContinueListening&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Prototype defaults&quot;}}">
+const COVER_COLORS = [
+  'oklch(52% 0.08 150)', 'oklch(48% 0.09 40)', 'oklch(60% 0.06 170)',
+  'oklch(55% 0.07 90)', 'oklch(50% 0.05 200)', 'oklch(46% 0.08 60)',
+  'oklch(58% 0.07 110)', 'oklch(44% 0.09 20)'
+];
+
+const GENRES = ['forest', 'ocean', 'mountain', 'meadow', 'rain'];
+const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
+const VOICES = [
+  { name: 'Camille', langKey: 'fr', genderKey: 'f' },
+  { name: 'Julien', langKey: 'fr', genderKey: 'm' },
+  { name: 'Nora', langKey: 'en', genderKey: 'f' },
+  { name: 'Idris', langKey: 'en', genderKey: 'm' }
+];
+const PACK_DISPLAY_NAME = {
+  en: { en: 'English', fr: 'Français', es: 'Español' },
+  fr: { en: 'Anglais', fr: 'Français', es: 'Espagnol' }
+};
+
+const READER_TEXT = {
+  en: "Morning came slowly to the valley, the way it always did when the fog lingered in the low fields. Birds moved between the hedges in small, unhurried bursts, and somewhere further off a gate creaked twice and went quiet. It was the kind of hour that asked for nothing, only that you noticed it passing. She pulled her coat tighter and kept walking, the path soft underfoot from last night's rain, glad for once to have nowhere in particular to be. Further up the slope, smoke rose thin and straight from a chimney she couldn't yet see.",
+  fr: "Le matin arrivait lentement dans la vallée, comme toujours lorsque la brume s'attardait sur les champs bas. Les oiseaux se déplaçaient entre les haies par petites envolées tranquilles, et plus loin un portail grinça deux fois avant de se taire. C'était une heure qui ne demandait rien, sinon d'être remarquée. Elle resserra son manteau et continua de marcher, le chemin amolli par la pluie de la veille, heureuse pour une fois de n'avoir nulle part où être. Plus haut sur la pente, une fumée fine montait droite d'une cheminée qu'elle ne voyait pas encore."
+};
+
+const BOOKS = [
+  { id: 'quiet-forest', genre: 'forest', author: 'Mara Lindqvist', durationMin: 402, chapterCount: 12,
+    title: { en: 'The Quiet Forest', fr: 'La Forêt Silencieuse' },
+    desc: { en: 'A slow wander through old-growth woods, told chapter by chapter like a walk you never want to end.', fr: 'Une lente promenade en forêt ancienne, racontée chapitre après chapitre comme une marche sans fin.' } },
+  { id: 'river-songs', genre: 'rain', author: 'Théo Aubert', durationMin: 318, chapterCount: 9,
+    title: { en: 'River Songs', fr: 'Chants de Rivière' },
+    desc: { en: 'Field notes and folk tales collected along a river, read with the sound of water underneath.', fr: 'Carnets de terrain et légendes recueillis le long d\u2019une rivière, lus au fil de l\u2019eau.' } },
+  { id: 'wildflower-hours', genre: 'meadow', author: 'Inès Moreau', durationMin: 276, chapterCount: 8,
+    title: { en: 'Wildflower Hours', fr: 'Heures de Fleurs Sauvages' },
+    desc: { en: 'A gentle almanac of meadow life, one short chapter per bloom.', fr: 'Un almanach doux de la vie des prairies, un court chapitre par floraison.' } },
+  { id: 'cedar-skies', genre: 'mountain', author: 'Sam Okafor', durationMin: 455, chapterCount: 14,
+    title: { en: 'Under Cedar Skies', fr: 'Sous les Cèdres' },
+    desc: { en: 'A mountain memoir about cedar groves, thin air, and long silences.', fr: 'Un mémoire de montagne sur les cédraies, l\u2019air rare et les longs silences.' } },
+  { id: 'salt-marsh', genre: 'ocean', author: 'Liu Wen', durationMin: 341, chapterCount: 10,
+    title: { en: 'The Salt Marsh Diaries', fr: 'Journal des Marais Salants' },
+    desc: { en: 'Tide-timed entries from a year spent watching herons and horizons.', fr: 'Des notes rythmées par les marées, une année passée à observer hérons et horizons.' } },
+  { id: 'mountain-almanac', genre: 'mountain', author: 'Ana Petrova', durationMin: 389, chapterCount: 11,
+    title: { en: 'Mountain Almanac', fr: 'Almanach de Montagne' },
+    desc: { en: 'Twelve months of weather, wildlife, and quiet routine above the treeline.', fr: 'Douze mois de météo, de faune et de routine tranquille au-dessus de la limite des arbres.' } },
+  { id: 'field-notes', genre: 'meadow', author: 'Owen Baptiste', durationMin: 254, chapterCount: 7,
+    title: { en: 'Field Notes at Dawn', fr: 'Carnets de l\u2019Aube' },
+    desc: { en: 'Short dawn observations meant to be listened to with your eyes still closed.', fr: 'De courtes observations matinales, à écouter les yeux encore fermés.' } },
+  { id: 'slow-orchard', genre: 'rain', author: 'Delphine Roy', durationMin: 298, chapterCount: 9,
+    title: { en: 'The Slow Orchard', fr: 'Le Verger Lent' },
+    desc: { en: 'A season in an old orchard, told at the pace fruit actually ripens.', fr: 'Une saison dans un vieux verger, racontée au rythme où mûrissent les fruits.' } }
+];
+
+const TRANSLATIONS = {
+  en: {
+    welcome: { tagline: 'Audiobooks for slow mornings and long walks.', cta: 'Get started', secondary: 'I already have an account' },
+    appTagline: 'A voice for every page',
+    siLede: 'Turn the ebooks already sitting in your Google Drive into an audiobook library.',
+    siSteps: [
+      { title: 'Connect a Drive folder', sub: "Pick the folder your ebooks are in — that's the only one PhonoLeaf reads." },
+      { title: 'Your library appears', sub: 'Every ebook in that folder, with its real cover art. Add more later and they show up on their own.' },
+      { title: 'Press play', sub: 'A natural voice reads aloud — even with the screen off — and remembers where you stopped.' }
+    ],
+    signInGoogle: 'Sign in with Google',
+    siPrivacyB: 'Read-only access.', siPrivacy: "PhonoLeaf never changes, uploads or deletes anything in your Drive. Voices are generated on your phone, and there's no server — your books go from Google straight to your device.",
+    privacyDoc: {
+      title: 'Privacy Policy', updated: 'Effective August 5, 2026', contactLabel: 'Questions? Contact',
+      shortLabel: 'The short version.', short: "PhonoLeaf has no server. There's nowhere for your data to go except between your device and Google's own services — we never receive, see, or store your books, Drive contents, or listening activity.",
+      sections: [
+        { heading: 'What the app accesses, and why', body: 'Read-only Drive access to list and download the epub files in the folder you choose; your Google display name for the Home greeting; titles/authors sent to Open Library for genre and page-count lookup; reading progress, stats and settings stored only on your device.' },
+        { heading: 'Google Drive access, specifically', body: "PhonoLeaf requests read-only access (drive.readonly) so new books in your folder appear automatically. It never modifies, deletes, or uploads anything to your Drive — it only reads the one folder you pick." },
+        { heading: 'Limited Use commitment', body: "PhonoLeaf's use of data from Google APIs adheres to the Google API Services User Data Policy, including Limited Use requirements: used only for the reading features shown here, never sold, never used for ads, and never used to train AI models." },
+        { heading: 'How we protect your data', body: 'Everything travels over HTTPS. Sign-in stays encrypted on your device. There is no central database to breach, since PhonoLeaf has no backend.' },
+        { heading: 'What we never do', body: "We don't run a server that receives your books or activity, don't sell or share your data, and don't send book text to any cloud speech service — voices are generated on your device." },
+        { heading: 'Your rights over your data', body: 'Settings → Export my data downloads everything saved on this device. Settings → Delete my data erases it and disconnects Google. Stats → Reset listening data clears just your history.' }
+      ]
+    },
+    termsDoc: {
+      title: 'Terms of Service', updated: 'Effective July 22, 2026',
+      sections: [
+        { heading: 'What the app does', body: "PhonoLeaf connects to a folder in your own Google Drive, reads the epub files it finds there, and reads them aloud on-device. It has no server — it runs entirely on your device." },
+        { heading: 'Your account and content', body: "You're responsible for your Google account and the books you store in your Drive. You must have the right to any book file you use with the app." },
+        { heading: 'Acceptable use', body: "Please don't use the app to disrupt or gain unauthorized access to any service it connects to." },
+        { heading: 'No warranty', body: 'PhonoLeaf is provided “as is,” without warranties of any kind, and we don’t guarantee uninterrupted or error-free operation.' },
+        { heading: 'Pricing & payments', body: 'PhonoLeaf offers a free trial followed by a paid subscription (monthly or annual) or a one-time Founding Member lifetime purchase. Subscriptions renew automatically until cancelled; refund windows and details are in the full policy.' },
+        { heading: 'Governing law', body: 'These terms are governed by the laws of Québec and Canada, without limiting any consumer protections you’re entitled to.' },
+        { heading: 'Changes & termination', body: 'The app may change over time. You can stop using it and revoke Drive access at any time from Settings.' }
+      ]
+    },
+    auth: { titleSignup: 'Create your account', titleLogin: 'Welcome back', name: 'Name', namePh: 'Your name', email: 'Email', emailPh: 'you@example.com', password: 'Password', passwordPh: '••••••••', or: 'or', apple: 'Continue with Apple', google: 'Continue with Google', submitSignup: 'Create account', submitLogin: 'Log in', switchLabel: 'Already have an account?', switchAction: 'Log in', switchLabelBack: 'New to PhonoLeaf?', switchActionBack: 'Sign up' },
+    tabs: { home: 'Now', shelves: 'Shelves', stats: 'Log', settings: 'You' },
+    home: { kicker: 'Good evening', continueListening: 'Continue listening', stillReading: 'Still growing', shelfForest: 'Forest & wild', shelfCalm: 'Calm evenings' },
+    search: { title: 'Shelves', placeholder: 'Search a title or author…', noResults: 'No books match your search.', listView: 'List',
+      genres: { forest: 'Forest', ocean: 'Ocean', mountain: 'Mountain', meadow: 'Meadow', rain: 'Rain' } },
+    detail: { play: 'Play', about: 'About this book' },
+    common: { play: 'Play', details: 'Details' },
+    player: { sleepChip: 'Sleep timer', chaptersChip: 'Chapters', followAlong: 'Follow along', voice: 'Voice', voiceTitle: 'Choose a narration voice', page: 'Page' },
+    sleep: { title: 'Sleep timer', off: 'Off', min: 'min', chapter: 'End of chapter' },
+    chapters: { title: 'Chapters', word: 'Chapter' },
+    stats: { title: 'Your stats', thisWeek: "This week's growth", library: 'Books in library', started: 'Books started', completed: 'Books completed', minutesWeek: 'Minutes this week', totalMinutes: 'Total minutes read', streak: 'Growth streak',
+      days: ['M', 'T', 'W', 'T', 'F', 'S', 'S'], breakdown: 'Browse by', minRead: 'Min read', startedShort: 'started', readShort: 'read',
+      dimensions: { author: 'Author', book: 'Book', length: 'Length', genre: 'Genre' },
+      lengths: { short: 'Short (<5h)', medium: 'Medium (5–7h)', long: 'Long (7h+)' },
+      resetBtn: 'Reset listening data', resetConfirm: 'Reset all listening data? This cannot be undone.' },
+    settings: { title: 'Settings', theme: 'Theme', themeSub: 'Light, dark, or match device', light: 'Light', dark: 'Dark', auto: 'Auto', appLanguage: 'App language', appLanguageSub: 'Translates the whole app', defaultSpeed: 'Default speed', voice: 'Voice', voiceSub: 'System default', change: 'Change', keepScreenOn: 'Keep screen on', keepScreenOnSub: 'While audio is playing', followAlong: 'Follow along highlighting', followAlongSub: "Highlight each word as it's read", on: 'On', naturalVoice: 'Upgraded voice', naturalVoiceSub: 'On — generated on your device', naturalVoiceInfo: 'Uses your device to generate a more natural-sounding voice. Requires a one-time download and more storage.',
+      langPackEn: 'English', langPackFr: 'Français', langPackEs: 'Español', downloaded: 'Downloaded', download: 'Download',
+      exportBody: 'Downloads a JSON file with everything saved on this device: reading progress, listening stats, and settings. Sign-in tokens are never included.',
+      exportConfirm: 'Export my data',
+      deleteBody: 'This erases all local data on this device and disconnects your Google account. Your ebooks in Drive are not touched. This cannot be undone.',
+      deleteConfirm: 'Delete my data',
+      folderGoogleDrive: 'Google Drive', folderLocal: 'Local', myDrive: 'My Drive', connect: 'Connect', modify: 'Modify', retry: 'Retry',
+      driveFolderAudiobooks: 'Audiobooks', driveFolderClassics: 'Classics', driveFolderReadingList: 'Reading List',
+      genderFemale: 'Female', genderMale: 'Male', removeLabel: 'Remove', deleteWord: 'DELETE', deleteTypeLabel: 'Type DELETE to confirm',
+      feedbackPlaceholder: 'What would make PhonoLeaf better?', bugPlaceholder: 'What happened, and what did you expect?', send: 'Send', languagePacks: 'Language packs', downloads: 'Downloads', exportData: 'Export my data', exportDataSub: 'Download everything stored on this device', export: 'Export', deleteData: 'Delete my data', deleteDataSub: 'Erase local data and disconnect Google', delete: 'Delete', googleAccount: 'Google account', signedIn: 'Signed in', signOut: 'Sign out', booksFolder: 'Book Folders', booksFolderSub: 'Root of your knowledge', sendFeedback: 'Send feedback', sendFeedbackSub: 'Ideas or anything on your mind', reportBug: 'Report a bug', reportBugSub: 'Tell us what went wrong', open: 'Open', footerTagline: 'PhonoLeaf · A voice for every page', privacy: 'Privacy Policy', terms: 'Terms of Service', yourEmail: 'Your email', attachScreenshot: 'Attach a screenshot', chooseFile: 'Choose file', noFileChosen: 'No file chosen' },
+    footer: 'Tap through the prototype above'
+  },
+  fr: {
+    welcome: { tagline: 'Des livres audio pour les matins tranquilles et les longues marches.', cta: 'Commencer', secondary: "J'ai déjà un compte" },
+    appTagline: 'Une voix pour chaque page',
+    siLede: 'Transformez les livres numériques déjà présents dans votre Google Drive en bibliothèque audio.',
+    siSteps: [
+      { title: 'Connectez un dossier Drive', sub: "Choisissez le dossier où se trouvent vos livres — c'est le seul que PhonoLeaf lit." },
+      { title: 'Votre bibliothèque apparaît', sub: "Chaque livre de ce dossier, avec sa vraie couverture. Ajoutez-en d'autres plus tard et ils apparaissent tout seuls." },
+      { title: 'Appuyez sur lecture', sub: 'Une voix naturelle lit à voix haute — même écran éteint — et se souvient d’où vous vous êtes arrêté.' }
+    ],
+    signInGoogle: 'Se connecter avec Google',
+    siPrivacyB: 'Accès en lecture seule.', siPrivacy: "PhonoLeaf ne modifie, ne téléverse ni ne supprime jamais rien dans votre Drive. Les voix sont générées sur votre téléphone, et il n'y a pas de serveur — vos livres vont de Google directement à votre appareil.",
+    privacyDoc: {
+      title: 'Politique de confidentialité', updated: 'En vigueur depuis le 5 août 2026', contactLabel: 'Des questions ? Contactez',
+      shortLabel: 'En bref.', short: "PhonoLeaf n'a pas de serveur. Vos données ne peuvent aller nulle part sauf entre votre appareil et les services de Google — nous ne recevons, ne voyons ni ne stockons jamais vos livres, le contenu de votre Drive ou votre activité d'écoute.",
+      sections: [
+        { heading: 'Ce que l’application consulte, et pourquoi', body: "Un accès Drive en lecture seule pour lister et télécharger les epub du dossier choisi ; votre nom d'affichage Google pour le message d'accueil ; titres/auteurs envoyés à Open Library pour le genre et le nombre de pages ; progression, statistiques et réglages stockés uniquement sur votre appareil." },
+        { heading: 'Accès Google Drive, en particulier', body: "PhonoLeaf demande un accès en lecture seule (drive.readonly) afin que les nouveaux livres de votre dossier apparaissent automatiquement. L'application ne modifie, ne supprime ni ne téléverse jamais rien dans votre Drive." },
+        { heading: 'Engagement d’usage limité', body: "L'utilisation des données des API Google par PhonoLeaf respecte la politique d'utilisation limitée de Google : utilisées uniquement pour les fonctionnalités de lecture décrites ici, jamais vendues, jamais utilisées pour la publicité ni pour entraîner un modèle d'IA." },
+        { heading: 'Comment nous protégeons vos données', body: "Toutes les connexions passent par HTTPS. Votre connexion reste chiffrée sur votre appareil. Il n'y a pas de base de données centrale à compromettre, puisque PhonoLeaf n'a pas de serveur." },
+        { heading: 'Ce que nous ne faisons jamais', body: "Nous n'exploitons pas de serveur recevant vos livres ou votre activité, nous ne vendons ni ne partageons vos données, et le texte des livres n'est jamais envoyé à un service vocal dans le nuage — les voix sont générées sur votre appareil." },
+        { heading: 'Vos droits sur vos données', body: "Paramètres → Exporter mes données télécharge tout ce qui est enregistré sur cet appareil. Paramètres → Supprimer mes données efface tout et déconnecte Google. Statistiques → Réinitialiser les données d'écoute efface seulement votre historique." }
+      ]
+    },
+    termsDoc: {
+      title: 'Conditions d’utilisation', updated: 'En vigueur depuis le 22 juillet 2026',
+      sections: [
+        { heading: 'Ce que fait l’application', body: "PhonoLeaf se connecte à un dossier de votre propre Google Drive, lit les fichiers epub qui s'y trouvent et les lit à voix haute sur votre appareil. Elle n'a pas de serveur — tout fonctionne sur votre appareil." },
+        { heading: 'Votre compte et votre contenu', body: "Vous êtes responsable de votre compte Google et des livres que vous stockez dans votre Drive. Vous devez détenir les droits sur tout fichier utilisé avec l'application." },
+        { heading: 'Utilisation acceptable', body: "Merci de ne pas utiliser l'application pour perturber ou accéder sans autorisation à un service auquel elle se connecte." },
+        { heading: 'Aucune garantie', body: "PhonoLeaf est fournie « telle quelle », sans garantie d'aucune sorte, et nous ne garantissons pas un fonctionnement ininterrompu ou sans erreur." },
+        { heading: 'Tarifs et paiements', body: "PhonoLeaf propose un essai gratuit suivi d'un abonnement payant (mensuel ou annuel) ou d'un achat unique « Membre fondateur » à vie. Les abonnements se renouvellent automatiquement jusqu'à annulation ; les détails de remboursement figurent dans la politique complète." },
+        { heading: 'Droit applicable', body: "Ces conditions sont régies par les lois du Québec et du Canada, sans limiter les protections dont vous bénéficiez en tant que consommateur." },
+        { heading: 'Modifications et résiliation', body: "L'application peut évoluer avec le temps. Vous pouvez cesser de l'utiliser et révoquer l'accès à Drive à tout moment depuis les paramètres." }
+      ]
+    },
+    auth: { titleSignup: 'Créer un compte', titleLogin: 'Bon retour', name: 'Nom', namePh: 'Votre nom', email: 'E-mail', emailPh: 'vous@exemple.com', password: 'Mot de passe', passwordPh: '••••••••', or: 'ou', apple: 'Continuer avec Apple', google: 'Continuer avec Google', submitSignup: 'Créer le compte', submitLogin: 'Se connecter', switchLabel: 'Déjà un compte ?', switchAction: 'Se connecter', switchLabelBack: 'Nouveau sur PhonoLeaf ?', switchActionBack: "S'inscrire" },
+    tabs: { home: 'Maintenant', shelves: 'Étagères', stats: 'Journal', settings: 'Vous' },
+    home: { kicker: 'Bonsoir', continueListening: 'Reprendre l\u2019écoute', stillReading: 'En pleine pousse', shelfForest: 'Forêt & nature', shelfCalm: 'Soirées calmes' },
+    search: { title: 'Étagères', placeholder: 'Titre ou auteur…', noResults: 'Aucun livre ne correspond.', listView: 'Liste',
+      genres: { forest: 'Forêt', ocean: 'Océan', mountain: 'Montagne', meadow: 'Prairie', rain: 'Pluie' } },
+    detail: { play: 'Écouter', about: 'À propos' },
+    common: { play: 'Écouter', details: 'Détails' },
+    player: { sleepChip: 'Minuteur', chaptersChip: 'Chapitres', followAlong: 'Suivre le texte', voice: 'Voix', voiceTitle: 'Choisir une voix de narration', page: 'Page' },
+    sleep: { title: 'Minuteur de sommeil', off: 'Désactivé', min: 'min', chapter: 'Fin du chapitre' },
+    chapters: { title: 'Chapitres', word: 'Chapitre' },
+    stats: { title: 'Vos statistiques', thisWeek: 'Votre croissance cette semaine', library: 'Livres dans la bibliothèque', started: 'Livres commencés', completed: 'Livres terminés', minutesWeek: 'Minutes cette semaine', totalMinutes: 'Minutes lues au total', streak: 'Série de croissance',
+      days: ['L', 'M', 'M', 'J', 'V', 'S', 'D'], breakdown: 'Parcourir par', minRead: 'Min lues', startedShort: 'commencés', readShort: 'lus',
+      dimensions: { author: 'Auteur', book: 'Livre', length: 'Durée', genre: 'Genre' },
+      lengths: { short: 'Court (<5h)', medium: 'Moyen (5–7h)', long: 'Long (7h+)' },
+      resetBtn: "Réinitialiser les données", resetConfirm: "Réinitialiser toutes les données d'écoute ? Action irréversible." },
+    settings: { title: 'Paramètres', theme: 'Thème', themeSub: 'Clair, sombre, ou selon l’appareil', light: 'Clair', dark: 'Sombre', auto: 'Auto', appLanguage: 'Langue de l’application', appLanguageSub: 'Traduit toute l’application', defaultSpeed: 'Vitesse par défaut', voice: 'Voix', voiceSub: 'Voix du système', change: 'Modifier', keepScreenOn: 'Garder l’écran allumé', keepScreenOnSub: 'Pendant la lecture audio', followAlong: 'Surlignage des mots lus', followAlongSub: 'Chaque mot est surligné à mesure qu’il est lu', on: 'Activé', naturalVoice: 'Voix améliorée', naturalVoiceSub: 'Activée — générée sur votre appareil', naturalVoiceInfo: 'Utilise votre appareil pour générer une voix plus naturelle. Nécessite un téléchargement unique et plus d’espace de stockage.',
+      langPackEn: 'Anglais', langPackFr: 'Français', langPackEs: 'Espagnol', downloaded: 'Téléchargé', download: 'Télécharger',
+      exportBody: "Télécharge un fichier JSON contenant tout ce qui est enregistré sur cet appareil : progression, statistiques et réglages. Les jetons de connexion ne sont jamais inclus.",
+      exportConfirm: 'Exporter mes données',
+      deleteBody: "Ceci efface toutes les données locales sur cet appareil et déconnecte votre compte Google. Vos livres dans Drive ne sont pas touchés. Action irréversible.",
+      deleteConfirm: 'Supprimer mes données',
+      folderGoogleDrive: 'Google Drive', folderLocal: 'Local', myDrive: 'Mon Drive', connect: 'Connecter', modify: 'Modifier', retry: 'Réessayer',
+      driveFolderAudiobooks: 'Livres audio', driveFolderClassics: 'Classiques', driveFolderReadingList: 'Liste de lecture',
+      genderFemale: 'Féminin', genderMale: 'Masculin', removeLabel: 'Retirer', deleteWord: 'SUPPRIMER', deleteTypeLabel: 'Tapez SUPPRIMER pour confirmer',
+      feedbackPlaceholder: 'Qu’est-ce qui améliorerait PhonoLeaf ?', bugPlaceholder: 'Que s’est-il passé, et à quoi vous attendiez-vous ?', send: 'Envoyer', languagePacks: 'Packs de langue', downloads: 'Téléchargements', exportData: 'Exporter mes données', exportDataSub: 'Télécharger tout ce qui est stocké sur cet appareil', export: 'Exporter', deleteData: 'Supprimer mes données', deleteDataSub: 'Effacer les données locales et déconnecter Google', delete: 'Supprimer', googleAccount: 'Compte Google', signedIn: 'Connecté', signOut: 'Se déconnecter', booksFolder: 'Dossiers de livres', booksFolderSub: 'Racine de vos connaissances', sendFeedback: 'Envoyer des commentaires', sendFeedbackSub: 'Idées ou tout ce qui vous passe par la tête', reportBug: 'Signaler un problème', reportBugSub: 'Dites-nous ce qui n’a pas fonctionné', open: 'Ouvrir', footerTagline: 'PhonoLeaf · Une voix pour chaque page', privacy: 'Politique de confidentialité', terms: 'Conditions d’utilisation', yourEmail: 'Votre e-mail', attachScreenshot: 'Joindre une capture d’écran', chooseFile: 'Choisir un fichier', noFileChosen: 'Aucun fichier choisi' },
+    footer: 'Naviguez dans le prototype ci-dessus'
+  }
+};
+
+function formatMin(m) {
+  const h = Math.floor(m / 60), mm = m % 60;
+  return h > 0 ? `${h}h ${mm}m` : `${mm}m`;
+}
+function hashStr(str) {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) >>> 0;
+  return h;
+}
+
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = {
+      screen: 'welcome', tab: 'home', authMode: 'signup',
+      theme: props.defaultTheme || 'light', themeMode: props.defaultTheme || 'light', lang: props.defaultLanguage || 'en',
+      selectedBookId: null, playing: false, progress: 0.34, speed: 1,
+      sleepMinutes: 0, sleepSheetOpen: false, chaptersSheetOpen: false, voiceSheetOpen: false,
+      selectedVoice: 'Camille', playerSpeedMenuOpen: false, settingsSpeedMenuOpen: false, followAlong: false,
+      controlsVisible: true, statsDimension: 'genre', libraryView: '2',
+      searchQuery: '', activeGenres: {}, keepScreenOn: true, weekSelectedDay: null,
+      langPacksSheetOpen: false, exportSheetOpen: false, deleteSheetOpen: false,
+      folderSheetOpen: false, feedbackSheetOpen: false, bugSheetOpen: false, driveFolderSheetOpen: false,
+      downloadedPacks: { en: true, fr: true, es: false }, selectedFolder: 'drive', folderProvider: null, folderName: '', folderConnected: false,
+      feedbackEmail: 'alex.moreau@example.com', bugEmail: 'alex.moreau@example.com', bugFileName: '',
+      naturalVoiceOn: true, naturalVoiceInfoOpen: false, deleteConfirmText: ''
+    };
+    BOOKS.forEach((b, i) => { b.coverColor = COVER_COLORS[i % COVER_COLORS.length]; });
+    this.hideTimer = null;
+    this.localFolderInputRef = React.createRef();
+  }
+
+  componentDidUpdate(prevProps) {
+    if (prevProps.defaultTheme !== this.props.defaultTheme && this.props.defaultTheme) {
+      this.setState({ theme: this.props.defaultTheme, themeMode: this.props.defaultTheme });
+    }
+    if (prevProps.defaultLanguage !== this.props.defaultLanguage && this.props.defaultLanguage) {
+      this.setState({ lang: this.props.defaultLanguage });
+    }
+  }
+
+  componentWillUnmount() { clearTimeout(this.hideTimer); }
+
+  scheduleHide() {
+    clearTimeout(this.hideTimer);
+    this.hideTimer = setTimeout(() => this.setState({ controlsVisible: false }), 5000);
+  }
+
+  closeAllSheets() {
+    return { sleepSheetOpen: false, chaptersSheetOpen: false, voiceSheetOpen: false, langPacksSheetOpen: false, exportSheetOpen: false, deleteSheetOpen: false, folderSheetOpen: false, feedbackSheetOpen: false, bugSheetOpen: false, driveFolderSheetOpen: false };
+  }
+
+  t(lang, path) {
+    const parts = path.split('.');
+    let obj = TRANSLATIONS[lang];
+    for (const p of parts) obj = obj && obj[p];
+    if (obj === undefined) {
+      obj = TRANSLATIONS.en;
+      for (const p of parts) obj = obj && obj[p];
+    }
+    return obj !== undefined ? obj : path;
+  }
+
+  bookVM(b, lang) {
+    return {
+      id: b.id, title: b.title[lang] || b.title.en, author: b.author, coverColor: b.coverColor,
+      genre: b.genre, initial: (b.title[lang] || b.title.en).charAt(0),
+      description: b.desc[lang] || b.desc.en, durationLabel: formatMin(b.durationMin),
+      genreLabel: this.t(lang, 'search.genres.' + b.genre),
+      detailsClick: () => this.setState({ selectedBookId: b.id, screen: 'detail' }),
+      playClick: () => { this.setState({ selectedBookId: b.id, screen: 'player', controlsVisible: true }); this.scheduleHide(); }
+    };
+  }
+
+  groupStats(dimension, lang, t) {
+    const groupsMap = {};
+    const keyFn = (b) => {
+      if (dimension === 'author') return b.author;
+      if (dimension === 'book') return b.title[lang] || b.title.en;
+      if (dimension === 'length') return b.durationMin < 300 ? t('stats.lengths.short') : b.durationMin < 420 ? t('stats.lengths.medium') : t('stats.lengths.long');
+      return t('search.genres.' + b.genre);
+    };
+    BOOKS.forEach((b) => {
+      const k = keyFn(b);
+      if (!groupsMap[k]) groupsMap[k] = { key: k, books: [], totalMin: 0 };
+      groupsMap[k].books.push(b);
+      groupsMap[k].totalMin += b.durationMin;
+    });
+    return Object.values(groupsMap).map((g) => {
+      const h = hashStr(g.key + dimension);
+      const started = g.books.length;
+      const read = Math.max(0, started - (h % 2 === 0 ? 1 : 0) - (started > 2 && h % 3 === 0 ? 1 : 0));
+      const minRead = Math.round(g.totalMin * (0.4 + (h % 30) / 100));
+      return { label: g.key, minRead, started, read };
+    }).sort((a, b) => b.minRead - a.minRead);
+  }
+
+  renderVals() {
+    const s = this.state, lang = s.lang;
+    const theme = s.themeMode === 'auto' ? (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : s.themeMode;
+    const t = (p) => this.t(lang, p);
+    const selectedBookRaw = BOOKS.find(b => b.id === s.selectedBookId) || BOOKS[0];
+    const selectedBook = this.bookVM(selectedBookRaw, lang);
+
+    const isWelcome = s.screen === 'welcome';
+    const isAuth = false;
+    const isHome = s.screen === 'home';
+    const isSearch = s.screen === 'search';
+    const isStats = s.screen === 'stats';
+    const isSettings = s.screen === 'settings';
+    const isDetail = s.screen === 'detail';
+    const isPlayer = s.screen === 'player';
+    const isPrivacy = s.screen === 'privacy';
+    const isTerms = s.screen === 'terms';
+    const isNotPlayer = !isPlayer;
+    const showTabBar = isHome || isSearch || isStats || isSettings;
+    const showBackBar = isDetail || isPrivacy || isTerms;
+
+    const goBack = () => {
+      if (isDetail) this.setState({ screen: 'home', tab: 'home' });
+      else if (isPrivacy || isTerms) this.setState({ screen: s.previousScreen || 'welcome', tab: s.previousTab || 'home' });
+      else if (isPlayer) { clearTimeout(this.hideTimer); this.setState({ screen: 'detail' }); }
+    };
+
+    const continueBooks = BOOKS.slice(0, 2).map((b, i) => {
+      const vm = this.bookVM(b, lang);
+      vm.progressPct = (i === 0 ? 62 : 28) + '%';
+      return vm;
+    });
+
+    const activeGenreKeys = Object.keys(s.activeGenres).filter(k => s.activeGenres[k]);
+    const q = s.searchQuery.trim().toLowerCase();
+    const filteredBooks = BOOKS.filter(b => {
+      const title = (b.title[lang] || b.title.en).toLowerCase();
+      const matchesQ = !q || title.includes(q) || b.author.toLowerCase().includes(q);
+      const matchesGenre = activeGenreKeys.length === 0 || activeGenreKeys.includes(b.genre);
+      return matchesQ && matchesGenre;
+    });
+
+    const chaptersForSelected = Array.from({ length: selectedBookRaw.chapterCount }, (_, i) => i);
+    const currentChapterIdx = Math.floor(s.progress * selectedBookRaw.chapterCount);
+
+    const speedOptions = SPEEDS.map(v => ({
+      label: v.toFixed(2) + '×', color: v === s.speed ? 'var(--accent)' : 'var(--text)',
+      onClick: () => { this.setState({ speed: v, playerSpeedMenuOpen: false, settingsSpeedMenuOpen: false }); this.scheduleHide(); }
+    }));
+
+    const weekMinutes = [40, 25, 60, 0, 35, 80, 50];
+    const maxWeek = Math.max(...weekMinutes, 1);
+    const dayLabels = t('stats.days');
+    const weekBars = weekMinutes.map((m, i) => ({ height: Math.max(6, Math.round((m / maxWeek) * 100)) + '%', label: dayLabels[i], minutes: m, active: s.weekSelectedDay === i,
+      barColor: s.weekSelectedDay === i ? 'var(--accent2)' : 'var(--accent)', labelColor: s.weekSelectedDay === i ? 'var(--accent2)' : 'var(--text-dim)',
+      onClick: () => this.setState({ weekSelectedDay: s.weekSelectedDay === i ? null : i }) }));
+    const gridCols = s.libraryView === '3' ? 3 : s.libraryView === '4' ? 4 : s.libraryView === 'list' ? 1 : 2;
+
+    const totalPages = Math.max(20, Math.round(selectedBookRaw.durationMin / 2));
+    const currentPage = Math.max(1, Math.round(s.progress * totalPages));
+    const progressPctNum = Math.round(s.progress * 100);
+
+    const rawSentences = (READER_TEXT[lang] || READER_TEXT.en).split(/(?<=[.])\s+/);
+    const highlightIdx = s.followAlong ? Math.min(rawSentences.length - 1, Math.floor(s.progress * rawSentences.length)) : -1;
+    const readerSentences = rawSentences.map((sen, i) => ({ text: sen, bg: i === highlightIdx ? 'rgba(var(--accent-rgb),0.32)' : 'transparent', color: i === highlightIdx ? 'var(--accent)' : 'var(--text)', weight: i === highlightIdx ? 600 : 400 }));
+
+    const dimensionOptions = ['genre', 'author', 'book', 'length'].map(v => ({ value: v, label: t('stats.dimensions.' + v) }));
+    const breakdownRows = this.groupStats(s.statsDimension, lang, t);
+
+    const libraryViewOptions = ['2', '3', '4', 'list'].map(v => ({ value: v, label: v === 'list' ? t('search.listView') : v, active: s.libraryView === v, onClick: () => this.setState({ libraryView: v }) }));
+    const shelvesGridTemplate = 'repeat(' + gridCols + ',1fr)';
+
+    return {
+      theme, isNotPlayer, gridCols, libraryViewOptions, isListView: s.libraryView === 'list', isNotListView: s.libraryView !== 'list', shelvesGridTemplate,
+      overlayDirection: 'column', overlayGap: '4px',
+      overlayFontSize: gridCols >= 4 ? '9px' : gridCols >= 3 ? '10px' : '11px',
+      overlayPadding: gridCols >= 4 ? '3px 6px' : gridCols >= 3 ? '4px 8px' : '6px 10px',
+      tabsList: [
+        { id: 'home', label: t('tabs.home') }, { id: 'search', label: t('tabs.shelves') },
+        { id: 'stats', label: t('tabs.stats') }, { id: 'settings', label: t('tabs.settings') }
+      ],
+      activeTab: s.tab, onTabChange: (id) => this.setState({ tab: id, screen: id }),
+      isWelcome, isAuth, isHome, isSearch, isStats, isSettings, isDetail, isPlayer, isPrivacy, isTerms, showTabBar, showBackBar, goBack,
+      goPrivacy: () => this.setState({ screen: 'privacy', previousScreen: s.screen, previousTab: s.tab }),
+      goTerms: () => this.setState({ screen: 'terms', previousScreen: s.screen, previousTab: s.tab }),
+      tPrivacyTitle: t('privacyDoc.title'), tPrivacyUpdated: t('privacyDoc.updated'),
+      tPrivacyShortLabel: t('privacyDoc.shortLabel'), tPrivacyShort: t('privacyDoc.short'),
+      privacySections: TRANSLATIONS[lang].privacyDoc.sections,
+      tTermsTitle: t('termsDoc.title'), tTermsUpdated: t('termsDoc.updated'),
+      termsSections: TRANSLATIONS[lang].termsDoc.sections,
+      tContactLabel: t('privacyDoc.contactLabel'),
+      tAppTagline: t('appTagline'), tSiLede: t('siLede'),
+      siSteps: TRANSLATIONS[lang].siSteps.map((s, i) => ({ num: '0' + (i + 1), title: s.title, sub: s.sub })),
+      tSignInGoogle: t('signInGoogle'), tSiPrivacyB: t('siPrivacyB'), tSiPrivacy: t('siPrivacy'),
+      completeAuth: () => this.setState({ screen: 'home', tab: 'home' }),
+      tGreetingKicker: t('home.kicker'), userName: 'Alex Moreau', userEmail: 'alex.moreau@example.com',
+      showContinueListening: this.props.showContinueListening !== false,
+      tContinueListening: t('home.continueListening'), continueBooks,
+      tStillReadingLabel: t('home.stillReading'),
+      stillReadingBooks: BOOKS.slice(2, 4).map((b, i) => { const vm = this.bookVM(b, lang); vm.progressPct = (i === 0 ? 44 : 17) + '%'; return vm; }),
+      tPlayShort: t('common.play'), tDetailsShort: t('common.details'),
+      shelves: [
+        { label: t('home.shelfForest'), books: BOOKS.filter(b => b.genre === 'forest' || b.genre === 'mountain').slice(0, 4).map(b => this.bookVM(b, lang)) },
+        { label: t('home.shelfCalm'), books: BOOKS.filter(b => b.genre === 'rain' || b.genre === 'meadow').slice(0, 4).map(b => this.bookVM(b, lang)) }
+      ],
+      tSearchTitle: t('search.title'), tSearchPlaceholder: t('search.placeholder'),
+      searchQuery: s.searchQuery, onSearchInput: (e) => this.setState({ searchQuery: e.target.value }),
+      genreChips: GENRES.map(g => ({
+        label: t('search.genres.' + g), active: !!s.activeGenres[g],
+        onClick: () => this.setState({ activeGenres: { ...s.activeGenres, [g]: !s.activeGenres[g] } })
+      })),
+      searchResults: filteredBooks.map(b => this.bookVM(b, lang)), noResults: filteredBooks.length === 0,
+      tNoResults: t('search.noResults'),
+      selectedBook, tPlayBtn: t('detail.play'), tAboutLabel: t('detail.about'),
+      goPlayer: () => { this.setState({ screen: 'player', controlsVisible: true }); this.scheduleHide(); },
+      progressPct: Math.round(s.progress * 100) + '%', progressPctNum,
+      tPageLabel: t('player.page'), currentPage, totalPages,
+      currentTimeLabel: formatMin(Math.round(s.progress * selectedBookRaw.durationMin)),
+      handleScrub: (e) => {
+        const rect = e.currentTarget.getBoundingClientRect();
+        const pct = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
+        this.setState({ progress: pct }); this.scheduleHide();
+      },
+      togglePlay: () => { this.setState({ playing: !s.playing }); this.scheduleHide(); }, playGlyph: s.playing ? '❚❚' : '▶',
+      skipBack: () => { this.setState({ progress: Math.max(0, s.progress - 0.05) }); this.scheduleHide(); },
+      skipForward: () => { this.setState({ progress: Math.min(1, s.progress + 0.05) }); this.scheduleHide(); },
+      speedLabel: s.speed.toFixed(2) + '×', speedOptions,
+      playerSpeedMenuOpen: s.playerSpeedMenuOpen, settingsSpeedMenuOpen: s.settingsSpeedMenuOpen,
+      togglePlayerSpeedMenu: () => { this.setState({ playerSpeedMenuOpen: !s.playerSpeedMenuOpen, settingsSpeedMenuOpen: false }); this.scheduleHide(); },
+      toggleSettingsSpeedMenu: () => this.setState({ settingsSpeedMenuOpen: !s.settingsSpeedMenuOpen, playerSpeedMenuOpen: false }),
+      tSleepChip: t('player.sleepChip'), tChaptersChip: t('player.chaptersChip'), tVoiceChip: t('player.voice'), tVoiceTitle: t('player.voiceTitle'),
+      followAlong: s.followAlong, followAlongTone: s.followAlong ? 'accent' : 'default',
+      toggleFollowAlong: () => { this.setState({ followAlong: !s.followAlong }); this.scheduleHide(); },
+      sleepActive: s.sleepMinutes > 0 || s.sleepMinutes === 'chapter',
+      openSleepSheet: () => { this.setState({ ...this.closeAllSheets(), sleepSheetOpen: true }); this.scheduleHide(); },
+      closeSleepSheet: () => this.setState({ sleepSheetOpen: false }),
+      sleepSheetOpen: s.sleepSheetOpen, tSleepTitle: t('sleep.title'),
+      sleepSliderValue: typeof s.sleepMinutes === 'number' ? s.sleepMinutes : 0,
+      sleepPct: (typeof s.sleepMinutes === 'number' ? s.sleepMinutes : 0) / 60 * 100 + '%',
+      sleepSliderLabel: s.sleepMinutes === 'chapter' ? t('sleep.chapter') : s.sleepMinutes === 0 ? t('sleep.off') : s.sleepMinutes + ' ' + t('sleep.min'),
+      onSleepTrackClick: (e) => {
+        const rect = e.currentTarget.getBoundingClientRect();
+        const pct = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
+        this.setState({ sleepMinutes: Math.round(pct * 60 / 5) * 5 });
+      },
+      sleepIsChapterMode: s.sleepMinutes === 'chapter',
+      setSleepChapterMode: () => this.setState({ sleepMinutes: s.sleepMinutes === 'chapter' ? 0 : 'chapter' }),
+      tOffLabel: t('sleep.off'), tMinLabel: t('sleep.min'), tSleepChapterOption: t('sleep.chapter'),
+      openChaptersSheet: () => { this.setState({ ...this.closeAllSheets(), chaptersSheetOpen: true }); this.scheduleHide(); },
+      closeChaptersSheet: () => this.setState({ chaptersSheetOpen: false }),
+      chaptersSheetOpen: s.chaptersSheetOpen, tChaptersTitle: t('chapters.title'),
+      chaptersList: chaptersForSelected.map(i => ({
+        label: t('chapters.word') + ' ' + (i + 1),
+        timeLabel: formatMin(Math.round((i / selectedBookRaw.chapterCount) * selectedBookRaw.durationMin)),
+        color: i === currentChapterIdx ? 'var(--accent)' : 'var(--text)',
+        weight: i === currentChapterIdx ? 700 : 400,
+        onClick: () => this.setState({ progress: i / selectedBookRaw.chapterCount, chaptersSheetOpen: false })
+      })),
+      openVoiceSheet: () => { this.setState({ ...this.closeAllSheets(), voiceSheetOpen: true }); this.scheduleHide(); },
+      closeVoiceSheet: () => this.setState({ voiceSheetOpen: false }),
+      voiceSheetOpen: s.voiceSheetOpen,
+      voiceOptions: VOICES.map(v => ({
+        label: v.name + ' · ' + PACK_DISPLAY_NAME[lang][v.langKey] + ' · ' + t('settings.gender' + (v.genderKey === 'f' ? 'Female' : 'Male')),
+        active: s.selectedVoice === v.name, checkVisibility: s.selectedVoice === v.name ? 'visible' : 'hidden',
+        onClick: () => this.setState({ selectedVoice: v.name, voiceSheetOpen: false })
+      })),
+      openLangPacksSheet: () => this.setState({ ...this.closeAllSheets(), langPacksSheetOpen: true }),
+      closeLangPacksSheet: () => this.setState({ langPacksSheetOpen: false }),
+      langPacksSheetOpen: s.langPacksSheetOpen, tLangPacksTitle: t('settings.languagePacks'),
+      langPackOptions: [
+        { key: 'en', label: PACK_DISPLAY_NAME[lang].en, sizeLabel: '38 MB' },
+        { key: 'fr', label: PACK_DISPLAY_NAME[lang].fr, sizeLabel: '41 MB' },
+        { key: 'es', label: PACK_DISPLAY_NAME[lang].es, sizeLabel: '39 MB' }
+      ].map(p => ({ ...p, downloaded: !!s.downloadedPacks[p.key], notDownloaded: !s.downloadedPacks[p.key],
+        onClick: () => this.setState({ downloadedPacks: { ...s.downloadedPacks, [p.key]: true } }),
+        onRemove: () => this.setState({ downloadedPacks: { ...s.downloadedPacks, [p.key]: false } }) })),
+      tRemoveLabel: t('settings.removeLabel'),
+      tDownloadedLabel: t('settings.downloaded'), tDownloadLabel: t('settings.download'),
+      openExportSheet: () => this.setState({ ...this.closeAllSheets(), exportSheetOpen: true }),
+      closeExportSheet: () => this.setState({ exportSheetOpen: false }),
+      exportSheetOpen: s.exportSheetOpen, tExportBody: t('settings.exportBody'), tExportConfirm: t('settings.exportConfirm'),
+      confirmExport: () => {
+        const data = JSON.stringify({ progress: s.progress, sleepMinutes: s.sleepMinutes, theme: s.theme, lang: s.lang, speed: s.speed }, null, 2);
+        const blob = new Blob([data], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href = url; a.download = 'phonoleaf-data.json'; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        this.setState({ exportSheetOpen: false });
+      },
+      openDeleteSheet: () => this.setState({ ...this.closeAllSheets(), deleteSheetOpen: true, deleteConfirmText: '' }),
+      closeDeleteSheet: () => this.setState({ deleteSheetOpen: false }),
+      deleteSheetOpen: s.deleteSheetOpen, tDeleteBody: t('settings.deleteBody'), tDeleteConfirm: t('settings.deleteConfirm'),
+      tDeleteTypeLabel: t('settings.deleteTypeLabel'), deleteConfirmText: s.deleteConfirmText,
+      tDeleteWord: t('settings.deleteWord'),
+      updateDeleteConfirmText: (e) => this.setState({ deleteConfirmText: e.target.value }),
+      deleteDisabled: s.deleteConfirmText !== t('settings.deleteWord'), deleteButtonOpacity: s.deleteConfirmText === t('settings.deleteWord') ? 1 : 0.45,
+      confirmDelete: () => { if (s.deleteConfirmText === t('settings.deleteWord')) this.setState({ deleteSheetOpen: false, screen: 'welcome', deleteConfirmText: '' }); },
+      openFolderSheet: () => this.setState({ ...this.closeAllSheets(), folderSheetOpen: true }),
+      closeFolderSheet: () => this.setState({ folderSheetOpen: false }),
+      folderSheetOpen: s.folderSheetOpen,
+      tFolderActionLabel: t('settings.change'),
+      folderOptions: [
+        { key: 'drive', label: t('settings.folderGoogleDrive'),
+          onClick: () => this.setState({ folderSheetOpen: false, driveFolderSheetOpen: true }) },
+        { key: 'local', label: t('settings.folderLocal'),
+          onClick: () => { this.setState({ folderSheetOpen: false }); if (this.localFolderInputRef.current) this.localFolderInputRef.current.click(); } }
+      ].map(f => ({ ...f, actionLabel: s.folderProvider === f.key ? t('settings.modify') : t('settings.connect') })),
+      tMyDriveLabel: t('settings.myDrive'), driveFolderSheetOpen: s.driveFolderSheetOpen,
+      closeDriveFolderSheet: () => this.setState({ driveFolderSheetOpen: false }),
+      driveFolders: [
+        { key: 'audiobooks', name: t('settings.driveFolderAudiobooks') },
+        { key: 'classics', name: t('settings.driveFolderClassics') },
+        { key: 'reading-list', name: t('settings.driveFolderReadingList') }
+      ].sort((a, b) => a.name.localeCompare(b.name, lang)).map(f => ({
+        label: f.name,
+        onClick: () => this.setState({ folderProvider: 'drive', folderName: f.name, folderConnected: true, driveFolderSheetOpen: false })
+      })),
+      localFolderInputRef: this.localFolderInputRef,
+      onLocalFolderPicked: (e) => {
+        const files = e.target.files;
+        const name = (files && files[0] && files[0].webkitRelativePath) ? files[0].webkitRelativePath.split('/')[0] : t('settings.folderLocal');
+        this.setState({ folderProvider: 'local', folderName: name, folderConnected: true });
+      },
+      openFeedbackSheet: () => this.setState({ ...this.closeAllSheets(), feedbackSheetOpen: true }),
+      closeFeedbackSheet: () => this.setState({ feedbackSheetOpen: false }),
+      feedbackSheetOpen: s.feedbackSheetOpen, tFeedbackPlaceholder: t('settings.feedbackPlaceholder'), tSendLabel: t('settings.send'),
+      tYourEmailLabel: t('settings.yourEmail'), feedbackEmail: s.feedbackEmail,
+      updateFeedbackEmail: (e) => this.setState({ feedbackEmail: e.target.value }),
+      openBugSheet: () => this.setState({ ...this.closeAllSheets(), bugSheetOpen: true }),
+      closeBugSheet: () => this.setState({ bugSheetOpen: false }),
+      bugSheetOpen: s.bugSheetOpen, tBugPlaceholder: t('settings.bugPlaceholder'),
+      bugEmail: s.bugEmail, updateBugEmail: (e) => this.setState({ bugEmail: e.target.value }),
+      tAttachScreenshotLabel: t('settings.attachScreenshot'), tChooseFileLabel: t('settings.chooseFile'),
+      bugFileLabel: s.bugFileName || t('settings.noFileChosen'),
+      updateBugFile: (e) => this.setState({ bugFileName: (e.target.files && e.target.files[0]) ? e.target.files[0].name : '' }),
+      controlsVisible: s.controlsVisible,
+      tapPage: () => {
+        if (this.state.controlsVisible) { clearTimeout(this.hideTimer); this.setState({ controlsVisible: false }); }
+        else { this.setState({ controlsVisible: true }); this.scheduleHide(); }
+      },
+      readerSentences,
+      tStatsTitle: t('stats.title'), tThisWeek: t('stats.thisWeek'),
+      tLibraryLabel: t('stats.library'), tStartedLabel: t('stats.started'), tCompletedLabel: t('stats.completed'), tMinutesWeekLabel: t('stats.minutesWeek'),
+      statLibrary: BOOKS.length, statStarted: 5, statCompleted: 3, statMinutesWeek: weekMinutes.reduce((a, b) => a + b, 0),
+      statTotalMinutes: 5820, statStreak: 12, tTotalMinutesLabel: t('stats.totalMinutes'), tStreakLabel: t('stats.streak'), weekBars,
+      weekSelectedLabel: s.weekSelectedDay !== null ? weekBars[s.weekSelectedDay].minutes + ' ' + t('sleep.min') : '',
+      tBreakdownLabel: t('stats.breakdown'), dimensionOptions, statsDimension: s.statsDimension,
+      onDimensionChange: (e) => this.setState({ statsDimension: e.target.value }),
+      breakdownRows, tStartedShort: t('stats.startedShort'), tReadShort: t('stats.readShort'),
+      tResetBtn: t('stats.resetBtn'),
+      resetListeningData: () => {
+        if (window.confirm(t('stats.resetConfirm'))) this.setState({ progress: 0, sleepMinutes: 0, followAlong: false });
+      },
+      tSettingsTitle: t('settings.title'),
+      tThemeLabel: t('settings.theme'), tThemeSub: t('settings.themeSub'),
+      tLightLabel: t('settings.light'), tDarkLabel: t('settings.dark'), tAutoLabel: t('settings.auto'),
+      isThemeLight: s.themeMode === 'light', isThemeDark: s.themeMode === 'dark', isThemeAuto: s.themeMode === 'auto',
+      setThemeLight: () => this.setState({ themeMode: 'light' }), setThemeDark: () => this.setState({ themeMode: 'dark' }), setThemeAuto: () => this.setState({ themeMode: 'auto' }),
+      tAppLanguageLabel: t('settings.appLanguage'), tAppLanguageSub: t('settings.appLanguageSub'),
+      isLangFr: lang === 'fr', isLangEn: lang === 'en',
+      setLangFr: () => this.setState({ lang: 'fr' }), setLangEn: () => this.setState({ lang: 'en' }),
+      tDefaultSpeedLabel: t('settings.defaultSpeed'),
+      tVoiceLabel: t('settings.voice'), tVoiceSub: t('settings.voiceSub'), tChangeLabel: t('settings.change'),
+      tKeepScreenOnLabel: t('settings.keepScreenOn'), tKeepScreenOnSub: t('settings.keepScreenOnSub'),
+      keepScreenOn: s.keepScreenOn, toggleKeepScreenOn: () => this.setState({ keepScreenOn: !s.keepScreenOn }),
+      tFollowAlongLabel: t('settings.followAlong'), tFollowAlongSub: t('settings.followAlongSub'), tOnLabel: t('settings.on') || 'On',
+      tNaturalVoiceLabel: t('settings.naturalVoice'), tNaturalVoiceSub: t('settings.naturalVoiceSub'), tNaturalVoiceInfo: t('settings.naturalVoiceInfo'),
+      naturalVoiceInfoOpen: s.naturalVoiceInfoOpen,
+      toggleNaturalVoiceInfo: () => this.setState({ naturalVoiceInfoOpen: !s.naturalVoiceInfoOpen }),
+      closeNaturalVoiceInfo: () => this.setState({ naturalVoiceInfoOpen: false }),
+      retryNaturalVoice: () => this.setState({ naturalVoiceOn: true }),
+      retryColor: s.naturalVoiceOn ? 'var(--text-dim)' : 'var(--accent)', tRetryLabel: t('settings.retry'),
+      tLanguagePacksLabel: t('settings.languagePacks'), tDownloadsLabel: t('settings.downloads'),
+      tExportDataLabel: t('settings.exportData'), tExportDataSub: t('settings.exportDataSub'), tExportLabel: t('settings.export'),
+      tDeleteDataLabel: t('settings.deleteData'), tDeleteDataSub: t('settings.deleteDataSub'), tDeleteLabel: t('settings.delete'),
+      tGoogleAccountLabel: t('settings.googleAccount'), tSignedInLabel: t('settings.signedIn'), tSignOutLabel: t('settings.signOut'),
+      tBooksFolderLabel: t('settings.booksFolder'), tBooksFolderSub: t('settings.booksFolderSub'),
+      tSendFeedbackLabel: t('settings.sendFeedback'), tSendFeedbackSub: t('settings.sendFeedbackSub'),
+      tReportBugLabel: t('settings.reportBug'), tReportBugSub: t('settings.reportBugSub'), tOpenLabel: t('settings.open'),
+      tFooterTagline: t('settings.footerTagline'), tPrivacyLabel: t('settings.privacy'), tTermsLabel: t('settings.terms'),
+      logout: () => this.setState({ screen: 'welcome' }),
+      footerHint: t('footer')
+    };
+  }
+}
+
+</script>
+</body>
+</html>

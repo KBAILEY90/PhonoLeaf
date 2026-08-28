@@ -133,6 +133,16 @@ Logged as-is, no design work done yet.
       — a real brand-voice decision, not a code change, and probably worth
       deciding before or alongside the gamification question above since
       they'd need to agree with each other.
+      - 2026-08-26 addition: rather than picking one tone, consider a
+        **Settings toggle** letting the user choose the app's own voice for
+        its communications — options like Normal / Sassy / Bro / Butler,
+        etc. (exact options and copy to be defined later). Would turn the
+        brand-voice question above into a per-user preference instead of a
+        single global decision.
+- [ ] **An "About" section**, raised 2026-08-27 — not scoped (where it
+      lives, what it says: version number, credits, links to the website/
+      support, licenses for bundled voice models, etc.). Probably belongs
+      in Settings alongside Privacy/Terms.
 
 ## SWOT research (ready to launch as a background task)
 
