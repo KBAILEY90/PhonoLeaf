@@ -102,6 +102,14 @@
       --font-read: 'Literata', Georgia, serif;
       --radius:    2px;
       --safe-b:    env(safe-area-inset-bottom, 0px);
+      /* Motion system: formalizes the durations the app's ~20 transitions/
+         animations already clustered around, rather than picking new
+         values. Deliberately excludes page-turn animation (pageNext/
+         pagePrev/turn-next/turn-prev/_turnAnim) — left untouched. */
+      --motion-fast: 0.15s;  /* micro press/hover feedback */
+      --motion-base: 0.25s;  /* chrome show/hide, toggles, toast, tour */
+      --motion-slow: 0.4s;   /* progress/value fills */
+      --motion-ease: ease;
     }
 
     /* Midnight (dark) — auto when the device is in dark mode */
@@ -235,7 +243,7 @@
          its brand treatment; only the soft drop shadow goes, since nothing
          else in the paper direction floats. */
       box-shadow: none; border: 1px solid var(--line);
-      transition: transform 0.15s, box-shadow 0.15s;
+      transition: transform var(--motion-fast), box-shadow var(--motion-fast);
     }
     .signin-btn:active { transform: scale(0.97); }
 
@@ -390,7 +398,7 @@
       color: var(--text); cursor: pointer;
       padding: 0.5rem; border-radius: 2px;
       font-size: 1.2rem; line-height: 1;
-      transition: background 0.15s;
+      transition: background var(--motion-fast);
     }
     .icon-btn:hover { background: var(--overlay); }
     #hl-btn.on { color: var(--accent); }
@@ -517,7 +525,7 @@
       border-radius: 0;
       overflow: hidden;
       cursor: pointer;
-      transition: transform 0.2s, box-shadow 0.2s;
+      transition: transform var(--motion-fast), box-shadow var(--motion-fast);
       position: relative;
     }
     .book-card:active { transform: scale(0.96); }
@@ -550,7 +558,7 @@
     .book-progress-bar {
       position: absolute; bottom: 0; left: 0;
       height: 2px; background: var(--accent);
-      transition: width 0.3s;
+      transition: width var(--motion-slow);
     }
     .book-info { padding: 0.45rem 0 0; }
     .book-title {
@@ -653,7 +661,7 @@
       border-radius: 50%; border: none;
       display: flex; align-items: center; justify-content: center;
       font-size: 1rem; cursor: pointer;
-      transition: transform 0.15s, opacity 0.15s;
+      transition: transform var(--motion-fast), opacity var(--motion-fast);
       flex-shrink: 0;
     }
     .ctrl-btn:active { transform: scale(0.9); }
@@ -685,7 +693,7 @@
     .tts-info { flex: 1; min-width: 0; }
     .tts-chapter { font-size: 0.72rem; color: var(--text-dim); margin-bottom: 0.3rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .tts-prog-track { height: 4px; background: var(--track); border-radius: 2px; overflow: hidden; }
-    .tts-prog-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.5s linear; }
+    .tts-prog-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width var(--motion-slow) var(--motion-ease); }
 
     .tts-row2 {
       display: flex; align-items: center; gap: 0.75rem;
@@ -713,7 +721,7 @@
       font: 0.82rem var(--font-read);
       cursor: pointer;
       white-space: nowrap;
-      transition: background 0.15s;
+      transition: background var(--motion-fast);
     }
     .pill-btn:hover { background: var(--overlay); }
     #voice-btn {
@@ -832,7 +840,7 @@
       border-radius: 2px; cursor: pointer;
       margin-bottom: 0.5rem;
       border: 2px solid transparent;
-      transition: border-color 0.15s;
+      transition: border-color var(--motion-fast);
     }
     .voice-item.active { border-color: var(--accent); }
     .voice-name { font-size: 0.9rem; font-weight: 600; }
@@ -856,7 +864,7 @@
       border-radius: 2px; cursor: pointer;
       margin-bottom: 0.5rem;
       border-left: 3px solid transparent;
-      transition: border-color 0.15s;
+      transition: border-color var(--motion-fast);
     }
     .chapter-item.active { border-left-color: var(--accent); }
     .chapter-num { font-size: 0.72rem; color: var(--text-dim); min-width: 28px; }
@@ -874,7 +882,7 @@
       font-size: 0.85rem;
       z-index: 999;
       opacity: 0; pointer-events: none;
-      transition: opacity 0.25s;
+      transition: opacity var(--motion-base);
       /* A short toast ("Voice: Ava") should still read as a snug pill, but a
          long one (some of these are full sentences) must never run off both
          edges of the screen — nowrap with no width cap did exactly that
@@ -1002,19 +1010,19 @@
     /* Green ink: a printed switch — square track, square knob, no shadow. */
     .tog { position: relative; display: inline-block; width: 42px; height: 22px; flex-shrink: 0; cursor: pointer; }
     .tog input { opacity: 0; width: 0; height: 0; position: absolute; }
-    .tog-track { position: absolute; inset: 0; border-radius: 0; background: none; border: 1px solid var(--line); transition: background 0.2s, border-color 0.2s; }
-    .tog-track::after { content: ''; position: absolute; width: 16px; height: 16px; border-radius: 0; background: var(--text-dim); top: 2px; left: 2px; transition: transform 0.2s, background 0.2s; box-shadow: none; }
+    .tog-track { position: absolute; inset: 0; border-radius: 0; background: none; border: 1px solid var(--line); transition: background var(--motion-base), border-color var(--motion-base); }
+    .tog-track::after { content: ''; position: absolute; width: 16px; height: 16px; border-radius: 0; background: var(--text-dim); top: 2px; left: 2px; transition: transform var(--motion-base), background var(--motion-base); box-shadow: none; }
     .tog input:checked + .tog-track { background: var(--accent); border-color: var(--accent); }
     .tog input:checked + .tog-track::after { transform: translateX(20px); background: var(--bg); }
 
     /* ===================== Immersive reader ===================== */
     #tts-prog-line { position: absolute; top: 0; left: 0; right: 0; height: 2px; background: var(--track); z-index: 6; }
-    #tts-prog-line > #tts-prog { height: 100%; width: 0; background: var(--accent); transition: width 0.4s linear; }
+    #tts-prog-line > #tts-prog { height: 100%; width: 0; background: var(--accent); transition: width var(--motion-slow) var(--motion-ease); }
     .reader-top {
       position: absolute; top: 3px; left: 0; right: 0; z-index: 7;
       display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.55rem;
       background: linear-gradient(var(--surface), transparent);
-      transition: opacity 0.25s, transform 0.25s;
+      transition: opacity var(--motion-base), transform var(--motion-base);
     }
     .reader-top-center { flex: 1; min-width: 0; text-align: center; }
     .reader-top-info { font: 0.66rem ui-monospace, Menlo, monospace; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -1023,7 +1031,7 @@
       z-index: 6; display: flex; align-items: center; justify-content: center;
       background: none; border: none; padding: 0; cursor: pointer;
       color: var(--text); opacity: 0.28;
-      transition: opacity 0.25s, transform 0.25s;
+      transition: opacity var(--motion-base), transform var(--motion-base);
     }
     .reader-edge.re-left { left: 0; justify-content: flex-start; padding-left: 0.45rem; }
     .reader-edge.re-right { right: 0; justify-content: flex-end; padding-right: 0.45rem; }
@@ -1034,7 +1042,7 @@
       display: flex; flex-direction: column; align-items: center; gap: 0.5rem;
       padding: 0.6rem 1rem calc(0.7rem + var(--safe-b));
       background: linear-gradient(transparent 0, var(--read-bg) 34%);
-      transition: opacity 0.25s, transform 0.25s;
+      transition: opacity var(--motion-base), transform var(--motion-base);
     }
     .reader-meta { font: 0.66rem ui-monospace, Menlo, monospace; color: var(--text-dim); max-width: 90%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     /* Green ink: controls sit on the page under a rule, not on a floating pill. */
@@ -1053,8 +1061,8 @@
     /* Stats page */
     .bars { display: flex; align-items: stretch; gap: 5px; height: 104px; margin-bottom: 1.3rem; border-bottom: 1px solid var(--accent); }
     .bar { flex: 1; background: none; border-radius: 0; display: flex; flex-direction: column; justify-content: flex-end; position: relative; cursor: pointer; }
-    .bar-fill { width: 100%; background: var(--accent); border-radius: 0; transition: height 0.3s ease; }
-    .bar-val { position: absolute; left: 50%; transform: translateX(-50%); font-size: 0.6rem; color: var(--text); background: var(--surface); border: 0.5px solid var(--line); padding: 1px 5px; border-radius: 2px; white-space: nowrap; opacity: 0; transition: opacity .15s ease; pointer-events: none; z-index: 3; }
+    .bar-fill { width: 100%; background: var(--accent); border-radius: 0; transition: height var(--motion-slow) var(--motion-ease); }
+    .bar-val { position: absolute; left: 50%; transform: translateX(-50%); font-size: 0.6rem; color: var(--text); background: var(--surface); border: 0.5px solid var(--line); padding: 1px 5px; border-radius: 2px; white-space: nowrap; opacity: 0; transition: opacity var(--motion-fast) var(--motion-ease); pointer-events: none; z-index: 3; }
     .bar:hover .bar-val, .bar.show .bar-val { opacity: 1; }
     .sec-note { font: 0.68rem ui-monospace, Menlo, monospace; color: var(--text-dim); font-weight: 400; }
     .bars-empty { display: flex; align-items: center; justify-content: center; height: 92px; margin-bottom: 1.3rem; color: var(--text-dim); font-size: 0.82rem; text-align: center; }
@@ -1110,7 +1118,7 @@
     @keyframes tapfb { 0%{opacity:0;transform:scale(.7)} 25%{opacity:1;transform:scale(1)} 100%{opacity:0;transform:scale(1.12)} }
 
     /* Centered, dimmed "swipe again to leave" hint */
-    #exit-hint { position: fixed; inset: 0; z-index: 400; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.45); opacity: 0; pointer-events: none; transition: opacity 0.2s; }
+    #exit-hint { position: fixed; inset: 0; z-index: 400; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.45); opacity: 0; pointer-events: none; transition: opacity var(--motion-base); }
     #exit-hint.show { opacity: 1; }
     .eh-box { background: var(--surface); color: var(--text); padding: 0.9rem 1.4rem; border-radius: 2px; border: 1px solid var(--line); font: 0.95rem var(--font-read); box-shadow: none; }
 
@@ -1122,8 +1130,8 @@
        action like Play/Voice-picker/navigation can't fire mid-explanation). */
     #tour-overlay { display: none; position: fixed; inset: 0; z-index: 500; }
     #tour-overlay.show { display: block; }
-    #tour-hole { position: fixed; border-radius: 0; border: 2px solid var(--accent); box-shadow: 0 0 0 9999px rgba(0,0,0,0.7); transition: top 0.25s, left 0.25s, width 0.25s, height 0.25s; }
-    #tour-tip { position: fixed; background: var(--surface); color: var(--text); border-radius: 2px; border: 1px solid var(--accent); padding: 1rem 1.1rem; max-width: min(88vw, 22rem); box-shadow: none; transition: top 0.25s, bottom 0.25s; }
+    #tour-hole { position: fixed; border-radius: 0; border: 2px solid var(--accent); box-shadow: 0 0 0 9999px rgba(0,0,0,0.7); transition: top var(--motion-base), left var(--motion-base), width var(--motion-base), height var(--motion-base); }
+    #tour-tip { position: fixed; background: var(--surface); color: var(--text); border-radius: 2px; border: 1px solid var(--accent); padding: 1rem 1.1rem; max-width: min(88vw, 22rem); box-shadow: none; transition: top var(--motion-base), bottom var(--motion-base); }
     #tour-tip-title { font: 1.1rem var(--font-read); margin-bottom: 0.35rem; }
     #tour-tip-body { font: 400 0.85rem var(--font-ui); color: var(--text-dim); line-height: 1.4; margin-bottom: 0.85rem; }
     .tour-tip-actions { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; }
@@ -1136,7 +1144,7 @@
     .scrub::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px; border-radius: 50%; background: var(--accent); cursor: pointer; }
     .scrub::-moz-range-thumb { width: 12px; height: 12px; border: none; border-radius: 50%; background: var(--accent); cursor: pointer; }
     .reader-bottom .scrub { width: 100%; max-width: none; margin-bottom: 2px; }
-    #scrub-pop { position: fixed; transform: translate(-50%, -100%); background: var(--surface); border: 1px solid var(--line); border-radius: 0; padding: 0.4rem 0.6rem; font: 0.7rem ui-monospace, Menlo, monospace; color: var(--text); box-shadow: none; z-index: 300; opacity: 0; pointer-events: none; transition: opacity 0.15s; white-space: nowrap; text-align: center; }
+    #scrub-pop { position: fixed; transform: translate(-50%, -100%); background: var(--surface); border: 1px solid var(--line); border-radius: 0; padding: 0.4rem 0.6rem; font: 0.7rem ui-monospace, Menlo, monospace; color: var(--text); box-shadow: none; z-index: 300; opacity: 0; pointer-events: none; transition: opacity var(--motion-fast); white-space: nowrap; text-align: center; }
     #scrub-pop.show { opacity: 1; }
     .sp-ch { font-weight: 500; max-width: 60vw; overflow: hidden; text-overflow: ellipsis; }
     .sp-pg { color: var(--text-dim); font-size: 0.64rem; margin-top: 1px; }
