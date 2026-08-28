@@ -16,8 +16,9 @@ don't let it go stale the way `BACKLOG.md`'s old "Next up" section did.
       account, in that order. `BUSINESS.md` "Gating, do now" #2.
 - [ ] **Lawyer review of ToS/Privacy** — same engagement, also awaiting
       response. `BUSINESS.md` §3.
-- [ ] **A replacement MacBook** — the M1 Air purchase fell through
-      (2026-08-10); nothing iOS-side is possible without it, not even
+- [ ] **A replacement MacBook** — **ordered 2026-08-28**: an M1 Air (8GB/128GB,
+      93% battery, CA$650, Longueuil). Blocked on delivery/setup, not decision
+      anymore. Nothing iOS-side is possible until it's in hand, not even
       Apple Developer enrollment testing. Every other iOS item below is
       blocked behind this one.
 - [ ] **CASA AL1 assessment** — parked by design until the payments
@@ -33,21 +34,24 @@ don't let it go stale the way `BACKLOG.md`'s old "Next up" section did.
       Everbloom once registered) skips that entirely. Same shape as the
       Apple Individual-vs-Organization choice already made (wait for the
       corporation). `PAYMENTS_SPEC.md` §11 #5.
-- [ ] **Pricing model: keep one paid tier, or split Standard/Upgraded?**
-      Raised 2026-08-21: leave the Standard (Piper) voice completely free
-      and charge only for the Upgraded (Kokoro) voice, OR price Standard
-      at $1–2/mo and Upgraded at the current $5.99/$49.99. Current
-      committed model (`BUSINESS.md`) is one subscription gating all TTS —
-      this would be a real change to the unit-economics math already
-      baked into that doc, not a copy tweak. Worth thinking through before
-      committing: a free Standard tier gives away the core "audiobook from
-      your own ebooks" value prop for nothing, which undercuts the whole
-      subscription — the natural/Kokoro voice is a quality upgrade on top
-      of a already-complete product, not a separate product. A cheaper
-      Standard tier ($1–2) is more defensible, but still needs new unit
-      economics run before deciding (Stripe's ~3% + fixed fee eats a much
-      bigger share of a $1–2 charge than a $5.99 one). Not decided — flag
-      for a real pass once payments infrastructure exists.
+- [x] **Pricing model: keep one paid tier, or split Standard/Upgraded?**
+      **Owner leaning (2026-08-28, ~95% confident, not fully final):
+      Standard (Piper) free, Upgraded (Kokoro) paid.** Reasoning: Standard
+      doesn't sound natural enough to be the thing people pay for; the
+      subscription should gate voice *quality*, not basic access. This
+      reverses the earlier "free tier undercuts the whole subscription"
+      concern from 2026-08-21 — still needs the actual unit-economics
+      re-run (a free tier costs nothing directly since TTS runs on-device,
+      but changes the funnel/conversion math) before it's final, and
+      before implementing against `PAYMENTS_SPEC.md`'s entitlement design.
+      **New follow-on idea, same conversation:** on a device that benchmarks
+      as Kokoro-capable but is still on the free Standard tier, prompt/promote
+      the Upgraded voice to that user proactively and more often than on a
+      device that can't run it at all — turns the existing
+      `_KOKORO_MIN_GFLOPS` capability gate into an upsell signal. Not
+      scoped or built; needs the paywall/entitlement system to exist first
+      (same as the rest of this section), and a decision on prompt
+      frequency/placement so it doesn't nag.
 - [ ] **KV vs D1 for entitlement generally**, **refund mechanics**,
       **lifetime shutdown reserve**, **trial abuse** — `PAYMENTS_SPEC.md`
       §13, all still open, needed before Stripe integration starts.
@@ -66,22 +70,42 @@ don't let it go stale the way `BACKLOG.md`'s old "Next up" section did.
       but every real pass also produces a paired (GFLOPS, measured ratio)
       data point that improves the threshold calibration itself, so it's
       worth logging results back into `CLAUDE.md`'s Native Kokoro section.
-- [ ] **Competitor SWOT + app store review research.** Scoped and ready to
-      kick off as a background research task — see "SWOT research" below.
+- [x] **Competitor SWOT + app store review research.** **Already done**
+      (commit `96c1b75`, predates this list saying "ready to kick off" —
+      this list itself had gone stale on this exact item) — full SWOT in
+      `COMPETITOR_SWOT.md` against all 6 vetted competitors. **2026-08-28:
+      completed the file's own "Suggested follow-ups" (5 of 6, all
+      mechanical factual corrections)** — `play-books-alternative.html`
+      (+FR) now correctly says uploads get Read Aloud and only the natural
+      voice needs a connection; `naturalreader-alternative.html` (+FR)
+      notes paid MP3 export; `voice-aloud-alternative.html` (+FR) renamed
+      to the app's current Play name ("@Voice"), added its $15 one-time
+      price, and noted third-party engines are installable; `voice-dream-
+      alternative.html` (+FR) notes the subscription is now required for
+      new users with a 3-day trial, and reframes the voice-quality gap
+      (modern neural vs. Voice Dream's Acapela/NeoSpeech/Ivona) instead of
+      leaning on offline/background since Voice Dream claims both;
+      `elevenreader-alternative.html` (+FR) notes the 60-day download
+      expiry and no-export restriction. **Not done, left as an open
+      question, not mechanical**: follow-up 6, whether the `@Voice`
+      comparison page needs a different frame since it's the one
+      competitor whose positioning already overlaps PhonoLeaf's directly.
 - [ ] **App redesign exploration with the `design` skill.** Ready whenever
       wanted — needs a scoping conversation first (which screens/flows,
       what direction), not a blind "redesign everything" pass.
-- [ ] **Stale doc cleanup**, surfaced 2026-08-20 and not yet done:
-      `BACKLOG.md` section H (Kokoro-on-strong-devices) says "not
-      implemented" — it shipped 2026-08-08. Section F's accessibility
-      bullets have no DONE marker even though the audit shipped
-      2026-08-07. `BUSINESS.md`'s gating item 4 still lists French legal
-      pages as open — they've been live since before the whole-app i18n
-      work.
+- [x] **Stale doc cleanup**, surfaced 2026-08-20, **done 2026-08-28**:
+      `BACKLOG.md` section H (Kokoro-on-strong-devices) now marked DONE
+      with a pointer to `CLAUDE.md`'s "Voice engine" section; section F's
+      accessibility bullets now carry their 2026-08-07 DONE markers;
+      `BUSINESS.md`'s gating item 4 no longer lists French legal pages as
+      open.
 - [ ] **Store review prompts** (`BACKLOG.md` section I) — Play In-App
       Review / iOS SKStoreReviewController, triggered after a good moment
-      (finishing a book), never nagging. Fully scoped, nothing built yet,
-      doesn't depend on payments or incorporation.
+      (finishing a book), never nagging. Fully scoped, nothing built yet.
+      **Owner call 2026-08-28: hold until actually on the app stores** —
+      prompting for a store review before the app is listed anywhere is
+      pointless, so this is deliberately not next despite having no
+      technical blocker.
 
 ## Bug, just fixed, needs device confirmation
 
@@ -134,14 +158,15 @@ Logged as-is, no design work done yet.
       deciding before or alongside the gamification question above since
       they'd need to agree with each other.
 
-## SWOT research (ready to launch as a background task)
+## SWOT research (done — see `COMPETITOR_SWOT.md`)
 
-Competitors already vetted for this project (each has a live comparison
-page — `elevenreader-alternative.html`, `naturalreader-alternative.html`,
+Competitors vetted for this project (each has a live comparison page —
+`elevenreader-alternative.html`, `naturalreader-alternative.html`,
 `play-books-alternative.html`, `speechify-alternative.html`,
 `voice-aloud-alternative.html`, `voice-dream-alternative.html`): **ElevenReader,
 NaturalReader, Google Play Books, Speechify, Voice Aloud Reader, Voice
-Dream Reader.** A SWOT + app-store-review-mining pass against this same
-list would build directly on research already done rather than starting
-cold. Owner separately wants hands-on firsthand testing of these — the
-two are complementary (agent does breadth/reviews, owner does depth/feel).
+Dream Reader.** Full SWOT + app-store-review-mining pass against this list
+is in `COMPETITOR_SWOT.md`; its factual follow-ups against the live
+comparison pages are done as of 2026-08-28 (see "Actionable now" above).
+Owner separately wants hands-on firsthand testing of these — the two are
+complementary (agent did breadth/reviews, owner does depth/feel).
