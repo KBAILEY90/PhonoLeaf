@@ -5039,8 +5039,13 @@ const Tour = {
     // a tab used to poke into Home's own content and reveal a sliver of it.
     // Clamping to the target's immediate container (its bar/row, which
     // paints its own opaque background) keeps the spotlight to exactly
-    // that bar no matter how the padding math works out.
-    const bound = el.parentElement.getBoundingClientRect();
+    // that bar no matter how the padding math works out. A step can name
+    // its own boundSelector when the immediate parent doesn't actually
+    // leave room for the pad (see #play-btn's step, whose parent has no
+    // bottom padding around the oversized circle).
+    const step = this._steps[this._idx];
+    const boundEl = (step.boundSelector && document.querySelector(step.boundSelector)) || el.parentElement;
+    const bound = boundEl.getBoundingClientRect();
     const top = Math.max(r.top - pad, bound.top);
     const left = Math.max(r.left - pad, bound.left);
     const bottom = Math.min(r.bottom + pad, bound.bottom);
@@ -5103,7 +5108,16 @@ const Tour = {
   // --- Reader tour: first time a book is opened in FULL mode. ---
   _readerSteps() {
     return [
-      { selector: '#play-btn', titleKey: 'tour_reader_play_title', bodyKey: 'tour_reader_play_body' },
+      // boundSelector: #play-btn's immediate parent (.rc-row) has ZERO
+      // bottom padding around the oversized 62px circle (deliberate — keeps
+      // the control row snug against .tts-pill's border below), so
+      // _reposition()'s clamp-to-parent (see its own comment) clips almost
+      // all of the bottom pad and nearly none of the top, leaving the
+      // spotlight square visibly touching the circle on one side (reported,
+      // with a screenshot). .reader-bottom is the actual opaque panel with
+      // real room on every side, and nothing between it and .rc-row is see-
+      // through, so clamping there instead is safe.
+      { selector: '#play-btn', boundSelector: '.reader-bottom', titleKey: 'tour_reader_play_title', bodyKey: 'tour_reader_play_body' },
       { selector: '#voice-btn', titleKey: 'tour_reader_voice_title', bodyKey: 'tour_reader_voice_body' },
       { selector: '#hl-btn', titleKey: 'tour_reader_highlight_title', bodyKey: 'tour_reader_highlight_body' },
       { selector: '#search-btn', titleKey: 'tour_reader_search_title', bodyKey: 'tour_reader_search_body' },

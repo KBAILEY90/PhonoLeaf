@@ -68,6 +68,14 @@ don't let it go stale the way `BACKLOG.md`'s old "Next up" section did.
       worth logging results back into `CLAUDE.md`'s Native Kokoro section.
 - [ ] **Competitor SWOT + app store review research.** Scoped and ready to
       kick off as a background research task — see "SWOT research" below.
+- [ ] **Internal SWOT of PhonoLeaf itself**, raised 2026-08-29 — distinct
+      from the competitor SWOT above (that one benchmarks against
+      ElevenReader/NaturalReader/etc.; this one looks inward: strengths,
+      weaknesses, opportunities, threats in PhonoLeaf's own product,
+      codebase, and business position). Not scoped yet — worth a short
+      framing pass (codebase-only audit vs. also covering business/market
+      factors already tracked in `BUSINESS.md`/`PAYMENTS_SPEC.md`) before
+      starting.
 - [ ] **App redesign exploration with the `design` skill.** Ready whenever
       wanted — needs a scoping conversation first (which screens/flows,
       what direction), not a blind "redesign everything" pass.
