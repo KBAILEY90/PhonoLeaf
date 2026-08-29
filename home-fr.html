@@ -3,9 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="theme-color" content="#3E8E6B">
+<meta name="theme-color" content="#EFE9DA" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0F1411" media="(prefers-color-scheme: dark)">
 <meta name="description" content="PhonoLeaf transforme les livres numériques de votre Google Drive en livres audio, avec une voix naturelle sur votre appareil, la lecture en arrière-plan et des commandes sur l'écran de verrouillage.">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%233E8E6B'/%3E%3Cpath d='M50 24 C68 38 68 66 50 82 C32 66 32 38 50 24 Z' fill='%23F4F1E8'/%3E%3Cpath d='M50 82 L50 90' stroke='%23F4F1E8' stroke-width='3.2' stroke-linecap='round'/%3E%3Cpath d='M35 53 Q40 42 45 53 T55 53 T65 53' fill='none' stroke='%233E8E6B' stroke-width='3.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%232F6B4F'/%3E%3Cpath d='M50 24 C68 38 68 66 50 82 C32 66 32 38 50 24 Z' fill='%23EFE9DA'/%3E%3Cpath d='M50 82 L50 90' stroke='%23EFE9DA' stroke-width='3.2' stroke-linecap='round'/%3E%3Cpath d='M35 53 Q40 42 45 53 T55 53 T65 53' fill='none' stroke='%232F6B4F' stroke-width='3.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <title>PhonoLeaf : transformez vos livres en livres audio</title>
 <link rel="alternate" hreflang="en" href="https://phonoleaf.com/home.html">
 <link rel="alternate" hreflang="fr-ca" href="https://phonoleaf.com/home-fr.html">
@@ -29,29 +30,63 @@
     if (saved === 'en') { location.replace('home.html'); }
   } catch (e) {}
 })();
+/* Mirror the app's own Light/Dark/Auto choice — same localStorage key
+   (pl_theme) and pre-paint pattern as the app and its legal pages, so this
+   page never disagrees with a theme already chosen in PhonoLeaf. Absent or
+   'auto' leaves it to prefers-color-scheme. */
+(function () {
+  try {
+    var t = localStorage.getItem('pl_theme');
+    if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
+  } catch (e) {}
+})();
 </script>
 <style>
+  /* Token set matches the app's own (index.green.html) and its legal
+     pages (privacy.green.html/terms.green.html) exactly — same names,
+     same values, same [data-theme] override pattern — so a visitor who
+     lands here from either never sees a different-looking green. */
   :root {
-    --bg:        #F4F1E8;
-    --surface:   #FBF9F2;
-    --card:      #FFFFFF;
-    --accent:    #3E8E6B;
-    --accent2:   #C98A3C;
-    --text:      #1E2A22;
-    --text-dim:  #6E7A70;
-    --line:      #E6E1D3;
+    --bg:        #EFE9DA;
+    --surface:   #F3EEE1;
+    --accent:    #2F6B4F;
+    --accent2:   #8C3B2F;
+    --text:      #17150F;
+    --text-dim:  #6B6455;
+    --line:      #D6CFBC;
     --font-ui:   'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-read: 'Literata', Georgia, serif;
+    --shadow-ink: 4px 4px 0 rgba(23,21,15,0.14);
   }
   @media (prefers-color-scheme: dark) {
     :root {
-      --bg:#0F1310; --surface:#161B14; --card:#1D241B;
-      --accent:#6FC598; --accent2:#E0A857;
-      --text:#E8ECE1; --text-dim:#97A290; --line:#2A3225;
+      --bg:#0F1411; --surface:#121711;
+      --accent:#6FBF95; --accent2:#D07A6B;
+      --text:#E4EBE6; --text-dim:#7E8A83; --line:#24302A;
+      --shadow-ink: 4px 4px 0 rgba(0,0,0,0.4);
     }
+  }
+  /* A forced Light/Dark choice in the app must win over the OS preference
+     here too — same source-order-wins pattern as the app's own pages. */
+  [data-theme="light"] {
+    --bg:#EFE9DA; --surface:#F3EEE1;
+    --accent:#2F6B4F; --accent2:#8C3B2F;
+    --text:#17150F; --text-dim:#6B6455; --line:#D6CFBC;
+    --shadow-ink: 4px 4px 0 rgba(23,21,15,0.14);
+  }
+  [data-theme="dark"] {
+    --bg:#0F1411; --surface:#121711;
+    --accent:#6FBF95; --accent2:#D07A6B;
+    --text:#E4EBE6; --text-dim:#7E8A83; --line:#24302A;
+    --shadow-ink: 4px 4px 0 rgba(0,0,0,0.4);
   }
   @font-face {
     font-family:'Manrope'; font-style:normal; font-weight:100 900;
     font-display:swap; src:url('fonts/manrope.woff2') format('woff2');
+  }
+  @font-face {
+    font-family:'Literata'; font-style:normal; font-weight:100 900;
+    font-display:swap; src:url('fonts/literata.woff2') format('woff2');
   }
   * { box-sizing: border-box; }
   body {
@@ -63,24 +98,31 @@
   .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 3rem; }
   .brand { display: flex; align-items: center; gap: 0.6rem; text-decoration: none; color: var(--text); }
   .brand svg { flex-shrink: 0; }
-  .brand span { font-weight: 800; font-size: 1.15rem; letter-spacing: -0.01em; }
-  .langswitch { font-size: 0.8rem; }
+  .brand span { font: 700 1.05rem var(--font-ui); letter-spacing: -0.01em; }
+  .langswitch { font: 0.8rem ui-monospace, Menlo, monospace; }
   .langswitch a, .langswitch b { text-decoration: none; padding: 0.2rem 0.4rem; }
   .langswitch a { color: var(--text-dim); }
-  .langswitch b { color: var(--text); }
+  .langswitch b { color: var(--accent); }
 
   .hero { text-align: center; margin-bottom: 3.5rem; }
   .hero .mark { margin-bottom: 1.2rem; }
-  h1 { font-size: 2.1rem; font-weight: 800; margin: 0 0 0.6rem; letter-spacing: -0.02em; line-height: 1.2; }
-  .tagline { color: var(--accent2); font-weight: 700; font-size: 0.95rem; letter-spacing: 0.02em; margin-bottom: 1.1rem; }
+  h1 { font: 400 2.4rem/1.2 var(--font-read); margin: 0 0 0.7rem; letter-spacing: -0.02em; }
+  .tagline { color: var(--accent2); font: 600 0.8rem var(--font-ui); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 1.2rem; }
   .lede { color: var(--text-dim); font-size: 1.05rem; max-width: 30rem; margin: 0 auto 1.8rem; }
   .cta {
-    display: inline-block; background: var(--accent); color: #fff; text-decoration: none;
-    font-weight: 700; font-size: 0.98rem; padding: 0.8rem 1.7rem; border-radius: 999px;
+    display: inline-block; background: var(--accent); color: var(--bg); text-decoration: none;
+    font: 700 0.98rem var(--font-ui); padding: 0.8rem 1.7rem; border-radius: 2px;
   }
+  /* Dark mode's --accent is a bright light green meant for text on a near-
+     black page, not a fill — glaring next to a muted dark UI. Same fix the
+     app's own legal-page "short version" box already uses: a dedicated
+     deep-green fill + the light text token instead. */
+  @media (prefers-color-scheme: dark) { .cta { background: #1E4534; color: var(--text); } }
+  [data-theme="dark"] .cta { background: #1E4534; color: var(--text); }
+  [data-theme="light"] .cta { background: var(--accent); color: var(--bg); }
   .cta-note { display: block; color: var(--text-dim); font-size: 0.82rem; margin-top: 0.8rem; }
 
-  h2 { font-size: 1.2rem; font-weight: 700; margin: 2.8rem 0 0.9rem; color: var(--accent); }
+  h2 { font: 400 1.3rem var(--font-read); margin: 2.8rem 0 0.9rem; color: var(--accent); }
   p { margin: 0 0 1rem; }
   a { color: var(--accent); }
 
@@ -91,8 +133,8 @@
   .steps li::before {
     content: counter(s); position: absolute; left: 0; top: 0.05rem;
     width: 1.75rem; height: 1.75rem; border-radius: 50%;
-    background: var(--accent); color: #fff;
-    font-size: 0.85rem; font-weight: 700;
+    background: var(--accent); color: var(--bg);
+    font: 700 0.85rem var(--font-ui);
     display: flex; align-items: center; justify-content: center;
   }
   .steps b { display: block; }
@@ -100,20 +142,20 @@
 
   .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.9rem; margin: 1.2rem 0 1rem; }
   .feat {
-    background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 1.1rem 1.2rem;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 2px; padding: 1.1rem 1.2rem;
   }
   .feat b { display: block; margin-bottom: 0.25rem; font-size: 0.95rem; }
   .feat span { color: var(--text-dim); font-size: 0.88rem; }
 
   .card {
-    background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 2px;
     padding: 1.2rem 1.4rem; margin: 1.4rem 0; font-size: 0.92rem;
   }
   .card b { display: block; margin-bottom: 0.3rem; }
   ul { margin: 0 0 1rem; padding-left: 1.3rem; }
   li { margin-bottom: 0.45rem; }
   code {
-    background: var(--surface); border: 1px solid var(--line); border-radius: 5px;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 2px;
     padding: 0.08rem 0.35rem; font-size: 0.88em;
   }
   .foot { margin-top: 3.5rem; padding-top: 1.5rem; border-top: 1px solid var(--line); color: var(--text-dim); font-size: 0.82rem; }
@@ -124,7 +166,7 @@
 
   <div class="topbar">
     <a class="brand" href="home-fr.html">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="28" height="28" aria-hidden="true"><rect width="100" height="100" rx="22" fill="#3E8E6B"/><path d="M50 24 C68 38 68 66 50 82 C32 66 32 38 50 24 Z" fill="#F4F1E8"/><path d="M50 82 L50 90" stroke="#F4F1E8" stroke-width="3.2" stroke-linecap="round"/><path d="M35 53 Q40 42 45 53 T55 53 T65 53" fill="none" stroke="#3E8E6B" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="28" height="28" aria-hidden="true"><rect width="100" height="100" fill="#2F6B4F"/><path d="M50 24 C68 38 68 66 50 82 C32 66 32 38 50 24 Z" fill="#EFE9DA"/><path d="M50 82 L50 90" stroke="#EFE9DA" stroke-width="3.2" stroke-linecap="round"/><path d="M35 53 Q40 42 45 53 T55 53 T65 53" fill="none" stroke="#2F6B4F" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
       <span>PhonoLeaf</span>
     </a>
     <div class="langswitch">
@@ -135,7 +177,7 @@
 
   <div class="hero">
     <div class="mark">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="76" height="76" aria-hidden="true"><rect width="100" height="100" rx="22" fill="#3E8E6B"/><path d="M50 24 C68 38 68 66 50 82 C32 66 32 38 50 24 Z" fill="#F4F1E8"/><path d="M50 82 L50 90" stroke="#F4F1E8" stroke-width="3.2" stroke-linecap="round"/><path d="M35 53 Q40 42 45 53 T55 53 T65 53" fill="none" stroke="#3E8E6B" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="76" height="76" aria-hidden="true"><rect width="100" height="100" fill="#2F6B4F"/><path d="M50 24 C68 38 68 66 50 82 C32 66 32 38 50 24 Z" fill="#EFE9DA"/><path d="M50 82 L50 90" stroke="#EFE9DA" stroke-width="3.2" stroke-linecap="round"/><path d="M35 53 Q40 42 45 53 T55 53 T65 53" fill="none" stroke="#2F6B4F" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
     </div>
     <h1>Transformez vos livres en livres audio</h1>
     <div class="tagline">Une voix pour chaque page</div>
