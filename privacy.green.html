@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<!-- NO viewport-fit=cover, deliberately: with it, the page draws UNDER the
+     status bar, which is why these pages lost the status-bar band the rest
+     of the app shows behind the clock/battery. index.green.html omits it for
+     the same reason, so matching it here keeps the WebView laying out below
+     the status bar on every screen. theme-color is the app's own light/dark
+     pair (was a single green), so the band is tinted identically too. -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#EFE9DA" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0F1411" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%232F6B4F'/%3E%3Cpath d='M50 24 C68 38 68 66 50 82 C32 66 32 38 50 24 Z' fill='%23EFE9DA'/%3E%3Cpath d='M50 82 L50 90' stroke='%23EFE9DA' stroke-width='3.2' stroke-linecap='round'/%3E%3Cpath d='M35 53 Q40 42 45 53 T55 53 T65 53' fill='none' stroke='%232F6B4F' stroke-width='3.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<title>Privacy Policy · PhonoLeaf</title>
+<script>
+(function () {
+  try {
+    var saved = localStorage.getItem('pl_lang');
+    var prefersFr = (navigator.languages || [navigator.language || 'en'])
+      .some(function (l) { return /^fr/i.test(l); });
+    var wantFr = saved ? saved === 'fr' : prefersFr;
+    if (wantFr) { location.replace('privacy-fr.green.html'); }
+  } catch (e) {}
+})();
+/* Mirror the app's own Light/Dark/Auto choice. Same localStorage key
+   (pl_theme, written by Theme.apply()) and same pre-paint pattern as
+   index.green.html's own init, so a page opened from the app can never
+   disagree with the app that linked to it. Absent or 'auto' leaves it to
+   prefers-color-scheme, matching the app's own default. */
+(function () {
+  try {
+    var t = localStorage.getItem('pl_theme');
+    if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
+  } catch (e) {}
+})();
+</script>
+<style>
+  :root {
+    --bg:        #EFE9DA;
+    --surface:   #F3EEE1;
+    --accent:    #2F6B4F;
+    --accent2:   #8C3B2F;
+    --text:      #17150F;
+    --text-dim:  #6B6455;
+    --line:      #D6CFBC;
+    --font-ui:   'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-read: 'Literata', Georgia, serif;
+    --shadow-ink: 4px 4px 0 rgba(23,21,15,0.14);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg:#0F1411; --surface:#121711;
+      --accent:#6FBF95; --accent2:#D07A6B;
+      --text:#E4EBE6; --text-dim:#7E8A83; --line:#24302A;
+      --shadow-ink: 4px 4px 0 rgba(0,0,0,0.4);
+    }
+  }
+  /* A forced Light/Dark choice in the app's Settings must win over the
+     device preference, exactly as it does in the app itself — same token
+     blocks, same source-order-wins pattern as index.green.html. Without
+     these blocks (the original state of these pages) the app's own theme
+     setting was ignored entirely and only the OS preference applied, so a
+     user on a dark phone who had chosen Light in PhonoLeaf still got dark
+     legal pages. */
+  [data-theme="light"] {
+    --bg:#EFE9DA; --surface:#F3EEE1;
+    --accent:#2F6B4F; --accent2:#8C3B2F;
+    --text:#17150F; --text-dim:#6B6455; --line:#D6CFBC;
+    --shadow-ink: 4px 4px 0 rgba(23,21,15,0.14);
+  }
+  [data-theme="dark"] {
+    --bg:#0F1411; --surface:#121711;
+    --accent:#6FBF95; --accent2:#D07A6B;
+    --text:#E4EBE6; --text-dim:#7E8A83; --line:#24302A;
+    --shadow-ink: 4px 4px 0 rgba(0,0,0,0.4);
+  }
+  @font-face {
+    font-family:'Manrope'; font-style:normal; font-weight:100 900;
+    font-display:swap; src:url('fonts/manrope.woff2') format('woff2');
+  }
+  @font-face {
+    font-family:'Literata'; font-style:normal; font-weight:100 900;
+    font-display:swap; src:url('fonts/literata.woff2') format('woff2');
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 400 0.94rem/1.65 var(--font-ui);
+    -webkit-font-smoothing: antialiased;
+  }
+  /* Header geometry matched to the app's own .app-header sitting inside
+     .scrolly, so the logo + wordmark land in the IDENTICAL spot here as on
+     Home/Shelves/Log/Settings: .scrolly's 1.1rem padding + .app-header's
+     0.2rem padding-top puts the icon's top edge at the same y, and the
+     1.1rem side padding puts its left edge at the same x. max-width still
+     centres the text column on a wide screen. */
+  .wrap { max-width: 640px; margin: 0 auto; padding: 1.1rem 1.1rem 5rem; }
+  .topbar { display: flex; align-items: center; justify-content: space-between; padding-top: 0.2rem; margin-bottom: 2.1rem; }
+  .brand { display: flex; align-items: center; gap: 0.45rem; text-decoration: none; color: var(--text); }
+  .brand svg { flex-shrink: 0; }
+  .brand span { font: 600 0.82rem var(--font-ui); letter-spacing: -0.01em; color: var(--text); }
+  .langswitch { font: 0.78rem ui-monospace, Menlo, monospace; }
+  .langswitch a, .langswitch b { text-decoration: none; padding: 0.2rem 0.4rem; }
+  .langswitch a { color: var(--text-dim); }
+  .langswitch b { color: var(--accent); }
+  /* Same size/weight/tracking and same top margin as the app's shared
+     .home-title, so a page title reads identically whether you're on
+     Settings or here. */
+  /* padding-top (not margin-top) matches index.green.html's .home-title:
+     0.98rem, so this title lands at the same height as the Now page's own
+     name, not a line higher — see .home-title's own comment there for the
+     full story, including why this MUST be padding (.topbar and h1 are
+     plain block siblings inside .wrap, so a margin-top here would just
+     collapse into .topbar's larger margin-bottom and do nothing) and why
+     it's 0.98rem alone rather than the title's old 0.5rem margin plus
+     0.98rem (that old margin never actually contributed anything once
+     collapsed against .topbar's larger one, so folding it in here would
+     overshoot). */
+  h1 { font: 400 1.625rem/1.15 var(--font-read); font-weight: 400; margin: 0 0 0.35rem; padding-top: 0.98rem; letter-spacing: -0.02em; }
+  .updated { color: var(--text-dim); font: 0.78rem ui-monospace, Menlo, monospace; margin-bottom: 1.8rem; }
+  .summary-box {
+    background: var(--accent); color: var(--bg);
+    padding: 1.2rem 1.3rem; margin: 0 0 2.2rem;
+    box-shadow: var(--shadow-ink);
+  }
+  /* Dark mode's --accent is the BRIGHT light green meant for text sitting on
+     a near-black page (#6FBF95) — fine as text, but as a fill it read as
+     glaringly bright next to everything else in dark mode being muted/near-
+     black. A dedicated deep-green fill + the theme's own light text token
+     (not --bg, which is near-black and would go invisible on a dark fill)
+     keeps the box reading as clearly highlighted without the glare.
+     Both the @media query AND the [data-theme="dark"] override are needed
+     (same source-order-wins pattern the token blocks above already use) —
+     but @media (prefers-color-scheme: dark) alone, with nothing to beat it
+     back, would ALSO win when the OS is dark and the app is explicitly set
+     to Light: [data-theme="light"] must restate the plain var(--accent)
+     look at matching specificity so it wins regardless of source order. */
+  @media (prefers-color-scheme: dark) {
+    .summary-box { background: #1E4534; color: var(--text); }
+  }
+  [data-theme="dark"] .summary-box { background: #1E4534; color: var(--text); }
+  [data-theme="light"] .summary-box { background: var(--accent); color: var(--bg); }
+  .summary-box b { display: block; font: 600 0.68rem var(--font-ui); letter-spacing: 0.16em; text-transform: uppercase; margin-bottom: 0.55rem; }
+  .summary-box p { margin: 0; font-size: 0.92rem; line-height: 1.55; }
+  section { padding: 1.3rem 0; border-top: 1px solid var(--line); }
+  section:last-of-type { border-bottom: 1px solid var(--line); }
+  h2 { font: 600 0.78rem var(--font-ui); letter-spacing: 0.04em; margin: 0 0 0.7rem; color: var(--accent); }
+  p, li { color: var(--text); font-size: 0.88rem; }
+  p { margin: 0 0 0.8rem; }
+  p:last-child, ul:last-child, table:last-child { margin-bottom: 0; }
+  ul { margin: 0 0 0.8rem; padding-left: 1.2rem; }
+  li { margin-bottom: 0.4rem; }
+  strong { font-weight: 700; }
+  a { color: var(--accent); }
+  table { width: 100%; border-collapse: collapse; margin: 0 0 0.8rem; font-size: 0.84rem; }
+  th, td { text-align: left; padding: 0.55rem 0.6rem 0.55rem 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--text-dim); font-weight: 600; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.02em; }
+  code { font: 0.82em ui-monospace, Menlo, monospace; }
+  .foot { margin-top: 1.6rem; color: var(--text-dim); font-size: 0.8rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <a class="brand" href="home.html">
+      <svg width="22" height="22" viewBox="0 0 100 100"><rect width="100" height="100" fill="#2F6B4F"/><path d="M50 24 C68 38 68 66 50 82 C32 66 32 38 50 24 Z" fill="#EFE9DA"/><path d="M50 82 L50 90" stroke="#EFE9DA" stroke-width="3.2" stroke-linecap="round"/><path d="M35 53 Q40 42 45 53 T55 53 T65 53" fill="none" stroke="#2F6B4F" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span>PhonoLeaf</span>
+    </a>
+    <div class="langswitch">
+      <b>EN</b> ·
+      <a href="privacy-fr.green.html" onclick="try{localStorage.setItem('pl_lang','fr')}catch(e){}">FR</a>
+    </div>
+  </div>
+
+  <h1>Privacy Policy</h1>
+  <div class="updated">Effective August 5, 2026</div>
+
+  <div class="summary-box">
+    <b>The short version</b>
+    <p>PhonoLeaf has no server. There is nowhere for your data to go except between your device and Google's own services. We (the developer) never receive, see, or store your books, your Drive contents, or your listening activity anywhere.</p>
+  </div>
+
+  <p style="margin-bottom:1.3rem">PhonoLeaf ("the app", "we", "our") turns epub books stored in your Google Drive into read-aloud audio, on your own device. This policy explains what data the app touches, why, and — just as importantly — what it never does.</p>
+
+  <section>
+    <h2>"Does PhonoLeaf store my data or not?"</h2>
+    <p>Both things are true at once, and the distinction is simply <em>where</em>: <strong>the app does save things</strong> — your reading position, listening stats, settings and cached book covers — and all of it is written to <strong>your own device</strong>, the same way a browser saves a bookmark. <strong>None of it is ever sent to us.</strong> PhonoLeaf has no server, no database and no user accounts, so there is nowhere on our side for a copy to exist. That is also why you can export or erase everything yourself from Settings, without asking us and without waiting — see <a href="#your-rights">Your rights over your data</a> below.</p>
+  </section>
+
+  <section>
+    <h2>What the app accesses, and why</h2>
+    <table>
+      <tr><th>Data</th><th>Why</th><th>Where it goes</th></tr>
+      <tr><td>Google Drive access (read-only)</td><td>To list and download the epub files in the folder you choose</td><td>Directly between your device and Google — never through us</td></tr>
+      <tr><td>Your Google display name</td><td>For the "Good morning, {name}" greeting on the Home screen</td><td>Stored on your device only</td></tr>
+      <tr><td>Book titles/authors</td><td>To look up genre and page-count metadata</td><td>Sent to Open Library (openlibrary.org), a public, third-party book database — no personal or account data is included</td></tr>
+      <tr><td>Reading progress, stats, settings, voice choice</td><td>So the app remembers your place and preferences</td><td>Stored on your device only (browser storage / app storage) — never transmitted anywhere</td></tr>
+      <tr><td>Book covers</td><td>Cached so they don't re-download every time</td><td>Stored on your device only</td></tr>
+    </table>
+  </section>
+
+  <section>
+    <h2>Google Drive access, specifically</h2>
+    <p>PhonoLeaf requests <strong>read-only</strong> access to Google Drive (the <code>drive.readonly</code> scope). This is a broad, Google-classified "restricted" scope — broader than the app strictly needs for the one folder you connect — chosen because it's the only way to support "connect a folder once, new books appear automatically" without you re-selecting files every time. Because of that scope, PhonoLeaf is required to go through Google's own app verification process; see Google's own explanation of what that review covers at <a href="https://support.google.com/cloud/answer/13463737" target="_blank" rel="noopener">support.google.com/cloud/answer/13463737</a>.</p>
+    <p>The app never modifies, deletes, or uploads anything to your Drive. It only lists and downloads the epub files inside the one folder you pick.</p>
+  </section>
+
+  <section>
+    <h2>Limited Use commitment</h2>
+    <p>PhonoLeaf's use and transfer of information received from Google APIs to any other app will adhere to the <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" rel="noopener">Google API Services User Data Policy</a>, including the <strong>Limited Use</strong> requirements. Specifically: Google user data is used only to provide the user-facing reading features described on this page; it is never transferred to anyone except as those features require on your own device; it is never sold, and never used for advertising, ad targeting, or credit assessment; no human ever reads it; and it is never used to train any AI or machine-learning model.</p>
+  </section>
+
+  <section>
+    <h2>How we protect your data</h2>
+    <ul>
+      <li><strong>Encrypted in transit.</strong> Every connection the app makes — to Google, to Open Library for book metadata, to download a natural-voice model — goes over HTTPS/TLS. Nothing the app sends or receives travels in plain text.</li>
+      <li><strong>Your Google sign-in is encrypted at rest on the Android app.</strong> The native app stores the long-lived authorization that keeps you signed in in the device's Android Keystore-backed encrypted storage (<code>EncryptedSharedPreferences</code>), not in plain app storage. The web version uses a short-lived (~1 hour) access token instead of a long-lived one; it lives only in your own browser profile and is never transmitted anywhere except directly to Google.</li>
+      <li><strong>No server means no central database to breach.</strong> PhonoLeaf has no backend, so there is no server-side store of your books, reading progress, or stats that could ever be exposed in a server breach — it all exists only on your own device.</li>
+      <li><strong>A locked-down app.</strong> The app enforces a Content Security Policy that limits which sites it can ever load code from or send data to, to a short, explicit list (Google, Open Library, and the specific CDNs the natural-voice model needs). The core epub-reading code is bundled directly into the app rather than pulled from a third-party CDN at runtime, so a compromised CDN there has nothing to inject into.</li>
+      <li><strong>You control deletion, on your schedule.</strong> See <a href="#your-rights">Your rights over your data</a> below for how to erase everything stored on your device, including revoking the app's access to your Google account, at any time.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>What we never do</h2>
+    <ul>
+      <li>We do not operate a server, and no version of the app sends your books, Drive contents, reading activity, or personal data to us or to any server we control.</li>
+      <li>We do not sell, rent, or share your data with advertisers or data brokers. There is no advertising in the app.</li>
+      <li>We do not use your data to train any AI/ML model.</li>
+      <li>The text-to-speech voice runs entirely on your device (or, as a fallback, through your device's own built-in voice engine). Book text is never sent to a cloud speech service.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Third parties the app talks to</h2>
+    <p>Because PhonoLeaf has no backend of its own, your device talks directly to a short, fixed list of external services:</p>
+    <ul>
+      <li><strong>Google</strong> (accounts.google.com, googleapis.com) — sign-in and Drive access. Governed by <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Google's Privacy Policy</a>.</li>
+      <li><strong>Open Library</strong> (openlibrary.org) — a free, public book-metadata API operated by the Internet Archive, used only to look up genre/page count from a title and author.</li>
+      <li><strong>jsDelivr / Hugging Face</strong> (cdn.jsdelivr.net, huggingface.co) — only if your device falls back to the in-browser neural voice model, this downloads the (non-personal) voice model files.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Data stored on your device</h2>
+    <p>Everything else — your reading progress, listening stats, theme choice, voice preference, and which folder you've connected — is stored locally in your browser's or app's own storage. It never leaves your device. Uninstalling the app, clearing site data, or using "Reset listening data" in Settings removes it.</p>
+  </section>
+
+  <section>
+    <h2>Signing out</h2>
+    <p>Signing out revokes the app's access to your Google account. On the native app, this also revokes the underlying Google authorization grant, not just the local session.</p>
+  </section>
+
+  <section id="your-rights">
+    <h2>Your rights over your data</h2>
+    <p>Because PhonoLeaf has no backend, there is no account of yours sitting on a server for us to hand over or erase — everything is on your own device, and you can act on it directly, without asking us and without waiting:</p>
+    <ul>
+      <li><strong>Access / portability.</strong> <em>Settings → Export my data</em> downloads everything the app has saved <em>on this device</em> as a readable JSON file: reading progress, listening stats, book metadata and settings. Sign-in tokens are deliberately excluded from the file, since a copy of one would give anyone holding it access to your Drive.</li>
+      <li><strong>Erasure.</strong> <em>Settings → Delete my data</em> erases all of it from this device — local storage, cached cover images, and any downloaded natural-voice models — and disconnects your Google account, revoking PhonoLeaf's access at Google. Your ebooks in Google Drive are not touched.</li>
+      <li><strong>Partial erasure.</strong> <em>Stats → Reset listening data</em> clears just your listening history and progress, leaving settings alone.</li>
+    </ul>
+    <p>If you have a question we can't answer through the app itself, contact us using the address below.</p>
+  </section>
+
+  <section>
+    <h2>Children's privacy</h2>
+    <p>PhonoLeaf is not directed at children under 13, and we do not knowingly collect data from children. Since PhonoLeaf has no backend, it does not collect data from anyone, of any age, on any server we operate.</p>
+  </section>
+
+  <section>
+    <h2>Changes to this policy</h2>
+    <p>If this policy changes, the updated version will be posted at this same URL with a new effective date.</p>
+  </section>
+
+  <section>
+    <h2>Contact</h2>
+    <p>Questions about this policy: <a href="mailto:support@phonoleaf.com">support@phonoleaf.com</a></p>
+  </section>
+
+  <div class="foot">
+    <a href="terms.green.html">Terms of Service</a> · <a href="home.html">PhonoLeaf Home</a>
+  </div>
+
+</div>
+</body>
+</html>

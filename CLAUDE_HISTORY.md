@@ -4620,3 +4620,2174 @@ only the file-copy half (`stage:test`) was verified directly (`www/index.html`
 confirmed byte-identical to `index.green.html` afterward). To go back to
 the real app, run the normal `npm run sync` again — it re-stages the real
 `index.html` and overwrites the test copy.
+
+## Home/Shelves/Player rebuild + sleep timer + ±15s skip (2026-08-25)
+
+The Phase-1 pass above (tab rename, corner cleanup, sign-in copy, erase
+modal) was pushed to the website and the owner tried to verify it — but
+they test on the **native app** (`npm run sync:test` + Android Studio), not
+a browser, and the website push never reaches an already-installed native
+build (the native shell bundles `www/index.html` at build time, no network
+fetch — see the `stage-test.js` entry above, which exists for exactly this
+reason). Once actually looked at against the real mockups
+(`PhonoLeaf Redesign.dc.html`, downloaded fresh by the owner and placed in
+the repo — confirmed byte-identical to an earlier working copy), it was
+clear Phase 1 was cosmetic-only and didn't match the mockups' actual screen
+compositions. The owner chose the full rebuild scope, including two new
+features (sleep timer, ±15s skip) neither of which existed in the app at
+all before this.
+
+**Scoping corrections from the owner, both binding:**
+- **Shelves shows real book covers, not a "Spines" alternate view.** The
+  mockup's colored-block "spine" art was placeholder art for books with no
+  real cover — PhonoLeaf already extracts real covers, so a Spines toggle
+  was dropped entirely rather than built as fake-color spines.
+- **Only the most recent light/dark mockup pair per screen counts.**
+  Verified directly by grepping the whole mockup file for the screens'
+  distinguishing text: Home's only version is section "3a" (line 1157,
+  light 1164–1219 / dark 1221–1288) — nothing later redid it. Shelves +
+  Player's most recent versions are section "4a"/"4b" (lines 731/939) —
+  later sections (5/6/7) only cover onboarding/confirmations/downloads/
+  search/zoom/motion, never the core Shelves/Player layout again.
+- **The Player replaces the reader's existing top/bottom chrome in place**,
+  not a separate "now playing" screen. The mockup's Player has no visible
+  reading surface at all (audio-first, full-bleed cover header) — since the
+  real reader MUST keep book text as the dominant element, this was
+  translated by scale rather than copied at the mockup's literal 352px
+  hero height (which would have crowded out the actual page text).
+
+**Home ("Now") rebuild** (`Home.render()`): replaced the old greeting +
+3-tile stat row + plain hero with: a header row (`PhonoLeaf` wordmark +
+`Stats.summary().streak`, already computed, no new data), a hero card
+(real cover via `Covers.urls[id]`, "Still reading"/"Now playing", title,
+chapter, a new `p. {x} of {y} · {time left}` line, progress bar — the whole
+hero is now a tap target for `Player.expand()`, with `event.stopPropagation()`
+on the embedded scrub input so dragging it doesn't also trigger expand), a
+playback row (play/pause + the sentence currently being spoken, read
+straight from `TTS.chunks[TTS.idx]?.text`, no new fetch + a sleep-timer
+readout), the existing "Jump back in" row relabeled "Back on the shelf"
+(unchanged logic), and a new "Next up in {book}" numbered chapter list. The
+3-tile stat row (hours this week/streak/books in progress) was DROPPED from
+Home entirely — the mockup doesn't have it, streak moved to the header, and
+the rest is one tap away on the Log tab.
+- New shared helpers (placed right after `chapterLabelFor`, since they're
+  the same class of book-agnostic utility): `estimateTimeLeft(book, cfi)`
+  and `pageOfTotal(book, cfi)`, both reading `book.locations` (an epub.js
+  live index, only populated for the CURRENTLY OPEN book — everything
+  correctly falls back to a bare `{pct}%` otherwise, same convention
+  `Scrub._info()` already used). Time-left is a heuristic (remaining
+  locations × ~1024 chars/location ÷ ~900 chars/min, scaled by `TTS.rate`)
+  — always prefixed `~`, never claims false precision.
+- "Next up" (`Home._nextUpHTML`) reuses `flattenToc(State.toc)` + the same
+  href-basename matching `chapterLabelFor()` already does to find the
+  current chapter, then slices the next 3 — zero new fetches. Deliberately
+  shows **no per-chapter duration** — nothing in the app cheaply estimates
+  a single chapter's length without loading its section's DOM, and a
+  fabricated number was judged worse than none. Tapping a row
+  (`Home.jumpChapter`) reuses `ChapterModal._resolveHref()` directly (it
+  doesn't depend on `ChapterModal._flat`, so no need to open that modal
+  first) and expands the reader if it's currently minimized.
+
+**Shelves (Library) rebuild** (`Library.render()`): the screen's own
+`<h2>` text was changed from "Library" to "Shelves" (the TAB was already
+renamed in Phase 1; the screen heading itself was missed) plus a
+`"{n} books"` count. Grid mode now groups every book by
+`Meta.get(id).genre` (`Library._groupByGenre`, a new function — NOT a
+reuse of `StatsPage._breakdown`'s `g==='genre'` branch, which filters to
+books with listening activity; Shelves must show every book, read or not).
+'Other' (no recognised genre yet) always sorts last, matching the existing
+Stats convention. No user-facing toggle for grouping — the mockup shows it
+as the screen's permanent state, not optional, so it wasn't built as one.
+Table view stays an ungrouped flat list (grouping headers don't compose
+with a `display:flex` list the same way they do with `display:grid`'s
+`grid-column: 1/-1`), and the A-Z scrubber (keyed to one continuous
+alphabetical run) is hidden whenever grouping splits the list into
+sections, same as it already hides during an active search.
+- **Real gap fixed while here**: `Meta.fetchAll()`'s completion only
+  re-rendered `StatsPage` when background genre data finished loading —
+  Shelves groups by that same data now, so it needed the same treatment
+  (`if (Nav.current === 'library' && State.books) Library.render();`)
+  or a freshly-opened library would show almost everything under "Other"
+  until an unrelated re-render happened to fire.
+
+**Reader chrome rebuild** (`#reader-view`'s `.reader-top`/`.reader-bottom`):
+top bar restyled to a translucent circular back button + a text "CHAPTERS"
+label (replacing the hamburger glyph) — `#viewer` (the actual epub
+iframe/page content) and the gesture/edge-arrow layer are completely
+untouched, only the surrounding chrome changed. The bottom control pill's
+prev/next PAGE-turn buttons were replaced with a new primary row:
+−15s / prev-chapter / play-pause / next-chapter / +15s. Prev/next-chapter
+(`Reader.prevChapter`/`nextChapter`) are thin wrappers over
+**`TTS._jumpChapter(dir)`, an already-existing function** (built earlier
+for the Android lock-screen media buttons) — reused as-is rather than
+reimplemented, so both surfaces behave identically. Page-turning itself
+stays fully available via the existing swipe gesture and `.reader-edge`
+tap arrows, neither of which this touched. Speed/follow-along/voice moved
+into a secondary row below the primary one (still real, used controls —
+de-emphasized, not dropped), and a new sleep-timer icon button
+(`#sleep-btn`) was added there, opening the sleep sheet.
+- Explicitly simplified vs. the mockup: no cover-derived color tint on the
+  top bar (would have needed the same canvas dominant-color sampling the
+  owner declined for Shelves' Spines view — not worth reintroducing for
+  one cosmetic detail). Uses existing surface/line tokens instead.
+
+**±15s skip (`TTS.skip(deltaSec)`)**: the shared `<audio>` element
+(`_audioEl()`) is reused per chunk, not a continuous stream — seeking only
+works within the currently-loaded chunk's audio. Fast path: if the target
+time stays inside `[0, a.duration]`, sets `a.currentTime` directly (same
+class of live manipulation `setRate()` already does), no gen bump needed.
+`-15s` when more than ~2s into the current chunk just restarts it
+(`currentTime = 0`) rather than trying to reconstruct a previous chunk's
+already-revoked blob URL. Crossing a chunk boundary (either direction)
+estimates how many chunks the requested seconds span at ~14 chars/sec
+(≈150 wpm) scaled by `TTS.rate`, walking `this.chunks` from the current
+index and clamping at the page's first/last chunk — **never crosses a
+PAGE boundary**; running off either end just lands on that edge chunk
+(hitting the existing normal end-of-page auto-advance once it finishes
+playing, same as any other chunk). A boundary-crossing skip bumps `_gen`,
+clears `_gapT`, calls `_stopAudio()` (revokes any prefetched blob first —
+skipping this would leak one per skip), sets the new `idx`, and re-enters
+via `_speak()` — the exact same shape `skipPage()` already uses for a real
+page turn, just without turning a page. Re-synthesis reuses the existing
+"Generating audio…" toast path (600ms-gated, so a fast re-synth never
+flashes it) — no new loading UI. The Web Speech fallback has no seekable
+`<audio>` at all, so it always takes the boundary-crossing path (restart
+current utterance for -15s, advance ~1 chunk for +15s) — verified via
+`_engineNow() === 'web'` early-return.
+- Verified directly in a browser (mocked `TTS._audio` as a plain object
+  with the methods `_stopAudio()` actually calls — `pause`/
+  `removeAttribute` — since a bare object throws otherwise): -15s at
+  `currentTime=3` correctly resets to 0 without bumping `_gen`; +15s past
+  a 10s-duration mock chunk correctly bumps `_gen` and advances `idx`,
+  clamping at the last available chunk rather than throwing when the
+  estimated skip distance exceeds the remaining chunks.
+
+**Sleep timer (`SleepTimer` + `SleepModal`)**: fully new, confirmed nothing
+resembling it (volume/fade/`AudioContext`/"sleep") existed anywhere in the
+file beforehand.
+- `SleepTimer.set(minutes)`/`setChapterMode()`/`cancel()`, a 1s
+  `setInterval` (same idiom as `Stats.startTick()/stopTick()`). In the
+  final 60s of time mode, ramps `TTS._audio.volume` down linearly. The
+  actual STOP is never done by the timer itself — it only sets
+  `TTS._sleepExpired = true`, which both existing chunk-boundary handlers
+  (`_playAudio`'s `a.onended`, `_speakWeb`'s `u.onend`) now check, right
+  before deciding whether to advance to the next chunk; if expired, they
+  call `SleepTimer.cancel()` + `TTS.stop()` instead. This guarantees the
+  stop always lands exactly at a sentence boundary and needed no new
+  gen-guard logic — it rides the exact choke point every other
+  "should the next chunk start" decision in `TTS` already goes through.
+  Chapter mode's expiry check compares `State.rendition.currentLocation()`'s
+  href against the href recorded when the timer was armed.
+- **Design correction made during implementation, not left as originally
+  planned**: the plan draft said `TTS.stop()` (i.e. every manual pause)
+  should cancel the timer, while also saying pressing play again mid-
+  countdown should "resume" it — directly contradictory, since a canceled
+  timer has nothing left to resume. Resolved by NOT touching `TTS.stop()`
+  at all: the countdown ticks in real wall-clock time regardless of
+  play/pause state (matching how sleep timers work in other audio apps —
+  the point is stopping playback by a real-world time, not "N minutes of
+  active listening"). The timer is only ever canceled by its own expiry,
+  by opening a genuinely different book (`Reader.open()`, guarded on
+  `State.currentBook !== book` so re-opening the SAME book — e.g. tapping
+  the Home hero to expand — does not reset an in-progress countdown), or
+  by the sheet's explicit "Turn off sleep timer" button.
+- **Drag dial** (`SleepModal`): no existing circular-drag precedent in this
+  codebase (`Scrub` is a native `<input type="range">`, not custom pointer
+  math) — new `pointerdown`/`pointermove`/`pointerup` geometry, angle from
+  the dial's center via `Math.atan2`, normalized from 12 o'clock, mapped to
+  minutes against a 90-minute max, rendered live as a `conic-gradient`-style
+  SVG stroke-dashoffset ring during the drag, committed via `SleepTimer.set`
+  on release. Listeners are **delegated on `document`**, matching `Scrub`'s
+  own convention — binding directly to `#sleep-dial` inside a
+  `DOMContentLoaded` handler was tried first and would never have fired,
+  since this is an inline script running after the markup is already
+  parsed (DOMContentLoaded had already happened by the time such a listener
+  would register); caught before shipping, not after.
+- Verified directly in a browser: `set(1)` → `mode:'time'`, 60s remaining;
+  65 simulated ticks → `_sleepExpired` true, volume faded to ~0; `cancel()`
+  → mode null, volume back to 1, flag cleared; the sheet opens/closes
+  correctly; picking a chip updates the dial label and re-opening the sheet
+  shows the persisted value; French labels correct (`I18n.setLang('fr')`)
+  for the sheet title, the "end of ch." chip, and the cancel button.
+
+**Overall verification**: syntax-checked
+(`node -e "...compileFunction..."`) after every section; full browser pass
+in both Daylight and Midnight — Home with synthetic progress/stats data
+(streak, hero, playback row, back-on-the-shelf, next-up all render
+correctly, falls back to `{pct}%` when no book is actually open matching
+the "only the open book has live locations" design), Shelves' genre
+grouping (`Science fiction`/`Other`, correct counts, `Other` last), the
+reader's new control row and sleep sheet, `TTS.skip()`'s both paths, and
+the full `SleepTimer` lifecycle including cross-language labels. Zero
+console errors on a clean tab load (the one error present —
+`accounts.google.com/gsi/client` failing to fetch — is the same
+pre-existing, expected sandbox-network-block condition noted everywhere
+else in this file, unrelated to this change). **Not device-verified** —
+same standing caveat as every UI change in this file; native testing is
+available via `npm run sync:test` (see the entry above) whenever wanted.
+**Still only in `index.green.html`, not committed to `index.html`, not
+pushed** — this was a large enough change that it's worth the owner's
+visual review before it goes anywhere near the live app or website.
+
+## Round 3: layout/data fixes, Home/Log rebuild, sleep timer, export flow, French audit, Privacy/Terms (2026-08-26)
+
+A 13-item feedback batch on the round-2 changes above, after two Explore-
+agent research passes and two rounds of plan review (the owner rejected the
+first plan draft three times over specific mis-scoped items — see below).
+All work stayed in `index.green.html` (plus four new `.green.html` Privacy/
+Terms test copies); `index.html`/`privacy.html`/`terms.html` untouched.
+
+**Corrections the plan needed before approval** (each caught a real
+under-scoping, not just a wording nit):
+- **Shelves "Other" genre**: the first pass concluded "not a bug" because
+  `_groupByGenre` already puts genre-less books under an "Other" header
+  correctly. The owner corrected: *"The problem here is that you can't
+  select Other as a group, but you can select Biography."* The real bug was
+  in `Library._renderGenreChips()`, which built the CHIP row from
+  `if (g) genres.add(g)` — skipping the falsy/"Other" bucket entirely, so
+  there was no chip to filter BY even though the group rendered correctly.
+  Fixed by tracking whether any book actually lacks a genre while building
+  the chip list and adding an `I18n.t('genre_other')` chip (sorted last,
+  matching group order), with the filter predicate using the exact same
+  `Meta.get(id)?.genre || ''` fallback `_groupByGenre` already uses.
+- **French audit**: the first pass diffed `STRINGS.en` vs `STRINGS.fr`
+  key-by-key and found 4 issues. The owner: *"There are more errors than
+  that! For example, Voice should be Voix, Biography should be Biographie.
+  ... Please make a real assessment."* A key-diff can't catch (a) hardcoded
+  English text with no `data-i18n` attribute at all, or (b) a data-driven
+  label with no i18n layer at all — exactly the two categories the owner's
+  examples fell into. Redone by reading the entire `STRINGS.en`/`STRINGS.fr`
+  dictionaries directly end-to-end (not sampled) AND grepping the markup for
+  hardcoded `<tag>EnglishText</tag>` patterns lacking `data-i18n`. That
+  surfaced the real bugs: `#voice-btn` (confirmed via `TTS.updateVoiceLabel()`'s
+  own comment that it deliberately never touches that button's text — it
+  had simply never been wired to translate at all) and genre names (no
+  translation layer existed for them, full stop). Verified several other
+  suspects as false positives by tracing their JS call sites (`vh-action`,
+  `fb-use`, `tour-next-btn`, `ConfirmModal`'s default "Reset" — all
+  overwritten by `I18n.t()` before display).
+- **Privacy/Terms**: the first pass planned "swap CSS tokens onto the
+  existing card/table layout." The owner: *"This should follow the design
+  file's design for both light and dark versions."* Re-specified to match
+  the prototype's actual screen structure (see below) rather than a token
+  reskin, and re-confirmed both themes explicitly rather than assuming the
+  token swap alone would be correct (the accent-inverted summary box is the
+  one place where light vs. dark isn't just a token substitution — the box
+  is *always* accent-background/bg-colored-text, so which literal hex shows
+  up flips between the two themes, and that needed to be checked, not
+  assumed).
+
+**1. Settings row spacing.** Root cause confirmed by direct measurement, not
+guessed: `.set-row` padding was already symmetric (0.9rem/0.9rem); the
+asymmetry was `.set-group`'s `margin-bottom: 1.4rem` with no closing
+hairline, making a group-boundary gap (2.3rem) wider than an in-group gap
+(1.8rem). Fixed by giving `.set-group` a `border-bottom` and reducing its
+`margin-bottom` to 0.9rem, so a boundary measures exactly one row-gap.
+Verified in-browser by measuring `getBoundingClientRect()` gaps between
+every visible `.set-row` pair on the real rendered Settings page: every gap
+came back identically `15.1px` (excluding the native-only hidden language-
+packs row, which has to be filtered by `offsetParent !== null` or its
+zeroed rect corrupts the measurement — not a real bug, just a measurement
+artifact from including a `display:none` row).
+
+**2. Log (Stats) tile grid.** Rebuilt from two uneven 3-tile `.stat-row`s
+(all-time hours / this-week / streak, then library / started / finished) to
+the prototype's exact six in a 2-column × 3-row grid: Library, Started,
+Completed, Minutes this week, Total minutes, Streak. `Stats.summary()`
+gained a `secs` field (raw 7-day rolling seconds) alongside its existing
+formatted `hours` string, so both the Log page and Home's new stat row (see
+§6) can derive "minutes this week" from the same number without
+re-implementing the rolling-window math twice. New page-scoped
+`.stat-grid2` CSS class (bordered 2-col grid) — deliberately not reusing
+the shared `.stat-row` (a single flex row elsewhere) so nothing else in the
+app is affected. Verified with mocked `Stats.data`: rendered tiles read
+exactly `5 / in library, 5 / started, 1 / finished, 40 / minutes this week,
+40 / total minutes, 2 / day streak` against synthetic data where that's the
+correct arithmetic.
+
+**3. Shelves "Other" filter + genre localization.** See the correction
+above for the root cause. Localization added as `Meta.GENRE_LABEL_KEYS`
+(English `_GENRE_MAP` label → new `STRINGS` key, one pair per of the 12
+genres, e.g. `genre_scifi`/`genre_biography`) and `Meta.genreLabel(g)`,
+used by both `_groupByGenre()`'s header text and `_renderGenreChips()`'s
+chip labels for DISPLAY only — the stored/internal `Meta.data[id].genre`
+stays the stable English string, so no data migration and no risk to
+already-cached metadata. Verified: with `Library.toggleGenre('')` (the
+Other sentinel) selected, the grid filtered down to exactly the two
+genre-less mocked books; switching to French re-rendered the chip row as
+`Biographie / Fantastique / Science-fiction / Autre`.
+
+**4. Offline icon.** `_offlineBtnHTML()`/`_refreshOfflineBadge()` no longer
+swap between `_ICON_DOWNLOAD` and `_ICON_SAVED` — always render
+`_ICON_DOWNLOAD`, let the pre-existing `.saved` CSS class do 100% of the
+saved/not-saved distinction via color alone. `_ICON_SAVED` left defined
+(confirmed via grep nothing else references it, but deleting a constant
+that might be referenced elsewhere isn't worth the risk for this small a
+change).
+
+**5. Finished badge + easier mark-complete.** A `.finished-badge` (filled
+`--accent` circle, checkmark, top-left corner — mirrors the offline badge's
+top-right corner convention) now renders on both `Library._itemHTML` grid
+cards and Home's `_coverRowItemHTML` whenever `pct >= 100`.
+`BookDetail.markFinished(i)` was refactored to take an optional index
+(`State.books?.[i ?? this._idx]`) so it can be called directly from a cover
+overlay's new "Mark as finished" button, not just from inside the open
+modal — the overlay's `.cr-finish` button only renders when the book isn't
+already finished. Verified: mocked book `b2` at `pct:100` showed the ✓
+badge in both Continue Listening and Shelves grid contexts; the other
+(non-finished) mocked books showed a working "Mark as finished" link in
+their reveal overlay instead.
+
+**6. Home ("Now") rebuild.** Replaced the single hero card + "Next up in
+{book}" + "Back on the shelf" structure entirely with the prototype's own
+two-plural-list shape: greeting → Continue listening (top 3 in-progress,
+unchanged from round 2) → a new 2-tile streak/minutes-this-week row
+(reusing `.stat-grid2` from §2, as a 1-row instance via `.home-stat2`) → a
+new "Still reading" vertical list (title + thin progress bar, no cover;
+4th-onward in-progress books beyond Continue Listening's top 3, capped at
+10). `Home._nextUpHTML`/`Home.jumpChapter` were dead code once nothing
+called them and were deleted outright, not left behind, along with their
+now-orphaned `.home-hero`/`.hh-*`/`.nextup-*` CSS and the `now_playing`/
+`back_on_shelf`/`next_up_in`/`home_started_empty`/`streak_days` `STRINGS`
+keys (both languages) — same "delete outright" convention as the earlier
+long-press removal in this file. Verified with 5 mocked books at varying
+progress/timestamps: Continue Listening showed the 3 most-recently-touched
+in-progress books (one with a finished badge), the stat row read "2 day
+streak" / "40 minutes this week" against synthetic 7-day listening data,
+and Still Reading showed exactly the remaining 2 in-progress books — no
+hero, no "Next up", no "Back on the shelf" anywhere on the page.
+
+**7. Sleep timer.** Removed the 15/30/60 `<button>`s from the sheet
+entirely, leaving only "End of ch." — this was the actual fix for the
+owner's reported bug ("press 15/30/60, popup closes, timer isn't set"): the
+timer WAS being set correctly (`SleepTimer.set()` runs synchronously before
+the sheet closes), but nothing ever visually confirmed it, since
+`.sleep-chip.on` was fully styled in CSS but never toggled by any JS on
+the sleep sheet's own chips (a real, separate, previously-unreported bug
+found while investigating this). Now `SleepTimer.syncReadouts()` — already
+running every tick and on sheet open — toggles `.on` on the surviving
+`#sleep-chapter-chip` based on `mode === 'chapter'`. The dial itself was
+already a live countdown (`_tick()`/`syncReadouts()` already updated the
+label and stroke-dashoffset every second); no new countdown mechanism was
+needed, just removing the chips that were competing with it as "the"
+control. Added `#sleep-dial-label.chapter-mode` (smaller font, tighter
+max-width, allows 2-line wrap) so "end of ch." fits the 140px dial cleanly
+instead of overflowing the sizing tuned for a 2-digit number. Verified:
+opening the sheet shows exactly one chip; `SleepModal.pickChapter()` sets
+`mode:'chapter'`, toggles the chip's `.on` class true, and applies
+`chapter-mode` to the dial label showing "end of ch.".
+
+**8. Export my data.** New `#export-modal` (`ExportModal.open/close/confirm`,
+reusing the `.modal-sheet` pattern) explains what the export actually
+contains before triggering it — adapted from `MyData.export()`'s own
+existing `payload.note` text. Settings' "Export" button and `EraseModal`'s
+"Export a copy first" link both now open this modal instead of calling
+`MyData.export()` directly; the download logic itself is unchanged.
+**On the Google Drive question the owner asked about**: recommended
+against adding Drive-write API access (`drive.file` at minimum) — any new
+scope forces Google re-verification and would either trigger an early,
+extra CASA pass or leave the feature gated until the already-planned one
+happens (`CLAUDE.md`'s documented CASA-parked-until-payments-exist
+strategy). Android's own Storage Access Framework can already save into
+Drive via the OS's own document-provider system, with zero new OAuth scope
+— noted as a legitimate future enhancement rather than built now, since a
+native SAF plugin is real, separate effort. Verified: opening the modal
+from both Settings and the Erase sheet's "Export a copy first" link works;
+confirming still produces the same JSON download as before.
+
+**9. Persistent header.** One shared `.app-header` markup block (the same
+inline leaf-icon SVG already used at sign-in, plus a `data-i18n="app_name_caps"`
+wordmark — translating "PhonoLeaf" is a deliberate no-op key, kept only so
+every visible string in the app has a `data-i18n` hook consistently) now
+sits above the scrolling content on Home, Shelves, Log, and Settings —
+inserted 4 times in the markup (no shared-partial mechanism exists in this
+build-free single-file app, so this is copy-pasted markup, not a
+templating trick). Reader/Player keep their own existing top bar
+unchanged. Home's old `.home-header-row` (icon + title + streak sharing one
+row) was deleted along with its CSS once the persistent header made the
+icon redundant and the streak moved into the new stat row (§6). Verified:
+`document.querySelectorAll('.app-header').length === 4` on the rendered
+page.
+
+**10. French corrections.** Fixed, verified via `I18n.t()`/rendered-DOM
+checks after `Settings.setLang('fr')`: `tab_now` 'Écoute'→'Maintenant'
+(was translating "Listening", not "Now"); `tab_shelves` and `library_title`
+'Rayons'→'Étagères' (generic warehouse-shelving word, not the book-shelf
+word the app already uses correctly elsewhere in `back_on_shelf`);
+`si_feat1_r` 'rien n'est envoyé'→'rien n'est téléversé' (now matches
+`téléverse`, used correctly one line above for the same concept); added
+`data-i18n="voice"` to `#voice-btn` (reusing the existing correct
+`voice`/'Voix' key — the button had no i18n hook at all before, not a
+wrong translation). Genre localization is covered in §3. Confirmed
+rendered French tab bar reads exactly "Maintenant / Étagères / Journal /
+Vous" and the reader's voice pill reads "Voix".
+
+**11. Privacy & Terms.** New `privacy.green.html`/`privacy-fr.green.html`/
+`terms.green.html`/`terms-fr.green.html` — same safe test-copy convention
+as everything else, real `privacy.html`/`terms.html`/their `-fr` twins
+untouched. Structural rebuild matching the prototype's own screen, not a
+token reskin of the old card/table layout: serif (Literata) title +
+monospace "Effective {date}" line (kept the real current dates unchanged);
+**Privacy only** gets one accent-inverted summary box (solid `--accent`
+background, `--bg`-colored text, hard offset shadow, bold "The short
+version" lead-in) — everything else, including what used to be additional
+`.card`s (the "Does PhonoLeaf store my data" and "Limited Use commitment"
+sections), is now a flat `<section>` with a small accent-colored heading
+and hairline top border, no boxes; Terms has no accent box (matches the
+prototype — only Privacy's page has one) and keeps its `<h3>` sub-headings
+for the pricing subsections. Legal text itself is byte-identical to the
+current live pages — this was a structural/visual rebuild only, not a
+content rewrite, and none of it is lawyer-reviewed any more or less than
+before. Verified in both themes: light mode's summary box computed to
+`background: rgb(47,107,79)` / `color: rgb(239,233,218)` (light accent on
+light bg-color text); dark mode (this sandbox's actual OS preference)
+computed to `rgb(111,191,149)` / `rgb(15,20,17)` — correct inversion in
+both directions. Zero console errors loading any of the four pages
+standalone.
+
+**12. Floral/nature lexicon.** Treated as an ongoing lens rather than a
+forced pass this round, per the plan — none of the copy actually touched
+above needed obviously better nature-flavored wording that wasn't already
+fine as plain English/French, so nothing was changed here specifically.
+
+**13. TODO.md.** Appended a sub-bullet under the existing 2026-08-24
+"Should the app have a deliberate tone?" item, proposing a Settings
+tone-selector (Normal/Sassy/Bro/Butler, exact copy TBD) as one concrete way
+to answer that open question, rather than a single global decision.
+
+**Overall verification**: syntax-checked after each section; a mocked-data
+browser pass (`State.books`/`State.progress`/`Stats.data`/`Meta.data` set
+directly via console, since this sandbox has no real Google sign-in)
+confirmed every item above rendering and behaving correctly — Settings row
+gaps, Log's 6-tile grid values, Shelves' Other filter, the finished badge
+and its mark-complete button, Home's full new structure, the sleep sheet's
+single chip and its `.on`/dial-label behavior, the export modal, all 4
+persistent headers, the French label set, and both Privacy/Terms pages in
+both color schemes. Zero console errors across every page loaded. Nothing
+pushed; `index.html`/`privacy.html`/`terms.html`/their `-fr` twins
+untouched — confirmed via `git status`. **Not device-verified** — same
+standing caveat as every UI change in this file.
+
+## `index.green.html` deleted from disk, recovered from `www/index.html` + Round 3 fallout fixed from real device feedback (2026-08-27)
+
+**The file went missing.** Between sessions, `index.green.html` was deleted from
+the repo root (`git status` showed it as `D`, i.e. still tracked at the Phase-1
+commit but gone from the working tree) — most likely a side effect of the
+owner extracting/handling a `PhonoLeaf Design System.zip` export. That zip's
+own bundled `index.green.html` turned out to be an OLDER snapshot (has
+round-2's `CoverReveal`/`BookDetail` but zero round-3 markers), because it was
+generated by an earlier `DesignSync` push, before round 3. The real recovery
+source was `www/index.html` — `scripts/stage-test.js` does a byte-for-byte
+`fs.copyFileSync` (confirmed by reading the script, not assumed) of
+`index.green.html` whenever `npm run sync:test` runs, and the owner had
+plainly run that recently to test round 3 on-device (`www/index.html`
+contained every round-3 marker: `ExportModal`, `home-stillreading`,
+`stat-grid2`, `sleep-chapter-chip`, etc.). Copied `www/index.html` back to
+`index.green.html` at the repo root, verified with the same
+`node -e "...compileFunction..."` syntax check used everywhere else in this
+file. **Lesson for next time a `.green.html`/test file goes missing**:
+`www/` (gitignored, but persists on disk) is a legitimate byte-identical
+recovery source for whichever file `stage-test.js`/`stage-www.js` last
+staged — check it before assuming the work is lost.
+
+**Real device feedback, once restored** — the owner had actually tested round
+3 on their phone and found four categories of problems, none hypothetical:
+
+1. **"Continue listening" stayed in English under French.** Root cause: this
+   ONE spot in `Home.render()`'s dynamically-generated `innerHTML` used
+   `data-i18n="continue_listening"` with an English fallback string, copying
+   the STATIC-markup convention into DYNAMIC (JS-templated) content by
+   mistake. `I18n.setLang()` calls `I18n.apply(document.body)` (which fills
+   in `[data-i18n]` from whatever's in the DOM RIGHT NOW) and only THEN calls
+   `Home.render()` — so a `data-i18n` span that doesn't exist yet when
+   `apply()` runs never gets translated, permanently. Every other dynamic
+   render in the codebase already knew to call `I18n.t()` directly inline
+   instead (confirmed by grepping the entire script body for a literal
+   `>Word<` HTML-text pattern — this was the only match). Fixed by switching
+   to inline `I18n.t()` calls, matching the rest of the codebase.
+   **Given "please make a real assessment" (again) this round**, went well
+   beyond that one spot: re-read the ENTIRE `STRINGS.en`/`STRINGS.fr`
+   dictionary side-by-side a second time (only turned up a couple of
+   debatable, non-blocking phrasing choices, nothing wrong), then grepped the
+   whole script body for hardcoded English patterns the same way, which
+   surfaced three more real, confirmed bugs the dictionary comparison alone
+   could never have caught (none are STRINGS mistranslations — they're
+   strings that were never routed through `I18n.t()`/`STRINGS` AT ALL,
+   pre-existing since before this session, not a regression from round 3):
+   - The voice picker's "✨ Natural" badge (three separate call sites: web
+     Speech-API voices, native Kokoro/Piper voices) and " · Local"/" · Online"
+     on web voices — all hardcoded English literals. Added
+     `voice_natural_badge`/`voice_local`/`voice_online` `STRINGS` keys, used
+     everywhere the badge/suffix renders.
+   - The Log page's "By genre" breakdown table showed raw genre names in
+     English regardless of language (`Meta.data[id].genre` displayed
+     directly, e.g. "Science fiction" never became "Science-fiction"),
+     because `_breakdown('genre', …)`'s row builder never went through
+     `Meta.genreLabel()` — a second call site with exactly the SAME class of
+     bug `_renderGenreChips()` had before it was fixed for Shelves. Also used
+     a DIFFERENT "Other" sentinel than the rest of the app (`'Other'` the
+     literal string, instead of `''`), which `Meta.genreLabel()` doesn't
+     recognize either way — fixed the sentinel to `''` (matching
+     `_groupByGenre`/`_activeGenres`'s own convention) AND routed the row
+     label through `Meta.genreLabel()`.
+   - `send_feedback_btn`'s French value was bare "Envoyer" (just "Send"),
+     dropping the object every other send-type button keeps (`send_report`
+     → "Envoyer le signalement"). Changed to "Envoyer des commentaires" to
+     match.
+2. **Home ("Now") "looks nothing like the design file."** Correct on
+   inspection — re-read `PhonoLeaf.dc.html`'s actual `isHome` block line by
+   line (not from memory) and found several concrete structural gaps versus
+   what got built:
+   - The greeting was one combined string (`"Good evening, Alex"`); the
+     design file is TWO stacked lines — a small tracked kicker ("GOOD
+     EVENING") directly above a big serif name ("Alex") on its own. Split
+     `#home-title` into `#home-kicker` + `#home-title`, `Home.render()`
+     writes each separately.
+   - Continue Listening's cards were missing a progress bar + percentage
+     entirely (cover + title only) — the design file puts a 3px bar and a
+     right-aligned `{pct}%` under every card. Added `.cr-bar`/`.cr-fill`/
+     `.cr-pct` to `_coverRowItemHTML`.
+   - The 2-tile stat row (and, it turns out, the Log page's 6-tile grid
+     built two rounds ago) used a single continuous bordered grid with
+     shared hairlines and no gap — that was this codebase's OWN invention,
+     not the design file. The design file gives every tile its own
+     `background:var(--surface)` + `border:1px solid var(--line)` +
+     `border-radius`, with a real `gap` between tiles, and the number itself
+     in `var(--accent)`. Rebuilt `.stat-grid2`/`.stat` to match exactly —
+     this fixes BOTH Home's stat row and the Log page's grid at once, since
+     they share the class.
+   - Still Reading rows had no cover/thumbnail at all, just title + bar. The
+     design file gives each row a 40×60px avatar (its own mockup uses a flat
+     color + initial letter, since it has no real book data) — kept the
+     LAYOUT (a 40×60px thumbnail box to the row's left) but used the app's
+     own established real-cover-with-fallback-icon convention instead of a
+     fabricated color+initial block, consistent with the owner's explicit
+     prior rejection of fabricated cover art for Shelves' grid.
+   - Copy: adopted the design file's own exact wording where this session
+     had used its own — `still_reading` → "Still growing"/"En pleine pousse"
+     (a deliberate floral-lexicon label the design file already uses, not
+     just "Still reading"), `continue_listening`'s French →
+     "Reprendre l'écoute" (design file's exact phrase, was "Poursuivre
+     l'écoute" — a fine synonym, but not what the file says).
+   - The persistent header's wordmark styling didn't match either — this
+     session had it as small-caps/tracked/dim; the design file's own top row
+     is plain-case, `font:600 13px`, full `--text` color, tight
+     `letter-spacing:-0.01em`. Fixed `.app-header-name` to match exactly.
+3. **Bottom tab bar disappearing while scrolling.** Root cause: `.scrolly`
+   (the flex-child scroll container used by Home/Shelves/Log/Settings) never
+   had `min-height: 0` — a flex item with `overflow-y:auto` still defaults to
+   `min-height:auto`, which refuses to shrink below its own content's
+   intrinsic height. `.books-grid-wrap` already carries this exact fix, with
+   its own comment explaining why (read directly, not guessed) — `.scrolly`
+   was simply missed when that lesson was first learned. As long as a page's
+   content stayed under one screen, this defect was invisible (nothing ever
+   overflowed enough to trigger it); round 3 added enough content to Home/
+   Settings/Log that real overflow finally happened, exposing it. Fixed by
+   adding the same `min-height: 0` to `.scrolly`. Verified directly: with an
+   inflated 40-book mock dataset (`.scrolly`'s `scrollHeight` at 1099px vs.
+   the 812px viewport), `.view`'s `clientHeight` and `document.body`'s
+   `scrollHeight` both stayed pinned at exactly 812px, and the tab bar's
+   `getBoundingClientRect().bottom` stayed at 812 both before AND after
+   scrolling `.scrolly` all the way to its own bottom — the overflow is
+   fully contained inside `.scrolly` now, so the outer page can never
+   inherit it and the fixed tab bar can never be dragged along.
+4. **Settings ("You") page "horrendous," "random lines," "no margins."**
+   Two related but distinct causes, both introduced by this session's own
+   round-3 spacing fix:
+   - The "random lines": round 3's fix for uneven group spacing added a
+     `border-bottom` directly to `.set-group`. But every `.set-row` — including
+     a group's first — ALREADY draws its own `border-top` unconditionally
+     (the `.set-row:first-child` rule duplicating the base rule was a tell,
+     in hindsight, that this had already been re-solved once). So a group
+     boundary was drawing TWO separate hairlines (the group's own new
+     border-bottom, then a 0.9rem gap, then the next group's first-row
+     border-top) where every other row-gap in the page only ever draws ONE.
+     That reads exactly like "extra lines appearing" — because it is. Fixed
+     by removing the border-bottom from `.set-group` entirely (the next
+     group's first-row border-top was always sufficient) and keeping only
+     the margin-bottom reduction, which was the one genuinely necessary
+     part of that fix. Verified: `getComputedStyle` on every visible
+     `.set-group` now reports `borderBottomWidth: '0px'`.
+   - "No margins on the sides" measured out to a false alarm technically
+     (`.scrolly`'s `padding-left`/`padding-right` were never touched, and the
+     first settings row sits exactly `.scrolly`'s own padding-left away from
+     its edge, confirmed by measurement) — almost certainly a description of
+     how the double-hairline bug above LOOKED (rules crowding edge-to-edge
+     with no breathing room reads as "no margins" even when the technical
+     padding is intact), not a second, separate bug. No change was needed
+     here beyond the border-bottom fix above; flagging this reasoning
+     explicitly rather than quietly assuming it, in case the owner still
+     sees it after this fix and it turns out to be something else.
+
+**Overall verification**: syntax-checked after every fix; full mocked-data
+browser pass repeating everything from the previous entry PLUS: French
+across every screen and every modal (Sleep/Export/Book Detail/Feedback/Bug
+report/Voice/Erase) read with zero English leftovers this time; the genre
+breakdown table read "Fantastique/Biographie/Science-fiction/Autre" correctly
+sorted with Autre last; the tab-bar-survives-scroll test described above; the
+`.set-group` zero-border-bottom check; Home's kicker+name split, per-card
+progress bars, individually-bordered stat tiles (accent-colored numbers,
+confirmed via `getComputedStyle`), and Still Reading's 40×60px real-cover
+thumbnails, all confirmed rendering as built. Nothing pushed; `index.html`/
+`privacy.html`/`terms.html` untouched. **Not device-verified** — same
+standing caveat as always; this whole entry exists because the owner's OWN
+device testing is what surfaced these four issues in the first place, so a
+follow-up device check before calling this done would be worth it.
+
+## Five more device-reported fixes: spacing, button sizes, header/title consistency (2026-08-27, same day)
+
+A tighter follow-up batch, all traced to a concrete, measured cause rather than
+guessed at — `index.green.html` only, nothing pushed.
+
+1. **Settings ("You") spacing "still off."** Row-to-row rhythm was already
+   fixed (equal 14.4px gaps, confirmed again this round). What was still off:
+   `.sr-sub`'s `margin-top` was `0.1rem` (1.6px) — the sub-label text was
+   nearly touching its key line above it, within EVERY row. Bumped to
+   `0.3rem` + gave both `.sr-k`/`.sr-sub` real `line-height`s. Measured
+   before/after: the key→sub-label gap went from 1.6px to 4.8px; row-to-row
+   rhythm unchanged (still 14.4px everywhere).
+2. **Home section spacing "should be increased."** `.cover-row`'s own
+   `padding-bottom` (the gap after Continue Listening, before the stat row)
+   was `0.3rem` — functionally no gap. `.home-stat2`'s `margin-bottom` (gap
+   before Still Growing) was `1.3rem`. Bumped to `1.6rem`/`1.8rem`
+   respectively. Measured the REAL visual gaps (last cover's bottom edge to
+   the stat row's top, and the stat row's bottom to Still Growing's top) —
+   25.6px and 28.8px now, clearly wider than before.
+3. **Download/Completed buttons different sizes.** `.offline-btn` (top-right,
+   the actual button) was `1.6rem`; `.finished-badge` (top-left, the
+   checkmark) was `1.3rem` — a real, visible mismatch on any cover carrying
+   both. Matched the badge up to the button's `1.6rem`. Confirmed via
+   `getComputedStyle`: both render at 25.6px now.
+4. **Logo+wordmark not in the same spot on every page.** Root cause: three of
+   the four views (Home/Log/Settings) have `.app-header` INSIDE `.scrolly`,
+   inheriting its `1.1rem` padding for free; Shelves' header sits OUTSIDE
+   `.scrolly` (its own top chrome has to stay put while only the grid below
+   scrolls) with no padding of its own at all — landing flush at the literal
+   screen edge instead. Added a scoped `#library-view > .app-header` padding
+   rule matching `.scrolly`'s exactly (had to match `.app-header`'s own
+   extra `0.2rem` top padding too, found by measuring — first attempt was
+   3.2px short). Verified by measuring the icon element's own
+   `getBoundingClientRect()` (not `.app-header`'s own — padding moves an
+   element's CONTENT, not its own box position, so measuring the header div
+   itself would have silently reported no change) on all four views: all
+   four now land at the identical (20.8, 17.6).
+5. **Page title format/font/size/position inconsistent.** Re-checked
+   `PhonoLeaf.dc.html` directly rather than assuming the earlier "Shelves
+   and Stats looked like two different sizes" fix (which matched Shelves'
+   `<h2>` to `.home-title`) had picked the right size to match TO — it
+   hadn't: the design file specifies plain page titles (Shelves/Log/Settings)
+   at exactly `26px`, and this codebase had them all sharing `1.85rem`
+   (29.6px) instead, matched to each other but not to the file. Also, Home's
+   OWN "page title" changed meaning in the previous round (kicker + name,
+   not a plain title) without anyone deciding what size the name line
+   should be — the design file sizes it `28px`, a deliberate 2px LARGER than
+   a plain page title, not the same. Fixed `.home-title` (the one shared
+   class every screen's title uses) to 26px, with a Home-only override
+   bumping just the name line to 28px; also unified the title→content gap
+   that follows it (`.lib-header`'s bottom padding vs `.home-title`'s own
+   margin-bottom were two different values, 0.9rem vs 1.3rem — now both
+   `1.1rem`). Verified via `getComputedStyle` on all four: Shelves/Log/
+   Settings all report `26px`/`400`/Literata; Home's name line reports
+   `28px`.
+
+**Verification**: syntax-checked after every fix; full mocked-data browser
+pass repeating the header-position/title-size/gap/button-size measurements
+above on all four views, in both languages where relevant. Nothing pushed;
+`index.html`/`privacy.html`/`terms.html` untouched. **Not device-verified**
+— every issue in this entry came from the owner's own device testing, so a
+follow-up check there remains the real confirmation.
+
+## Settings row layout: Theme/App language needed the design file's OWN stacked treatment (2026-08-27, same day)
+
+The previous entry's `.sr-sub` margin bump wasn't the real fix — the owner
+reported the same "spacing... still off" again. Re-read `PhonoLeaf.dc.html`'s
+`isSettings` block in full this time (not just the first two rows, which is
+what led to the wrong conclusion originally) and found the design file does
+NOT use one uniform row layout for all of Settings: every row with a single
+control (a text button, one toggle chip, the speed menu) is the horizontal
+`justify-content:space-between` layout already built here — but Theme (3
+buttons: Light/Dark/Auto) and App language (2: EN/FR) are each their own
+`flex-direction:column` stack, label block on its own full-width line and
+the option row BELOW it, specifically because a 2-line label plus a
+multi-button control never fits comfortably side-by-side on a real phone
+width. Confirmed by direct measurement at native 375px width (not a zoomed
+screenshot — see below): with the OLD horizontal layout, `.sr-sub`'s
+`max-width:52vw` combined with competing space from 3 segmented buttons
+pushed "Light, dark, or match device" into multiple cramped lines. Added a
+`.set-row-stack` modifier (only on Theme's and App language's markup) that
+switches those two rows to the column layout with a `0.6rem` gap between the
+label block and the option row, and lifted `.sr-sub`'s `max-width` cap for
+stacked rows specifically (no longer needed — nothing else shares the line).
+Every other row's markup/CSS is untouched.
+
+**A measurement pitfall worth recording**: first tried to inspect this
+visually with `document.body.style.zoom = '2.2'` for a bigger screenshot
+(the Browser pane's own `zoom` action doesn't support region-cropping yet).
+That EXAGGERATED wrapping far beyond what the page actually does at real
+375px width — rows that measure as clean single lines via
+`getBoundingClientRect()`/`window.innerWidth` (confirmed still reporting 375
+under zoom) appeared to wrap 2-3 lines deep in the zoomed screenshot. Verified
+the real behavior by measuring `element.height / computed-line-height` (an
+integer line count) at `zoom:1` instead, which is what actually caught that
+only Theme/App language needed fixing — everything else was already fine, a
+zoomed screenshot alone would have suggested otherwise. Worth remembering
+next time a screenshot needs magnifying: trust unzoomed `getBoundingClientRect`
+math over a `body.style.zoom`'d screenshot for anything wrapping-sensitive.
+
+**Verification**: syntax-checked; measured every visible Settings row's
+label/sub-label line count at native 375px width in both languages — every
+row (including the two newly-stacked ones) now reports exactly 1 line for
+its key, and 1 line for its sub-label except Export/Delete's naturally
+longer descriptions (2 lines there, expected and unchanged, same as the
+design file's own free-wrapping sub-labels). Zero console errors. Nothing
+pushed. **Not device-verified.**
+
+## Shelves title alignment (real root cause found) + a genuine Home gap-system rebuild (2026-08-27, same day)
+
+**Shelves' title still didn't line up with Log/Settings.** The previous
+fix (removing `.lib-header`'s own top padding) was necessary but not
+sufficient — measured 82.3px before that fix, 64.7px after, still 7.5px off
+Log/Settings' 57.2px. The remaining gap: `.lib-header` uses
+`align-items:center`, vertically centering the `<h2>` against the ROW'S
+height — and the row's height is set by its TALLEST child, the view-toggle
+icon button group, which is taller than the title text alone. So the title
+was being pushed down by roughly half the icon-row's extra height on top of
+everything else. Changed `.lib-header` to `align-items:flex-start`, so the
+title starts flush at the row's own top edge, same as every other page's
+title does (nothing before it to center against). Verified: all three now
+measure to the exact same 57.2px, and a screenshot confirms the icon row
+still reads cleanly anchored to the title's top rather than looking
+mis-aligned.
+
+**A genuine review of Home's spacing, not incremental nudges.** Re-read the
+design file's `isHome` block with fresh eyes and noticed something the
+previous two passes both missed: EVERY section on Home (greeting, Continue
+Listening, the stat row, Still Growing) is a child of ONE
+`display:flex;flex-direction:column;gap:24px` wrapper in the design file —
+a single, uniform section-to-section gap, not a collection of individually
+tuned margins. This codebase had instead accumulated three DIFFERENT,
+independently-guessed values across two previous rounds (17.6px after the
+greeting via `.home-title`'s shared margin, 25.6px after Continue Listening
+via `.cover-row` padding-bottom, 28.8px after the stat row via
+`.home-stat2` margin-bottom) — closer to the design file's 24px than
+before, but still three different numbers, which is very likely why
+"spacing... not big enough" kept coming back even as individual values grew.
+Rebuilt properly: added a `.home-sections` wrapper (`display:flex;
+flex-direction:column;gap:1.5rem`) around Home's four section containers,
+removed the individual margin/padding hacks that were standing in for it,
+and added `.home-sections > div:empty { display:none }` so a section with
+nothing to show (e.g. "Continue listening" when nothing's in progress)
+collapses out of the gap entirely instead of leaving a blank 24px hole —
+verified directly with a single-book, no-progress dataset: the two empty
+section `<div>`s report `display:none` automatically, no dead space in the
+rendered page.
+
+Also corrected several component-level details the design file specifies
+exactly, found during this same re-read: stat-tile padding 16px (was
+14.4px) and the stat number's own font-size 26px mono (was 22.4px — visibly
+too small against the design's actual number treatment), a 4px gap between
+a stat number and its label (was touching, no margin at all), Continue
+Listening's card gap 14px and section-label-to-content gap 12px (was
+11.2px/10.4px), and Still Reading's rows switched from `border-top` to
+`border-bottom` (the design file trails each row with its divider rather
+than leading it, so the label doesn't get an odd hairline immediately
+under it).
+
+**Verification**: syntax-checked; measured Home's three section gaps
+directly via `getBoundingClientRect()` — all three report exactly 24.0px;
+confirmed Shelves/Log/Settings titles all measure to the identical 57.2px;
+re-confirmed Settings' key→sub-label gap (4.8px) and row-to-row rhythm are
+STILL uniform across all 12 rows after these changes (nothing here touched
+`.set-row`/`.sr-k`/`.sr-sub`, but re-checked since the same page was in
+scope this round); Log page's own copy of the stat-tile grid re-screenshotted
+to confirm the shared CSS change (used by both Home and Log) reads well
+there too. Zero console errors. Nothing pushed; `index.html` untouched.
+**Not device-verified** — same standing caveat.
+
+## Settings key/sub-label spacing: a likely cross-renderer line-height difference, not a padding bug (2026-08-27, same day)
+
+The owner sent an annotated screenshot from their actual device (native app,
+not this browser) marking it directly: every row shows a visibly SHORT gap
+above the key text and a visibly LONG gap below the sub-label, consistently,
+across rows with and without a group boundary, with and without extra icons,
+single- and multi-line subs.
+
+**This did not reproduce in the browser sandbox.** Measured the exact same
+row (Export my data) directly: `.set-row`'s padding-top and padding-bottom
+were both a provably equal 14.4px in CSS, and the actual rendered gap above
+the key text vs. below the sub-label measured 15.06px vs. 14.4px — under 1px
+apart, nothing like the screenshot's obvious asymmetry. Ruled out the two
+likely CSS-side explanations directly: `.set-row`'s padding values were
+confirmed equal, and `document.fonts` confirmed Literata was genuinely
+loaded and applied (not silently falling back to a generic serif with
+different metrics). That leaves the most likely remaining explanation:
+**how a renderer distributes a line's "half-leading"** — the extra space
+`line-height` adds beyond a font's own metrics is supposed to split evenly
+above and below the glyphs, but this is a genuinely known area of
+cross-engine inconsistency (older/different WebView versions in particular
+have been known to place most or all of that extra space on ONE side rather
+than splitting it) — and Literata's line-heights here were on the generous
+side (1.3/1.4), giving whatever asymmetry exists more room to show up. This
+session's own Chromium-based sandbox evidently distributes it evenly (hence
+no visible bug here); there's no way to confirm the device's exact behavior
+without testing on it directly.
+
+**Fix, given that uncertainty**: removed the ambiguity rather than trying to
+out-guess one specific renderer's behavior. `.sr-k`/`.sr-sub`'s line-heights
+were tightened way down (1.3→1.15, 1.4→1.15) so there's much less "extra"
+leading available to be distributed unevenly in the first place; the key→sub
+gap itself was moved off `.sr-sub`'s margin-top and onto a real `gap` on a
+new `.set-row > div:first-child { display:flex; flex-direction:column }`
+wrapper, so that spacing is deterministic box-model space, not
+line-height-adjacent margin collapsing into leading. As a defensive
+supplement (since the fix above can reduce but not fully rule out a
+platform-specific split), also rebalanced `.set-row`'s own padding
+top-heavy (0.9rem/0.9rem → 1rem/0.8rem, same total so the page's overall
+row-to-row rhythm is unchanged) — directionally corrects for exactly the
+"short above, long below" pattern reported, in case some of it survives the
+leading fix on their device. This is an empirical correction based on their
+screenshot, not something provable from this sandbox alone.
+
+**Verification**: syntax-checked; confirmed every row's key text still fits
+on exactly one line in both languages (tightening line-height risks
+clipping tall glyphs/accents — checked directly, nothing clipped); zero
+console errors; screenshotted the full Settings page, which reads cleanly
+balanced in this sandbox (as it did before the fix — this sandbox was never
+reproducing the reported bug, so a clean screenshot here isn't proof the
+device will look different than before). **Explicitly not verified against
+the actual reported symptom** — the owner's own device is genuinely the only
+way to confirm this closed the gap, since the sandbox couldn't reproduce it
+to begin with. Flagging this clearly rather than claiming a fix that's only
+theoretically justified.
+
+## Settings spacing: ACTUAL root cause found (`.set-group` margin), plus five more design-file corrections (2026-08-27, same day)
+
+**The Settings spacing asymmetry finally has a real, reproducible cause —
+and my previous entry's cross-renderer line-height theory was WRONG.** The
+culprit was `.set-group { margin-bottom }`. Every `.set-row` carries its own
+`padding: 0.9rem 0` (14.4px) plus a `border-top`, so *within* a group the
+hairline sits exactly 14.4px from the text above and 14.4px below —
+balanced. But at a **group boundary** it was the last row's 14.4px
+padding-bottom PLUS the group's own 14.4px margin = **28.8px above the
+hairline, against only 14.4px below it**. Exactly the "short space above
+text, long space below" the owner marked up, and it recurs at every group
+boundary down the page — which is why it kept reading as a page-wide
+problem rather than a few isolated rows.
+
+**Why three previous attempts missed it**: I kept measuring row-box to
+row-box (`rowGaps` came back `[0,0,0,0,0,14.4,...]`) and read the 0s as
+"perfectly tight" and the 14.4s as "one clean row-gap." But each row's
+padding lives *inside* its own border-box, so box-to-box distance says
+nothing about where the hairline sits relative to the *text*. The correct
+measurement — hairline-to-text-above vs hairline-to-text-below — exposes it
+immediately (39.3 vs 15.1 at boundaries, 14.4 vs 15.1 within groups). The
+earlier "equal padding, must be a renderer difference" conclusion was built
+on that wrong measurement; the padding genuinely was equal, but padding was
+never the whole story. **Lesson: to check whether a divider looks centered,
+measure from the divider to the rendered text on each side — never
+element-box to element-box on elements that carry their own padding.**
+Also reverted that entry's speculative `1rem/0.8rem` top-heavy padding
+rebalance, which was compensating for a misdiagnosis; padding is symmetric
+`0.9rem` again. Verified after: every row on the page now measures
+symmetric content padding (15.1 vs 14.4, i.e. equal within the 1px
+border's sub-pixel rounding), including rows whose control is taller than
+the label block (those center correctly). The design file has no group
+concept at all — it's one flat list of identical rows — so `margin-bottom:
+0` matches it as well as fixing the rhythm.
+
+**Five more corrections in the same pass, each traced to the design file or
+a concrete defect:**
+
+1. **Privacy/Terms "not changed by the new design" — they were never
+   reachable.** The redesigned `privacy.green.html`/`terms.green.html` built
+   in an earlier round were correct, but both the sign-in screen and the
+   Settings footer still linked to plain `privacy.html`/`terms.html` (the
+   old Botanical-Editorial pages), so tapping either in the app always
+   showed the OLD design. Repointed all four links at the `.green.html`
+   files, and — importantly for how the owner actually tests — added those
+   four files to `scripts/stage-test.js`'s staged `FILES` list, since
+   otherwise `npm run sync:test` would leave them absent from `www/` and the
+   native build would 404 on the very links this fix adds. Staged under
+   their own `.green` names (not substituted over `privacy.html` the way
+   `index.green.html` is over `index.html`) so browser and native resolve
+   identically, and the real `privacy.html`/`terms.html` stay staged for
+   the real `npm run sync`. Verified both links return HTTP 200 and the
+   redesigned page renders (accent-inverted summary box, serif title).
+2. **Header background inconsistent ("sometimes white, sometimes beige").**
+   Real and precisely as described: `.lib-header`/`.lib-search` (Shelves
+   only — the one view whose header chrome sits outside `.scrolly`) painted
+   themselves `var(--surface)`, while Home/Log/Settings' headers sit on
+   plain `var(--bg)`. In Daylight those are `#F3EEE1` vs `#EFE9DA` — close
+   enough to look like an accident, far enough apart to notice. Set both to
+   `background: none`. Verified all four views' header backgrounds now
+   resolve to the identical color in BOTH themes (`#EFE9DA` light,
+   `#0F1411` dark).
+3. **Book covers too small.** The design file's `BookCard` in the Continue
+   Listening row is `120px` wide (`width:100%` at `aspect-ratio:2/3`, so
+   120×180); the app had `.cr-item` at `88px`. Set to 120px, and adopted the
+   file's own card title styling too (`600 0.85rem` UI in full `--text`,
+   was a dim `0.66rem`). Verified the rendered cover measures exactly
+   120×180. Shelves' grid was already correct (`100%` of column, `gap:16px`).
+4. **Log page's top boxes too large.** Found the cause in the design file:
+   it sizes Log's six tiles deliberately SMALLER than Home's two
+   (`padding:10px` / `17px` number / `10px` label / `8px` gap, vs Home's
+   `16` / `26` / `11` / `10`). An earlier pass applied Home's larger numbers
+   to the shared `.stat-grid2` class, so six oversized tiles dominated the
+   Log page. Split the two variants apart per the file (`.stat-grid2` is now
+   the compact Log base; `.home-stat2` overrides up to Home's larger
+   treatment). The tile block dropped from ~305px to 189px — 23% of a 812px
+   viewport, comfortably under the owner's "no more than a third" bar, and
+   the week chart plus breakdown table now fit onscreen with it.
+5. **Logo/wordmark too close to the page title.** Increased `.app-header`'s
+   `margin-bottom` 0.9rem → 1.5rem (measured gap 14.4px → 24px). Noting
+   deliberately that this is an owner-requested increase that goes *beyond*
+   the design file's own ~12px: in the file the wordmark lives in a fixed
+   top bar visually separate from the scrolling content, which reads as more
+   separation than the identical gap does here, where the header scrolls
+   inline directly above the title.
+
+**Verification**: syntax-checked `index.green.html` and `stage-test.js`;
+per-row hairline-to-text measurements across all 13 Settings rows; header
+background equality across all four views in both themes; cover dimensions;
+Log tile block as a fraction of viewport; both legal-page links fetched
+(200) and the rendered page screenshotted; Home/Settings/Log screenshotted.
+Zero console errors. Nothing pushed; `index.html`/`privacy.html`/
+`terms.html` untouched. **Not device-verified** — and note item 1 above
+means the Privacy/Terms redesign has genuinely never been seen on device
+yet, so that one is worth a look specifically.
+
+## Legal pages now follow the app's theme + language, and share its exact header geometry (2026-08-27, same day)
+
+Once the Privacy/Terms links actually resolved (previous entry), the pages
+themselves turned out to be disconnected from the app in three ways.
+
+1. **Theme was ignored entirely — the pages only ever followed the OS.**
+   The four `.green.html` legal pages had `:root` light defaults plus a
+   `@media (prefers-color-scheme: dark)` block and *nothing else*: no
+   `[data-theme]` blocks and no theme-init script (confirmed by grep —
+   zero occurrences of `data-theme` in all four). So a user who had chosen
+   **Light** in the app's Settings, on a phone set to dark, still got dark
+   legal pages. Fixed by mirroring the app's own mechanism exactly: the
+   same pre-paint init script reading the same `localStorage.pl_theme` key
+   that `Theme.apply()` writes, plus `[data-theme="light"]` /
+   `[data-theme="dark"]` token blocks placed after the media query so a
+   forced choice wins on source order — the identical pattern (and
+   identical hex values) `index.green.html` already uses, so the two can't
+   drift. Privacy's accent summary box had a separate
+   `prefers-color-scheme` shadow override that would have been stranded by
+   this; folded it into a `--shadow-ink` token defined per theme instead.
+2. **Language was already correct** — the `pl_lang` redirect logic was read
+   through and verified sound, then confirmed working end-to-end in the
+   browser (setting `pl_lang: 'fr'` and loading `privacy.green.html`
+   redirects to `privacy-fr.green.html`, `lang="fr"`, French title). No
+   change needed; recording that it was checked rather than assumed, since
+   it was reported alongside the theme bug.
+3. **Header geometry didn't match the app.** These pages had their own
+   unrelated header treatment — a 26px icon, an uppercase letter-spaced
+   `--text-dim` wordmark, `2.5rem/1.5rem` page padding, `2.4rem` topbar
+   margin — versus the app's 22px icon, plain-case `600 0.82rem --text`
+   wordmark, `1.1rem` scroll padding and `0.2rem` header padding-top.
+   Rebuilt `.wrap`/`.topbar`/`.brand` to reproduce the app's own geometry
+   (`1.1rem` page padding + `0.2rem` topbar padding-top puts the icon at
+   the same y; `1.1rem` side padding the same x), matched the icon to 22px,
+   and matched `h1` to the app's shared `.home-title`
+   (`1.625rem/1.15`, `-0.02em`, `0.5rem` top margin). Per the owner's note
+   about knock-on spacing, the title's own top margin and the `.updated`
+   line's bottom margin were kept/tuned so the shorter header doesn't
+   crowd the text beneath it — screenshotted to confirm it still reads
+   naturally rather than merely measuring correctly.
+
+**Verification** (all four files, in the browser): with `pl_theme: 'light'`
+on a dark-OS sandbox, the pages render light (`--bg` #EFE9DA) — the exact
+case that was broken; with `'dark'`, dark plus the correct dark shadow
+token; with the key absent ('auto'), they defer to the OS as before. The
+French redirect fires and lands on the `-fr` page with the right `lang`
+and title. Header geometry measured against the app's own rendered
+Settings header and matches to the pixel on every page: icon top **20.8**,
+left **17.6**, width **22**; `h1` top **66.8** at **26px** — identical
+values to `#settings-view`'s `.app-header-icon` and `.home-title`.
+Zero console errors. Nothing pushed; the real `privacy.html`/`terms.html`
+remain untouched. **Not device-verified.**
+
+## Status-bar band on the legal pages + "Your forest" on Home (2026-08-27, same day)
+
+**Status-bar band missing on Privacy/Terms.** Cause: those pages carried
+`viewport-fit=cover` in their viewport meta (inherited from the original
+`privacy.html`, which is a plain website page where that's fine), which
+makes the page draw UNDERNEATH the system status bar — so the band behind
+the clock/battery that every other screen shows simply wasn't there.
+`index.green.html` deliberately omits `viewport-fit`, so the WebView lays
+out below the status bar. Removed it from all four legal pages, and
+replaced their single hardcoded green `theme-color` with the app's own
+light/dark pair (`#EFE9DA` / `#0F1411`) so the band is tinted identically
+rather than green. Verified all four viewport metas now read exactly
+`width=device-width, initial-scale=1.0`.
+
+**"Your forest" — the Now page's empty bottom space.** The owner rejected
+every book-based fill ("that's what the library is for", and realistically
+people are in 1–2 books at a time) and asked for something out of the box.
+Of three proposals (a growing plant, a finish-by forecast, an evening
+wind-down card) they picked the plant, refined to: **a forest where every
+book is a tree, grown by that book's own progress, up to completion.**
+
+New `Forest` module + `#home-forest` section, last on Home:
+- One tree per book with progress > 0. **Six growth stages** keyed off that
+  book's own percentage (sprout at 20%, two-leaf seedling, sapling, young
+  tree, tall tree, full canopy at 100%), drawn bottom-anchored in a fixed
+  `44x100` viewBox so every tree stands on the same ground line no matter
+  its height — the card's own bottom border IS that ground. The result
+  reads as a skyline of exactly where each book stands, so it's an honest
+  data view as much as an ornament; nothing is invented, a tree exists only
+  because a real book has real progress.
+- **Completion is the reward**: an in-progress tree is drawn in outline, a
+  finished book's tree fills solid `--accent`. No badge needed.
+- Two tree forms (round canopy / conifer), picked deterministically from
+  the book id so a given book is always the same kind — purely visual
+  variety, encodes nothing.
+- **Library order, deliberately not sorted by progress**, so a tree keeps
+  its place in the forest and only ever grows; sorting would make trees
+  jump around between renders.
+- Tapping a tree opens that book's Book Detail, matching the app's existing
+  tap convention. A small `{n} growing · {n} fully grown` line sits under
+  the forest so the visual also states its own numbers.
+- **Empty state** (onboarding, nothing started): the owner's exact copy,
+  "Read your first book to unlock your forest!", over a faded sprout that
+  hints at what the space becomes. The hint uses `--text-dim` at 0.45
+  opacity, not `--line` as first written — `--line` is so close to
+  `--surface` in Midnight that the sprout was invisible.
+- Localized: `forest_title` / `forest_empty` / `forest_growing` /
+  `forest_grown` in both EN and FR.
+
+**One real bug caught during verification, worth recording.** The trees
+were first written as `<svg role="button" tabindex="0" onclick=...>`,
+following the codebase's usual "clickable div needs role=button" convention.
+That convention is backed by a delegated keydown handler that calls
+`e.target.click()` — and **an `SVGElement` has no `.click()` method in this
+WebView**, confirmed by it throwing `TypeError: tree.click is not a
+function`. So every tree would have been focusable but impossible to
+activate by keyboard, throwing on each Enter press. Rewrote as a real
+`<button>` wrapping an `aria-hidden` SVG: natively focusable and
+activatable, needs no role/tabindex, and the global `appearance:none` reset
+already strips its chrome. **Lesson: the `role="button"` convention in this
+codebase is only safe on HTML elements — an SVG needs a real `<button>`
+wrapper.**
+
+**Verification**: syntax-checked; both states rendered in both themes and
+both languages (empty state and a seven-book forest spanning all six
+stages); measured that seven trees fit one row at 375px (340px wide, 99.7px
+tall); enlarged the SVGs temporarily to inspect every stage's shape
+individually; confirmed pointer activation opens the right Book Detail and
+that the button is genuinely focused (`document.activeElement`) with the
+correct `aria-label`. Zero console errors. **Keyboard Enter activation
+could NOT be fully proven here** — a probe showed the key event reaching
+the focused button with nothing preventing it, but the harness synthesizes
+key events with an empty `key` value, so the browser never treats it as
+Enter; a synthetic `KeyboardEvent` can't trigger native activation either.
+The element being a real `<button>` with a working onclick is the actual
+guarantee. Nothing pushed. **Not device-verified.**
+
+## "Still growing" removed (it was rendering garbled), forest rebuilt realistically (2026-08-27, same day)
+
+**The garbled "Still growing" rows had a precise, embarrassing cause: a CSS
+class-name collision.** The owner's device screenshot showed every row's
+title wrapped in a long lens-shaped outline with a line struck through the
+text. `.sr-info` — which the Still Reading rows used for their full-width
+title/progress wrapper — **was already taken**: it is Settings' small
+circled "i" explainer button, styled
+`width: 15px; height: 15px; border: 1px solid var(--accent); border-radius: 50%`.
+Defined LATER in the stylesheet, so it won the cascade. A `border-radius:
+50%` on a wide, short box renders as exactly that lens, and its border drew
+the outline through the title. In this file the `.sr-` prefix already means
+**settings row** (`.sr-k`, `.sr-sub`, `.sr-info`); reusing it for "still
+reading" was the mistake. A comment now sits where that CSS block was,
+warning the next person off the prefix.
+
+The owner asked for the section to be **removed** rather than fixed, which
+is also the right call on the merits: every started book already appears in
+the forest below, and Shelves is where you browse the library. Removed the
+markup, the render block, `_stillReadingRowHTML`, all seven `.sr-*` rules,
+and the now-unused `still_reading` string in both languages. Home's
+`inProgress` list no longer computes a `rest` slice. Grep confirms zero
+remaining references.
+
+**Forest rebuilt for realism** (owner: "surely we can make something more
+realistic than this!"). Two real defects plus a general quality pass:
+
+1. **Every tree was the same species.** The species picker was
+   `id.charCodeAt(0) % 2` — and **Google Drive file ids overwhelmingly begin
+   with the same character**, so in real use every book hashed identically
+   and the forest was a row of identical triangles. (It looked varied in my
+   synthetic tests only because I'd used ids starting a/b/c/d…, which is
+   exactly the wrong test data.) Replaced with **FNV-1a over the whole id**;
+   re-tested with seven Drive-style ids all starting `1`, which now yield
+   all three species.
+2. **Growth was six hand-drawn stages**, so a book jumped between unrelated
+   clip-art shapes. Now growth is a **continuous scale of the finished
+   tree** about its base point — a part-read book is literally a smaller
+   version of what it becomes, which reads like a sapling. Below ~15% it's
+   still a sprout, drawn unscaled so it doesn't vanish.
+3. **Three species instead of two** — pine (three stacked tiers, not one
+   triangle), broadleaf (four overlapping crowns), poplar (tall ellipse with
+   an inner highlight) — each with layered per-shape opacity for depth.
+4. **Trunks are `--text-dim`, not accent**: a warm grey-brown in Daylight
+   and grey-green in Midnight, both of which pass for wood, where a green
+   trunk did not.
+5. **Deterministic height jitter** (0.92–1.08 from the same hash) so no two
+   trees are stamped identical, plus a faint ground shadow ellipse under
+   each so they sit on the ground rather than float.
+6. **Completion now reads as colour strength, not outline-vs-fill.** Foliage
+   opacity ramps with progress and goes full-strength at 100%. The old
+   outline style was chosen partly to avoid messy overlapping strokes —
+   which is precisely why the crowns had to be single flat shapes; filled
+   shapes let the layered, more organic crowns work.
+7. Trees now sit shoulder to shoulder (`gap: 0`) so the row reads as a
+   treeline; small trees carry their own padding inside the viewBox, so
+   nothing collides.
+
+**Verification**: syntax-checked; seven Drive-style ids rendering all three
+species; measured the forest fits one row at 375px (111.7px tall);
+temporarily enlarged the SVGs to inspect each species individually;
+populated and empty states in both themes and both languages. With Still
+Growing gone the whole Now page now fits one screen — the empty space this
+whole thread was about is closed. Zero console errors. Nothing pushed.
+**Not device-verified.**
+
+## Continue Listening's 3rd card no longer clips + Book Detail gains Pages/Length + description HTML actually strips (2026-08-27, same day)
+
+**Continue Listening overflow.** Real, measurable bug, not a device quirk:
+3 cards at a fixed 120px + 2×14px gaps measure 388px, against a content
+width of ~340px on a 375px phone — the third card was ALWAYS partly clipped
+requiring a scroll to see, on any phone this size or narrower. Fixed by
+sizing each of the (always ≤3) cards to `calc((100% - 2 * gap) / 3)`
+instead of a fixed px guess — this is correct on any device width by
+construction, not tuned to one. Verified: 3 cards render at 104px each on a
+375px viewport, last card's right edge lands exactly on the row's own right
+edge (measured overflow: -0.02px, i.e. none).
+
+**Book Detail — added Pages and Listening length @1×, replacing "at
+{rate}×".** The old duration stat scaled with whatever playback speed
+happened to be set and only ever showed anything for the currently-open
+book; asked "what else could we add," pages and a rate-independent length
+were the two concrete, real (not fabricated) numbers the app already had
+access to but wasn't showing:
+- **Pages**: `Meta.data[id].pages`, already fetched from Open Library in
+  the background for every book (used today only for Stats' length-tier
+  breakdown) — genuinely free to surface here too.
+- **Length @1×**: for the open book, the same live epub.js location count
+  `estimateTimeLeft` always used, just pinned to rate 1 (gave the function
+  a third `rate` param, default unchanged for its one other caller). For a
+  book that ISN'T open there's no live index to measure — estimated instead
+  from its page count (~250 words/page at a ~150wpm narration pace),
+  marked with a leading "~" specifically for that case, so the two
+  accuracies read differently without either being invented data.
+`.detail-stats` restructured from a 3-wide row to 2×2 (4 stats now) with
+real cell borders. Verified in both languages: EN `PAGES / CHAPTERS / READ
+/ LENGTH @1×`, FR `PAGES / CHAPITRES / LU / DURÉE À 1×`; a closed book with
+no cached pages correctly shows all-dash rather than a guess.
+
+**Description showing literal `<p><b>` tags** (owner: "To Hold Up the
+Sky"). Cause: some epubs' `dc:description` embeds real HTML, and it was
+being written via `.textContent` — safe, but shows the raw markup as text
+instead of formatting it. New `stripHtml()` helper, **deliberately not**
+"just render it as HTML" — `.innerHTML = untrustedString` can trigger
+network/JS side effects (`<img onerror>`) even on an element never attached
+to the page, which this app's own escape-everything-external convention
+exists to rule out. Two-step, both string/DOM-safe: (1) regex converts
+block-closing tags to paragraph breaks and strips every remaining tag —
+BEFORE any entity decoding runs, so nothing tag-shaped survives to reach
+step 2; (2) full entity decoding via the standard `<textarea>` RCDATA
+trick (setting `.innerHTML` on a textarea decodes character references
+without ever parsing child elements from it) — chosen over a hand-rolled
+entity table specifically because real descriptions use far more than
+`&amp;`/`&lt;`: tested `&eacute;`/`&mdash;`/`&hellip;`/curly quotes, all
+decoded correctly, which a 6-entry map would have missed. `.detail-desc`
+gained `white-space: pre-line` so the `\n\n` paragraph breaks the stripper
+produces actually render as breaks under a plain `.textContent` assignment.
+**Verified adversarial input directly**: `<img src=x onerror="alert(1)">`,
+`<script>alert()</script>`, and double-encoded `&lt;script&gt;…` all
+produced inert plain text with zero alerts fired (window.alert spied) —
+confirmed the tag-strip-before-decode ordering actually holds under
+targeted attack, not just the happy path.
+
+**Verification**: syntax-checked; overflow math confirmed via
+`getBoundingClientRect`; full open→closed→open BookDetail cycle with a
+book carrying HTML-formatted description + page count, in both languages;
+`stripHtml()` unit-tested standalone (named/numeric entities, `<br>`,
+nested tags, empty/undefined input, all three adversarial cases). Zero
+console errors. Nothing pushed. **Not device-verified.**
+
+## List-view finished icon, Chapters actually persists, forest ambience (sun/moon + a passing critter) (2026-08-27, same day)
+
+**List-view finished badge "not well placed."** Real cause: in list/table
+mode the cover thumbnail shrinks to `2.6rem` (41.6px), but `.finished-badge`
+is a `1.6rem` (25.6px) circle absolutely positioned over the cover's
+top-left corner regardless of mode — at that size it covered most of the
+tiny cover art. Meanwhile the offline/download button already lived
+OUTSIDE the cover in list mode, as a normal trailing icon at the row's far
+end. Fixed to match: in row mode the badge now also renders as a normal
+(not absolutely-positioned) trailing icon, placed directly before the
+offline button in DOM order — literally to its left, as asked — via a new
+`.book-row .finished-badge { position: static }` override; grid mode is
+untouched (the badge still overlays a full-size cover there, where it
+always fit fine).
+
+**"I see a spot for Chapters, but never see any data" — not a bug, but a
+real gap, now closed.** The count was gated on `isOpen` (`State.currentBook
+=== b`), which is genuinely only ever true if this EXACT book happens to be
+the one currently loaded in the reader — and Book Detail is opened from
+Shelves/Home specifically to DECIDE what to read, so in practice that's
+almost never the case. `Meta.fromBook()` now also computes a `chapters`
+count from the epub's own navigation (`flattenToc`, same flattening Book
+Detail already used) at the exact point every other piece of metadata is
+already captured for free — the moment a book has ever been opened once.
+`Meta.capture()`'s merge-list gained `'chapters'` so already-cached entries
+backfill it too. Book Detail now uses the live count when open, the cached
+one otherwise, and only shows '—' for a book that has genuinely never been
+opened. Verified with a mock epub `navigation.toc` (2 top-level entries +
+1 nested subitem + 1 href-less entry that should NOT count) → correctly
+returns 3; verified a book with a pre-cached `chapters: 14` renders that
+number in Book Detail while closed.
+
+**Why Pages/Length and Description are inconsistent — explained, not a
+bug, but worth being precise about since two different mechanisms are
+involved:**
+- **Pages** comes from a background Open Library title(+author) search
+  (`Meta.fetchAll`/`_fetchOL`), and only lands if (a) the search actually
+  finds a matching edition, AND (b) that specific hit happens to carry
+  Open Library's own `number_of_pages_median` field — many self-published,
+  foreign-language, or obscure titles never match, or match but lack that
+  field. Also: `fetchAll`'s own `pending` filter only retries a book while
+  it has NEITHER genre nor pages yet (`!m.genre && !m.pages`) — so a book
+  that matched well enough to get a genre back but not a page count on that
+  same lookup will never be retried for pages afterward, since it no
+  longer qualifies as pending. Not fixed this round (a deliberate,
+  pre-existing rate-limiting choice, not a defect) — flagged for awareness.
+- **Description** is NOT fetched from anywhere — it's the epub file's own
+  `dc:description` OPF field, read directly off the book the moment it's
+  opened (`Meta.fromBook`). It's present or absent purely because the
+  publisher/converter who made that specific EPUB file did or didn't fill
+  that field in; nothing the app does affects it either way.
+
+**Forest ambience.** Two additions, both purely decorative and both gated
+so they never run where they shouldn't:
+- **Sun (Daylight) / Moon (Midnight)**, small and quiet in the card's
+  corner — Feather icons' own proven sun/moon paths, shown/hidden by the
+  same `@media (prefers-color-scheme)` + `[data-theme]`-wins-on-source-order
+  pattern used everywhere else in this app for a theme choice, so it's
+  correct through a live theme change with no JS involved at all.
+- **One critter at a time** (bird / butterfly / bee — a squirrel would need
+  a ground-level walk cycle, a genuinely different animation, left for a
+  future pass rather than making it look like a flying squirrel), appearing
+  at one edge of the forest card and exiting the other, on a random
+  14–34s schedule, picked freshly each flight (random species, random
+  direction, random height, small random vertical bob via CSS custom
+  properties computed in JS from the card's own measured width so the
+  flight always fully clears both edges regardless of screen size).
+  Explicitly `Nav`-managed like `Stats`'/`SleepTimer`'s own intervals: the
+  timer arms only when the Home tab becomes active and is torn down the
+  moment you leave it, so nothing runs in the background on other tabs.
+  Also skipped entirely under `prefers-reduced-motion: reduce` — decorative
+  motion with nothing depending on it should just not happen for that
+  preference, not merely animate near-instantly under this app's existing
+  blanket reduced-motion CSS clamp.
+
+**Verification**: syntax-checked; list-view badge positioning confirmed via
+screenshot (checkmark now clearly left of the download icon, both same
+size, cover fully visible); `Meta.fromBook()` chapter counting unit-tested
+against a mock TOC; sun/moon swap confirmed in both forced themes; critter
+lifecycle exercised directly — spawn, a second spawn attempt while one is
+already flying correctly ignored, natural re-spawn via the scheduled timer
+observed, and `animationend` cleanup confirmed removing the element and
+clearing the one-at-a-time reference; `prefers-reduced-motion` confirmed
+to prevent the timer from arming at all; confirmed `Forest.stopCritters()`
+actually clears the timer when navigating away from Home. Zero console
+errors. Nothing pushed. **Not device-verified.**
+
+## Forest: fixed-size canvas with semi-random overlapping trees; critter flight actually varies speed (2026-08-27, same day)
+
+**Forest layout rebuilt from a flex row to a fixed-size absolute-position
+canvas.** The previous version used `flex-wrap`, so it grew a new row
+every time the treeline ran out of horizontal space — meaning Home's total
+height (and whether it fit one screen) depended on how many books were in
+progress, exactly the opposite of "fits all the time." `.forest` is now a
+FIXED `5.75rem` height regardless of book count; each tree is
+absolutely-positioned in its own `.forest-slot` rather than flowing in a
+row, computed as:
+- **Horizontal**: an even slot per tree (`(idx+0.5)/n`) with jitter inside
+  it — not a perfectly-spaced grid, and as the slot count `n` grows, slot
+  width shrinks so trees increasingly overlap ("bundle up") rather than the
+  canvas ever growing to fit them all separately. This is the actual
+  mechanism that keeps a 3-book and a 25-book library both fitting the same
+  fixed box.
+- **Vertical**: trunk foot at `(hash % 49)%` from the card's OWN bottom
+  edge — always in the bottom half (0–49%), per the ask, but not on one
+  shared baseline.
+- **Depth**: a tree placed higher up (further from the bottom edge) also
+  draws smaller (`perspective = 1 - depth/49 * 0.42`) — reads as
+  "farther away," and is ALSO the reason a fully-grown tree can never
+  overflow the fixed card height regardless of where its base lands (the
+  math was solved for the worst case: full-size box at max depth still
+  clears the remaining headroom above it).
+- **Lean**: a small ±8° rotation per tree, pivoting around its OWN base
+  (`transform-origin: bottom center` on the button, positioned by an outer
+  wrapper that only translates — kept as two separate elements specifically
+  so the position offset and the rotation/scale don't get tangled into one
+  ambiguous combined transform) — "grows diagonally" without tipping off
+  its own ground point.
+All four values come from the SAME per-book hash already used for species,
+so a given book lands in roughly the same spot every render (no reshuffling
+on every Home re-render) — position is exactly as deterministic as species
+already was, just newly load-bearing for layout instead of only cosmetics.
+Tree box size itself also shrunk (44×120 viewBox rendered at 26×71px, was
+42×96) to help more of them read as a treeline rather than a crowd.
+`.forest-empty` (onboarding) got pulled out to its own `display:flex;
+height:auto` rule, since the fixed-height canvas rule is specifically for
+the tree-bearing case.
+
+**Verified the "always fits" claim directly, not just visually**: rendered
+25 synthetic in-progress books (previously this would have wrapped to
+several rows) — `.forest` still measures exactly 92px tall, ZERO tree
+buttons' bounding rects exceed the card's own bounds (checked
+programmatically, not eyeballed), and Home's total scroll height still
+equals the viewport height (`812 <= 812`) at both 3 books and 25.
+
+**Critter flight — "just dragged across the screen... no flying motion,"
+constant speed.** Genuinely accurate complaint about the first version:
+one `linear`-timed animation with only 3 bob points is, mechanically, a
+drag with a slight wobble, not flight. Two independent fixes, not one:
+1. **Speed actually varies now.** Each keyframe segment carries its own
+   real `animation-timing-function` (`ease-out` → `ease-in-out` ×3 →
+   `ease-in` ×2 — confirmed by reading the parsed `@keyframes` rule back
+   out of `document.styleSheets`, not assumed from the CSS text), AND the
+   horizontal-distance FRACTION at each stop is deliberately offset from
+   that stop's time-percentage (4% distance at 10% time / 20% at 28% / 50%
+   at 50% / 80% at 72% / 96% at 90%) — slow to leave, a faster mid-flight
+   surge, slowing to land. Combined, ground speed visibly changes through
+   the flight rather than reading as one constant rate.
+2. **A second, independent animation for the wingbeat itself** — the inner
+   `<svg>` runs its own fast (0.34s), continuously-looping `scaleY` pulse,
+   completely decoupled from the outer div's flight-path animation (two
+   separate elements, two separate `animation` properties — CSS allows a
+   parent and child to animate independently with no conflict). This is
+   what actually reads as "flying" rather than "gliding along a wire": the
+   wings visibly beat throughout, independent of whatever the flight path
+   is doing at that instant.
+Also went from 3 to 5 vertical bob points and added 5 independent small
+rotation-wobble values (a slight nose-up/down per stop) for a genuinely
+wavier, less mechanical path — all still randomized per spawn in JS exactly
+like the bob values already were, just more of them.
+
+**Verification**: syntax-checked; confirmed (via `document.styleSheets`)
+that all 6 `forest-fly-ltr` segments carry distinct real timing-functions,
+not a single global curve; confirmed all 5 dy/rot custom properties are set
+per spawn; confirmed the inner `<svg>`'s `forest-flutter` animation runs
+independently of the outer element's flight animation (different
+`animationName` on each, both present simultaneously). Zero console
+errors. Nothing pushed. **Not device-verified.**
+
+## Bird wing-hinge, trees reverted to vertical, butterfly/bee hover-pause (2026-08-27, same day)
+
+Three-part owner correction on the critter/tree work above: "The bird is
+not even flying! Let's make the bird flap its wings. Also, the trees
+should still be vertical. And let's make the butterfly and bee sometimes
+stop here and there (while their wings still flap)."
+
+**1. Bird wing-flap.** The previous fix's whole-`<svg>` `scaleY` pulse
+reads fine on the butterfly/bee (their bodies are roughly round, so a
+squash plausibly reads as wings compressing) but does nothing convincing
+for the bird — a static double-arc silhouette, where squashing the WHOLE
+shape doesn't look like anything specific flapping. Rebuilt the bird's SVG
+into two independent parts: `<g class="wing-l">` (one arc, pivoting at
+`(10,13)`) and `<g class="wing-r">` (the mirrored arc, same pivot), each
+with its own `transform-origin: 10px 13px` and its own keyframe animation
+(`bird-wing-l`/`bird-wing-r`, `0.3s ease-in-out infinite`, both wings
+rotating together — a real bird's wings move in sync, not alternating).
+The generic `scaleY` flutter (`forest-flutter`) is now scoped to
+`.forest-critter.butterfly svg, .forest-critter.bee svg` only, so the bird
+no longer gets a redundant/conflicting whole-body squash on top of its new
+wing hinges.
+
+**2. Trees reverted to vertical.** The prior round's entry read "grow
+diagonally from other trees" as license to tilt each trunk (±8° via
+`rotate()` in the tree button's inline transform) — the owner's correction
+clarified that "diagonal" meant trees' POSITIONS relative to each other
+(near/behind, allowed to bundle up at different depths), not the trunks
+themselves tilting, which just looked like the trees were falling over.
+Deleted the `lean` variable and the `rotate(${lean}deg)` term from the
+button's inline style entirely — `Forest.render()`'s per-tree markup is
+now `transform: scale(${perspective})` only. The semi-random depth/x
+positioning from the previous round (which IS what "diagonal"/"bundle up"
+meant) is untouched.
+
+**3. Butterfly/bee hover-pause.** New mechanism: the flight keyframes
+(`forest-fly-ltr`/`-rtl`) already moved through 5 checkpoints at fixed
+time-percentages (10/28/50/72/90%) with a horizontal-distance FRACTION at
+each one (previously hardcoded literals: 0.04/0.20/0.50/0.80/0.96). Those
+literals became `var(--fly-fx1, 0.04)` through `var(--fly-fx5, 0.96)` — a
+per-spawn CSS custom property with the old value as its fallback, so a
+plain spawn (or a bird, which never gets these set) behaves exactly as
+before. In `_spawnCritter()`, for a butterfly or bee only (never bird, by
+name check — birds don't hover), there's now a ~55% chance of picking one
+random adjacent pair of the 5 fx values and setting them equal — freezing
+horizontal progress across that whole time segment, i.e. a real mid-air
+pause at a random point in the flight. `--fly-dy`/`--fly-rot` for that same
+stop still get their own small random values, so the critter bobs gently
+in place during the pause rather than going perfectly rigid, and because
+the wingbeat (`forest-flutter`, or the bird's two wing keyframes) is a
+fully separate animation on a child element, wings never stop moving
+during a pause — exactly the "stop here and there while their wings still
+flap" ask. A paused flight also gets a slightly longer total duration
+(9–13s vs. 7–11s), since freezing part of the horizontal budget would
+otherwise force the non-paused portion to move faster to compensate,
+undercutting the "unhurried hover" feel.
+
+**Also found and fixed while verifying, not part of the original ask**:
+`_critterShapes` had to change shape anyway (from 3 plain HTML strings to
+`{name, svg}` objects, so CSS can key the wing/flutter rules and the pause
+eligibility check off a real name instead of array position) — while
+rewriting `_spawnCritter()` around that, noticed `Home.render()` is called
+from many places completely unrelated to the forest (a book's cover
+finishing its async load among them — `Covers._one()`/`fromBook()` both
+call it once their image is ready), and every one of those calls replaces
+`#home-forest`'s ENTIRE innerHTML via `Forest.render()`. That silently
+detaches a mid-flight critter's `<div>` from the DOM without ever going
+through `stopCritters()` — so `Forest._critterEl` was left pointing at a
+now-dead, detached node. Since `_spawnCritter()`'s one-at-a-time guard was
+a plain `if (this._critterEl) return`, that stale non-null reference meant
+no critter could EVER spawn again for the rest of that Home visit, not
+just "wait its turn" — a real, silent reliability bug in the very feature
+this round is polishing. Fixed by checking `this._critterEl.isConnected`
+instead of just truthiness, and clearing the stale reference when it's
+found detached.
+
+**Verification**: syntax-checked. In-browser with mocked `State.books`/
+`State.progress` (no real sign-in in this sandbox) and `Math.random`
+temporarily monkey-patched to pin outcomes deterministically:
+- Rendered 4 trees at varied progress (35/72/100/10%) and read every
+  `.forest-tree-btn`'s inline `style` back — all four are `scale(...)`
+  only, zero `rotate()` present.
+- Forced a bird spawn: element gets class `forest-critter bird ltr`, both
+  `.wing-l`/`.wing-r` groups exist, and its `--fly-fx1..5` are the plain
+  unfrozen default curve (0.04/0.20/0.50/0.80/0.96) — confirmed a bird is
+  never eligible for the pause branch.
+- Forced a butterfly spawn with a rigged pause: `--fly-fx1`/`--fly-fx2`
+  came back equal (0.040/0.040, the frozen pair), animation duration
+  bumped to the paused-flight range (11s), and the butterfly's `<svg>`
+  independently confirmed still running `forest-flutter` via
+  `getComputedStyle(...).animationName` — i.e. the freeze is real (a whole
+  segment's horizontal position pinned) and the wingbeat keeps going
+  through it, exactly as designed.
+- Confirmed the `_critterEl.isConnected` fix compiles and the guard logic
+  is sound; did not attempt to reproduce the original race under real
+  timing (would need a live, un-mocked cover-load sequence), so treat it
+  as logically verified rather than reproduced-then-fixed.
+Zero console errors beyond the deliberately-mocked environment's own
+missing-network noise. Nothing pushed; `index.html` untouched. **Not
+device-verified.**
+
+## Erase-modal confirmation word: localized + matched to its own button (2026-08-27, same day)
+
+Owner report: "when I try to delete all my data while in French mode, the
+word to type is still ERASE which is not a french word. Also, let's align
+to the button that we just tapped to get there. In english it's DELETE,
+and in french, it should be SUPPRIMER."
+
+**Root cause**: `EraseModal`'s type-to-confirm word was a plain hardcoded
+literal — `<b>ERASE</b>` in the markup and `!== 'ERASE'` in
+`checkInput()`'s JS gate — with no `data-i18n` hook at all, so it never
+changed with the app language. It also never matched the Settings row
+button that opens the modal (`data-i18n="delete"`, EN "Delete" / FR
+"Supprimer") — the two were picked independently and happened to diverge
+even in English (button says "Delete", modal asked for "ERASE").
+
+**Fix**: new i18n key `erase_word` — `'DELETE'` (EN) / `'SUPPRIMER'` (FR),
+deliberately the uppercase form of the existing `delete` key's value in
+each language, not a new independent translation, so the two can't drift
+apart again by accident. The markup's `<b>ERASE</b>` became
+`<b data-i18n="erase_word">DELETE</b>` (so `I18n.setLang()`'s existing
+`apply()` pass updates it for free, same as every other `data-i18n` spot),
+and `checkInput()`'s comparison became
+`input.value.trim().toUpperCase() !== I18n.t('erase_word')` — reads the
+current language's word at check-time rather than a frozen constant.
+
+**Also fixed while in there**: the input's `aria-label` was static English
+("Type ERASE to confirm") with no translation mechanism — there's no
+existing `data-i18n-aria-label` convention in this codebase (`I18n.apply()`
+only walks `[data-i18n]`/`[data-i18n-title]`/`[data-i18n-placeholder]`,
+confirmed by reading `apply()` directly rather than assumed), so a one-off
+JS-side fix was used instead of inventing a new markup convention for a
+single input: new `erase_input_aria` key, set directly via
+`input.setAttribute('aria-label', I18n.t('erase_input_aria'))` in
+`EraseModal.open()` — matches the codebase's own documented convention of
+"direct `I18n.t()` calls for JS-templated content" for exactly this kind
+of one-off case.
+
+**Verification**: syntax-checked. In-browser, mocked signed-in state,
+called `EraseModal.open()` directly in each language:
+- English: bolded word reads "DELETE", aria-label reads "Type the
+  confirmation word above", typing "delete" (lowercase) enables the
+  confirm button (case-insensitive, unchanged behavior).
+- French: bolded word reads "SUPPRIMER", aria-label reads "Tapez le mot de
+  confirmation ci-dessus", typing "supprimer" enables the button, and
+  typing the OLD English word "DELETE" no longer works (button stays
+  disabled) — confirms the check is genuinely language-aware, not just
+  the displayed hint text being wrong while the gate silently still
+  accepted the old word.
+Nothing pushed; `index.html` untouched. **Not device-verified.**
+
+## Tour spotlight bleed + more space under the logo/wordmark (2026-08-27, same day)
+
+Two small owner-reported items from a screenshot of the onboarding tour.
+
+**1. Tour spotlight revealing "the time from the Now page."** `#tour-hole`
+is genuinely transparent — the dimming is a `box-shadow: 0 0 0 9999px
+rgba(0,0,0,0.7)` around it, not a darkened box itself (confirmed by
+re-reading its own CSS comment) — so whatever real content sits inside the
+hole's computed rectangle shows through completely undimmed.
+`_reposition()` built that rectangle as `target.getBoundingClientRect()`
+padded outward by a flat 8px on every side, with no upper bound. The tab
+bar sits flush against Home's scrollable content with no gap, and
+`align-items: stretch` makes each `.tab` exactly as tall as `.tab-bar`'s
+own content box — so the 8px of pad ABOVE a tab pushed the hole's top edge
+8px past the tab bar's own (opaque) top edge, into whatever real Home
+content happens to be scrolled right up against it. Fixed by clamping the
+hole to the target's own parent's bounding rect (`el.parentElement`,
+i.e. the tab bar itself for a tab, or a reader toolbar row for a reader-
+tour step) on all four sides — the pad can still round the corners out
+nicely when there's room, but can never cross the edge of the opaque bar
+the target lives in. Verified: with a 46px-tall tab bar and a tab that
+exactly fills it, the computed hole is now clamped to `top: 766px, height:
+46px` — identical to the tab bar's own rect — where before the same setup
+produced `top: 758px, height: 62px`, 8px into the page above.
+
+**2. More space under the logo + wordmark.** `.app-header`'s
+`margin-bottom` (shared by Home/Shelves/Log/Settings — the one rule
+controlling the gap between the leaf-icon+"PhonoLeaf" row and whatever
+follows on each page) went from 1.5rem to 2.1rem, +0.6rem, the same size
+step as the round-3 bump that first took it from 0.9rem to 1.5rem. Applied
+identically to all four `.green.html` legal pages' `.topbar` rule (same
+value by design — its own comment already says it's matched to
+`.app-header` so the logo lands at the same on-screen spot everywhere).
+
+**Verification**: syntax-checked. In-browser at 375×812 with a realistic
+mocked Home (5 books at varied progress, a 5-tile streak/stats state, a
+populated forest): `.app-header`'s computed `margin-bottom` reads 33.6px
+(2.1rem) on Home and on Library; Home's `.scrolly` shows zero scroll
+overflow (`scrollHeight === clientHeight === 812`) even with the added
+space, so it still fits one screen — same for Log/Stats. Settings scrolls
+as it already did (that page was never a one-screen-fit target). Loaded
+`privacy.green.html` directly: `.topbar`'s margin-bottom also reads 33.6px
+and the gap to the `<h1>` measures the same 33.6px in practice — confirms
+the two files' independent CSS didn't drift apart. Nothing pushed;
+`index.html`/`privacy.html`/`terms.html` untouched. **Not
+device-verified.**
+
+## Forest copy/color, em-dash sweep, and page-title alignment to Home's name (2026-08-27, same day)
+
+Four owner requests in one message.
+
+**1. Forest empty-state copy.** "I think the forest should say 'Start
+reading a book to grow your first tree!' if no book has been started" —
+swapped in verbatim (EN), with a French line built the same way rather
+than translated word-for-word from the old one: "Commencez un livre pour
+faire pousser votre premier arbre !" Both name the actual action (read/
+start a book) and the actual payoff (a tree grows), where the old copy's
+"unlock your forest" implied something being gated rather than grown.
+
+**2. Colored sun/moon.** `.forest-sky`'s two icons inherited `color:
+var(--text-dim)` — the same flat grey as every other dim UI label, so a
+"sun" and a "moon" only read as such from their outlines, not their color.
+Gave each its own explicit color instead of the ambient token: `#E4A63B`
+(warm gold) for the sun, `#AEB9D6` (cool silver-blue) for the moon, opacity
+bumped from 0.55 to 0.75 so the color actually reads at 14px. Neither
+needs a per-theme variant — the sun only ever shows in light mode, the
+moon only in dark, so each gets exactly one color, not a light/dark pair.
+
+**3. Em-dash sweep.** "Please review all text and make sure it doesn't
+look like an AI wrote the text" — read as, at minimum, acting on standing
+feedback (recorded in memory, raised twice before this session) that the
+em dash specifically reads as an AI tell in user-facing copy. Grepped
+`STRINGS.en`/`STRINGS.fr` end to end: ~60 lines used an em dash, almost
+always the same pattern (`"X — Y"` where Y is a consequence or elaboration
+of X). Rewrote each on its own terms rather than a single mechanical
+substitution — most became two sentences (`"X. Y"`), a few became one
+sentence joined with a comma or "so"/"donc" where the clauses are too
+tightly linked to split, one pair became a colon (`"On: Upgraded voice..."`)
+where it's genuinely a label. Also fixed 4 HTML fallback strings that
+duplicate STRINGS.en text inline in the markup (the sign-in screen's two
+step captions, its privacy paragraph, and the erase-modal hint) so the
+pre-i18n-apply() text matches. Deliberately did NOT touch code comments —
+this codebase's own commenting style leans on em dashes constantly (CLAUDE.md
+and CLAUDE_HISTORY.md included), and comments aren't user-facing; rewriting
+hundreds of them would be a large, disruptive, out-of-scope change nobody
+asked for. Used a small Node script (pairs of exact old/new literals, each
+checked for exactly one match before applying) rather than 60+ individual
+tool calls — one string's French apostrophe-before-"?" used a real
+non-breaking space (`U+00A0`, correct French typography, already present
+in the source) that a plain-space search string didn't match; caught by
+the script's own "expected exactly 1 occurrence" check and fixed
+separately with the exact byte sequence.
+
+**Also checked for other common AI-writing tells** ("unlock", "seamless",
+"leverage", "elevate", "delve", "empower", "unleash", "effortless",
+"cutting-edge", "game-changer", "whether you're") across the same
+dictionaries — none found beyond the one "unlock" already being replaced
+per item 1 above.
+
+**Flagged rather than changed**: `privacy.green.html`'s actual legal
+clauses (and the real, live `privacy.html`) use the same em-dash-heavy
+style throughout their substantive paragraphs — confirmed by grepping the
+live `privacy.html` directly (16 em dashes in real clause text, predating
+this session). That's legal content pending lawyer review, carried over
+verbatim per this project's "legal text unchanged" rule — rewriting actual
+clause wording for style is a bigger, separate decision (risk of subtly
+shifting a sentence's meaning in a document someone else is about to
+review) than the UI-copy sweep above, so it was left alone and raised with
+the owner instead of edited unilaterally.
+
+**4. Every page title aligned to Home's own name position.** "Let's put
+all headers at the same position that the name in the Now page is." Home's
+title is genuinely two lines — a small kicker ("Good evening") directly
+above the user's actual name, the bigger serif text underneath — and every
+other page's title (Shelves, Log, Settings, and both Privacy/Terms's `<h1>`)
+was landing at the KICKER's height, one line above where Home's name
+itself sits (measured: kicker top 76.4px, name top 92.1px, everything else
+at 76.4px). Not what any earlier "alignment" pass in this session's history
+was checking for — those confirmed the OTHER pages agreed with EACH OTHER,
+never against Home's actual name.
+
+Fixing this the obvious way — bumping `margin-top` on the shared
+`.home-title` class and the legal pages' `<h1>` — did nothing at first,
+and the reason is a genuine CSS gotcha worth recording: `.app-header` and
+a bare `.home-title` (Settings/Log) are plain block-level siblings inside
+`.scrolly`, and so are `.topbar` and `<h1>` inside the legal pages' `.wrap`.
+Adjacent block siblings' vertical margins COLLAPSE — the browser keeps
+only the LARGER of the two touching margins, it does not sum them. Since
+`.app-header`'s own margin-bottom (2.1rem, from the earlier fix this same
+day) is already bigger than any reasonable title margin-top, every
+increase to the title's margin-top was being silently absorbed with zero
+visible effect — confirmed by reading `getBoundingClientRect().top` before
+and after and seeing it not move at all. Padding never collapses, so the
+fix is `padding-top` instead of `margin-top` on `.home-title` (bare
+use) and on each legal page's `<h1>` — exactly `0.98rem`, the raw
+kicker-to-name gap on Home, not "0.98rem plus whatever the old margin
+was," since that old margin was already contributing nothing once
+collapsed away. `.lib-header` (Shelves) took the same padding-top instead,
+added to its own top since it had none before. Home's own two-line title
+was untouched (its kicker→name gap already used `margin-top: 0.15rem`
+inside `.home-greet-block`, a different, non-colliding context, switched
+to `padding-top` too for consistency but functionally already correct).
+
+**Verification**: syntax-checked. In-browser, mocked a 5-book Home with
+real progress/streak data plus the four other views, measuring each
+title's EFFECTIVE top (`getBoundingClientRect().top + computed
+padding-top`, since a padding-based fix moves the text but not the box's
+own outer edge — box-top alone would have under-reported the fix as a
+false regression, caught and corrected mid-verification): Home 92.12px,
+Shelves 92.06px, Settings 92.07px, Log 92.07px — all within 0.06px of each
+other. Both legal pages (privacy.green.html, terms.green.html) independently
+measured at 92.07px using the same method. Home's `.scrolly` still shows
+zero scroll overflow with the added space. Nothing pushed;
+`index.html`/`privacy.html`/`terms.html` untouched. **Not
+device-verified.**
+
+## Page-title alignment, round 2: unify the font-size, not just the position (2026-08-27, same day)
+
+Owner report: "The headers are not quite aligned with the name. When I
+switch tabs, I still see a difference. Maybe align to bottom?"
+
+The previous fix (same session, entry above) made every title's BOX land
+at the same y-position, verified by measuring `getBoundingClientRect()`
+on the box itself, all five within 0.06px. That measurement was real but
+incomplete: it checked where the box started, not where the actual
+glyphs render — re-measured this round with `Range.selectNodeContents()
+.getBoundingClientRect()` (the true rendered-text bounding box, not the
+CSS box) and found Home's title glyphs spanned 87.4–128.8px while every
+other page's spanned 87.4–126.1px. Tops matched almost exactly (0.05px);
+bottoms differed by 2.7px. Cause: Home's name has carried a deliberate
+"hair larger than a plain title" font-size (28px vs 26px) since an early
+design-file-matching round in this same session — with box-tops aligned,
+a bigger font's glyphs are simply a bigger shape occupying more vertical
+room below that same starting point, which reads as "not quite aligned"
+even though the top-left corner is genuinely identical. This is also
+consistent with the owner's own "maybe align to bottom" guess — aligning
+by the bottom instead of the top wouldn't have fixed it either, just
+moved which edge looked off, since two different font-sizes can share
+at most one edge (top OR bottom OR center), never both, without an actual
+per-size baseline calculation.
+
+**Fix**: dropped the 28px override entirely. `.home-greet-block
+.home-title` no longer sets `font-size` at all, so Home's name now
+inherits the exact same `1.625rem/1.15` (26px) as the shared `.home-title`
+base rule every other page's title already uses — genuinely the same
+font, same size, same line-height, same box, everywhere. This removes the
+last variable that could differ between "kicker + title" (Home) and
+"title alone" (everywhere else) beyond simple, render-engine-independent
+padding math, which is not something that should ever render
+inconsistently across devices/browsers the way font-glyph-within-line-box
+positioning subtly can.
+
+**Verification**: syntax-checked. In-browser, `Range`-based glyph
+measurement (not just box measurement, per the lesson above) on Home,
+Shelves, Settings, Log, and both `privacy.green.html`/`terms.green.html`:
+all five now report `top: 87.40±0.05px` AND `bottom: 126.06±0.05px` —
+matching on BOTH edges, not just one, confirming the two title types are
+now genuinely identical shapes, not just identically-positioned different
+ones. Home's `.scrolly` still shows zero scroll overflow with a realistic
+5-book mocked dataset, so the one-screen-fit requirement holds. Nothing
+pushed; `index.html`/`privacy.html`/`terms.html` untouched. **Still not
+device-verified — this fix specifically targets a font-rendering-detail
+complaint that could not be reproduced in this desktop-browser sandbox
+(measured 0.05px, effectively exact, both before and after — the earlier
+fix "should" have already looked right by every number available here),
+so on-device confirmation matters more than usual for this one.**
+
+## Book Detail swipe-back, Listen→reader+play, Read button removed, new mini player bar (2026-08-27, same day)
+
+Four related requests in one message about the reading-session flow.
+
+**1. Swipe-back closing the wrong thing.** Owner: "when the Book Detail
+page is up and I try to swipe from left to right (to go back), the Book
+Detail page stays open and it's the page in the background that changes."
+Cause: `BookDetail.open()`/`close()` were pure CSS class toggles with no
+history entry of their own — a real OS back-swipe fires a `popstate` for
+whatever the actual top of the browser history stack is (the previous
+TAB), which the app's own `popstate` handler dutifully processed (`Nav.go`
+to that tab), while the modal, having never registered itself in the
+stack, just sat there on top, unaffected. Fixed the same way `Reader`
+already handles its own full-screen entry: `open()` now calls
+`history.pushState({app:'modal', modal:'detail'}, '')`, and the global
+`popstate` handler checks for `#detail-modal.open` FIRST, before its
+existing reader/tab logic — closing the sheet is the entire effect, since
+the tab underneath was never touched by opening the sheet in the first
+place. A click-driven `close()` (backdrop tap, or any of the sheet's own
+action buttons closing it programmatically) now also consumes that
+pushed entry via a guarded `history.back()` with a `_skipPop` flag —
+identical pattern to `Reader.back()`'s own comment about why a plain
+`history.back()` from a click can't be trusted alone in the native
+WebView. **Scoped to Book Detail only** — every other modal in the app
+(Sleep, Export, Voice, Chapter, Erase, Confirm, folder pickers, etc., 17
+in total) has this exact same latent gap, but only Book Detail was
+reported, and generalizing the fix to all of them risked touching working
+code nobody asked about; flagging it here as a known, not-yet-fixed class
+of bug for if it's reported again elsewhere.
+
+**2. Listen → open the reader AND start reading, Read button removed.**
+Already true functionally — `BookDetail.startListening()` has called
+`Reader.open(i)` (mode 'full', which arms `_autoStartBook` unconditionally)
+since it was written — but the button read "Start listening"/"Commencer
+l'écoute", and the owner referred to it simply as "the Listen (or Écouter)
+button," which is also a real simplification now that it's the sheet's
+ONLY action: renamed the `start_listening` string to "Listen"/"Écouter"
+(the "Continue"/"Continuer" in-progress variant is unchanged). Removed the
+"Read" button (opened the reader without audio) and its handler,
+`BookDetail.read()`, along with the now-fully-unused `.detail-secondary`
+CSS rule and `read_label` string pair — `.detail-primary` is already
+`flex:1`, so the sheet's one remaining button fills the row on its own
+with no other CSS change needed.
+
+**3. New `MiniPlayer` — a persistent Now-Playing bar on every tab.** Owner:
+"When a book is playing, and the user is not on the reader itself, a small
+version of the reader's bottom overlay should appear at the bottom of
+every page (but above the tab names)," with exactly five controls: play/
+pause, speed, voice, sleep timer, and previous/next chapter — no title or
+cover art, matching the request as given rather than adding one. New
+`#mini-player` element, a sibling of `#tab-bar` (outside every `.view`, so
+it never needs re-rendering when the active tab changes — it just IS or
+ISN'T visible), fixed at `bottom: calc(46px + var(--safe-b))` (46px being
+the tab bar's own measured height — no existing CSS variable exposed that,
+so it's a second hardcoded copy of the same number, flagged in a comment).
+
+Visibility is a pure function of `#reader-view`'s own `minimized` class —
+already the single source of truth for "a background reading session
+exists," set the moment `Player.play()` opens a book in `'mini'` mode or
+`Reader.minimize()` backs out of the full reader, and cleared only by
+`Reader.expand()`. New `MiniPlayer.sync()` reads that class plus
+`TTS.active` and the current rate, and is called from every place that
+already flips play/pause state or the `minimized` class: `Reader.open()`,
+`Reader.minimize()`, `Reader.expand()`, `TTS.start()`, `TTS.stop()`,
+`TTS.skipPage()`, and `TTS._bgNav`'s active-flip — six call sites, each
+getting one added line rather than a new observer/polling mechanism.
+Tapping the bar itself (anywhere that isn't one of its own controls, each
+of which calls `event.stopPropagation()`) calls `Reader.expand()` — NOT
+`Reader.open()`, which would re-download and reset a session that's
+already loaded and playing.
+
+The play/pause button reuses `.rc-play`'s own pure-CSS pseudo-element
+trick (`::before`/`::after` redrawing a triangle vs. two bars off a
+`.playing` class) at a smaller size, ink-colored instead of white-on-
+filled-circle since this bar sits on `--surface`, not an accent-filled
+button. The speed control is a second, fully independent `<select>` node
+(same `.speed-select` class, own id `#mp-speed-select`) — `TTS.setRate(v)`
+now does `document.querySelectorAll('.speed-select').forEach(...)` so
+every instance (reader, mini player) stays in agreement regardless of
+which one the user actually touched, instead of the previous single-
+element sync that only the reader's own select benefited from.
+
+**Verification**: syntax-checked (twice — an early edit dropped the
+closing `},` off `Reader.expand()` while inserting a new line into it,
+caught immediately by the same syntax-check rather than left for a later
+surprise). In-browser: `BookDetail.open()` pushes `{app:'modal',
+modal:'detail'}` onto `history.state`; simulating a real back-swipe
+(`history.back()`) closes the sheet and leaves `Nav.current` on whatever
+tab it already was — the reported bug, reproduced-then-fixed rather than
+fixed blind. Book Detail's action row now renders exactly one button,
+reading "Listen"/"Continue" correctly by progress. `MiniPlayer`: toggling
+`#reader-view`'s `minimized` class and calling `sync()` shows the bar at
+`bottom` flush against the tab bar's own top edge (measured gap:
+~0.00004px, i.e. exact); switching Home→Shelves→Settings→Log with the bar
+shown confirms it stays visible on all four without any per-tab wiring;
+flipping `TTS.active` toggles the play/pause icon; `TTS.setRate(1.5)`
+updates both the reader's and the mini player's `<select>` to `"1.5"`;
+clicking `#mini-player` promotes to the full reader (`active` class set,
+bar hides); `Reader.minimize()` brings it back; clicking `#mp-play-btn`
+directly does NOT also trigger the expand (event bubbling correctly
+stopped). All 6 mini-player controls together measured ~206px of content
+in a 375px-wide bar — comfortable margin, no crowding. Nothing pushed;
+`index.html` untouched. **Not device-verified**, and real audio playback
+specifically couldn't be exercised in this sandbox (no live Drive/TTS) —
+every check above used `TTS.active`/`reader-view` class state set directly
+rather than a real play press, so the actual `TTS.toggle()` → audio path
+from the mini player's own play button is unverified beyond "it calls the
+right function and doesn't crash."
+
+## Tour spotlight vs. a modal opening mid-tour, and equal-width cover-overlay buttons (2026-08-27, same day)
+
+Owner sent a screenshot: the tour's spotlight box had turned solid black,
+with no visible tab underneath it, while a "Language Packs" sheet (voice-
+pack onboarding) was clearly showing on screen at the same time.
+
+**Root cause.** `Tour.maybeStartHomeTour()` polls every 800ms and only
+starts once `document.querySelector('.modal-backdrop.open,
+.confirm-backdrop.open')` finds nothing open — a real check, but a
+one-time one, taken right before `start()` runs. `VoicePacks.maybeOnboard()`
+(which opens `LangPacksModal`) has no single moment anything in the app
+awaits before it can appear — CLAUDE.md's own note on this ("no single
+'initial setup finished' callback exists to hook... can finish at any
+unpredictable time") already flags exactly this kind of race. So the
+sequence that produced the screenshot: the tour's poll finds nothing open,
+starts, shows its first step's spotlight around the Shelves tab — and
+moments later LangPacksModal opens on top anyway. `#tour-hole` is a
+genuinely transparent element (dimming is an oversized `box-shadow`
+around it, not the box itself, per its own CSS comment from an earlier
+round) — so the "hole" faithfully reveals whatever real pixels sit at that
+screen location, which was now LangPacksModal's own opaque sheet
+background, not the tab bar underneath it. Black box, invisible target,
+exactly as reported.
+
+**Fix: watch, don't just check once.** New `Tour._watchModals()`, called
+once from `start()`: attaches a `MutationObserver` to every
+`.modal-backdrop`/`.confirm-backdrop` element in the app (17 of them),
+each watching only its own `class` attribute. If any of them gains `.open`
+while a tour's `_steps` array is non-empty, the tour PAUSES — overlay
+hidden, nothing else touched — rather than trying to keep rendering a
+spotlight that's now meaningless. When that same element loses `.open`
+again, the tour RESUMES: overlay shown, `_reposition()` re-run (in case
+whatever's underneath shifted while paused, e.g. a different tab was
+reachable behind the modal). This is deliberately reactive rather than a
+tighter one-time check — there's no single moment to check against when
+nothing awaits every onboarding modal's own open, so the fix has to keep
+watching for as long as a tour could plausibly still be showing.
+
+**A real bug the fix would have made worse, caught while building it.**
+`Tour._end()` removed the overlay's `.show` class but never cleared
+`this._steps` — harmless in the original code, since nothing outside an
+active display cycle ever re-read `_steps.length`. The new modal-watcher
+does, for the rest of the app's entire lifetime (any of the 17 modals
+could open hours after a tour finished), so a stale non-empty `_steps`
+would have made some LATER, completely unrelated modal (Export, Sleep,
+whatever) incorrectly toggle the long-since-hidden tour overlay's class
+back on and off. `_end()` now clears both `_steps` and `_paused`.
+
+**Also fixed, same message:** "let's keep the Play and Details buttons the
+same size as each other" — `.cr-play`/`.cr-details` (the tap-to-reveal
+Play/Details overlay on a library cover) shared only a base font/padding
+rule; their actual widths were auto, sized to each button's own text —
+"Play" (4 chars) vs "Details" (7 chars) in English reads as two visibly
+different pill sizes stacked directly on top of each other. Added a
+shared `min-width: 4.6rem` + `text-align: center` to both (not
+`.cr-finish`, the third action underneath them — a lesser, text-link-
+styled action, never asked to match these two).
+
+**Verification**: syntax-checked. In-browser: started a Home tour, then
+(mimicking the reported race) added `.open` to `#langpacks-modal` directly
+— confirmed the tour overlay hides and `Tour._paused` becomes `true`
+(after letting the `MutationObserver`'s microtask actually run — a
+synchronous check right after the `classList.add` call is too early and
+was a red herring during testing, a real callback tick is normal and
+matches how this fires in the live app too); removing `.open` again
+confirmed the overlay reappears, `_paused` returns to `false`, and the
+spotlight hole is correctly repositioned over the Shelves tab (measured:
+flush against the tab bar, matching the earlier tab-bar-clamp fix).
+Separately confirmed the stale-`_steps` fix: ended a tour normally
+(`Tour.skip()`), confirmed `_steps.length === 0`, then opened and closed
+an unrelated modal (`#export-modal`) — the tour overlay never toggled at
+all. `.cr-play`/`.cr-details` both measured exactly 73.59px wide in both
+English ("Play"/"Details") and French ("Écouter"/"Détails") — identical
+to the sub-pixel, neither language's label overflowing the shared
+min-width. Nothing pushed; `index.html` untouched. **Not device-verified.**
+
+## Play opens the full reader, explicit expand icon, mini-player speed restyle, Privacy dark box darkened (2026-08-27, same day)
+
+Four related requests, following on directly from the mini-player work
+above.
+
+**1. Play didn't open the reader page.** Owner: "I just started a book by
+clicking Play, but it didn't open the reader page, it only created a
+hero." Root cause: `Player.play(i)` (the cover overlay's Play button) has
+always called `Reader.open(i, 'mini')` — laid-out-but-hidden mode, which
+is exactly what produces "a hero" (the mini player) with no visible reader
+page. That mode made sense for the OLD hero card this session already
+removed (Home used to have its own inline play/pause without navigating
+away), but with that gone, nothing about tapping Play on a cover should
+still open silently in the background — the owner wants it to behave like
+Book Detail's Listen button (open the reader, start reading). Changed
+`Player.play(i)` to call `Reader.open(i)` (full mode, default — arms
+auto-start the same way Listen already does) for a book that isn't
+already loaded; for one that IS already loaded (a live background
+session), it now resumes playback in place AND promotes to the full
+reader via `Reader.expand()` (not a re-open, which would reload a session
+already in progress) unless the full reader is already showing. Left
+`Reader.open()`'s `'mini'` mode branch itself in place rather than
+deleting it — it's still exactly how a session STAYS laid out once
+`Reader.minimize()` backs out of the full reader, just no longer how one
+GETS STARTED — and it's genuinely nothing calls with `mode: 'mini'`
+anymore, confirmed by grepping for it. Also removed `Player.toggle()`/
+`Player.expand()`, both entirely dead — leftover from that same removed
+hero card, zero callers anywhere in the file (confirmed by grep before
+deleting, not assumed).
+
+**2. Explicit "open reader" icon on the mini player.** "We should also add
+an icon on the hero to open the reader again." Tapping anywhere on the bar
+already expanded to the full reader (built in the previous round), but
+that wasn't visible/discoverable as its own affordance. Added a plain
+up-chevron `.mp-expand` button at the end of the row, same
+`event.stopPropagation()` + `MiniPlayer.expand()` pattern as every other
+control in the bar (functionally redundant with the whole-bar tap, since
+`Reader.expand()` is idempotent, but consistent with how every other
+mini-player control is built, and it's the discoverable one now). New
+`open_reader` i18n key for its title/aria-label.
+
+**3. Mini-player speed control's clashing double-line look.** Owner's own
+screenshot showed the reader's usual underline-style speed `<select>`
+sitting directly above the tab bar's active-tab green top-border — two
+thin accent-colored lines a few px apart, described exactly as it reads:
+"it looks weird with two lines." `.mp-speed` (kept alongside the shared
+`.speed-select` class, so `TTS.setRate()`'s existing
+`querySelectorAll('.speed-select')` sync still reaches it) now gets its
+own later, higher-`border`-covering rule: a bordered pill instead of an
+underline, matching the Voice button sitting right next to it, so the two
+read as one row of contained controls rather than a control plus a stray
+accent line.
+
+**4. Privacy's dark-mode "short version" box, too bright.** `.summary-box`
+fills with `var(--accent)` — deliberately DARK green in light mode (a
+correct "inverted" highlight box: dark fill, pale text) but dark mode's
+`--accent` is the BRIGHT light green meant for text sitting on a near-
+black page, not a fill color; used as one, it read as glaring next to
+everything else in dark mode being muted/near-black. Gave dark mode a
+dedicated deep-green fill (`#1E4534`) with the theme's own light `--text`
+token instead of `--bg` (near-black — would've gone invisible against a
+dark fill).
+
+**A real miss on the first attempt, caught while verifying, not left
+in.** The first version only added `@media (prefers-color-scheme: dark)`
+and `[data-theme="dark"]` overrides. Tested each theme state in turn and
+found `[data-theme="light"]` (forced Light while the OS itself reports
+dark, exactly this sandbox's own default) STILL rendered the new dark
+fill — the bare `@media` rule has equal specificity to the base
+`.summary-box` rule and nothing was in place to beat it back for the
+forced-light case specifically, so it kept winning regardless of the
+explicit override. Root cause was under-applying a pattern this exact
+file's own token blocks already use correctly one screen up: `@media` /
+`[data-theme="dark"]` / `[data-theme="light"]` all need to exist together
+at matching specificity for a forced choice to reliably beat the OS
+preference in both directions, not just one. Added the missing
+`[data-theme="light"] .summary-box` rule restating the plain
+`var(--accent)` look.
+
+**Verification**: syntax-checked. In-browser: `Player.play()` on a book
+with no live session now sets `#reader-view`'s `active` class (not
+`minimized`) and hides the tab bar — the reported bug, reproduced (mode
+never changed) then confirmed fixed; for an already-loaded book, clicking
+the mini player's new `.mp-expand` button correctly flips `active`
+on/`minimized` off via `Reader.expand()`. `.mp-speed`'s computed
+`border`/`border-bottom` now reads a dim `--line` box on all sides, vs the
+reader's own `#speed-select` still showing its accent-colored underline
+only — confirmed genuinely different treatments, not accidentally shared.
+Privacy's `.summary-box` background measured across all three theme
+states this round: `light` → `rgb(47,107,79)` (`#2F6B4F`, the original
+light fill, unchanged), `dark` → `rgb(30,69,52)` (`#1E4534`, the new muted
+fill), `auto` with the sandbox's own dark OS → also `#1E4534` (correct) —
+and critically, forcing `light` while the OS itself stays dark now
+correctly returns to `#2F6B4F` rather than staying stuck on the dark
+fill, confirmed on both `privacy.green.html` and `privacy-fr.green.html`
+independently. Nothing pushed; `index.html`/`privacy.html` untouched.
+**Not device-verified.**
+
+## Desktop column (Option B) + native/web split so Android can ship alone (2026-08-28)
+
+Started as "let's push to prod before handing off," which surfaced two
+things worth separating.
+
+**The blocker, stated plainly.** The website and the Android app were built
+from the SAME file (`index.html`), and pushing to `main` auto-deploys
+Pages. So "ship the Android redesign but leave the website alone" was not
+expressible as a git push at all. What made it solvable: the Android build
+never comes from a push in the first place. It is `npm run sync` +
+Android Studio + Play Console, entirely local. Only the STAGING script
+decides what the native build contains.
+
+**The split.** `scripts/stage-www.js` gained a single named constant,
+`APP_SOURCE = 'index.green.html'`, and now copies that to `www/index.html`
+instead of the repo-root `index.html`. It also stages the four `.green`
+legal pages, because `index.green.html` links `privacy.green.html` /
+`terms.green.html` by those exact names and each redirects to its own
+`-fr.green` sibling off `pl_lang` (verified by reading the redirect, not
+assumed — an early grep suggested the redesign linked the OLD French pages,
+which turned out to be a match inside a code comment, not a real link).
+The old `privacy.html`/`terms.html` stay staged too: `sw.js` precaches them
+and the website's `index.html` still links them. Convergence is deliberately
+a one-line change (`APP_SOURCE` back to `'index.html'`), documented at the
+top of the script and in `CLAUDE.md`.
+
+`stage-test.js` is now functionally identical to `stage-www.js`. Left in
+place rather than deleted, because `CLAUDE.md` documents `npm run sync:test`
+and silently breaking a documented command is worse than one redundant
+file; both it and the redundancy are flagged for removal at convergence.
+
+**Desktop layout: the actual finding.** Before touching anything, grepped
+both index files for `min-width`. The ONLY hits in either were
+`(min-width: 640px) and (max-height: 430px | 850px)` — short-viewport
+sign-in tweaks for a landscape phone. **There was no desktop layout
+anywhere in the app, and never had been.** This is not something the
+redesign broke; phonoleaf.com has been rendering a phone layout stretched
+across laptop screens for its entire life. Worth stating because the owner
+framed it as a redesign problem, and it is not.
+
+**Option B, chosen over a real desktop layout.** Large screens get the same
+phone layout capped to a centred 480px column, hairline-edged. Roughly 20
+lines of CSS, cannot drift out of sync with the phone layout because it IS
+the phone layout, and it fixes the live website's pre-existing problem for
+free. A true desktop layout (sidebar nav, wider grid, constrained reader)
+was considered and deferred: the CSS is one inline block in a ~9,000-line
+file, and a second full layout means every future change needs checking
+twice. The library grid is the one screen that genuinely wants width (it
+already has 2/3/4-per-row modes) and is the natural first candidate to let
+past the column later.
+
+Three implementation details that were not obvious:
+1. `.tab-bar` and `.mini-player` are `position: fixed` with `left:0;
+   right:0`. A `max-width` alone leaves them pinned to the viewport's left
+   edge, so they need explicit re-anchoring (`left:50%; right:auto;
+   transform: translateX(-50%)`).
+2. Modal backdrops must stay full-bleed (dimming the whole page is
+   correct) while the SHEET inside moves into the column — so
+   `justify-content: center` on the backdrop plus `max-width` on the sheet,
+   not a `max-width` on the backdrop.
+3. **The breakpoint is gated on `min-height: 600px` as well as
+   `min-width: 700px`, and the min-height is load-bearing.** A phone in
+   landscape is wide (up to ~930px) but short, and must keep the full-bleed
+   layout — width alone would have columned it. This is the same
+   width+height pairing the sign-in screen's own landscape rules already
+   use to tell "landscape phone" from "actual big screen".
+
+Applied to **both** `index.green.html` and the live `index.html`. Touching
+the live file is a deliberate exception to this session's otherwise strict
+"green file only" rule: it is desktop-only CSS, so phone rendering is
+provably unchanged, and it repairs an existing website bug. It is committed
+to nothing — like everything else this session, it only reaches users on a
+push the owner chooses to make.
+
+**Verification** (real numbers, browser, both files syntax-checked plus
+`sw.js`):
+- 1440x900 — `#home-view`, `#tab-bar` and `#mini-player` each exactly
+  480px wide at left 480 / right 960, i.e. centred on 720. All three agree.
+- 932x430 (iPhone-15-Pro-Max landscape) — `max-width` computes to `none`,
+  everything full-bleed at 932px. **The edge case the min-height gate
+  exists for, confirmed working.**
+- 768x1024 (portrait tablet) — column applied, 480px at left 144 / right
+  624 (centred on 384).
+- Book Detail sheet at 768 wide — sheet 144→624 (in the column), backdrop
+  0→768 (full-bleed). Exactly the intended split.
+- `npm run stage` run for real: `www/index.html` is byte-identical in size
+  to `index.green.html` (545,733) and carries every redesign marker
+  (`forest-tree`, `Forest`, `tab_shelves`, `EraseModal`,
+  `id="mini-player"`); the repo-root `index.html` has **zero** of them and
+  is still 424,722 bytes. The split does what it claims in both directions.
+
+Nothing pushed. Screenshots were unavailable all session (the Browser pane
+does not composite frames in this environment), so this is measurement-
+verified, not eyeball-verified, and **not device-verified** — the column
+never applies on a phone by construction, but the Android build itself has
+still not been run since these changes.
+
+## Two-branch reconciliation: hero archived, forest promoted to `main` (2026-08-28)
+
+Two Claude sessions independently extended `index.green.html` from the same
+base commit (`d1fc64e`) for days, with no visibility into each other —
+`claude/docs-code-review-tam2pr` (this session, PR #4) built Phase 2/3 (the
+motion/gesture token system, a localized accessibility pass, the storage
+manager screen, in-book full-text search) on top of Phase 1, and never
+touched the hero. `redesign/native-android-ship` (a different session, the
+entry immediately above this one) built several more rounds of real
+device-tested work — Home/Shelves/Player rebuild, sleep timer, ±15s skip, a
+"forest" Home visualization replacing the hero, Book Detail fixes, a mini-
+player bar, an i18n audit, the desktop-column CSS fix, and the native/web
+build split (`stage-www.js`'s `APP_SOURCE` pointed at `index.green.html`).
+The owner discovered the divergence when a native build (`npm run
+sync:test`) surfaced the wrong version's UI and asked pointed questions
+about it — not something either session caught on its own.
+
+**Root cause, confirmed by reading `redesign/native-android-ship`'s own
+history rather than guessed:** `index.green.html` had gone missing from the
+working tree between sessions and was correctly recovered from
+`www/index.html` (a byte-identical build artifact from a recent
+`sync:test` run) — that recovery was sound, not the bug. The actual
+problem was purely two sessions working the same file in parallel with
+nothing forcing a check first.
+
+**Owner's decision, three parts, executed exactly as given:**
+1. **Archive the hero version.** `git tag` push failed with an HTTP 403
+   (this session's git credentials allow branch pushes, not tag pushes —
+   confirmed via the agent-proxy status endpoint, not a transient error).
+   Used a branch instead: `archive/hero-redesign-2026-08-28-branch`, pushed
+   to origin, pointing at PR #4's final commit (`5031bb8`). PR #4 closed
+   (not merged) with a comment linking the archive branch and this entry.
+   The full Phase 2/3 diff — token system, accessibility pass, storage
+   manager, search — lives there untouched, nowhere else.
+2. **Promote the forest version.** `redesign/native-android-ship` → `main`
+   confirmed as a clean fast-forward (`main` had zero commits since the
+   shared base). Branched `redesign/converge-to-main` off it, one cleanup
+   commit removing `PhonoLeaf Design System.zip` and `PhonoLeaf.dc.html`
+   (accidentally committed design-export artifacts — `CLAUDE.md` already
+   says these should stay local-only, and this branch's own history had
+   already caught the zip's bundled `index.green.html` copy going stale
+   once), added them to `.gitignore`, syntax-checked, PR'd, merged to
+   `main`.
+3. **Prevent recurrence.** Added a standing check to `CLAUDE.md`'s redesign
+   section: before starting substantial work on `index.green.html`, run
+   `git log --all --oneline -- index.green.html` and `git branch -r` — a
+   10-second check that would have caught this the first time. Also
+   corrected `scripts/stage-www.js`'s "TO CONVERGE LATER" comment (and the
+   matching language in `CLAUDE.md`), both of which described the
+   native/web split as temporary pending a later merge — the owner's
+   2026-08-28 call makes the split permanent, not a to-do.
+
+**Explicitly not done today, by owner instruction:** porting Phase 2/3's
+four features into the now-canonical `index.green.html`. That's real,
+scoped work against a very different version of the file (forest markup,
+mini player, desktop column CSS already in place) — logged in `TODO.md`
+rather than attempted inline. Also explicitly not attempted: a git merge of
+the two branches' `index.green.html` versions against each other — flagged
+by the owner as likely to produce unresolvable conflicts given the scale of
+independent change on both sides, and not needed since the plan was always
+"pick one, archive the other," not "combine them."
+
+Git ref bookkeeping note: an initial archive attempt used a tag name that
+collided with a same-named branch created during troubleshooting the 403
+(`error: src refspec ... matches more than one`); both local refs were
+deleted and only the final `-branch`-suffixed name was pushed. Remote
+branch deletion also 403s under this session's credentials, so a
+differently-named stray branch from that troubleshooting was left in place
+rather than fought further — harmless, just an extra ref.

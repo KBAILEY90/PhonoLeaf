@@ -17,3 +17,12 @@ android/app/release/
 # node_modules/ above already covers worker/node_modules/.
 worker/.wrangler/
 worker/.dev.vars
+
+# Claude Design source exports — local reference copies only, never shipped
+# (see CLAUDE.md's redesign section). Committing these once already caused
+# a stale snapshot to nearly get treated as a recovery source for
+# index.green.html; keep them local from now on.
+PhonoLeaf Design System.zip
+PhonoLeaf.dc.html
+PhonoLeaf Redesign.dc.html
+design_redesign.dc.html

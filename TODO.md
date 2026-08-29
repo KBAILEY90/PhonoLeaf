@@ -71,6 +71,23 @@ don't let it go stale the way `BACKLOG.md`'s old "Next up" section did.
 - [ ] **App redesign exploration with the `design` skill.** Ready whenever
       wanted — needs a scoping conversation first (which screens/flows,
       what direction), not a blind "redesign everything" pass.
+- [ ] **Port Phase 2/3 features from the archived hero branch into the now-
+      canonical `index.green.html`.** 2026-08-28: two sessions independently
+      extended `index.green.html` in parallel; the owner chose
+      `redesign/native-android-ship` (forest Home, mini player, Book Detail
+      fixes, the native/web build split) as the permanent native-app source,
+      now merged to `main`. The other branch's four features never made it
+      in and are NOT lost — preserved at `archive/hero-redesign-2026-08-28-
+      branch` (former PR #4): the `--motion-fast/base/slow/ease` CSS token
+      system, a localized accessibility pass (`data-i18n-aria-label` on
+      every `aria-label`), the storage manager ("On this phone") Settings
+      screen, and lazy in-book full-text search. Porting these into the
+      current `index.green.html` is real, scoped work — re-implement each
+      against the forest version's markup/CSS, don't attempt a git merge of
+      the two branches (flagged as likely unresolvable given the scale of
+      independent changes on both sides). See `CLAUDE.md`'s KNOWN GAP
+      resolution and `CLAUDE_HISTORY.md`'s 2026-08-28 reconciliation entry
+      for full context.
 - [ ] **Stale doc cleanup**, surfaced 2026-08-20 and not yet done:
       `BACKLOG.md` section H (Kokoro-on-strong-devices) says "not
       implemented" — it shipped 2026-08-08. Section F's accessibility
@@ -133,6 +150,16 @@ Logged as-is, no design work done yet.
       — a real brand-voice decision, not a code change, and probably worth
       deciding before or alongside the gamification question above since
       they'd need to agree with each other.
+      - 2026-08-26 addition: rather than picking one tone, consider a
+        **Settings toggle** letting the user choose the app's own voice for
+        its communications — options like Normal / Sassy / Bro / Butler,
+        etc. (exact options and copy to be defined later). Would turn the
+        brand-voice question above into a per-user preference instead of a
+        single global decision.
+- [ ] **An "About" section**, raised 2026-08-27 — not scoped (where it
+      lives, what it says: version number, credits, links to the website/
+      support, licenses for bundled voice models, etc.). Probably belongs
+      in Settings alongside Privacy/Terms.
 
 ## SWOT research (ready to launch as a background task)
 

@@ -1068,6 +1068,40 @@
         scroll-behavior: auto !important;
       }
     }
+    /* ===================== Large screens: centred phone column =====================
+       This app is designed at phone width and has no desktop layout of its
+       own (before this block the ONLY min-width queries in the file were
+       landscape-phone sign-in tweaks). Stretched across a laptop it reads
+       as broken: a tab bar spanning the full 1900px, reading lines far too
+       long, huge empty rows. Rather than build and then forever maintain a
+       second full desktop layout, a large screen gets the SAME layout
+       capped to a comfortable column and centred, edged with the usual
+       hairline so it reads as deliberate rather than as a narrow window.
+
+       Gated on min-HEIGHT as well as min-width, deliberately: a phone held
+       in landscape is wide (up to ~930px) but short, and must keep the
+       full-bleed phone layout. That width+height pairing is the same trick
+       the sign-in screen's own landscape rules above already use to tell
+       "landscape phone" apart from "actual big screen". */
+    @media (min-width: 700px) and (min-height: 600px) {
+      :root { --app-max: 480px; }
+      .view {
+        max-width: var(--app-max); margin: 0 auto;
+        border-left: 1px solid var(--line); border-right: 1px solid var(--line);
+      }
+      /* position:fixed with left:0;right:0 — a max-width alone would leave
+         these pinned to the viewport's left edge, so they need re-anchoring
+         to the centre explicitly. */
+      .tab-bar {
+        left: 50%; right: auto; transform: translateX(-50%);
+        width: 100%; max-width: var(--app-max);
+      }
+      /* The backdrop stays full-bleed (dimming the whole page is correct),
+         but the sheet that slides up inside it belongs in the column. */
+      .modal-backdrop { justify-content: center; }
+      .modal-sheet { max-width: var(--app-max); }
+    }
+
   </style>
   <script>
     /* One-time key migration (2026-07-06 rebrand): kba_* -> pl_* so nothing
