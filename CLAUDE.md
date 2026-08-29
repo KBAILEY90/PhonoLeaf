@@ -127,9 +127,9 @@ fixed here (a general, pre-existing gap, not redesign-specific): every
 `appearance: none` reset, or Safari/WebView renders native rounded chrome
 regardless of `border-radius`. **Still not ported into the real
 `index.html`** (the website's file) — only the native build uses it.
-See `CLAUDE_HISTORY.md` for the full Phase 1/2/3 scope split and what's
-still outstanding (storage manager, in-book search, motion/gesture system,
-full accessibility pass) before treating this as done.
+See `CLAUDE_HISTORY.md` for the full Phase 1/2/3 scope split. Phase 2/3
+(storage manager, in-book search, motion/gesture system, full
+accessibility pass) is done as of 2026-08-29, not yet device-tested.
 `scratchpad`-style working files (`PhonoLeaf Redesign.dc.html`) are a local
 reference copy of the Claude Design source, not part of the shipped app.
 
@@ -656,9 +656,10 @@ only ONE of them.**
   the permanent, active, productionized source for the native app. The
   other branch's version is archived, not merged in — preserved at branch
   `archive/hero-redesign-2026-08-28-branch` (same content as its closed
-  PR #4) — see `CLAUDE_HISTORY.md` for the full writeup. **Porting Phase
-  2/3's four features into this file is a real tracked task, not done as
-  part of this reconciliation** — see `TODO.md`.
+  PR #4) — see `CLAUDE_HISTORY.md` for the full writeup. **Phase 2/3's four
+  features were ported into this file 2026-08-29** (re-implemented by hand
+  against the forest markup, not a git merge) — see `CLAUDE_HISTORY.md`'s
+  2026-08-29 entry. Not yet device-tested.
   **Safeguard, so this doesn't happen again**: before starting substantial
   work on `index.green.html`, run `git log --all --oneline --
   index.green.html` and `git branch -r` — a 10-second check for other

@@ -6791,3 +6791,76 @@ deleted and only the final `-branch`-suffixed name was pushed. Remote
 branch deletion also 403s under this session's credentials, so a
 differently-named stray branch from that troubleshooting was left in place
 rather than fought further — harmless, just an extra ref.
+
+## Ported the archived Phase 2/3 features into the canonical index.green.html (2026-08-29)
+
+Followed through on the `TODO.md` item from the reconciliation above: the
+four features that only ever existed on the archived hero branch
+(`archive/hero-redesign-2026-08-28-branch`) — the motion/gesture CSS token
+system, a localized accessibility pass, the storage manager ("On this
+phone") screen, and in-book full-text search — are now in the real,
+canonical `index.green.html` (the forest/native-android-ship version).
+**Not a git merge** (the two branches' `index.green.html` versions were
+flagged as likely unresolvable, per the reconciliation entry above): each
+feature was re-implemented by hand against the current markup/CSS/JS,
+using the archived branch's diff (`git diff` against the shared base
+commit `d1fc64e`) purely as a reference for behavior and STRINGS wording,
+never applied as a patch.
+
+- **Motion tokens**: `--motion-fast/base/slow/ease` custom properties added
+  to `:root`; every hardcoded transition duration in the file (24 rules —
+  the exact same set the archive branch had touched, confirming this is
+  shared Phase-1 CSS neither branch had diverged on) now references one of
+  the four tokens, categorized the same way the archive comment specified
+  (micro feedback / chrome show-hide / progress fills). Page-turn animation
+  and the forest/critter flight keyframes deliberately left alone, as the
+  archive's own comment already flagged.
+- **Accessibility pass**: `I18n.apply()` gained the same
+  `[data-i18n-aria-label]` walk the archive added. Every hardcoded-English
+  `aria-label` found in the current file (37 total) got either a
+  `data-i18n-aria-label` attribute (reusing an existing STRINGS key where
+  one already covered the same phrase — `chapters_label`, `follow_along`,
+  `sleep_timer`, `open_reader`, `voiceinfo_title`, `close`, the four
+  `lib_view_*` keys, `search_placeholder`, `theme`, `app_language`) or,
+  for JS-templated labels (Home's cover-row card, the Log page's calendar
+  bars and group-breakdown select, FolderBrowser rows, Library book cards),
+  a direct `I18n.t()` call. 17 new `aria_*`/`stat_bar_aria` keys added
+  where no equivalent existed yet (the forest version's ±15s skip and
+  prev/next-chapter reader controls, the mini player's matching controls,
+  and the Log page's calendar-week bars — none of which existed on the
+  hero branch this pass was originally built against, so these are new
+  coverage, not ports of something that already had an English string).
+  Confirmed zero duplicate STRINGS keys afterward (a programmatic dupe
+  check across both `en`/`fr` dictionaries, 412 keys each, matching count).
+- **Storage manager**: new "On this phone" Settings row + modal, `fmtBytes()`
+  helper, `CoverCache.size()/clear()` (no prior size/clear helper existed),
+  and the `StorageModal` module — all ported essentially unchanged, since
+  `BookCache._index()`, `VoicePacks.ALL_PACK_MODELS`/`_status`/`refresh()`,
+  and `LocalBooks.folderInfo()` all still have the exact shape the archive
+  branch's version assumed. One real find during the port: the archive's
+  own `remove`/`mb` STRINGS keys would have duplicated keys the forest
+  branch already had (a different, pre-existing "Remove"/"{mb} MB" pair
+  for the voice-pack download UI) — caught by the dupe check above and
+  fixed by reusing the existing keys instead of re-adding them.
+- **In-book search**: new magnifying-glass button in the reader's top bar
+  (a `.rt-search` icon button matching `.rt-back`'s circular style — the
+  forest reader chrome has no hamburger-icon slot like the hero version
+  did, so this is new markup, not a straight port) opens a search modal
+  reusing `.chapter-item`/`.chapter-label` styling from the existing
+  Chapter modal. The `Search` module itself ported unchanged — it only
+  depends on `TTS._loadSectionChunksWithNodes`/`_currentSectionChunksWithNodes`/
+  `skipPage`/`_dir`, all confirmed present with the same shape in the
+  forest version's TTS module (this is core Phase-1 machinery neither
+  branch touched).
+
+Verified: `node -e "...compileFunction..."` on `index.green.html`,
+`node --check sw.js`, `node --check scripts/stage-www.js` all pass; ran
+`node scripts/stage-www.js` for real and confirmed the staged
+`www/index.html` contains `Search`, `StorageModal`, the `--motion-fast`
+token, and all 37 `data-i18n-aria-label` attributes. Not device-tested —
+that's still owed before this ships to Play Console via `npm run sync` +
+Android Studio. Committed as a single commit rather than four (the
+original plan) — by the time all four were implemented their edits had
+interleaved within the same STRINGS blocks and shared regions of the
+file, and retroactively splitting them via `git add -p` was judged more
+likely to introduce a mistake than the value of a cleaner history here.

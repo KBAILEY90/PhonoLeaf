@@ -102,6 +102,15 @@
       --font-read: 'Literata', Georgia, serif;
       --radius:    2px;
       --safe-b:    env(safe-area-inset-bottom, 0px);
+      /* Motion system: formalizes the durations the app's transitions/
+         animations already cluster around, rather than picking new
+         values. Deliberately excludes page-turn animation (pageNext/
+         pagePrev/turn-next/turn-prev/_turnAnim) and the forest/critter
+         flight keyframes — left untouched, both tuned by hand. */
+      --motion-fast: 0.15s;  /* micro press/hover feedback */
+      --motion-base: 0.25s;  /* chrome show/hide, toggles, toast, tour */
+      --motion-slow: 0.4s;   /* progress/value fills */
+      --motion-ease: ease;
     }
 
     /* Midnight (dark) — auto when the device is in dark mode */
@@ -228,7 +237,7 @@
          its brand treatment; only the soft drop shadow goes, since nothing
          else in the paper direction floats. */
       box-shadow: none; border: 1px solid var(--line);
-      transition: transform 0.15s, box-shadow 0.15s;
+      transition: transform var(--motion-fast), box-shadow var(--motion-fast);
     }
     .signin-btn:active { transform: scale(0.97); }
 
@@ -417,7 +426,7 @@
       color: var(--text); cursor: pointer;
       padding: 0.5rem; border-radius: 2px;
       font-size: 1.2rem; line-height: 1;
-      transition: background 0.15s;
+      transition: background var(--motion-fast);
     }
     /* hover:hover excludes touch — without it, tapping a button on a phone
        applies :hover with nothing to ever clear it (no mouseout), so the
@@ -549,7 +558,7 @@
       border-radius: 0;
       overflow: hidden;
       cursor: pointer;
-      transition: transform 0.2s, box-shadow 0.2s;
+      transition: transform var(--motion-fast), box-shadow var(--motion-fast);
       position: relative;
     }
     .book-card:active { transform: scale(0.96); }
@@ -587,7 +596,7 @@
       position: absolute; inset: 0; z-index: 3;
       display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
       background: rgba(0,0,0,0.45);
-      opacity: 0; pointer-events: none; transition: opacity 0.15s;
+      opacity: 0; pointer-events: none; transition: opacity var(--motion-fast);
     }
     .book-cover.revealed .cover-reveal { opacity: 1; pointer-events: auto; }
     .cover-reveal button {
@@ -626,7 +635,7 @@
     .book-progress-bar {
       position: absolute; bottom: 0; left: 0;
       height: 2px; background: var(--accent);
-      transition: width 0.3s;
+      transition: width var(--motion-slow);
     }
     .book-info { padding: 0.45rem 0 0; }
     .book-title {
@@ -729,7 +738,7 @@
       border-radius: 50%; border: none;
       display: flex; align-items: center; justify-content: center;
       font-size: 1rem; cursor: pointer;
-      transition: transform 0.15s, opacity 0.15s;
+      transition: transform var(--motion-fast), opacity var(--motion-fast);
       flex-shrink: 0;
     }
     .ctrl-btn:active { transform: scale(0.9); }
@@ -761,6 +770,7 @@
     /* Reader top bar: back circle + centered chapter/page info + a text
        "Chapters" label (replacing the hamburger glyph). */
     .rt-back { width: 34px; height: 34px; border-radius: 50%; background: var(--overlay); border: none; display: flex; align-items: center; justify-content: center; color: var(--text); cursor: pointer; flex-shrink: 0; }
+    .rt-search { width: 34px; height: 34px; border-radius: 50%; background: none; border: none; display: flex; align-items: center; justify-content: center; color: var(--text); cursor: pointer; flex-shrink: 0; }
     .rt-chapters { background: none; border: none; font: 600 0.62rem var(--font-ui); letter-spacing: 0.16em; text-transform: uppercase; color: var(--text-dim); cursor: pointer; flex-shrink: 0; padding: 0.4rem; }
 
     /* Reader primary control row: -15s / prev chapter / play / next chapter / +15s. */
@@ -771,7 +781,7 @@
       width: 62px; height: 62px; border-radius: 50%; border: none;
       background: var(--accent); color: #fff;
       display: flex; align-items: center; justify-content: center;
-      cursor: pointer; transition: transform 0.15s;
+      cursor: pointer; transition: transform var(--motion-fast);
     }
     .rc-play:active { transform: scale(0.92); }
     .rc-play::before { content: ''; display: block; width: 0; height: 0; margin-left: 4px; border-style: solid; border-width: 9px 0 9px 15px; border-color: transparent transparent transparent #fff; }
@@ -803,7 +813,7 @@
     .tts-info { flex: 1; min-width: 0; }
     .tts-chapter { font-size: 0.72rem; color: var(--text-dim); margin-bottom: 0.3rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .tts-prog-track { height: 4px; background: var(--track); border-radius: 2px; overflow: hidden; }
-    .tts-prog-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.5s linear; }
+    .tts-prog-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width var(--motion-slow) var(--motion-ease); }
 
     .tts-row2 {
       display: flex; align-items: center; gap: 0.75rem;
@@ -845,7 +855,7 @@
       font: 0.82rem var(--font-read);
       cursor: pointer;
       white-space: nowrap;
-      transition: background 0.15s;
+      transition: background var(--motion-fast);
     }
     @media (hover: hover) { .pill-btn:hover { background: var(--overlay); } }
     #voice-btn {
@@ -1007,7 +1017,7 @@
       border-radius: 2px; cursor: pointer;
       margin-bottom: 0.5rem;
       border: 2px solid transparent;
-      transition: border-color 0.15s;
+      transition: border-color var(--motion-fast);
     }
     .voice-item.active { border-color: var(--accent); }
     .voice-name { font-size: 0.9rem; font-weight: 600; }
@@ -1031,7 +1041,7 @@
       border-radius: 2px; cursor: pointer;
       margin-bottom: 0.5rem;
       border-left: 3px solid transparent;
-      transition: border-color 0.15s;
+      transition: border-color var(--motion-fast);
     }
     .chapter-item.active { border-left-color: var(--accent); }
     .chapter-num { font-size: 0.72rem; color: var(--text-dim); min-width: 28px; }
@@ -1049,7 +1059,7 @@
       font-size: 0.85rem;
       z-index: 999;
       opacity: 0; pointer-events: none;
-      transition: opacity 0.25s;
+      transition: opacity var(--motion-base);
       /* A short toast ("Voice: Ava") should still read as a snug pill, but a
          long one (some of these are full sentences) must never run off both
          edges of the screen — nowrap with no width cap did exactly that
@@ -1416,6 +1426,15 @@
     .lib-search input:focus { border-color: var(--accent); }
     #library-view .books-grid { padding-bottom: calc(82px + var(--safe-b)); }
 
+    /* ===================== In-book search ===================== */
+    .search-input {
+      width: 100%; background: var(--bg); color: var(--text);
+      border: none; border-bottom: 1px solid var(--accent); border-radius: 0;
+      padding: 0.6rem 0.1rem; font: 0.92rem var(--font-read); outline: none;
+      margin-bottom: 0.75rem;
+    }
+    .search-result-item mark { background: var(--overlay); color: var(--accent); font-style: normal; }
+
     /* ===================== Settings ===================== */
     /* Green ink: no cards. Rows are hairline-ruled, edge to edge. */
     /* margin-bottom matches a single row's own padding (0.9rem) so a group
@@ -1490,19 +1509,19 @@
     /* Green ink: a printed switch — square track, square knob, no shadow. */
     .tog { position: relative; display: inline-block; width: 42px; height: 22px; flex-shrink: 0; cursor: pointer; }
     .tog input { opacity: 0; width: 0; height: 0; position: absolute; }
-    .tog-track { position: absolute; inset: 0; border-radius: 0; background: none; border: 1px solid var(--line); transition: background 0.2s, border-color 0.2s; }
-    .tog-track::after { content: ''; position: absolute; width: 16px; height: 16px; border-radius: 0; background: var(--text-dim); top: 2px; left: 2px; transition: transform 0.2s, background 0.2s; box-shadow: none; }
+    .tog-track { position: absolute; inset: 0; border-radius: 0; background: none; border: 1px solid var(--line); transition: background var(--motion-base), border-color var(--motion-base); }
+    .tog-track::after { content: ''; position: absolute; width: 16px; height: 16px; border-radius: 0; background: var(--text-dim); top: 2px; left: 2px; transition: transform var(--motion-base), background var(--motion-base); box-shadow: none; }
     .tog input:checked + .tog-track { background: var(--accent); border-color: var(--accent); }
     .tog input:checked + .tog-track::after { transform: translateX(20px); background: var(--bg); }
 
     /* ===================== Immersive reader ===================== */
     #tts-prog-line { position: absolute; top: 0; left: 0; right: 0; height: 2px; background: var(--track); z-index: 6; }
-    #tts-prog-line > #tts-prog { height: 100%; width: 0; background: var(--accent); transition: width 0.4s linear; }
+    #tts-prog-line > #tts-prog { height: 100%; width: 0; background: var(--accent); transition: width var(--motion-slow) var(--motion-ease); }
     .reader-top {
       position: absolute; top: 3px; left: 0; right: 0; z-index: 7;
       display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.55rem;
       background: linear-gradient(var(--surface), transparent);
-      transition: opacity 0.25s, transform 0.25s;
+      transition: opacity var(--motion-base), transform var(--motion-base);
     }
     .reader-top-center { flex: 1; min-width: 0; text-align: center; }
     .reader-top-info { font: 0.66rem ui-monospace, Menlo, monospace; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -1511,7 +1530,7 @@
       z-index: 6; display: flex; align-items: center; justify-content: center;
       background: none; border: none; padding: 0; cursor: pointer;
       color: var(--text); opacity: 0.28;
-      transition: opacity 0.25s, transform 0.25s;
+      transition: opacity var(--motion-base), transform var(--motion-base);
     }
     .reader-edge.re-left { left: 0; justify-content: flex-start; padding-left: 0.45rem; }
     .reader-edge.re-right { right: 0; justify-content: flex-end; padding-right: 0.45rem; }
@@ -1522,7 +1541,7 @@
       display: flex; flex-direction: column; align-items: center; gap: 0.5rem;
       padding: 0.6rem 1rem calc(0.7rem + var(--safe-b));
       background: linear-gradient(transparent 0, var(--read-bg) 34%);
-      transition: opacity 0.25s, transform 0.25s;
+      transition: opacity var(--motion-base), transform var(--motion-base);
     }
     .reader-meta { font: 0.66rem ui-monospace, Menlo, monospace; color: var(--text-dim); max-width: 90%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     /* Green ink: controls sit on the page under a rule, not on a floating pill. */
@@ -1541,8 +1560,8 @@
     /* Stats page */
     .bars { display: flex; align-items: stretch; gap: 5px; height: 104px; margin-bottom: 1.3rem; border-bottom: 1px solid var(--accent); }
     .bar { flex: 1; background: none; border-radius: 0; display: flex; flex-direction: column; justify-content: flex-end; position: relative; cursor: pointer; }
-    .bar-fill { width: 100%; background: var(--accent); border-radius: 0; transition: height 0.3s ease; }
-    .bar-val { position: absolute; left: 50%; transform: translateX(-50%); font-size: 0.6rem; color: var(--text); background: var(--surface); border: 0.5px solid var(--line); padding: 1px 5px; border-radius: 2px; white-space: nowrap; opacity: 0; transition: opacity .15s ease; pointer-events: none; z-index: 3; }
+    .bar-fill { width: 100%; background: var(--accent); border-radius: 0; transition: height var(--motion-slow) var(--motion-ease); }
+    .bar-val { position: absolute; left: 50%; transform: translateX(-50%); font-size: 0.6rem; color: var(--text); background: var(--surface); border: 0.5px solid var(--line); padding: 1px 5px; border-radius: 2px; white-space: nowrap; opacity: 0; transition: opacity var(--motion-fast) var(--motion-ease); pointer-events: none; z-index: 3; }
     .bar:hover .bar-val, .bar.show .bar-val { opacity: 1; }
     .bar-label { position: absolute; bottom: -1.15rem; left: 0; right: 0; text-align: center; font: 0.66rem var(--font-ui); color: var(--text-dim); }
     .bar.show .bar-fill { background: var(--accent2); }
@@ -1595,7 +1614,7 @@
     @keyframes tapfb { 0%{opacity:0;transform:scale(.7)} 25%{opacity:1;transform:scale(1)} 100%{opacity:0;transform:scale(1.12)} }
 
     /* Centered, dimmed "swipe again to leave" hint */
-    #exit-hint { position: fixed; inset: 0; z-index: 400; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.45); opacity: 0; pointer-events: none; transition: opacity 0.2s; }
+    #exit-hint { position: fixed; inset: 0; z-index: 400; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.45); opacity: 0; pointer-events: none; transition: opacity var(--motion-base); }
     #exit-hint.show { opacity: 1; }
     .eh-box { background: var(--surface); color: var(--text); padding: 0.9rem 1.4rem; border-radius: 2px; border: 1px solid var(--line); font: 0.95rem var(--font-read); box-shadow: none; }
 
@@ -1607,8 +1626,8 @@
        action like Play/Voice-picker/navigation can't fire mid-explanation). */
     #tour-overlay { display: none; position: fixed; inset: 0; z-index: 500; }
     #tour-overlay.show { display: block; }
-    #tour-hole { position: fixed; border-radius: 0; border: 2px solid var(--accent); box-shadow: 0 0 0 9999px rgba(0,0,0,0.7); transition: top 0.25s, left 0.25s, width 0.25s, height 0.25s; }
-    #tour-tip { position: fixed; background: var(--surface); color: var(--text); border-radius: 2px; border: 1px solid var(--accent); padding: 1rem 1.1rem; max-width: min(88vw, 22rem); box-shadow: none; transition: top 0.25s, bottom 0.25s; }
+    #tour-hole { position: fixed; border-radius: 0; border: 2px solid var(--accent); box-shadow: 0 0 0 9999px rgba(0,0,0,0.7); transition: top var(--motion-base), left var(--motion-base), width var(--motion-base), height var(--motion-base); }
+    #tour-tip { position: fixed; background: var(--surface); color: var(--text); border-radius: 2px; border: 1px solid var(--accent); padding: 1rem 1.1rem; max-width: min(88vw, 22rem); box-shadow: none; transition: top var(--motion-base), bottom var(--motion-base); }
     #tour-tip-title { font: 1.1rem var(--font-read); margin-bottom: 0.35rem; }
     #tour-tip-body { font: 400 0.85rem var(--font-ui); color: var(--text-dim); line-height: 1.4; margin-bottom: 0.85rem; }
     .tour-tip-actions { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; }
@@ -1621,7 +1640,7 @@
     .scrub::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px; border-radius: 50%; background: var(--accent); cursor: pointer; }
     .scrub::-moz-range-thumb { width: 12px; height: 12px; border: none; border-radius: 50%; background: var(--accent); cursor: pointer; }
     .reader-bottom .scrub { width: 100%; max-width: none; margin-bottom: 2px; }
-    #scrub-pop { position: fixed; transform: translate(-50%, -100%); background: var(--surface); border: 1px solid var(--line); border-radius: 0; padding: 0.4rem 0.6rem; font: 0.7rem ui-monospace, Menlo, monospace; color: var(--text); box-shadow: none; z-index: 300; opacity: 0; pointer-events: none; transition: opacity 0.15s; white-space: nowrap; text-align: center; }
+    #scrub-pop { position: fixed; transform: translate(-50%, -100%); background: var(--surface); border: 1px solid var(--line); border-radius: 0; padding: 0.4rem 0.6rem; font: 0.7rem ui-monospace, Menlo, monospace; color: var(--text); box-shadow: none; z-index: 300; opacity: 0; pointer-events: none; transition: opacity var(--motion-fast); white-space: nowrap; text-align: center; }
     #scrub-pop.show { opacity: 1; }
     .sp-ch { font-weight: 500; max-width: 60vw; overflow: hidden; text-overflow: ellipsis; }
     .sp-pg { color: var(--text-dim); font-size: 0.64rem; margin-top: 1px; }
@@ -1763,7 +1782,7 @@
        slowed down; a future multi-step carousel can slice this same content
        across slides without rewriting it. -->
   <div class="si-wrap">
-    <div class="seg lang-seg si-langtoggle" role="group" aria-label="Language">
+    <div class="seg lang-seg si-langtoggle" role="group" aria-label="Language" data-i18n-aria-label="aria_language">
       <button data-lang="en" onclick="I18n.setLang('en')">EN</button>
       <button data-lang="fr" onclick="I18n.setLang('fr')">FR</button>
     </div>
@@ -1849,25 +1868,25 @@
   <div class="lib-header">
     <div class="lib-header-title"><h2 data-i18n="library_title">Shelves</h2><span class="lib-count" id="lib-count"></span></div>
     <div class="header-actions">
-      <div class="lib-view-toggle" id="lib-view-toggle" role="group" aria-label="Library view">
-        <button data-view="2" onclick="Library.setView('2')" data-i18n-title="lib_view_2" aria-label="2 per row">
+      <div class="lib-view-toggle" id="lib-view-toggle" role="group" aria-label="Library view" data-i18n-aria-label="aria_library_view">
+        <button data-view="2" onclick="Library.setView('2')" data-i18n-title="lib_view_2" aria-label="2 per row" data-i18n-aria-label="lib_view_2">
           <svg width="17" height="17" viewBox="0 0 17 17"><rect x="0" y="1" width="7" height="15" rx="1.2" fill="currentColor"/><rect x="10" y="1" width="7" height="15" rx="1.2" fill="currentColor"/></svg>
         </button>
-        <button data-view="3" onclick="Library.setView('3')" data-i18n-title="lib_view_3" aria-label="3 per row">
+        <button data-view="3" onclick="Library.setView('3')" data-i18n-title="lib_view_3" aria-label="3 per row" data-i18n-aria-label="lib_view_3">
           <svg width="17" height="17" viewBox="0 0 17 17"><rect x="0" y="2" width="4.2" height="13" rx="1" fill="currentColor"/><rect x="6.4" y="2" width="4.2" height="13" rx="1" fill="currentColor"/><rect x="12.8" y="2" width="4.2" height="13" rx="1" fill="currentColor"/></svg>
         </button>
-        <button data-view="4" onclick="Library.setView('4')" data-i18n-title="lib_view_4" aria-label="4 per row">
+        <button data-view="4" onclick="Library.setView('4')" data-i18n-title="lib_view_4" aria-label="4 per row" data-i18n-aria-label="lib_view_4">
           <svg width="17" height="17" viewBox="0 0 17 17"><rect x="0" y="3" width="3" height="11" rx="0.8" fill="currentColor"/><rect x="4.7" y="3" width="3" height="11" rx="0.8" fill="currentColor"/><rect x="9.4" y="3" width="3" height="11" rx="0.8" fill="currentColor"/><rect x="14.1" y="3" width="3" height="11" rx="0.8" fill="currentColor"/></svg>
         </button>
-        <button data-view="table" onclick="Library.setView('table')" data-i18n-title="lib_view_table" aria-label="List view">
+        <button data-view="table" onclick="Library.setView('table')" data-i18n-title="lib_view_table" aria-label="List view" data-i18n-aria-label="lib_view_table">
           <svg width="17" height="17" viewBox="0 0 17 17"><rect x="0" y="2" width="17" height="2.6" rx="1" fill="currentColor"/><rect x="0" y="7.2" width="17" height="2.6" rx="1" fill="currentColor"/><rect x="0" y="12.4" width="17" height="2.6" rx="1" fill="currentColor"/></svg>
         </button>
       </div>
-      <button class="icon-btn" onclick="Library.refresh()" title="Refresh" aria-label="Refresh library">&#8634;</button>
+      <button class="icon-btn" onclick="Library.refresh()" title="Refresh" aria-label="Refresh library" data-i18n-aria-label="aria_refresh_library">&#8634;</button>
     </div>
   </div>
   <div class="lib-search">
-    <input id="lib-search" type="search" placeholder="Search your books" data-i18n-placeholder="search_placeholder" oninput="Library.filter(this.value)" aria-label="Search your books">
+    <input id="lib-search" type="search" placeholder="Search your books" data-i18n-placeholder="search_placeholder" oninput="Library.filter(this.value)" aria-label="Search your books" data-i18n-aria-label="search_placeholder">
   </div>
   <div class="lib-genre-chips" id="lib-genre-chips"></div>
   <div class="books-grid-wrap" id="books-grid-wrap">
@@ -1889,7 +1908,7 @@
     <div class="set-group">
       <div class="set-row set-row-stack">
         <div><div class="sr-k" data-i18n="theme">Theme</div><div class="sr-sub" data-i18n="theme_sub">Light, dark, or match device</div></div>
-        <div class="seg" id="theme-seg">
+        <div class="seg" id="theme-seg" role="group" aria-label="Theme" data-i18n-aria-label="theme">
           <button data-mode="light" data-i18n="theme_light" onclick="Settings.setTheme('light')">Light</button>
           <button data-mode="dark" data-i18n="theme_dark" onclick="Settings.setTheme('dark')">Dark</button>
           <button data-mode="auto" data-i18n="theme_auto" onclick="Settings.setTheme('auto')">Auto</button>
@@ -1897,7 +1916,7 @@
       </div>
       <div class="set-row set-row-stack">
         <div><div class="sr-k" data-i18n="app_language">App language</div><div class="sr-sub" data-i18n="app_language_sub">Translates the Settings tab</div></div>
-        <div class="seg lang-seg" id="lang-seg">
+        <div class="seg lang-seg" id="lang-seg" role="group" aria-label="App language" data-i18n-aria-label="app_language">
           <button data-lang="en" onclick="Settings.setLang('en')">EN</button>
           <button data-lang="fr" onclick="Settings.setLang('fr')">FR</button>
         </div>
@@ -1934,7 +1953,7 @@
            Now it reports either state, with an "i" explainer either way. -->
       <div class="set-row" id="neural-row">
         <div>
-          <div class="sr-k"><span data-i18n="natural_voice">Natural voice</span><button class="sr-info" onclick="VoiceInfo.open()" aria-label="About the natural voice">i</button></div>
+          <div class="sr-k"><span data-i18n="natural_voice">Natural voice</span><button class="sr-info" onclick="VoiceInfo.open()" aria-label="About the natural voice" data-i18n-aria-label="voiceinfo_title">i</button></div>
           <div class="sr-sub" id="neural-sub" data-i18n="natural_voice_checking">Checking&hellip;</div>
         </div>
         <span class="set-stat" id="neural-status" data-i18n="on">On</span>
@@ -1963,6 +1982,10 @@
          PhonoLeaf holds is local to this device, so both are handled here —
          there is no server to request anything from. -->
     <div class="set-group">
+      <div class="set-row">
+        <div><div class="sr-k" data-i18n="storage_title">On this phone</div><div class="sr-sub" data-i18n="storage_sub">See what's using space, free some up</div></div>
+        <button class="set-link" data-i18n="view" onclick="StorageModal.open()">View</button>
+      </div>
       <div class="set-row">
         <div><div class="sr-k" data-i18n="export_data">Export my data</div><div class="sr-sub" data-i18n="export_data_sub">Download everything stored on this device</div></div>
         <button class="set-link" data-i18n="export" onclick="ExportModal.open()">Export</button>
@@ -2017,11 +2040,12 @@
   <div id="tts-prog-line"><div id="tts-prog"></div></div>
 
   <div class="reader-top">
-    <button class="rt-back" onclick="Reader.back()" aria-label="Back to home"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg></button>
+    <button class="rt-back" onclick="Reader.back()" aria-label="Back to home" data-i18n-aria-label="aria_back_home"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg></button>
     <div class="reader-top-center">
       <div class="reader-top-info" id="rs-chapter"></div>
     </div>
-    <button class="rt-chapters" id="chapters-btn" onclick="ChapterModal.open()" aria-label="Chapters" data-i18n="chapters_label">Chapters</button>
+    <button class="rt-search" id="search-btn" onclick="Search.open()" aria-label="Search this book" data-i18n-aria-label="search_title"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg></button>
+    <button class="rt-chapters" id="chapters-btn" onclick="ChapterModal.open()" aria-label="Chapters" data-i18n="chapters_label" data-i18n-aria-label="chapters_label">Chapters</button>
   </div>
 
   <div id="viewer">
@@ -2033,25 +2057,25 @@
 
   <div class="reader-touch" id="reader-touch"></div>
   <div id="tap-fb" aria-hidden="true"></div>
-  <button class="reader-edge re-left" onclick="Reader.turnPage(-1)" aria-label="Previous page">
+  <button class="reader-edge re-left" onclick="Reader.turnPage(-1)" aria-label="Previous page" data-i18n-aria-label="aria_prev_page">
     <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
   </button>
-  <button class="reader-edge re-right" onclick="Reader.turnPage(1)" aria-label="Next page">
+  <button class="reader-edge re-right" onclick="Reader.turnPage(1)" aria-label="Next page" data-i18n-aria-label="aria_next_page">
     <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
   </button>
 
   <div class="reader-bottom">
-    <input type="range" class="scrub" id="reader-scrub" min="0" max="1000" value="0" aria-label="Seek through book">
+    <input type="range" class="scrub" id="reader-scrub" min="0" max="1000" value="0" aria-label="Seek through book" data-i18n-aria-label="aria_seek_book">
     <div class="reader-meta"><span id="tts-chapter"></span></div>
     <div class="rc-row">
-      <button class="rc-skip" onclick="TTS.skip(-15)" aria-label="Back 15 seconds">&minus;15s</button>
-      <button class="rc-chapter" onclick="Reader.prevChapter()" aria-label="Previous chapter"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4L4 12l7 8"/><path d="M19 4l-7 8 7 8"/></svg></button>
-      <button class="rc-play" id="play-btn" onclick="TTS.toggle()" aria-label="Play or pause"></button>
-      <button class="rc-chapter" onclick="Reader.nextChapter()" aria-label="Next chapter"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 4l7 8-7 8"/><path d="M5 4l7 8-7 8"/></svg></button>
-      <button class="rc-skip" onclick="TTS.skip(15)" aria-label="Forward 15 seconds">+15s</button>
+      <button class="rc-skip" onclick="TTS.skip(-15)" aria-label="Back 15 seconds" data-i18n-aria-label="aria_skip_back15">&minus;15s</button>
+      <button class="rc-chapter" onclick="Reader.prevChapter()" aria-label="Previous chapter" data-i18n-aria-label="aria_prev_chapter"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4L4 12l7 8"/><path d="M19 4l-7 8 7 8"/></svg></button>
+      <button class="rc-play" id="play-btn" onclick="TTS.toggle()" aria-label="Play or pause" data-i18n-aria-label="aria_play_pause"></button>
+      <button class="rc-chapter" onclick="Reader.nextChapter()" aria-label="Next chapter" data-i18n-aria-label="aria_next_chapter"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 4l7 8-7 8"/><path d="M5 4l7 8-7 8"/></svg></button>
+      <button class="rc-skip" onclick="TTS.skip(15)" aria-label="Forward 15 seconds" data-i18n-aria-label="aria_skip_fwd15">+15s</button>
     </div>
     <div class="tts-pill">
-      <select class="speed-select" id="speed-select" onchange="TTS.setRate(+this.value)" aria-label="Speed">
+      <select class="speed-select" id="speed-select" onchange="TTS.setRate(+this.value)" aria-label="Speed" data-i18n-aria-label="aria_speed">
         <option value="0.5">0.5&times;</option>
         <option value="0.75">0.75&times;</option>
         <option value="1" selected>1.0&times;</option>
@@ -2060,10 +2084,10 @@
         <option value="1.75">1.75&times;</option>
         <option value="2">2.0&times;</option>
       </select>
-      <button class="icon-btn hl-pill" id="hl-btn" onclick="TTS.toggleFollowAlong()" aria-label="Follow along highlighting" data-i18n-title="follow_along" title="Follow along highlighting">
+      <button class="icon-btn hl-pill" id="hl-btn" onclick="TTS.toggleFollowAlong()" aria-label="Follow along highlighting" data-i18n-title="follow_along" data-i18n-aria-label="follow_along" title="Follow along highlighting">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><rect x="3" y="10.3" width="18" height="5.4" rx="1.2" fill="currentColor" stroke="none" opacity="0.35"/><line x1="4" y1="13" x2="20" y2="13"/><line x1="4" y1="19" x2="14" y2="19"/></svg>
       </button>
-      <button class="icon-btn hl-pill" id="sleep-btn" onclick="SleepModal.open()" aria-label="Sleep timer" data-i18n-title="sleep_timer" title="Sleep timer">
+      <button class="icon-btn hl-pill" id="sleep-btn" onclick="SleepModal.open()" aria-label="Sleep timer" data-i18n-title="sleep_timer" data-i18n-aria-label="sleep_timer" title="Sleep timer">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a6.5 6.5 0 100 13 6.5 6.5 0 01-6.5 6.5A6.5 6.5 0 1117 3z"/></svg>
       </button>
       <button class="pill-btn" id="voice-btn" onclick="VoiceModal.open()" data-i18n="voice">Voice</button>
@@ -2095,6 +2119,15 @@
   </div>
 </div>
 
+<!-- ============== STORAGE MODAL ("On this phone") ============== -->
+<div class="modal-backdrop" id="storage-modal" onclick="StorageModal.close(event)">
+  <div class="modal-sheet" onclick="event.stopPropagation()">
+    <div class="modal-title" data-i18n="storage_title">On this phone</div>
+    <div id="storage-total" class="sleep-hint"></div>
+    <div id="storage-sections"></div>
+  </div>
+</div>
+
 <!-- ============== EXPORT MY DATA ============== -->
 <div class="modal-backdrop" id="export-modal" onclick="ExportModal.close(event)">
   <div class="modal-sheet" onclick="event.stopPropagation()">
@@ -2108,7 +2141,7 @@
 <div class="modal-backdrop" id="detail-modal" onclick="BookDetail.close(event)">
   <div class="modal-sheet detail-sheet" onclick="event.stopPropagation()">
     <div class="detail-hero" id="detail-hero" style="background:var(--cover-fallback)">
-      <button class="detail-close" onclick="BookDetail.close()" aria-label="Close"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg></button>
+      <button class="detail-close" onclick="BookDetail.close()" aria-label="Close" data-i18n-aria-label="close"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg></button>
       <div class="detail-hero-text">
         <div class="detail-title" id="detail-title"></div>
         <div class="detail-author" id="detail-author"></div>
@@ -2137,14 +2170,14 @@
      do it (owner-reported wanting a visible icon, not just an implicit tap
      target); every control inside stops that click from bubbling. -->
 <div class="mini-player" id="mini-player" onclick="MiniPlayer.expand()">
-  <button class="mp-btn" onclick="event.stopPropagation(); Reader.prevChapter()" aria-label="Previous chapter">
+  <button class="mp-btn" onclick="event.stopPropagation(); Reader.prevChapter()" aria-label="Previous chapter" data-i18n-aria-label="aria_prev_chapter">
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4L4 12l7 8"/><path d="M19 4l-7 8 7 8"/></svg>
   </button>
-  <button class="mp-play" id="mp-play-btn" onclick="event.stopPropagation(); TTS.toggle()" aria-label="Play or pause"></button>
-  <button class="mp-btn" onclick="event.stopPropagation(); Reader.nextChapter()" aria-label="Next chapter">
+  <button class="mp-play" id="mp-play-btn" onclick="event.stopPropagation(); TTS.toggle()" aria-label="Play or pause" data-i18n-aria-label="aria_play_pause"></button>
+  <button class="mp-btn" onclick="event.stopPropagation(); Reader.nextChapter()" aria-label="Next chapter" data-i18n-aria-label="aria_next_chapter">
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 4l7 8-7 8"/><path d="M5 4l7 8-7 8"/></svg>
   </button>
-  <select class="speed-select mp-speed" id="mp-speed-select" onclick="event.stopPropagation()" onchange="event.stopPropagation(); TTS.setRate(+this.value)" aria-label="Speed">
+  <select class="speed-select mp-speed" id="mp-speed-select" onclick="event.stopPropagation()" onchange="event.stopPropagation(); TTS.setRate(+this.value)" aria-label="Speed" data-i18n-aria-label="aria_speed">
     <option value="0.5">0.5&times;</option>
     <option value="0.75">0.75&times;</option>
     <option value="1" selected>1.0&times;</option>
@@ -2153,11 +2186,11 @@
     <option value="1.75">1.75&times;</option>
     <option value="2">2.0&times;</option>
   </select>
-  <button class="mp-btn" onclick="event.stopPropagation(); SleepModal.open()" aria-label="Sleep timer" data-i18n-title="sleep_timer" title="Sleep timer">
+  <button class="mp-btn" onclick="event.stopPropagation(); SleepModal.open()" aria-label="Sleep timer" data-i18n-title="sleep_timer" data-i18n-aria-label="sleep_timer" title="Sleep timer">
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a6.5 6.5 0 100 13 6.5 6.5 0 01-6.5 6.5A6.5 6.5 0 1117 3z"/></svg>
   </button>
   <button class="mp-voice" onclick="event.stopPropagation(); VoiceModal.open()" data-i18n="voice">Voice</button>
-  <button class="mp-btn mp-expand" onclick="event.stopPropagation(); MiniPlayer.expand()" aria-label="Open reader" data-i18n-title="open_reader" title="Open reader">
+  <button class="mp-btn mp-expand" onclick="event.stopPropagation(); MiniPlayer.expand()" aria-label="Open reader" data-i18n-title="open_reader" data-i18n-aria-label="open_reader" title="Open reader">
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 15l-6-6-6 6"/></svg>
   </button>
 </div>
@@ -2214,6 +2247,16 @@
     <div class="modal-handle"></div>
     <div class="modal-title" data-i18n="chapters_title">Chapters</div>
     <div id="chapter-list"></div>
+  </div>
+</div>
+
+<!-- ============== IN-BOOK SEARCH ============== -->
+<div class="modal-backdrop" id="search-modal" onclick="Search.close(event)">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title" data-i18n="search_title">Search this book</div>
+    <input type="search" id="search-input" class="search-input" oninput="Search.onInput()" data-i18n-placeholder="search_book_placeholder" placeholder="Find a word or phrase" aria-label="Search this book" data-i18n-aria-label="search_title">
+    <div id="search-results"></div>
   </div>
 </div>
 
@@ -2585,6 +2628,18 @@ function esc(s) {
   return String(s ?? '').replace(/[&<>"']/g, c => _escMap[c]);
 }
 
+// Human-readable byte size for the storage manager — routes through
+// STRINGS (kb/mb/gb keys) so the unit itself is localized too (French
+// uses "Ko"/"Mo"/"Go", not "KB"/"MB"/"GB").
+function fmtBytes(bytes) {
+  const b = bytes || 0;
+  // Math.max(1, ...) only kicks in for a genuinely non-zero size that would
+  // otherwise round down to 0 KB — true zero stays "0 KB", not "1 KB".
+  if (b < 1024 * 1024) return I18n.t('kb', { kb: b === 0 ? 0 : Math.max(1, Math.round(b / 1024)) });
+  if (b < 1024 * 1024 * 1024) return I18n.t('mb', { mb: Math.round(b / (1024 * 1024) * 10) / 10 });
+  return I18n.t('gb', { gb: Math.round(b / (1024 * 1024 * 1024) * 10) / 10 });
+}
+
 // Some epubs' dc:description embeds HTML markup (owner-reported: "To Hold
 // Up the Sky" rendered literal "<p><b>" tags, since detail-desc is set via
 // .textContent — safe, but shows the raw markup instead of parsing it).
@@ -2774,6 +2829,24 @@ const STRINGS = {
     reset_listening_data: 'Reset listening data', listening_data_reset: 'Listening data reset.',
     chapter_n: 'Chapter {n}',
 
+    // Accessibility labels (data-i18n-aria-label / I18n.t() targets) —
+    // previously hardcoded English regardless of app language.
+    aria_language: 'Language', aria_library_view: 'Library view', aria_refresh_library: 'Refresh library',
+    aria_back_home: 'Back to home', aria_prev_page: 'Previous page', aria_next_page: 'Next page',
+    aria_seek_book: 'Seek through book', aria_skip_back15: 'Back 15 seconds', aria_skip_fwd15: 'Forward 15 seconds',
+    aria_prev_chapter: 'Previous chapter', aria_next_chapter: 'Next chapter', aria_play_pause: 'Play or pause',
+    aria_speed: 'Speed', aria_open_book: 'Open {name}', aria_open_folder: 'Open folder {name}',
+    aria_group_breakdown: 'Group breakdown by', stat_bar_aria: '{label}: {minutes}',
+
+    // Storage manager ("On this phone")
+    storage_title: 'On this phone', storage_sub: "See what's using space, free some up",
+    view: 'View', clear: 'Clear',
+    storage_total_line: 'Using {total} total',
+    storage_books: 'Cached books', storage_packs: 'Voice packs', storage_covers: 'Cover images',
+    storage_folder: 'Connected folder', storage_folder_connected: 'Connected: {name}',
+    storage_none: 'None cached', storage_covers_cleared: 'Cover cache cleared',
+    kb: '{kb} KB', gb: '{gb} GB', // mb reuses the existing key below (voice-pack download strings)
+
     // Reader
     loading_book: 'Loading book...', resuming: 'Resuming where you left off',
     chapters_label: 'Chapters', sleep_timer: 'Sleep timer', sleep_label: 'sleep', open_reader: 'Open reader',
@@ -2843,6 +2916,9 @@ const STRINGS = {
 
     // Chapter / Folder / Confirm modals
     chapters_title: 'Chapters',
+    // In-book full-text search
+    search_title: 'Search this book', search_book_placeholder: 'Find a word or phrase',
+    search_indexing: 'Searching more chapters…', search_no_results: 'No matches found',
     reset_stats_confirm: 'Are you sure you want to reset your listening data? This cannot be undone.', reset: 'Reset',
     choose_books_folder: 'Choose your books folder',
     fb_currently: 'Currently: {folder}. Open a folder to browse, then tap “Use this folder”.',
@@ -3012,6 +3088,23 @@ const STRINGS = {
     reset_listening_data: 'Réinitialiser les données d’écoute', listening_data_reset: 'Données d’écoute réinitialisées.',
     chapter_n: 'Chapitre {n}',
 
+    // Étiquettes d'accessibilité (cibles data-i18n-aria-label / I18n.t())
+    aria_language: 'Langue', aria_library_view: 'Affichage de la bibliothèque', aria_refresh_library: 'Actualiser la bibliothèque',
+    aria_back_home: 'Retour à l’accueil', aria_prev_page: 'Page précédente', aria_next_page: 'Page suivante',
+    aria_seek_book: 'Naviguer dans le livre', aria_skip_back15: 'Reculer de 15 secondes', aria_skip_fwd15: 'Avancer de 15 secondes',
+    aria_prev_chapter: 'Chapitre précédent', aria_next_chapter: 'Chapitre suivant', aria_play_pause: 'Lecture ou pause',
+    aria_speed: 'Vitesse', aria_open_book: 'Ouvrir {name}', aria_open_folder: 'Ouvrir le dossier {name}',
+    aria_group_breakdown: 'Regrouper par', stat_bar_aria: '{label} : {minutes}',
+
+    // Gestionnaire de stockage (« Sur cet appareil »)
+    storage_title: 'Sur cet appareil', storage_sub: 'Voir ce qui prend de la place, en libérer',
+    view: 'Afficher', clear: 'Effacer',
+    storage_total_line: 'Utilise {total} au total',
+    storage_books: 'Livres en cache', storage_packs: 'Packs de voix', storage_covers: 'Images de couverture',
+    storage_folder: 'Dossier connecté', storage_folder_connected: 'Connecté : {name}',
+    storage_none: 'Aucun élément en cache', storage_covers_cleared: 'Cache des couvertures vidé',
+    kb: '{kb} Ko', gb: '{gb} Go', // mb reuses the existing key below (voice-pack download strings)
+
     // Lecteur
     loading_book: 'Chargement du livre...', resuming: 'Reprise là où vous vous êtes arrêté',
     chapters_label: 'Chapitres', sleep_timer: 'Minuterie de sommeil', sleep_label: 'sommeil', open_reader: 'Ouvrir le lecteur',
@@ -3081,6 +3174,9 @@ const STRINGS = {
 
     // Chapitres / dossier / confirmation
     chapters_title: 'Chapitres',
+    // Recherche plein texte dans le livre
+    search_title: 'Rechercher dans ce livre', search_book_placeholder: 'Trouver un mot ou une phrase',
+    search_indexing: 'Recherche dans d’autres chapitres…', search_no_results: 'Aucun résultat',
     reset_stats_confirm: 'Voulez-vous vraiment réinitialiser vos données d’écoute ? Cette action est irréversible.', reset: 'Réinitialiser',
     choose_books_folder: 'Choisissez votre dossier de livres',
     fb_currently: 'Actuellement : {folder}. Ouvrez un dossier pour le parcourir, puis touchez « Utiliser ce dossier ».',
@@ -3162,15 +3258,18 @@ const I18n = {
   },
   // Walks every [data-i18n] (textContent), [data-i18n-title] (title attr,
   // for things like the theme segmented buttons where a shorter label reads
-  // better than reflowing the row), and [data-i18n-placeholder] (input/
-  // textarea placeholder text) under `root` and fills it from the current
-  // language. Safe to call repeatedly — it's just attribute/text updates, so
-  // re-running it on every render can't accumulate anything.
+  // better than reflowing the row), [data-i18n-placeholder] (input/
+  // textarea placeholder text), and [data-i18n-aria-label] (aria-label attr,
+  // for static screen-reader-only labels that would otherwise stay hardcoded
+  // English regardless of app language) under `root` and fills it from the
+  // current language. Safe to call repeatedly — it's just attribute/text
+  // updates, so re-running it on every render can't accumulate anything.
   apply(root) {
     if (!root) return;
     root.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = this.t(el.dataset.i18n); });
     root.querySelectorAll('[data-i18n-title]').forEach(el => { el.title = this.t(el.dataset.i18nTitle); });
     root.querySelectorAll('[data-i18n-placeholder]').forEach(el => { el.placeholder = this.t(el.dataset.i18nPlaceholder); });
+    root.querySelectorAll('[data-i18n-aria-label]').forEach(el => { el.setAttribute('aria-label', this.t(el.dataset.i18nAriaLabel)); });
     // Any language-toggle button group (Settings' own, plus the sign-in
     // screen's — see .lang-seg) stays in sync with the active language
     // wherever apply() runs, not just after Settings.render(). Keeps the two
@@ -3727,7 +3826,7 @@ const Home = {
     const pct = Math.round(State.progress?.[b.id]?.pct || 0);
     const finished = pct >= 100;
     return `<div class="cr-item">
-      <div class="book-cover" data-book-id="${esc(b.id)}" onclick="CoverReveal.toggle('${esc(b.id)}', event)" role="button" tabindex="0" aria-label="Open ${esc(t)}">
+      <div class="book-cover" data-book-id="${esc(b.id)}" onclick="CoverReveal.toggle('${esc(b.id)}', event)" role="button" tabindex="0" aria-label="${esc(I18n.t('aria_open_book', { name: t }))}">
         <span class="cover-fallback">&#128214;</span>
         ${cov ? `<img src="${esc(cov)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">` : ''}
         ${finished ? `<span class="finished-badge" title="${esc(I18n.t('marked_finished'))}">&#10003;</span>` : ''}
@@ -4532,11 +4631,11 @@ const StatsPage = {
       `<div class="stat-grid2">${tile(books.length, I18n.t('stat_in_library'))}${tile(started, I18n.t('stat_started'))}${tile(finished, I18n.t('stat_finished'))}${tile(Math.round(sum.secs / 60), I18n.t('stat_minutes_week'))}${tile(Math.round(total / 60), I18n.t('stat_minutes_total'))}${tile(sum.streak, I18n.t('stat_day_streak'))}</div>
        <div class="sec-label"><span>${I18n.t('listening_this_week')}</span>${selDay ? `<span style="color:var(--accent2)">${esc(fmtMin(selDay.s))}</span>` : ''}</div>
        ${anyListening
-          ? `<div class="bars">${bars.map((b, i) => { const fp = b.s ? Math.max(4, Math.round((b.s / maxSec) * 92)) : 0; const sel = this._selectedDay === i; return `<div class="bar${sel ? ' show' : ''}" onclick="StatsPage.selectDay(${i})" title="${esc(b.fullLabel)}"><span class="bar-val" style="bottom:${Math.min(fp + 3, 72)}px">${esc(fmtMin(b.s))}</span><div class="bar-fill" style="height:${fp}px"></div><span class="bar-label">${esc(b.dayLetter)}</span></div>`; }).join('')}</div>`
+          ? `<div class="bars">${bars.map((b, i) => { const fp = b.s ? Math.max(4, Math.round((b.s / maxSec) * 92)) : 0; const sel = this._selectedDay === i; return `<div class="bar${sel ? ' show' : ''}" onclick="StatsPage.selectDay(${i})" title="${esc(b.fullLabel)}" role="button" tabindex="0" aria-label="${esc(I18n.t('stat_bar_aria', { label: b.fullLabel, minutes: fmtMin(b.s) }))}"><span class="bar-val" style="bottom:${Math.min(fp + 3, 72)}px">${esc(fmtMin(b.s))}</span><div class="bar-fill" style="height:${fp}px"></div><span class="bar-label">${esc(b.dayLetter)}</span></div>`; }).join('')}</div>`
           : `<div class="bars-empty">${I18n.t('no_listening_yet')}</div>`}
        ${books.length ? `
          <div class="sec-label">${I18n.t('breakdown')}
-           <select class="set-select" onchange="StatsPage.setGroup(this.value)" aria-label="Group breakdown by">
+           <select class="set-select" onchange="StatsPage.setGroup(this.value)" aria-label="${esc(I18n.t('aria_group_breakdown'))}">
              <option value="author"${this._group === 'author' ? ' selected' : ''}>${I18n.t('group_author')}</option>
              <option value="book"${this._group === 'book' ? ' selected' : ''}>${I18n.t('group_book')}</option>
              <option value="length"${this._group === 'length' ? ' selected' : ''}>${I18n.t('group_length')}</option>
@@ -4737,7 +4836,7 @@ const FolderBrowser = {
       });
       this._items = d.files || [];
       list.innerHTML = this._items.length ? this._items.map((f, i) =>
-        `<div class="fb-row" onclick="FolderBrowser.enter(${i})" role="button" tabindex="0" aria-label="Open folder ${esc(f.name)}">
+        `<div class="fb-row" onclick="FolderBrowser.enter(${i})" role="button" tabindex="0" aria-label="${esc(I18n.t('aria_open_folder', { name: f.name }))}">
            <svg class="fb-ico" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
            <span class="fb-name">${esc(f.name)}</span>
            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--text-dim);flex-shrink:0"><path d="M9 6l6 6-6 6"/></svg>
@@ -5616,7 +5715,7 @@ const Library = {
       </div>`;
     const cls = isRow ? 'book-row' : 'book-card';
     const onclick = isRow ? `BookDetail.open(${i})` : `CoverReveal.toggle('${esc(b.id)}', event)`;
-    return `<div class="${cls}" data-book-id="${esc(b.id)}" onclick="${onclick}" role="button" tabindex="0" aria-label="Open ${esc(title)}">${coverHTML}${infoHTML}${isRow ? finishedBadgeHTML + offlineBtn : ''}</div>`;
+    return `<div class="${cls}" data-book-id="${esc(b.id)}" onclick="${onclick}" role="button" tabindex="0" aria-label="${esc(I18n.t('aria_open_book', { name: title }))}">${coverHTML}${infoHTML}${isRow ? finishedBadgeHTML + offlineBtn : ''}</div>`;
   },
 
   // Resolved display title for sorting/the A-Z scrubber — prefers the
@@ -5911,6 +6010,37 @@ const CoverCache = {
       const db = await this._open();
       await new Promise(resolve => {
         const req = db.transaction('covers', 'readwrite').objectStore('covers').delete(key);
+        req.onsuccess = () => resolve();
+        req.onerror  = () => resolve();
+      });
+    } catch (_) {}
+  },
+  // Storage manager support (no existing size/clear helper before this —
+  // every entry is a Blob, so a cursor sum is the only way to get a real
+  // total; there's no per-book index to read like BookCache's pl_offline_books).
+  async size() {
+    try {
+      const db = await this._open();
+      return await new Promise(resolve => {
+        let total = 0;
+        const cur = db.transaction('covers', 'readonly').objectStore('covers').openCursor();
+        cur.onsuccess = e => {
+          const c = e.target.result;
+          if (c) { total += (c.value && c.value.size) || 0; c.continue(); }
+          else resolve(total);
+        };
+        cur.onerror = () => resolve(total);
+      });
+    } catch (_) { return 0; }
+  },
+  // Clears the object store (not indexedDB.deleteDatabase, which
+  // MyData.deleteAll() uses — a store clear is faster to reopen from,
+  // and covers regenerate automatically on next view either way).
+  async clear() {
+    try {
+      const db = await this._open();
+      await new Promise(resolve => {
+        const req = db.transaction('covers', 'readwrite').objectStore('covers').clear();
         req.onsuccess = () => resolve();
         req.onerror  = () => resolve();
       });
@@ -9220,6 +9350,150 @@ const ChapterModal = {
   },
 };
 
+// --- In-book full-text search --------------------------------
+// Lazy, per-book, in-memory only (no persistence across sessions). Reuses
+// TTS's proven spine-walk / text-extraction / CFI machinery rather than
+// reinventing it — see _sectionSegments, _loadSectionChunksWithNodes,
+// _currentSectionChunksWithNodes in the TTS module for the exact
+// precedent each piece here is modeled on.
+const Search = {
+  _bookId: null,
+  _sections: [],   // sparse array: sectionIndex -> { section, chunks } | undefined
+  _building: false,
+  _buildToken: 0,  // bumped on every new build; a stale loop checks this and bails
+  _debounce: null,
+
+  open() {
+    document.getElementById('search-modal').classList.add('open');
+    const input = document.getElementById('search-input');
+    if (input) { input.value = ''; setTimeout(() => input.focus(), 50); }
+    document.getElementById('search-results').innerHTML = '';
+    this._ensureIndex();
+  },
+  close(e) {
+    if (!e || e.target.classList.contains('modal-backdrop'))
+      document.getElementById('search-modal').classList.remove('open');
+  },
+
+  onInput() {
+    clearTimeout(this._debounce);
+    this._debounce = setTimeout(() => this._renderResults(), 200);
+  },
+
+  // Starts (or resumes) indexing for whichever book is currently open.
+  // Keeps the existing index if it's already for this book — no rebuild on
+  // every modal open, only on a genuine book switch.
+  _ensureIndex() {
+    const bookId = State.currentBook?.id;
+    if (this._bookId === bookId && (this._sections.length || this._building)) return;
+    this._bookId = bookId;
+    this._sections = [];
+    this._buildIndex();
+  },
+
+  async _buildIndex() {
+    const token = ++this._buildToken;
+    const book = State.epubBook;
+    const total = book?.spine?.spineItems?.length || 0;
+    if (!total) return;
+    this._building = true;
+    for (let i = 0; i < total; i++) {
+      if (this._buildToken !== token) return; // superseded by a newer build (book switched)
+      const rendered = State.rendition?.currentLocation()?.start?.index;
+      // Never section.load() the section the live rendition is currently
+      // showing — corrupts epub.js's internal reference for later display()
+      // calls (see TTS._loadSectionChunksWithNodes's own warning).
+      const built = (i === rendered) ? TTS._currentSectionChunksWithNodes(i)
+                                      : await TTS._loadSectionChunksWithNodes(i);
+      if (this._buildToken !== token) return;
+      if (built) this._sections[i] = built;
+      this._renderResults(); // incremental — short books feel instant, long ones grow
+      await new Promise(r => setTimeout(r, 0)); // yield so indexing never blocks the UI
+    }
+    if (this._buildToken === token) this._building = false;
+    this._renderResults();
+  },
+
+  // Case-insensitive substring match across every indexed chunk's text.
+  // No fuzzy matching/stemming for v1. Capped so a common word in a long
+  // book can't produce an unbounded list.
+  _CAP: 200,
+  _CONTEXT: 40,
+  _matches(q) {
+    const needle = q.trim().toLowerCase();
+    if (!needle) return [];
+    const out = [];
+    for (let si = 0; si < this._sections.length && out.length < this._CAP; si++) {
+      const built = this._sections[si];
+      if (!built) continue;
+      for (let ci = 0; ci < built.chunks.length && out.length < this._CAP; ci++) {
+        const text = built.chunks[ci].text;
+        const at = text.toLowerCase().indexOf(needle);
+        if (at === -1) continue;
+        const start = Math.max(0, at - this._CONTEXT);
+        const end = Math.min(text.length, at + needle.length + this._CONTEXT);
+        out.push({
+          sectionIdx: si, chunkIdx: ci,
+          excerpt: (start > 0 ? '…' : '') + text.slice(start, end) + (end < text.length ? '…' : ''),
+          hlStart: at - start + (start > 0 ? 1 : 0), hlLen: needle.length,
+        });
+      }
+    }
+    return out;
+  },
+
+  // Escapes each piece (before/match/after) separately rather than escaping
+  // the whole excerpt then indexing into the escaped string — safe even if
+  // the excerpt itself contains characters esc() would expand.
+  _highlight(excerpt, at, len) {
+    if (at < 0 || at + len > excerpt.length) return esc(excerpt);
+    return esc(excerpt.slice(0, at)) + '<mark>' + esc(excerpt.slice(at, at + len)) + '</mark>' + esc(excerpt.slice(at + len));
+  },
+
+  _renderResults() {
+    const list = document.getElementById('search-results');
+    if (!list) return;
+    const q = (document.getElementById('search-input')?.value || '').trim();
+    if (!q) { list.innerHTML = ''; return; }
+    const results = this._matches(q);
+    const statusHTML = this._building
+      ? `<div class="set-row"><div class="sr-sub">${esc(I18n.t('search_indexing'))}</div></div>`
+      : '';
+    if (!results.length) {
+      list.innerHTML = statusHTML || `<div class="set-row"><div class="sr-sub">${esc(I18n.t('search_no_results'))}</div></div>`;
+      return;
+    }
+    list.innerHTML = results.map(r => `
+      <div class="chapter-item search-result-item" onclick="Search.jump(${r.sectionIdx}, ${r.chunkIdx})" role="button" tabindex="0">
+        <span class="chapter-label">${this._highlight(r.excerpt, r.hlStart, r.hlLen)}</span>
+      </div>`).join('') + statusHTML;
+  },
+
+  // Same jump mechanism as ChapterModal.jump(): a Range over the chunk's
+  // source block element, turned into a CFI via the Section object itself,
+  // handed to Rendition.display(). Routed through TTS.skipPage the same way,
+  // so playback state stays consistent.
+  jump(sectionIdx, chunkIdx) {
+    const built = this._sections[sectionIdx];
+    const chunk = built?.chunks?.[chunkIdx];
+    if (!chunk?.node || !built.section) { toast(I18n.t('could_not_open_chapter')); return; }
+    let cfi = null;
+    try {
+      const range = chunk.node.ownerDocument.createRange();
+      range.selectNodeContents(chunk.node);
+      cfi = built.section.cfiFromRange(range);
+    } catch (_) { /* fall through to the failure toast below */ }
+    if (!cfi) { toast(I18n.t('could_not_open_chapter')); return; }
+    this.close();
+    TTS._dir = 1;
+    TTS.skipPage(() => State.rendition?.display(cfi).catch(err => {
+      console.error('search jump failed', err);
+      toast(I18n.t('could_not_open_chapter'));
+      TTS.stop();
+    }));
+  },
+};
+
 // --- Book detail: the PRIMARY tap target for a library cover/row (owner
 // decision — supersedes the design mockup's own "long-press to peek, normal
 // tap opens the reader directly" gesture). Reader.open() only happens once
@@ -9461,6 +9735,105 @@ const NoVoiceModal = {
   getVoice() {
     document.getElementById('novoice-modal').classList.remove('open');
     LangPacksModal.open();
+  },
+};
+
+// --- Storage manager ("On this phone") ----------------------
+// Mirrors MyData.deleteAll()'s exact sweep list (the authoritative "what
+// PhonoLeaf stores locally" inventory) so nothing here is missing or
+// invented: cached books, voice packs, cover cache, connected folder.
+const StorageModal = {
+  _PACK_LABEL: { us: 'lang_en_us', gb: 'lang_en_gb', fr: 'lang_fr', de: 'lang_de', es: 'lang_es', kokoro: 'lang_en' },
+
+  async open() {
+    document.getElementById('storage-modal').classList.add('open');
+    await this.render();
+  },
+  close(e) {
+    if (!e || e.target.classList.contains('modal-backdrop'))
+      document.getElementById('storage-modal').classList.remove('open');
+  },
+
+  _section(label, bodyHTML) {
+    return `<div class="sec-label">${esc(label)}</div>${bodyHTML}`;
+  },
+  _row(name, size, removeCall, actionLabel) {
+    const right = removeCall
+      ? `<button class="set-link danger" onclick="${removeCall}">${esc(actionLabel || I18n.t('remove'))}</button>`
+      : `<span class="sr-sub">${esc(size)}</span>`;
+    return `<div class="set-row"><div><div class="sr-k">${esc(name)}</div>${removeCall ? `<div class="sr-sub">${esc(size)}</div>` : ''}</div>${right}</div>`;
+  },
+  _empty() {
+    return `<div class="set-row"><div class="sr-sub">${esc(I18n.t('storage_none'))}</div></div>`;
+  },
+
+  async render() {
+    // Cached books — pl_offline_books already stores exact bytes per book,
+    // no measurement needed. Cross-reference State.books for a display name
+    // (a book removed from the library but still cached falls back to its id).
+    const idx = BookCache._index();
+    const bookRows = Object.keys(idx).map(id => {
+      const meta = (State.books || []).find(b => b.id === id);
+      const name = (meta?.name || id).replace(/\.epub$/i, '');
+      return { id, name, bytes: idx[id].bytes || 0 };
+    }).sort((a, b) => b.bytes - a.bytes);
+    const booksTotal = bookRows.reduce((s, r) => s + r.bytes, 0);
+
+    // Voice packs — native only. approxBytes is a static per-model estimate
+    // table on the Kotlin side, not a live disk scan (see PhonoLeafTtsPlugin.kt).
+    // refresh() is safe/cheap to call every render (skips models it already
+    // knows) — needed here since nothing guarantees LangPacksModal.open()
+    // (the only other place that populates _status) already ran this session.
+    const packsAvailable = VoicePacks.available();
+    let packRows = [], packsTotal = 0;
+    if (packsAvailable) {
+      await VoicePacks.refresh();
+      packRows = VoicePacks.ALL_PACK_MODELS
+        .filter(m => VoicePacks._status[m]?.downloaded)
+        .map(m => ({ model: m, bytes: VoicePacks._status[m].approxBytes || 0 }));
+      packsTotal = packRows.reduce((s, r) => s + r.bytes, 0);
+    }
+
+    // Cover cache — no size/clear helper existed before this; see CoverCache.size/clear.
+    const coversBytes = await CoverCache.size();
+
+    // Connected folders — informational only, not a size. No disconnect
+    // action here, matching the existing deliberate design decision that
+    // folder disconnection isn't offered from Settings. Drive and a local
+    // device folder are independently connectable (see FolderChooser), so
+    // both are checked, not just one.
+    const connectedFolders = [activeFolder(), LocalBooks.folderInfo().name].filter(Boolean);
+
+    const grandTotal = booksTotal + packsTotal + coversBytes;
+    document.getElementById('storage-total').textContent = I18n.t('storage_total_line', { total: fmtBytes(grandTotal) });
+
+    document.getElementById('storage-sections').innerHTML = [
+      this._section(I18n.t('storage_books'), bookRows.length
+        ? bookRows.map(r => this._row(r.name, fmtBytes(r.bytes), `StorageModal.removeBook('${esc(r.id)}')`)).join('')
+        : this._empty()),
+      packsAvailable ? this._section(I18n.t('storage_packs'), packRows.length
+        ? packRows.map(r => this._row(I18n.t(this._PACK_LABEL[r.model] || r.model), fmtBytes(r.bytes), `StorageModal.removePack('${r.model}')`)).join('')
+        : this._empty()) : '',
+      this._section(I18n.t('storage_covers'), this._row(I18n.t('storage_covers'), fmtBytes(coversBytes), coversBytes ? `StorageModal.clearCovers()` : null, I18n.t('clear'))),
+      connectedFolders.length ? this._section(I18n.t('storage_folder'), connectedFolders.map(name =>
+        `<div class="set-row"><div class="sr-sub">${esc(I18n.t('storage_folder_connected', { name }))}</div></div>`).join('')) : '',
+    ].join('');
+  },
+
+  async removeBook(id) {
+    await BookCache.remove(id);
+    toast(I18n.t('removed_offline'));
+    Library._refreshOfflineBadge?.(id); // keep the library grid's download badge in sync
+    await this.render();
+  },
+  async removePack(model) {
+    await VoicePacks.remove(model); // already toasts + notifies on its own
+    await this.render();
+  },
+  async clearCovers() {
+    await CoverCache.clear();
+    toast(I18n.t('storage_covers_cleared'));
+    await this.render();
   },
 };
 
