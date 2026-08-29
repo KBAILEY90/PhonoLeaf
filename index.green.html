@@ -5272,7 +5272,17 @@ const App = {
   // Post-auth entry: shared by web sign-in, native sign-in, and resume.
   _enterApp() {
     this._initHistory();
-    Nav.go('home');
+    // First-ever session on this device lands on Shelves, not Home — Home's
+    // own dashboard (Continue listening, streak, forest) has nothing to
+    // show yet for a brand-new user, so it's an anticlimactic first screen;
+    // Shelves lets them connect a folder and pick a book immediately.
+    // pl_entered_before is 'pl_'-prefixed, so MyData.deleteAll()'s sweep
+    // clears it along with everything else — correctly treating the next
+    // sign-in as first-ever again, since the dashboard really is empty
+    // again at that point too. Every later launch lands on Home as before.
+    let firstEver = false;
+    try { firstEver = !localStorage.getItem('pl_entered_before'); localStorage.setItem('pl_entered_before', '1'); } catch (_) {}
+    Nav.go(firstEver ? 'library' : 'home');
     this.loadUser();
     Library.load(); // a stale/revoked token surfaces as a 401 -> silent refresh
     this._promptFolderIfNeeded();
@@ -5320,7 +5330,7 @@ const App = {
   },
 
   // Set up in-app history once we're past sign-in, so the Back/swipe buffer
-  // snapshots Home (not the sign-in view → no flash on the first swipe).
+  // snapshots the landing tab (not the sign-in view → no flash on the first swipe).
   _histInit: false,
   _initHistory() {
     if (this._histInit) return;
