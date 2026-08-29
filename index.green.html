@@ -1400,11 +1400,12 @@
     .forest-msg { font: 0.82rem/1.45 var(--font-read); color: var(--text-dim); text-align: center; margin: 0.4rem 0 0; max-width: 15rem; }
     .forest-note { font: 0.66rem ui-monospace, Menlo, monospace; color: var(--text-dim); text-align: center; margin-top: 0.5rem; }
     .sec-label { font-size: 0.82rem; font-weight: 500; margin-bottom: 0.75rem; display: flex; justify-content: space-between; align-items: center; }
-    /* Settings section headings — .set-group itself has margin-bottom:0 (a
-       deliberate flat-list choice, see its own comment), so without this the
-       next section's heading would sit flush against the previous section's
-       last row with no separation at all. */
-    .set-section-label { margin-top: 1.75rem; color: var(--text-dim); }
+    /* Settings section headings — .set-group itself has margin-bottom:0, so
+       this margin-top is the ONLY gap between one box and the next
+       heading; kept generous (owner feedback: wanted more breathing room
+       between groups, not just a hairline) since there's nothing else
+       separating them. */
+    .set-section-label { margin-top: 2.25rem; color: var(--text-dim); }
     .sec-label a { font-size: 0.72rem; color: var(--accent); cursor: pointer; font-weight: 400; }
     /* Fluid 3-up row, NOT a fixed-width horizontal scroller — at a fixed
        120px + gap, 3 cards measured 388px against a ~340px content width, so
@@ -1467,10 +1468,17 @@
        list of identical `padding:14px 0; border-top` rows), so the fix is
        simply no margin: every hairline now sits equidistant from the text on
        either side of it, everywhere on the page. */
-    .set-group { background: none; border: none; border-radius: 0; margin-bottom: 0; overflow: visible; }
+    /* Boxed groups (owner feedback 2026-08-29: the flat hairline-only list
+       above "still feels convoluted" once Settings grew past a handful of
+       rows) — each labeled section is now one bordered/surfaced card, not
+       just an unmarked run of rows. .set-row's own border-top still
+       separates rows WITHIN a box; .set-row-first removes it from each
+       box's own first row so the box border alone starts it. */
+    .set-group { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); margin-bottom: 0; overflow: hidden; padding: 0 1rem; }
     /* Symmetric again — the top-heavy 1rem/0.8rem rebalance was a guess at
        the asymmetry above, which is now fixed at its actual source. */
     .set-row { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; padding: 0.9rem 0; border-top: 1px solid var(--line); }
+    .set-row-first { border-top: none; }
     /* A row whose control is a multi-option segmented group (Theme's 3
        buttons, App language's 2) doesn't fit next to a two-line label on a
        narrow phone without squeezing the sub-label into a cramped multi-line
@@ -1926,7 +1934,7 @@
          a cluster of several groups without a visible seam. -->
     <div class="sec-label set-section-label" data-i18n="settings_section_appearance">Appearance</div>
     <div class="set-group">
-      <div class="set-row set-row-stack">
+      <div class="set-row set-row-stack set-row-first">
         <div><div class="sr-k" data-i18n="theme">Theme</div><div class="sr-sub" data-i18n="theme_sub">Light, dark, or match device</div></div>
         <div class="seg" id="theme-seg" role="group" aria-label="Theme" data-i18n-aria-label="theme">
           <button data-mode="light" data-i18n="theme_light" onclick="Settings.setTheme('light')">Light</button>
@@ -1944,8 +1952,13 @@
     </div>
 
     <div class="sec-label set-section-label" data-i18n="settings_section_voice">Voice &amp; reading</div>
+    <!-- ONE box for the whole section — voice-quality-group/langpacks-group
+         are now plain (unstyled) wrappers nested inside it, not their own
+         boxes, so toggling their visibility (native voice-quality check,
+         native-only language packs) can't leave a stray empty box or a
+         doubled border; see their own comments below for why each toggles. -->
     <div class="set-group">
-      <div class="set-row">
+      <div class="set-row set-row-first">
         <div><div class="sr-k" data-i18n="default_speed">Default speed</div></div>
         <select class="set-select" id="set-speed" onchange="Settings.setSpeed(+this.value)">
           <option value="0.5">0.5&times;</option>
@@ -1969,37 +1982,37 @@
         <div><div class="sr-k" data-i18n="follow_along">Follow along highlighting</div><div class="sr-sub" data-i18n="follow_along_sub">Highlight each word as it's read</div></div>
         <label class="tog"><input type="checkbox" id="set-followalong" onchange="Settings.setFollowAlong(this.checked)"><span class="tog-track"></span></label>
       </div>
-    </div>
-    <div class="set-group" id="voice-quality-group">
-      <!-- ALWAYS visible. It used to appear only in fallback mode, which meant
-           the majority of users (for whom the natural voice works) never learned
-           the feature existed, and those in fallback got no explanation of why.
-           Now it reports either state, with an "i" explainer either way. -->
-      <div class="set-row" id="neural-row">
-        <div>
-          <div class="sr-k"><span data-i18n="natural_voice">Natural voice</span><button class="sr-info" onclick="VoiceInfo.open()" aria-label="About the natural voice" data-i18n-aria-label="voiceinfo_title">i</button></div>
-          <div class="sr-sub" id="neural-sub" data-i18n="natural_voice_checking">Checking&hellip;</div>
+      <div id="voice-quality-group">
+        <!-- ALWAYS visible. It used to appear only in fallback mode, which meant
+             the majority of users (for whom the natural voice works) never learned
+             the feature existed, and those in fallback got no explanation of why.
+             Now it reports either state, with an "i" explainer either way. -->
+        <div class="set-row" id="neural-row">
+          <div>
+            <div class="sr-k"><span data-i18n="natural_voice">Natural voice</span><button class="sr-info" onclick="VoiceInfo.open()" aria-label="About the natural voice" data-i18n-aria-label="voiceinfo_title">i</button></div>
+            <div class="sr-sub" id="neural-sub" data-i18n="natural_voice_checking">Checking&hellip;</div>
+          </div>
+          <span class="set-stat" id="neural-status" data-i18n="on">On</span>
+          <button class="set-link" id="neural-retry" data-i18n="retry" style="display:none">Retry</button>
         </div>
-        <span class="set-stat" id="neural-status" data-i18n="on">On</span>
-        <button class="set-link" id="neural-retry" data-i18n="retry" style="display:none">Retry</button>
+        <div class="set-row" id="vh-row" style="display:none">
+          <div><div class="sr-k" data-i18n="better_device_voices">Better device voices</div><div class="sr-sub" data-i18n="better_device_voices_sub">Install free natural voices</div></div>
+          <button class="set-link" data-i18n="how" onclick="VoiceHelp.open()">How</button>
+        </div>
       </div>
-      <div class="set-row" id="vh-row" style="display:none">
-        <div><div class="sr-k" data-i18n="better_device_voices">Better device voices</div><div class="sr-sub" data-i18n="better_device_voices_sub">Install free natural voices</div></div>
-        <button class="set-link" data-i18n="how" onclick="VoiceHelp.open()">How</button>
-      </div>
-    </div>
-    <!-- Language packs: accents/languages beyond the store build's bundled US
-         default (only British English today) are downloaded on demand rather
-         than shipped in the APK — see CLAUDE.md's "MODEL SIZES" note. A single
-         summary row here opens LangPacksModal, which lists every pack
-         (downloaded or available) with its own Download/Remove action — scales
-         better than one Settings row per pack as more languages are added.
-         Native-only; hidden on the web build, where VoicePacks.refresh() is a
-         no-op and summary() returns null. -->
-    <div class="set-group" id="langpacks-group" style="display:none">
-      <div class="set-row">
-        <div><div class="sr-k" data-i18n="language_packs">Language packs</div></div>
-        <button class="set-link" data-i18n="downloads" onclick="LangPacksModal.open()">Downloads</button>
+      <!-- Language packs: accents/languages beyond the store build's bundled US
+           default (only British English today) are downloaded on demand rather
+           than shipped in the APK — see CLAUDE.md's "MODEL SIZES" note. A single
+           summary row here opens LangPacksModal, which lists every pack
+           (downloaded or available) with its own Download/Remove action — scales
+           better than one Settings row per pack as more languages are added.
+           Native-only; hidden on the web build, where VoicePacks.refresh() is a
+           no-op and summary() returns null. -->
+      <div id="langpacks-group" style="display:none">
+        <div class="set-row">
+          <div><div class="sr-k" data-i18n="language_packs">Language packs</div></div>
+          <button class="set-link" data-i18n="downloads" onclick="LangPacksModal.open()">Downloads</button>
+        </div>
       </div>
     </div>
 
@@ -2008,7 +2021,7 @@
          there is no server to request anything from. -->
     <div class="sec-label set-section-label" data-i18n="settings_section_storage">Storage &amp; data</div>
     <div class="set-group">
-      <div class="set-row">
+      <div class="set-row set-row-first">
         <div><div class="sr-k" data-i18n="storage_title">Storage</div><div class="sr-sub" data-i18n="storage_sub">See what's using space, free some up</div></div>
         <button class="set-link" data-i18n="view" onclick="StorageModal.open()">View</button>
       </div>
@@ -2024,7 +2037,7 @@
 
     <div class="sec-label set-section-label" data-i18n="settings_section_account">Account</div>
     <div class="set-group">
-      <div class="set-row">
+      <div class="set-row set-row-first">
         <div><div class="sr-k" data-i18n="google_account">Google account</div><div class="sr-sub" id="set-account" data-i18n="signed_in">Signed in</div></div>
         <button class="set-link" data-i18n="sign_out" onclick="App.signOut()">Sign out</button>
       </div>
@@ -2037,7 +2050,7 @@
 
     <div class="sec-label set-section-label" data-i18n="settings_section_support">Support</div>
     <div class="set-group">
-      <div class="set-row">
+      <div class="set-row set-row-first">
         <div><div class="sr-k" data-i18n="send_feedback">Send feedback</div><div class="sr-sub" data-i18n="send_feedback_sub">Ideas or anything on your mind</div></div>
         <button class="set-link" data-i18n="open" onclick="Feedback.open()">Open</button>
       </div>
@@ -2895,6 +2908,7 @@ const STRINGS = {
     marked_finished: 'Marked as finished',
     forget_book_confirm: 'Remove this book from PhonoLeaf? Your progress and any offline copy will be deleted. Files in Google Drive are never touched.',
     no_text_found: 'No text found to read', generating_audio: 'Generating audio…',
+    book_finished: 'You’ve reached the end of the book',
     no_chapter_list: 'No chapter list available', could_not_open_chapter: 'Could not open chapter',
     swipe_again_to_leave: 'Swipe again to leave',
 
@@ -2923,7 +2937,7 @@ const STRINGS = {
     tour_reader_search_title: 'Search', tour_reader_search_body: 'Find any word or phrase in this book.',
     tour_reader_chapters_title: 'Chapters', tour_reader_chapters_body: 'Jump to any chapter in the book.',
     tour_reader_background_title: 'Keep listening',
-    tour_reader_background_body: 'Leave this page anytime, or even close the app — your audio keeps playing right where you left off.',
+    tour_reader_background_body: 'Leave this page anytime. Switch apps or lock your screen, and your audio keeps playing right where you left off.',
     // Language packs modal
     language_packs_title: 'Language Packs',
     pick_voice_title: 'Pick a voice to download',
@@ -3159,6 +3173,7 @@ const STRINGS = {
     marked_finished: 'Marqué comme terminé',
     forget_book_confirm: 'Retirer ce livre de PhonoLeaf ? Votre progression et toute copie hors ligne seront supprimées. Les fichiers dans Google Drive ne sont jamais touchés.',
     no_text_found: 'Aucun texte à lire', generating_audio: 'Génération de l’audio…',
+    book_finished: 'Vous avez atteint la fin du livre',
     no_chapter_list: 'Aucune liste de chapitres disponible', could_not_open_chapter: 'Impossible d’ouvrir le chapitre',
     swipe_again_to_leave: 'Balayez à nouveau pour quitter',
 
@@ -3187,7 +3202,7 @@ const STRINGS = {
     tour_reader_search_title: 'Recherche', tour_reader_search_body: 'Trouvez n’importe quel mot ou phrase dans ce livre.',
     tour_reader_chapters_title: 'Chapitres', tour_reader_chapters_body: 'Accédez directement à n’importe quel chapitre.',
     tour_reader_background_title: 'Continuez d’écouter',
-    tour_reader_background_body: 'Quittez cette page à tout moment, ou même fermez l’application : votre audio continue exactement là où vous vous êtes arrêté.',
+    tour_reader_background_body: 'Quittez cette page à tout moment. Changez d’application ou verrouillez l’écran, et votre audio continue exactement là où vous vous êtes arrêté.',
     // Packs de langue
     language_packs_title: 'Packs de langue',
     pick_voice_title: 'Choisir une voix à télécharger',
@@ -5113,8 +5128,15 @@ const Tour = {
     try { if (localStorage.getItem('pl_reader_tour_seen')) return false; } catch (_) { return false; }
     const rv = document.getElementById('reader-view');
     if (!rv || rv.classList.contains('minimized')) return false;
+    const wasHidden = rv.classList.contains('hide-chrome');
     Reader.showChrome(); // not revealChrome() — that re-arms a 5s auto-hide that could hide controls mid-tour
-    this.start(this._readerSteps(), 'pl_reader_tour_seen', () => Reader.hideChromeSoon());
+    // If the chrome had to slide/fade in (.reader-top/.reader-bottom both
+    // transition over --motion-base, 0.25s), starting the tour immediately
+    // measures #play-btn's bounding rect mid-transition — the spotlight
+    // then sits offset from where the button actually settles (reported:
+    // the square isn't centered on the circle). Wait for it to finish.
+    const startTour = () => this.start(this._readerSteps(), 'pl_reader_tour_seen', () => Reader.hideChromeSoon());
+    if (wasHidden) setTimeout(startTour, 300); else startTour();
     return true;
   },
 };
@@ -7110,6 +7132,23 @@ const Reader = {
     State.rendition?.next();
   },
 
+  // True only when the CURRENTLY DISPLAYED page is the very last page of the
+  // very last spine section — i.e. calling nextPage() would have nowhere to
+  // go. Measures raw container scroll state rather than epub.js's own
+  // location/page metadata, same reasoning as nextPage()'s own overshoot
+  // corrector above: that metadata is exactly what's unreliable right at a
+  // section's last page.
+  _isAtBookEnd() {
+    try {
+      const book = State.epubBook;
+      const loc = State.rendition?.currentLocation();
+      const last = book?.spine?.last();
+      if (!last || !loc?.start || loc.start.index !== last.index) return false;
+      const c = document.querySelector('#viewer .epub-container');
+      return !!c && (c.scrollWidth - c.scrollLeft - c.clientWidth) <= 2;
+    } catch (_) { return false; }
+  },
+
   next() { TTS._dir = 1;  TTS.skipPage(() => Reader.nextPage()); },
   prev() { TTS._dir = -1; TTS.skipPage(() => State.rendition?.prev()); },
 
@@ -7953,6 +7992,19 @@ const TTS = {
       // background; the Web-Speech fallback can't, so it uses the normal turn.
       if (!this._isForeground() && this._engineNow() !== 'web' && State.epubBook) {
         this._bgAdvance(); // async — loads section text, keeps reading
+        return;
+      }
+      // End of book: nowhere left to turn to. epub.js's next() at the true
+      // last page doesn't reliably fire a NEW 'relocated' event (or, on some
+      // builds, re-fires one for the unchanged location) — either way,
+      // _awaitingPage never resolves as expected and the page we're already
+      // on gets read again, and again (reported: "just reads non-stop").
+      // Checked directly here rather than trusting epub.js's own next()/
+      // location metadata, matching this file's existing distrust of that
+      // metadata elsewhere (see nextPage()'s own overshoot corrector).
+      if (State.rendition && Reader._isAtBookEnd()) {
+        this.stop();
+        toast(I18n.t('book_finished'));
         return;
       }
       this._awaitingPage = true;
