@@ -151,6 +151,8 @@ Logged as-is, no design work done yet.
       lives, what it says: version number, credits, links to the website/
       support, licenses for bundled voice models, etc.). Probably belongs
       in Settings alongside Privacy/Terms.
+- [ ] **Maybe rename to "Bokos"?** Owner's idea, raised 2026-08-29 — came
+      from a "Books" typo. Not for now, just logged.
 
 ## SWOT research (ready to launch as a background task)
 

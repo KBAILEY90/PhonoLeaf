@@ -102,6 +102,7 @@
       --font-read: 'Literata', Georgia, serif;
       --radius:    2px;
       --safe-b:    env(safe-area-inset-bottom, 0px);
+      --mp-h:      0px; /* mini-player height when shown — see MiniPlayer.sync() */
       /* Motion system: formalizes the durations the app's transitions/
          animations already cluster around, rather than picking new
          values. Deliberately excludes page-turn animation (pageNext/
@@ -1163,7 +1164,13 @@
          needed for the same reason — see its own comment above.
       */
       flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch;
-      padding: 1.1rem 1.1rem calc(82px + var(--safe-b));
+      /* --mp-h (0 normally, ~46px while the mini-player is showing — see
+         MiniPlayer.sync()) adds its height on top of the tab bar's own
+         82px clearance, so a view's last rows (e.g. Settings' Privacy/Terms
+         links) never sit behind the mini-player bar when a book is playing
+         in the background — reported: those links were unreachable/hidden
+         behind it. */
+      padding: 1.1rem 1.1rem calc(82px + var(--mp-h, 0px) + var(--safe-b));
     }
 
     /* ===================== Home ===================== */
@@ -1393,6 +1400,11 @@
     .forest-msg { font: 0.82rem/1.45 var(--font-read); color: var(--text-dim); text-align: center; margin: 0.4rem 0 0; max-width: 15rem; }
     .forest-note { font: 0.66rem ui-monospace, Menlo, monospace; color: var(--text-dim); text-align: center; margin-top: 0.5rem; }
     .sec-label { font-size: 0.82rem; font-weight: 500; margin-bottom: 0.75rem; display: flex; justify-content: space-between; align-items: center; }
+    /* Settings section headings — .set-group itself has margin-bottom:0 (a
+       deliberate flat-list choice, see its own comment), so without this the
+       next section's heading would sit flush against the previous section's
+       last row with no separation at all. */
+    .set-section-label { margin-top: 1.75rem; color: var(--text-dim); }
     .sec-label a { font-size: 0.72rem; color: var(--accent); cursor: pointer; font-weight: 400; }
     /* Fluid 3-up row, NOT a fixed-width horizontal scroller — at a fixed
        120px + gap, 3 cards measured 388px against a ~340px content width, so
@@ -1424,7 +1436,7 @@
       padding: 0.6rem 0.1rem; font: 0.92rem var(--font-read); outline: none; background: none;
     }
     .lib-search input:focus { border-color: var(--accent); }
-    #library-view .books-grid { padding-bottom: calc(82px + var(--safe-b)); }
+    #library-view .books-grid { padding-bottom: calc(82px + var(--mp-h, 0px) + var(--safe-b)); }
 
     /* ===================== In-book search ===================== */
     .search-input {
@@ -1905,6 +1917,14 @@
       <span class="app-header-name" data-i18n="app_name_caps">PhonoLeaf</span>
     </div>
     <div class="home-title" data-i18n="settings_title">Settings</div>
+
+    <!-- Section headings (owner feedback 2026-08-29: many rows had
+         accumulated with no visible grouping beyond the unlabeled
+         card-per-set-group divider). Adjacent .set-groups under one
+         heading render as one continuous list (margin-bottom:0 on
+         .set-group — see its own CSS comment), so a heading can sit above
+         a cluster of several groups without a visible seam. -->
+    <div class="sec-label set-section-label" data-i18n="settings_section_appearance">Appearance</div>
     <div class="set-group">
       <div class="set-row set-row-stack">
         <div><div class="sr-k" data-i18n="theme">Theme</div><div class="sr-sub" data-i18n="theme_sub">Light, dark, or match device</div></div>
@@ -1921,6 +1941,10 @@
           <button data-lang="fr" onclick="Settings.setLang('fr')">FR</button>
         </div>
       </div>
+    </div>
+
+    <div class="sec-label set-section-label" data-i18n="settings_section_voice">Voice &amp; reading</div>
+    <div class="set-group">
       <div class="set-row">
         <div><div class="sr-k" data-i18n="default_speed">Default speed</div></div>
         <select class="set-select" id="set-speed" onchange="Settings.setSpeed(+this.value)">
@@ -1978,12 +2002,14 @@
         <button class="set-link" data-i18n="downloads" onclick="LangPacksModal.open()">Downloads</button>
       </div>
     </div>
+
     <!-- Your data: GDPR-style access (export) and erasure (delete). Everything
          PhonoLeaf holds is local to this device, so both are handled here —
          there is no server to request anything from. -->
+    <div class="sec-label set-section-label" data-i18n="settings_section_storage">Storage &amp; data</div>
     <div class="set-group">
       <div class="set-row">
-        <div><div class="sr-k" data-i18n="storage_title">On this phone</div><div class="sr-sub" data-i18n="storage_sub">See what's using space, free some up</div></div>
+        <div><div class="sr-k" data-i18n="storage_title">Storage</div><div class="sr-sub" data-i18n="storage_sub">See what's using space, free some up</div></div>
         <button class="set-link" data-i18n="view" onclick="StorageModal.open()">View</button>
       </div>
       <div class="set-row">
@@ -1995,6 +2021,8 @@
         <button class="set-link danger" data-i18n="delete" onclick="MyData.confirmDelete()">Delete</button>
       </div>
     </div>
+
+    <div class="sec-label set-section-label" data-i18n="settings_section_account">Account</div>
     <div class="set-group">
       <div class="set-row">
         <div><div class="sr-k" data-i18n="google_account">Google account</div><div class="sr-sub" id="set-account" data-i18n="signed_in">Signed in</div></div>
@@ -2006,6 +2034,8 @@
         <button class="set-link" data-i18n="change" onclick="Settings.changeFolder()">Change</button>
       </div>
     </div>
+
+    <div class="sec-label set-section-label" data-i18n="settings_section_support">Support</div>
     <div class="set-group">
       <div class="set-row">
         <div><div class="sr-k" data-i18n="send_feedback">Send feedback</div><div class="sr-sub" data-i18n="send_feedback_sub">Ideas or anything on your mind</div></div>
@@ -2122,7 +2152,7 @@
 <!-- ============== STORAGE MODAL ("On this phone") ============== -->
 <div class="modal-backdrop" id="storage-modal" onclick="StorageModal.close(event)">
   <div class="modal-sheet" onclick="event.stopPropagation()">
-    <div class="modal-title" data-i18n="storage_title">On this phone</div>
+    <div class="modal-title" data-i18n="storage_title">Storage</div>
     <div id="storage-total" class="sleep-hint"></div>
     <div id="storage-sections"></div>
   </div>
@@ -2701,6 +2731,9 @@ const Theme = {
 const STRINGS = {
   en: {
     settings_title: 'Settings',
+    settings_section_appearance: 'Appearance', settings_section_voice: 'Voice & reading',
+    settings_section_storage: 'Storage & data', settings_section_account: 'Account',
+    settings_section_support: 'Support',
     theme: 'Theme', theme_sub: 'Light, dark, or match device',
     theme_light: 'Light', theme_dark: 'Dark', theme_auto: 'Auto',
     default_speed: 'Default speed',
@@ -2838,12 +2871,12 @@ const STRINGS = {
     aria_speed: 'Speed', aria_open_book: 'Open {name}', aria_open_folder: 'Open folder {name}',
     aria_group_breakdown: 'Group breakdown by', stat_bar_aria: '{label}: {minutes}',
 
-    // Storage manager ("On this phone")
-    storage_title: 'On this phone', storage_sub: "See what's using space, free some up",
+    // Storage manager
+    storage_title: 'Storage', storage_sub: "See what's using space, free some up",
     view: 'View', clear: 'Clear',
     storage_total_line: 'Using {total} total',
     storage_books: 'Cached books', storage_packs: 'Voice packs', storage_covers: 'Cover images',
-    storage_folder: 'Connected folder', storage_folder_connected: 'Connected: {name}',
+    storage_sort: 'Sort', storage_sort_size: 'By size', storage_sort_alpha: 'A-Z',
     storage_none: 'None cached', storage_covers_cleared: 'Cover cache cleared',
     kb: '{kb} KB', gb: '{gb} GB', // mb reuses the existing key below (voice-pack download strings)
 
@@ -2887,7 +2920,10 @@ const STRINGS = {
     tour_reader_play_title: 'Play', tour_reader_play_body: 'Tap to start or pause listening.',
     tour_reader_voice_title: 'Voice', tour_reader_voice_body: 'Pick which voice reads to you.',
     tour_reader_highlight_title: 'Follow along', tour_reader_highlight_body: 'Highlights each word as it’s read aloud.',
+    tour_reader_search_title: 'Search', tour_reader_search_body: 'Find any word or phrase in this book.',
     tour_reader_chapters_title: 'Chapters', tour_reader_chapters_body: 'Jump to any chapter in the book.',
+    tour_reader_background_title: 'Keep listening',
+    tour_reader_background_body: 'Leave this page anytime, or even close the app — your audio keeps playing right where you left off.',
     // Language packs modal
     language_packs_title: 'Language Packs',
     pick_voice_title: 'Pick a voice to download',
@@ -2960,6 +2996,9 @@ const STRINGS = {
   },
   fr: {
     settings_title: 'Paramètres',
+    settings_section_appearance: 'Apparence', settings_section_voice: 'Voix et lecture',
+    settings_section_storage: 'Stockage et données', settings_section_account: 'Compte',
+    settings_section_support: 'Assistance',
     theme: 'Thème', theme_sub: 'Clair, sombre, ou selon l’appareil',
     theme_light: 'Clair', theme_dark: 'Sombre', theme_auto: 'Auto',
     default_speed: 'Vitesse par défaut',
@@ -3096,12 +3135,12 @@ const STRINGS = {
     aria_speed: 'Vitesse', aria_open_book: 'Ouvrir {name}', aria_open_folder: 'Ouvrir le dossier {name}',
     aria_group_breakdown: 'Regrouper par', stat_bar_aria: '{label} : {minutes}',
 
-    // Gestionnaire de stockage (« Sur cet appareil »)
-    storage_title: 'Sur cet appareil', storage_sub: 'Voir ce qui prend de la place, en libérer',
+    // Gestionnaire de stockage
+    storage_title: 'Stockage', storage_sub: 'Voir ce qui prend de la place, en libérer',
     view: 'Afficher', clear: 'Effacer',
     storage_total_line: 'Utilise {total} au total',
     storage_books: 'Livres en cache', storage_packs: 'Packs de voix', storage_covers: 'Images de couverture',
-    storage_folder: 'Dossier connecté', storage_folder_connected: 'Connecté : {name}',
+    storage_sort: 'Trier', storage_sort_size: 'Par taille', storage_sort_alpha: 'A-Z',
     storage_none: 'Aucun élément en cache', storage_covers_cleared: 'Cache des couvertures vidé',
     kb: '{kb} Ko', gb: '{gb} Go', // mb reuses the existing key below (voice-pack download strings)
 
@@ -3145,7 +3184,10 @@ const STRINGS = {
     tour_reader_play_title: 'Lecture', tour_reader_play_body: 'Touchez pour démarrer ou mettre en pause.',
     tour_reader_voice_title: 'Voix', tour_reader_voice_body: 'Choisissez la voix qui vous lit.',
     tour_reader_highlight_title: 'Suivi du texte', tour_reader_highlight_body: 'Surligne chaque mot au fur et à mesure de la lecture.',
+    tour_reader_search_title: 'Recherche', tour_reader_search_body: 'Trouvez n’importe quel mot ou phrase dans ce livre.',
     tour_reader_chapters_title: 'Chapitres', tour_reader_chapters_body: 'Accédez directement à n’importe quel chapitre.',
+    tour_reader_background_title: 'Continuez d’écouter',
+    tour_reader_background_body: 'Quittez cette page à tout moment, ou même fermez l’application : votre audio continue exactement là où vous vous êtes arrêté.',
     // Packs de langue
     language_packs_title: 'Packs de langue',
     pick_voice_title: 'Choisir une voix à télécharger',
@@ -3905,6 +3947,10 @@ const MiniPlayer = {
     const rv = document.getElementById('reader-view');
     const on = rv.classList.contains('minimized');
     bar.classList.toggle('show', on);
+    // Every view's own bottom padding (--mp-h, see .scrolly) needs to grow by
+    // the mini-player's height while it's shown, or a view's last rows sit
+    // behind it — 46px matches the tab bar's own already-duplicated height.
+    document.documentElement.style.setProperty('--mp-h', on ? '46px' : '0px');
     if (!on) return;
     document.getElementById('mp-play-btn').classList.toggle('playing', TTS.active);
     const sel = document.getElementById('mp-speed-select');
@@ -5045,7 +5091,14 @@ const Tour = {
       { selector: '#play-btn', titleKey: 'tour_reader_play_title', bodyKey: 'tour_reader_play_body' },
       { selector: '#voice-btn', titleKey: 'tour_reader_voice_title', bodyKey: 'tour_reader_voice_body' },
       { selector: '#hl-btn', titleKey: 'tour_reader_highlight_title', bodyKey: 'tour_reader_highlight_body' },
+      { selector: '#search-btn', titleKey: 'tour_reader_search_title', bodyKey: 'tour_reader_search_body' },
       { selector: '#chapters-btn', titleKey: 'tour_reader_chapters_title', bodyKey: 'tour_reader_chapters_body' },
+      // Closing step, anchored to the back button (the actual way you leave
+      // this page) — owner-requested: make sure new users know playback
+      // survives both leaving the reader page and leaving the app entirely
+      // (PlaybackService.kt's foreground service is what actually makes the
+      // second half of that true).
+      { selector: '.rt-back', titleKey: 'tour_reader_background_title', bodyKey: 'tour_reader_background_body' },
     ];
   },
   // Called from _onRelocated, same ~400ms window as the normal auto-start-
@@ -9744,6 +9797,7 @@ const NoVoiceModal = {
 // invented: cached books, voice packs, cover cache, connected folder.
 const StorageModal = {
   _PACK_LABEL: { us: 'lang_en_us', gb: 'lang_en_gb', fr: 'lang_fr', de: 'lang_de', es: 'lang_es', kokoro: 'lang_en' },
+  _bookSort: 'size', // 'size' | 'alpha' — owner-requested toggle, defaults to size
 
   async open() {
     document.getElementById('storage-modal').classList.add('open');
@@ -9753,9 +9807,13 @@ const StorageModal = {
     if (!e || e.target.classList.contains('modal-backdrop'))
       document.getElementById('storage-modal').classList.remove('open');
   },
+  setBookSort(mode) {
+    this._bookSort = mode;
+    this.render();
+  },
 
-  _section(label, bodyHTML) {
-    return `<div class="sec-label">${esc(label)}</div>${bodyHTML}`;
+  _section(label, bodyHTML, extraHTML) {
+    return `<div class="sec-label"><span>${esc(label)}</span>${extraHTML || ''}</div>${bodyHTML}`;
   },
   _row(name, size, removeCall, actionLabel) {
     const right = removeCall
@@ -9776,7 +9834,9 @@ const StorageModal = {
       const meta = (State.books || []).find(b => b.id === id);
       const name = (meta?.name || id).replace(/\.epub$/i, '');
       return { id, name, bytes: idx[id].bytes || 0 };
-    }).sort((a, b) => b.bytes - a.bytes);
+    });
+    if (this._bookSort === 'alpha') bookRows.sort((a, b) => a.name.localeCompare(b.name));
+    else bookRows.sort((a, b) => b.bytes - a.bytes);
     const booksTotal = bookRows.reduce((s, r) => s + r.bytes, 0);
 
     // Voice packs — native only. approxBytes is a static per-model estimate
@@ -9797,26 +9857,28 @@ const StorageModal = {
     // Cover cache — no size/clear helper existed before this; see CoverCache.size/clear.
     const coversBytes = await CoverCache.size();
 
-    // Connected folders — informational only, not a size. No disconnect
-    // action here, matching the existing deliberate design decision that
-    // folder disconnection isn't offered from Settings. Drive and a local
-    // device folder are independently connectable (see FolderChooser), so
-    // both are checked, not just one.
-    const connectedFolders = [activeFolder(), LocalBooks.folderInfo().name].filter(Boolean);
+    // Connected folder/account info deliberately NOT shown here (owner
+    // feedback: looked out of place in a screen about what's using space —
+    // a folder name has no size and no action). Settings' own "Books
+    // folder" row already covers that.
 
     const grandTotal = booksTotal + packsTotal + coversBytes;
     document.getElementById('storage-total').textContent = I18n.t('storage_total_line', { total: fmtBytes(grandTotal) });
 
+    const sortToggle = bookRows.length > 1 ? `
+      <div class="seg storage-sort-seg" role="group" aria-label="${esc(I18n.t('storage_sort'))}">
+        <button class="${this._bookSort === 'size' ? 'on' : ''}" onclick="StorageModal.setBookSort('size')">${esc(I18n.t('storage_sort_size'))}</button>
+        <button class="${this._bookSort === 'alpha' ? 'on' : ''}" onclick="StorageModal.setBookSort('alpha')">${esc(I18n.t('storage_sort_alpha'))}</button>
+      </div>` : '';
+
     document.getElementById('storage-sections').innerHTML = [
       this._section(I18n.t('storage_books'), bookRows.length
         ? bookRows.map(r => this._row(r.name, fmtBytes(r.bytes), `StorageModal.removeBook('${esc(r.id)}')`)).join('')
-        : this._empty()),
+        : this._empty(), sortToggle),
       packsAvailable ? this._section(I18n.t('storage_packs'), packRows.length
         ? packRows.map(r => this._row(I18n.t(this._PACK_LABEL[r.model] || r.model), fmtBytes(r.bytes), `StorageModal.removePack('${r.model}')`)).join('')
         : this._empty()) : '',
       this._section(I18n.t('storage_covers'), this._row(I18n.t('storage_covers'), fmtBytes(coversBytes), coversBytes ? `StorageModal.clearCovers()` : null, I18n.t('clear'))),
-      connectedFolders.length ? this._section(I18n.t('storage_folder'), connectedFolders.map(name =>
-        `<div class="set-row"><div class="sr-sub">${esc(I18n.t('storage_folder_connected', { name }))}</div></div>`).join('')) : '',
     ].join('');
   },
 
@@ -9900,6 +9962,16 @@ const MyData = {
   // destroy the token and leave the grant dangling on Google's side.
   async deleteAll() {
     try { await App.signOut(); } catch (_) {}
+    // Clear the IN-MEMORY progress state too, not just localStorage — if a
+    // book is open, the location.reload() below fires 'pagehide', which
+    // Reader's own exit handler turns into a call to _persistPosition().
+    // That reads the still-populated State.progress and writes it straight
+    // back into pl_prog, resurrecting exactly what the sweep below just
+    // erased (reported bug: a finished book reappeared, lit and in Continue
+    // Listening, right after delete + re-sign-in). Nulling State.currentBook
+    // is enough — _persistPosition()'s very first check bails without it.
+    State.currentBook = null;
+    State.progress = {};
     try {
       for (const k of Object.keys(localStorage)) if (this._isOurs(k)) localStorage.removeItem(k);
     } catch (_) {}
