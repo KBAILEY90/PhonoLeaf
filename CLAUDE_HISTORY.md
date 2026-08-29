@@ -6721,3 +6721,73 @@ does not composite frames in this environment), so this is measurement-
 verified, not eyeball-verified, and **not device-verified** — the column
 never applies on a phone by construction, but the Android build itself has
 still not been run since these changes.
+
+## Two-branch reconciliation: hero archived, forest promoted to `main` (2026-08-28)
+
+Two Claude sessions independently extended `index.green.html` from the same
+base commit (`d1fc64e`) for days, with no visibility into each other —
+`claude/docs-code-review-tam2pr` (this session, PR #4) built Phase 2/3 (the
+motion/gesture token system, a localized accessibility pass, the storage
+manager screen, in-book full-text search) on top of Phase 1, and never
+touched the hero. `redesign/native-android-ship` (a different session, the
+entry immediately above this one) built several more rounds of real
+device-tested work — Home/Shelves/Player rebuild, sleep timer, ±15s skip, a
+"forest" Home visualization replacing the hero, Book Detail fixes, a mini-
+player bar, an i18n audit, the desktop-column CSS fix, and the native/web
+build split (`stage-www.js`'s `APP_SOURCE` pointed at `index.green.html`).
+The owner discovered the divergence when a native build (`npm run
+sync:test`) surfaced the wrong version's UI and asked pointed questions
+about it — not something either session caught on its own.
+
+**Root cause, confirmed by reading `redesign/native-android-ship`'s own
+history rather than guessed:** `index.green.html` had gone missing from the
+working tree between sessions and was correctly recovered from
+`www/index.html` (a byte-identical build artifact from a recent
+`sync:test` run) — that recovery was sound, not the bug. The actual
+problem was purely two sessions working the same file in parallel with
+nothing forcing a check first.
+
+**Owner's decision, three parts, executed exactly as given:**
+1. **Archive the hero version.** `git tag` push failed with an HTTP 403
+   (this session's git credentials allow branch pushes, not tag pushes —
+   confirmed via the agent-proxy status endpoint, not a transient error).
+   Used a branch instead: `archive/hero-redesign-2026-08-28-branch`, pushed
+   to origin, pointing at PR #4's final commit (`5031bb8`). PR #4 closed
+   (not merged) with a comment linking the archive branch and this entry.
+   The full Phase 2/3 diff — token system, accessibility pass, storage
+   manager, search — lives there untouched, nowhere else.
+2. **Promote the forest version.** `redesign/native-android-ship` → `main`
+   confirmed as a clean fast-forward (`main` had zero commits since the
+   shared base). Branched `redesign/converge-to-main` off it, one cleanup
+   commit removing `PhonoLeaf Design System.zip` and `PhonoLeaf.dc.html`
+   (accidentally committed design-export artifacts — `CLAUDE.md` already
+   says these should stay local-only, and this branch's own history had
+   already caught the zip's bundled `index.green.html` copy going stale
+   once), added them to `.gitignore`, syntax-checked, PR'd, merged to
+   `main`.
+3. **Prevent recurrence.** Added a standing check to `CLAUDE.md`'s redesign
+   section: before starting substantial work on `index.green.html`, run
+   `git log --all --oneline -- index.green.html` and `git branch -r` — a
+   10-second check that would have caught this the first time. Also
+   corrected `scripts/stage-www.js`'s "TO CONVERGE LATER" comment (and the
+   matching language in `CLAUDE.md`), both of which described the
+   native/web split as temporary pending a later merge — the owner's
+   2026-08-28 call makes the split permanent, not a to-do.
+
+**Explicitly not done today, by owner instruction:** porting Phase 2/3's
+four features into the now-canonical `index.green.html`. That's real,
+scoped work against a very different version of the file (forest markup,
+mini player, desktop column CSS already in place) — logged in `TODO.md`
+rather than attempted inline. Also explicitly not attempted: a git merge of
+the two branches' `index.green.html` versions against each other — flagged
+by the owner as likely to produce unresolvable conflicts given the scale of
+independent change on both sides, and not needed since the plan was always
+"pick one, archive the other," not "combine them."
+
+Git ref bookkeeping note: an initial archive attempt used a tag name that
+collided with a same-named branch created during troubleshooting the 403
+(`error: src refspec ... matches more than one`); both local refs were
+deleted and only the final `-branch`-suffixed name was pushed. Remote
+branch deletion also 403s under this session's credentials, so a
+differently-named stray branch from that troubleshooting was left in place
+rather than fought further — harmless, just an extra ref.

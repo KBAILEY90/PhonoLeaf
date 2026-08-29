@@ -114,9 +114,11 @@ The "Green Ink"/"Shelf" redesign, sourced from a Claude Design project.
 **No longer a mere test page:** as of 2026-08-28 `stage-www.js` builds the
 Android app from THIS file (see the native/web split above), so it is what
 Play Store users get. The **website** still serves the repo-root
-`index.html` (older design) and is untouched by it — the two converge once
-the desktop/responsive pass is done. Not precached on the web side, not
-linked from the live site. Originally **Phase 1 only**: tab bar renamed (Now/Shelves/
+`index.html` (older design) and is untouched by it. **This fork is
+deliberate and permanent, not a temporary state pending a merge** — owner
+decision 2026-08-28 (see the KNOWN GAP resolution below), overriding this
+section's own earlier "converge later" framing. Not precached on the web
+side, not linked from the live site. Originally **Phase 1 only**: tab bar renamed (Now/Shelves/
 Log/You — display labels only, internal `Nav`/`data-tab` identifiers
 unchanged), sharp `2px`-corner visual system, sign-in feature-row copy, and
 a dedicated type-to-confirm `EraseModal` for `MyData.deleteAll()`. Also
@@ -629,45 +631,39 @@ only ONE of them.**
   Entirely local; **no push is involved, and pushing does not ship it**.
   Conversely a change to `index.green.html` alone never reaches the website.
 
-- **Current branch state (2026-08-28)**: this whole native/web split, plus
-  every redesign item logged below, is committed on `redesign/native-
-  android-ship` (pushed to origin, not merged) — **not on `main`**.
-  `main`/`origin/main` still point at `d1fc64e`, identical to what's live
-  on phonoleaf.com right now. The owner has already run `npm run sync` and
-  verified the redesign locally, and is doing the Android Studio build /
-  Play Console upload themselves from that branch's working tree. Merging
-  this branch into `main` and pushing is a separate, not-yet-taken step —
-  it WOULD change the live website (the branch's `index.html` picked up a
-  desktop-column CSS fix), so don't merge/push to `main` without the owner
-  explicitly asking for that specific step.
+- **Merged to `main` 2026-08-28** (owner explicitly asked for this specific
+  step, per the KNOWN GAP resolution below): this whole native/web split,
+  plus every redesign item logged below, landed on `main` via
+  `redesign/converge-to-main` (a clean fast-forward — `main` had zero
+  commits since the branches' shared base, so there was nothing to
+  reconcile at the git level). The desktop-column CSS fix in the real
+  `index.html` is now live on phonoleaf.com; `index.green.html` (the
+  native app source) is not linked from the website and doesn't affect it.
 
-- **KNOWN GAP, unresolved, found 2026-08-28 — two divergent branches, each
-  missing real work the other has.** A separate branch, `claude/docs-code-
-  review-tam2pr`, ALSO has `index.green.html` changes — its own committed
-  Phase 2/3 of the redesign (the `--motion-fast/base/slow/ease` token
-  system, in-book full-text search, the storage manager "On this phone"
-  screen, and a fuller accessibility/aria-label i18n pass — 37 translated
-  aria-labels there vs. only 6 on `redesign/native-android-ship`) — but it
-  has NONE of the forest, the mini player, or anything else logged in this
-  file below. Neither branch is a superset: `claude/docs-code-review-
-  tam2pr`'s `index.green.html` is 8,437 lines with Phase 2/3 and no Round-3-
-  onward work; `redesign/native-android-ship`'s is 9,781 lines with
-  everything below and no Phase 2/3. Best guess at cause: this file was
-  found deleted and recovered from a generated build artifact at some point
-  (see `CLAUDE_HISTORY.md`) — if that recovery grabbed a copy predating
-  Phase 2/3, every session since (this whole file's own history below
-  included) has been unknowingly built on the regressed base, while this
-  file's own text kept claiming Phase 2/3 was done. **Not yet reconciled.**
-  A real merge is needed — diff the two branches' `index.green.html`
-  carefully and port Phase 2/3's features into the current branch (or vice
-  versa), verifying nothing silently drops either direction — do not
-  attempt a blind `git merge` on this file, the scale of independent
-  parallel changes on both sides makes conflict markers likely to be
-  unresolvable automatically. Until this is done, whichever branch gets
-  checked out determines which half of the redesign you're looking at —
-  check `git branch --show-current` before assuming `index.green.html`
-  reflects "the redesign," and warn the owner immediately if it doesn't
-  match what's described below.
+- **KNOWN GAP, RESOLVED 2026-08-28 — two divergent branches, reconciled by
+  owner decision, not by merging.** `claude/docs-code-review-tam2pr` had
+  independently built its own Phase 2/3 of the redesign on top of Phase 1
+  (the `--motion-fast/base/slow/ease` token system, in-book full-text
+  search, the storage manager "On this phone" screen, and a localized
+  accessibility pass) — real root cause, confirmed from this file's own
+  history below, not the "best guess" originally logged here: this file
+  went missing from the working tree between sessions and was correctly
+  recovered from `www/index.html` (a byte-identical build artifact); the
+  actual problem was simply two sessions extending the same file for days
+  with zero visibility into each other, nothing to do with a bad recovery.
+  **Owner's call**: `redesign/native-android-ship` (this branch — the
+  forest, mini player, Book Detail fixes, the native/web build split) is
+  the permanent, active, productionized source for the native app. The
+  other branch's version is archived, not merged in — preserved at branch
+  `archive/hero-redesign-2026-08-28-branch` (same content as its closed
+  PR #4) — see `CLAUDE_HISTORY.md` for the full writeup. **Porting Phase
+  2/3's four features into this file is a real tracked task, not done as
+  part of this reconciliation** — see `TODO.md`.
+  **Safeguard, so this doesn't happen again**: before starting substantial
+  work on `index.green.html`, run `git log --all --oneline --
+  index.green.html` and `git branch -r` — a 10-second check for other
+  recent activity on this file. That check alone would have caught this
+  the first time.
 
 - A second Claude session has also pushed to `main` in the past — always
   `git fetch` and check `git log HEAD..origin/main` before pushing, rebase

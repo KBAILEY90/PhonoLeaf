@@ -18,14 +18,17 @@
 // changed index.html to phones without the website changing at the same
 // moment. The native build does NOT come from a push at all (it is
 // `npm run sync` + Android Studio, locally), so pointing ONLY this script
-// at the redesign lets the app ship while the website stays put until the
-// desktop/responsive pass is finished and the two can converge.
+// at the redesign lets the app ship while the website stays put.
 //
-// TO CONVERGE LATER: set APP_SOURCE back to 'index.html' (after the
-// redesign has been promoted into it), drop the '.green' legal pages from
-// FILES below, and delete scripts/stage-test.js, which does the same job
-// as this script now and only still exists because CLAUDE.md documents
-// `npm run sync:test`.
+// THIS SPLIT IS PERMANENT, not a to-do — owner decision 2026-08-28 (see
+// CLAUDE.md's KNOWN GAP / redesign section). Earlier drafts of this
+// comment called it temporary pending a "desktop/responsive pass [to]
+// converge" the two files; that framing is superseded. `index.green.html`
+// is the native app's real, standing source and `index.html` is the
+// website's, indefinitely. `scripts/stage-test.js` still exists and is
+// still needed (it stages `index.green.html` as a *test* build without
+// touching the real native build config — see `npm run sync:test` in
+// CLAUDE.md).
 const fs = require('fs');
 const path = require('path');
 
