@@ -68,26 +68,25 @@ don't let it go stale the way `BACKLOG.md`'s old "Next up" section did.
       worth logging results back into `CLAUDE.md`'s Native Kokoro section.
 - [ ] **Competitor SWOT + app store review research.** Scoped and ready to
       kick off as a background research task — see "SWOT research" below.
+- [ ] **Internal SWOT of PhonoLeaf itself**, raised 2026-08-29 — distinct
+      from the competitor SWOT above (that one benchmarks against
+      ElevenReader/NaturalReader/etc.; this one looks inward: strengths,
+      weaknesses, opportunities, threats in PhonoLeaf's own product,
+      codebase, and business position). Not scoped yet — worth a short
+      framing pass (codebase-only audit vs. also covering business/market
+      factors already tracked in `BUSINESS.md`/`PAYMENTS_SPEC.md`) before
+      starting.
 - [ ] **App redesign exploration with the `design` skill.** Ready whenever
       wanted — needs a scoping conversation first (which screens/flows,
       what direction), not a blind "redesign everything" pass.
-- [ ] **Port Phase 2/3 features from the archived hero branch into the now-
-      canonical `index.green.html`.** 2026-08-28: two sessions independently
-      extended `index.green.html` in parallel; the owner chose
-      `redesign/native-android-ship` (forest Home, mini player, Book Detail
-      fixes, the native/web build split) as the permanent native-app source,
-      now merged to `main`. The other branch's four features never made it
-      in and are NOT lost — preserved at `archive/hero-redesign-2026-08-28-
-      branch` (former PR #4): the `--motion-fast/base/slow/ease` CSS token
-      system, a localized accessibility pass (`data-i18n-aria-label` on
-      every `aria-label`), the storage manager ("On this phone") Settings
-      screen, and lazy in-book full-text search. Porting these into the
-      current `index.green.html` is real, scoped work — re-implement each
-      against the forest version's markup/CSS, don't attempt a git merge of
-      the two branches (flagged as likely unresolvable given the scale of
-      independent changes on both sides). See `CLAUDE.md`'s KNOWN GAP
-      resolution and `CLAUDE_HISTORY.md`'s 2026-08-28 reconciliation entry
-      for full context.
+- [x] **Port Phase 2/3 features from the archived hero branch into the
+      now-canonical `index.green.html`.** Done 2026-08-29: the motion/
+      gesture CSS token system, a localized accessibility pass, the storage
+      manager ("On this phone") screen, and in-book full-text search are
+      all now in `index.green.html`, re-implemented by hand against the
+      forest version's markup (not a git merge — see `CLAUDE_HISTORY.md`'s
+      2026-08-29 entry). Not yet device-tested — verify via `npm run sync`
+      + Android Studio before the next Play Console upload.
 - [ ] **Stale doc cleanup**, surfaced 2026-08-20 and not yet done:
       `BACKLOG.md` section H (Kokoro-on-strong-devices) says "not
       implemented" — it shipped 2026-08-08. Section F's accessibility
@@ -160,6 +159,8 @@ Logged as-is, no design work done yet.
       lives, what it says: version number, credits, links to the website/
       support, licenses for bundled voice models, etc.). Probably belongs
       in Settings alongside Privacy/Terms.
+- [ ] **Maybe rename to "Bokos"?** Owner's idea, raised 2026-08-29 — came
+      from a "Books" typo. Not for now, just logged.
 
 ## SWOT research (ready to launch as a background task)
 
