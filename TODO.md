@@ -97,10 +97,14 @@ don't let it go stale the way `BACKLOG.md`'s old "Next up" section did.
       fix was originally written in the closed PR #4, which got archived
       rather than merged during the branch reconciliation — reapplied here
       from that diff, not redone from scratch.)
-- [ ] **Store review prompts** (`BACKLOG.md` section I) — Play In-App
-      Review / iOS SKStoreReviewController, triggered after a good moment
-      (finishing a book), never nagging. Fully scoped, nothing built yet,
-      doesn't depend on payments or incorporation.
+- [x] **Store review prompts**, done 2026-08-30 (Android only) — see
+      `BACKLOG.md` section I. `StoreReviewPlugin.kt` wraps Google Play's
+      In-App Review API, triggered from finishing a book (manual "Mark as
+      finished" or reaching the actual last page while listening), gated
+      by a local 60-day timestamp. iOS deferred (no `ios/` platform exists
+      yet); no web fallback (no reviewable web listing to link to). Not
+      yet device-tested — verify the review sheet actually appears via
+      `npm run sync` + Android Studio.
 
 ## Bug, just fixed, needs device confirmation
 

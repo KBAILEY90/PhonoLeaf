@@ -340,7 +340,20 @@ Checked `index.html`:
 
 ## I. Ask for reviews (occasionally, never if already done)
 
-**[CODE]** Prompt for a store review at good moments, without nagging:
+**[DONE 2026-08-30, Android only]** `StoreReviewPlugin.kt` wraps Google
+Play's In-App Review API; the JS-side `StoreReview` module (`index.green.html`)
+calls it from the two genuine "finished a book" moments — `BookDetail.markFinished()`
+and TTS reaching the actual last page — gated by a local 60-day
+`pl_review_asked_at` timestamp so it isn't called at every opportunity (Play's
+own library still governs the real rate limit and no-ops if already reviewed).
+**Deliberately not built**, scope-checked against the spec below:
+- **iOS (SKStoreReviewController)** — deferred. No `ios/` Capacitor platform
+  exists in this repo yet, so there's nothing to wire it into.
+- **Web fallback** ("a small dismissible prompt linking to the store") — the
+  web app has no reviewable store listing of its own to link to today, so
+  this would point nowhere real. Add it only once that's actually true.
+
+Original spec, for reference:
 - Use the platform review APIs, which already avoid repeat prompts and rate limit
   themselves: **Google Play In App Review** and Apple **SKStoreReviewController**.
 - Trigger after a positive moment (for example finishing a book, or the Nth

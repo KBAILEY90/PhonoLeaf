@@ -74,6 +74,11 @@ dependencies {
     // connect-a-folder feature) — avoids hand-rolling DocumentsContract column
     // queries. Small, stable, no transitive deps beyond androidx.core (already present).
     implementation "androidx.documentfile:documentfile:1.0.1"
+    // Google Play's own In-App Review API (StoreReviewPlugin.kt) — shows the
+    // native rate-this-app sheet in place. Verify this is still the latest
+    // stable release on Maven Central (com.google.android.play:review)
+    // before building; bump if a newer one exists.
+    implementation "com.google.android.play:review:2.0.2"
     implementation project(':capacitor-android')
     // Native neural TTS: Kokoro via sherpa-onnx (on-device, gapless on phones).
     // Prebuilt AAR (v1.13.4) committed in libs/ — sherpa-onnx has no Maven
