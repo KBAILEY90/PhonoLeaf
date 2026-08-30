@@ -8029,6 +8029,7 @@ const TTS = {
       if (State.rendition && Reader._isAtBookEnd()) {
         this.stop();
         toast(I18n.t('book_finished'));
+        StoreReview.maybeAsk(); // reaching the actual last page while listening is a genuine finish too
         return;
       }
       this._awaitingPage = true;
@@ -9734,6 +9735,7 @@ const BookDetail = {
     p.ts = p.ts || Date.now();
     try { localStorage.setItem('pl_prog', JSON.stringify(State.progress)); } catch (_) {}
     toast(I18n.t('marked_finished'));
+    StoreReview.maybeAsk(); // finishing a book is exactly the positive moment BACKLOG.md's spec calls for
     this.close();
     if (Nav.current === 'home') Home.render();
     if (Nav.current === 'library') Library.render();
@@ -10080,6 +10082,40 @@ const MyData = {
     }
     toast(I18n.t('data_deleted'));
     setTimeout(() => location.reload(), 900);
+  },
+};
+
+// --- Store review prompt (BACKLOG.md section I) ----------------------
+// Native (Android) only for now: wraps Google Play's own In-App Review API
+// via StoreReviewPlugin.kt, triggered after a genuine positive moment
+// (finishing a book), never on launch. Play's library self-governs how
+// often the sheet can actually appear (a handful of times a year,
+// regardless of how often this is called, and silently no-ops if the user
+// already reviewed) — _ASK_EVERY_MS here only avoids calling the native
+// API at every opportunity, not the real rate limit.
+//
+// Deliberately scoped down from BACKLOG.md's original spec in two ways:
+// - iOS (SKStoreReviewController) is deferred — there is no ios/ Capacitor
+//   platform in this repo yet, so there is nothing to wire it into.
+// - No web fallback ("a small dismissible prompt linking to the store").
+//   The web app has no reviewable store listing of its own to link to
+//   today, so a "leave a review" prompt would point nowhere real — add
+//   one only once that's actually true.
+const StoreReview = {
+  _ASK_EVERY_MS: 60 * 24 * 60 * 60 * 1000, // 60 days
+  maybeAsk() {
+    if (!App.isNative()) return;
+    const plugin = App._plugin('StoreReview');
+    if (!plugin) return;
+    try {
+      const last = +localStorage.getItem('pl_review_asked_at') || 0;
+      if (Date.now() - last < this._ASK_EVERY_MS) return;
+      localStorage.setItem('pl_review_asked_at', String(Date.now()));
+    } catch (_) { return; }
+    // Play never reports whether the sheet actually showed or what the
+    // user did with it (by design, so apps can't retaliate against a bad
+    // review) — nothing to show the user either way, success or failure.
+    plugin.requestReview().catch(() => {});
   },
 };
 

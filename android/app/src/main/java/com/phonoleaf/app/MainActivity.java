@@ -11,6 +11,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(SecureStoragePlugin.class); // Keystore-backed storage for pl_rtoken
         registerPlugin(EmailComposerPlugin.class); // direct-to-mail-app compose, bypassing the generic share chooser
         registerPlugin(LocalFolderPlugin.class); // SAF folder connect + manual refresh for LocalBooks
+        registerPlugin(StoreReviewPlugin.class); // Play In-App Review prompt after finishing a book
         super.onCreate(savedInstanceState);
     }
 }
