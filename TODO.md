@@ -87,13 +87,16 @@ don't let it go stale the way `BACKLOG.md`'s old "Next up" section did.
       forest version's markup (not a git merge — see `CLAUDE_HISTORY.md`'s
       2026-08-29 entry). Not yet device-tested — verify via `npm run sync`
       + Android Studio before the next Play Console upload.
-- [ ] **Stale doc cleanup**, surfaced 2026-08-20 and not yet done:
-      `BACKLOG.md` section H (Kokoro-on-strong-devices) says "not
-      implemented" — it shipped 2026-08-08. Section F's accessibility
-      bullets have no DONE marker even though the audit shipped
-      2026-08-07. `BUSINESS.md`'s gating item 4 still lists French legal
-      pages as open — they've been live since before the whole-app i18n
-      work.
+- [x] **Stale doc cleanup**, surfaced 2026-08-20, done 2026-08-29:
+      `BACKLOG.md` section H (Kokoro-on-strong-devices) no longer says "not
+      implemented" — marked done as of 2026-08-08 with a pointer to
+      `CLAUDE.md`'s Voice engine section. Section F's accessibility bullets
+      now have DONE markers dated 2026-08-07. `BUSINESS.md`'s gating item 4
+      no longer lists French legal pages as open — noted done, pointing at
+      the live `terms-fr.html`/`privacy-fr.html`/`home-fr.html`. (This exact
+      fix was originally written in the closed PR #4, which got archived
+      rather than merged during the branch reconciliation — reapplied here
+      from that diff, not redone from scratch.)
 - [x] **Store review prompts**, done 2026-08-30 (Android only) — see
       `BACKLOG.md` section I. `StoreReviewPlugin.kt` wraps Google Play's
       In-App Review API, triggered from finishing a book (manual "Mark as

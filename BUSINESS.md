@@ -141,10 +141,11 @@ Ordered by what gates revenue or has a deadline. "Code" = implementable in the r
    liability section from before. `home.html`'s CTA note changed from
    "Free" to "Free 7 day trial"; `sw.js` CACHE bumped to `phonoleaf-v14` and
    `www/` restaged. **JURISDICTION confirmed 2026-08: Québec, Canada** (Longueuil); currency USD
-   and the 14/30/12 windows all confirmed. **Still gating launch**: French
-   versions of Terms/Privacy/marketing (Québec Bill 96), a Québec CPA review of
-   the liability and discontinuation clauses, and the overall lawyer review, see
-   "Québec compliance".
+   and the 14/30/12 windows all confirmed. ~~French versions of
+   Terms/Privacy/marketing~~ **DONE** — `terms-fr.html`, `privacy-fr.html`,
+   `home-fr.html` are live (Québec Bill 96). **Still gating launch**: a
+   Québec CPA review of the liability and discontinuation clauses, and the
+   overall lawyer review, see "Québec compliance".
 
 ### Launch
 5. **Play Store release**: listing, ASO, screenshots, internal to closed to production.

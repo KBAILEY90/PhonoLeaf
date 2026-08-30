@@ -257,11 +257,22 @@ since accessibility users are a named target segment, a little dedicated work pa
 off and differentiates.
 
 **[CODE] Accessibility investments (cheap, high goodwill):**
-- Audit the app for screen reader support: every control needs a clear label, and
+- ~~Audit the app for screen reader support: every control needs a clear label, and
   every gesture only action (swipe to turn, double tap to play) needs an equivalent
-  labelled button so it is reachable with TalkBack/VoiceOver.
-- Respect the system settings for larger text, high contrast, and reduced motion.
-- Large tap targets and a simple onboarding.
+  labelled button so it is reachable with TalkBack/VoiceOver.~~ **[DONE
+  2026-08-07]** Removed the app-wide pinch-to-zoom lock (a WCAG failure),
+  added `role="button" tabindex="0"` + `aria-label`s to every clickable
+  `<div>`/`<a>` row that lacked keyboard/screen-reader semantics (book
+  cards, Home cards, chapter rows, folder browser, voice picker), and gave
+  Library's icon-only refresh button an `aria-label`. See `CLAUDE_HISTORY.md`
+  "Accessibility (audited 2026-08-07)" for the full findings list.
+- ~~Respect the system settings for larger text, high contrast, and reduced
+  motion.~~ **[DONE 2026-08-07]** Added a blanket
+  `@media (prefers-reduced-motion: reduce)` override; text already used
+  `rem` sizing and now scales with pinch-zoom re-enabled.
+- ~~Large tap targets and a simple onboarding.~~ **[DONE 2026-08-07]**
+  Audited — existing targets (`.ctrl-btn`, `.tab`, `.icon-btn`) were already
+  adequate, no changes needed.
 - ~~**Follow along highlighting**: highlight the word or sentence as it is
   read. This is a strong aid for dyslexia and ADHD and a genuine
   differentiator. Bigger build; flag as a feature candidate.~~ **[DONE
@@ -301,7 +312,17 @@ Stripe and store webhooks, is the record of who is entitled. See `PAYMENTS_SPEC.
 
 ## H. Voice engine: Kokoro on strong devices, Piper on weak
 
-**[CONFIRMED in code, 2026-08] The intended behavior is NOT implemented today.**
+**[DONE 2026-08-08]** Shipped on native: a Kokoro model now ships alongside
+Piper, gated by a one-time synthetic CPU benchmark (`_KOKORO_MIN_GFLOPS`,
+calibrated off one real device) run at first use (`pl_kokoro_gate`). Devices
+that pass are offered the "Upgraded" (Kokoro) voice in addition to
+"Standard" (Piper, always offered); devices that don't stay on Standard.
+See `CLAUDE.md`'s "Voice engine" section for current terminology and
+behavior, and `TODO.md` for the still-open follow-up (device-tier testing
+near the gate threshold to refine the calibration).
+
+~~**[CONFIRMED in code, 2026-08] The intended behavior is NOT implemented
+today.**~~ — superseded by the above; kept below for historical context only.
 Checked `index.html`:
 - `_engineNow()` returns only `'kokoro'` or `'web'`. There is no Kokoro versus
   Piper switch, and no device capability check anywhere (no `hardwareConcurrency`
@@ -314,16 +335,6 @@ Checked `index.html`:
 - Web: uses WASM Kokoro with a speed probe (`_kokoroBench`). If the device is too
   slow (ratio over 1.25) it sets `_kokoroDead` and falls back to the device system
   voice, NOT to Piper.
-
-So today, strong or weak, the Android app is Piper and the web is Kokoro or the
-system voice. "Kokoro on capable devices" is only a note, not code.
-
-**[CODE] To deliver the intended behavior on native:** ship or download a Kokoro
-model alongside Piper, run a one time speed measurement on the device at first run
-(reuse the existing bench idea), and pick Kokoro when the device sustains realtime,
-else Piper. Confirm Kokoro covers the same languages as the Piper packs before
-enabling it. This is a real feature, not a config flip. **Owner: confirm you want
-this built, and whether it should apply on native, web, or both.**
 
 ---
 
