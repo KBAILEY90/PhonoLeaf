@@ -637,6 +637,12 @@ Cached books/Voice packs/Cover images sections now each wrap in `.set-group`
 `.set-row-first` to drop its top hairline — previously the rows sat as a
 bare unboxed list under the heading. Not yet device-tested.
 
+**Storage modal per-item percentages (2026-08-30, same day)**: each cached
+book/pack/cover row's size now also shows its share of the grand total
+(`StorageModal._sizeWithPct`, e.g. "12 MB · 34%"), skipping the percentage
+entirely when nothing is cached yet (avoids a meaningless 0%/NaN%). Not yet
+device-tested.
+
 ## How to deploy
 
 **Two separate targets since the 2026-08-28 native/web split — a push ships
