@@ -7,7 +7,10 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "generate-keys": "node scripts/generate-entitlement-keypair.mjs"
+    "generate-keys": "node scripts/generate-entitlement-keypair.mjs",
+    "db:migrate:local": "wrangler d1 migrations apply phonoleaf-entitlement --local",
+    "db:migrate:remote": "wrangler d1 migrations apply phonoleaf-entitlement --remote",
+    "db:migrate:remote:staging": "wrangler d1 migrations apply phonoleaf-entitlement-staging --remote --env staging"
   },
   "devDependencies": {
     "wrangler": "^4.0.0"

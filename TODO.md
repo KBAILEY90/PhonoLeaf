@@ -16,10 +16,12 @@ don't let it go stale the way `BACKLOG.md`'s old "Next up" section did.
       account, in that order. `BUSINESS.md` "Gating, do now" #2.
 - [ ] **Lawyer review of ToS/Privacy** — same engagement, also awaiting
       response. `BUSINESS.md` §3.
-- [ ] **A replacement MacBook** — the M1 Air purchase fell through
-      (2026-08-10); nothing iOS-side is possible without it, not even
-      Apple Developer enrollment testing. Every other iOS item below is
-      blocked behind this one.
+- [ ] **iOS engineering** — the M1 MacBook Air was acquired 2026-08-29 (the
+      earlier purchase that fell through 2026-08-10 was replaced). No
+      longer hardware-blocked: a walkthrough was given the same day, but no
+      iOS platform exists yet in this repo (`@capacitor/ios` isn't even a
+      dependency) — Apple Developer enrollment and `npx cap add ios` are
+      still the next actionable steps, just no longer waiting on hardware.
 - [ ] **CASA AL1 assessment** — parked by design until the payments
       backend is finished, so it's assessed once. Deadline **Jan 2, 2027**
       (extended from Nov 3, 2026). Package is with Eydle, paid, not yet
@@ -33,24 +35,76 @@ don't let it go stale the way `BACKLOG.md`'s old "Next up" section did.
       Everbloom once registered) skips that entirely. Same shape as the
       Apple Individual-vs-Organization choice already made (wait for the
       corporation). `PAYMENTS_SPEC.md` §11 #5.
-- [ ] **Pricing model: keep one paid tier, or split Standard/Upgraded?**
-      Raised 2026-08-21: leave the Standard (Piper) voice completely free
-      and charge only for the Upgraded (Kokoro) voice, OR price Standard
-      at $1–2/mo and Upgraded at the current $5.99/$49.99. Current
-      committed model (`BUSINESS.md`) is one subscription gating all TTS —
-      this would be a real change to the unit-economics math already
-      baked into that doc, not a copy tweak. Worth thinking through before
-      committing: a free Standard tier gives away the core "audiobook from
-      your own ebooks" value prop for nothing, which undercuts the whole
-      subscription — the natural/Kokoro voice is a quality upgrade on top
-      of a already-complete product, not a separate product. A cheaper
-      Standard tier ($1–2) is more defensible, but still needs new unit
-      economics run before deciding (Stripe's ~3% + fixed fee eats a much
-      bigger share of a $1–2 charge than a $5.99 one). Not decided — flag
-      for a real pass once payments infrastructure exists.
-- [ ] **KV vs D1 for entitlement generally**, **refund mechanics**,
-      **lifetime shutdown reserve**, **trial abuse** — `PAYMENTS_SPEC.md`
-      §13, all still open, needed before Stripe integration starts.
+- [x] **Pricing model: keep one paid tier, or split Standard/Upgraded?**
+      **Owner leaning (2026-08-28, ~95% confident, not fully final):
+      Standard (Piper) free, Upgraded (Kokoro) paid** — the subscription
+      should gate voice *quality*, not basic access, since Standard alone
+      doesn't sound natural enough to be the thing people pay for. Still
+      needs the actual unit-economics re-run (a free tier costs nothing
+      directly since TTS runs on-device, but changes the funnel/conversion
+      math) before it's final, and before implementing against
+      `PAYMENTS_SPEC.md`'s entitlement design. **New follow-on idea, same
+      call**: on a device that benchmarks as Kokoro-capable but is still on
+      the free Standard tier, proactively prompt/promote the Upgraded
+      voice more often than on a device that can't run it at all — turns
+      `_KOKORO_MIN_GFLOPS` into an upsell signal. Not scoped or built;
+      needs the paywall/entitlement system to exist first, and a decision
+      on prompt frequency so it doesn't nag.
+- [x] **KV vs D1 for entitlement generally.** **Decided 2026-08-28: D1.**
+      Not actually a cost-vs-consistency tradeoff — D1 is both strongly
+      consistent (no post-payment paywall-flash risk) and cheaper per
+      operation than KV at any scale PhonoLeaf will hit for a long time.
+      Full reasoning/pricing numbers in `PAYMENTS_SPEC.md` §13. **Fully
+      migrated and live in production + staging** — see "D1 migration"
+      below.
+- [x] **Refund mechanics, lifetime shutdown reserve, trial abuse** — all
+      decided 2026-08-28, `PAYMENTS_SPEC.md` §13 (now zero open items,
+      nothing left blocking the start of Stripe integration on the
+      decisions front): refunds manual via Stripe dashboard for now
+      (automating it is a post-launch item, see below); lifetime reserve
+      is a % of each sale held separately until that sale's 12-month
+      window closes — mechanism decided, exact percentage is an ongoing
+      operational call for the owner to make with the bank/accountant
+      once the business account exists, not a pre-decidable engineering
+      blocker; trial abuse accepted as-is at launch, mitigation deferred
+      post-launch (see below).
+
+## D1 migration (2026-08-28 — done, live in production and staging)
+
+The entitlement Worker was already built and deployed (`worker/`, per
+`PAYMENTS_SPEC.md` §9) on Cloudflare KV, holding no real entitlement data
+yet (nothing calls it from the app), so this was a clean code swap, not a
+data migration. **KV fully removed from the codebase** — no
+`[[kv_namespaces]]` blocks, no `env.ENTITLEMENTS` references left
+anywhere in `worker/`.
+
+- [x] D1 schema designed (`worker/migrations/0001_create_entitlements.sql`)
+      — one `entitlements` table, same columns as the old KV record.
+- [x] `worker/src/entitlement.js` rewritten off `env.ENTITLEMENTS.get/put`
+      onto D1 prepared statements — every query parameterized (`?`
+      placeholders only, `PAYMENTS_SPEC.md` §7's rule), verified
+      mechanically in a test harness, not just by eye.
+- [x] `worker/wrangler.toml` updated: both `[[kv_namespaces]]` blocks
+      (production + `env.staging`) replaced with `[[d1_databases]]`
+      bindings (`binding = "DB"`); `workers_dev`/`preview_urls` made
+      explicit at the same time (production: workers.dev on, Preview URLs
+      off; staging: neither, custom domain only).
+- [x] Every KV reference swept from `worker/` (README, code comments,
+      `PAYMENTS_SPEC.md` §2); `db:migrate:local` / `db:migrate:remote` /
+      `db:migrate:remote:staging` npm scripts added.
+- [x] Verified locally against D1 emulation (insert/select/upsert SQL,
+      `wrangler dev` health check, a Node harness against the real
+      `entitlement.js` functions with a mocked D1 API).
+- [x] Real D1 databases created 2026-08-28: production
+      `phonoleaf-entitlement` (`b5c17050-89e4-490d-98d4-10d8ab3dcaf8`) and
+      staging `phonoleaf-entitlement-staging`
+      (`4b5de02b-d72d-41e3-9cbb-bc2932eca035`), both ids in
+      `worker/wrangler.toml`.
+- [x] Migration applied to both real databases (staging needed
+      `--env staging` — its D1 database lives under
+      `[env.staging.d1_databases]`, documented in `worker/README.md` so it
+      doesn't trip anyone else up) and both redeployed. **Fully live** —
+      production and staging both run on D1.
 
 ## Actionable now, no blockers
 
@@ -66,8 +120,14 @@ don't let it go stale the way `BACKLOG.md`'s old "Next up" section did.
       but every real pass also produces a paired (GFLOPS, measured ratio)
       data point that improves the threshold calibration itself, so it's
       worth logging results back into `CLAUDE.md`'s Native Kokoro section.
-- [ ] **Competitor SWOT + app store review research.** Scoped and ready to
-      kick off as a background research task — see "SWOT research" below.
+- [x] **Competitor SWOT + app store review research.** Already done
+      (`COMPETITOR_SWOT.md`, commit `96c1b75`) — full SWOT against all 6
+      vetted competitors. Its "Suggested follow-ups" are also done as of
+      2026-08-28 (5 of 6, all mechanical factual corrections to the live
+      comparison pages — see "SWOT research" below); the 6th (whether the
+      `@Voice`/Voice Aloud Reader page needs a different frame, since it's
+      the one competitor whose positioning already overlaps PhonoLeaf's
+      directly) is left as an open question, not mechanical.
 - [ ] **Internal SWOT of PhonoLeaf itself**, raised 2026-08-29 — distinct
       from the competitor SWOT above (that one benchmarks against
       ElevenReader/NaturalReader/etc.; this one looks inward: strengths,
@@ -131,6 +191,14 @@ don't let it go stale the way `BACKLOG.md`'s old "Next up" section did.
       deliberately deferred until OAuth verification fully resolved
       (2026-08-05); CASA being parked rather than resolved means this is
       still on hold, not forgotten.
+- [ ] **Automate refunds**, 2026-08-28 owner call — manual via Stripe
+      dashboard is fine to launch with; revisit once volume makes that
+      painful. `PAYMENTS_SPEC.md` §13.
+- [ ] **Trial abuse mitigation**, 2026-08-28 owner call — new Google
+      accounts can restart the 7-day trial indefinitely today, accepted
+      deliberately at launch. Candidate approach when it's worth building:
+      tie trial eligibility to a Stripe Radar payment-method fingerprint
+      or a device signal. `PAYMENTS_SPEC.md` §13.
 
 ## Product ideas, raised 2026-08-24 — not scoped, not started
 
@@ -169,14 +237,25 @@ Logged as-is, no design work done yet.
 - [ ] **Maybe rename to "Bokos"?** Owner's idea, raised 2026-08-29 — came
       from a "Books" typo. Not for now, just logged.
 
-## SWOT research (ready to launch as a background task)
+## SWOT research (done — see `COMPETITOR_SWOT.md`)
 
-Competitors already vetted for this project (each has a live comparison
-page — `elevenreader-alternative.html`, `naturalreader-alternative.html`,
+Competitors vetted for this project (each has a live comparison page —
+`elevenreader-alternative.html`, `naturalreader-alternative.html`,
 `play-books-alternative.html`, `speechify-alternative.html`,
-`voice-aloud-alternative.html`, `voice-dream-alternative.html`): **ElevenReader,
-NaturalReader, Google Play Books, Speechify, Voice Aloud Reader, Voice
-Dream Reader.** A SWOT + app-store-review-mining pass against this same
-list would build directly on research already done rather than starting
-cold. Owner separately wants hands-on firsthand testing of these — the
-two are complementary (agent does breadth/reviews, owner does depth/feel).
+`voice-aloud-alternative.html`, `voice-dream-alternative.html`):
+**ElevenReader, NaturalReader, Google Play Books, Speechify, Voice Aloud
+Reader, Voice Dream Reader.** Full SWOT + app-store-review-mining pass is
+in `COMPETITOR_SWOT.md`. Its factual follow-ups against the live
+comparison pages are done as of 2026-08-28: `play-books-alternative.html`
+(+FR) now correctly says uploads get Read Aloud and only the natural voice
+needs a connection; `naturalreader-alternative.html` (+FR) notes paid MP3
+export; `voice-aloud-alternative.html` (+FR) renamed to the app's current
+Play name ("@Voice"), added its $15 one-time price, and noted third-party
+engines are installable; `voice-dream-alternative.html` (+FR) notes the
+subscription is now required for new users with a 3-day trial, and
+reframes the voice-quality gap (modern neural vs. Voice Dream's
+Acapela/NeoSpeech/Ivona) instead of leaning on offline/background since
+Voice Dream claims both; `elevenreader-alternative.html` (+FR) notes the
+60-day download expiry and no-export restriction. Owner separately wants
+hands-on firsthand testing of these — the two are complementary (agent did
+breadth/reviews, owner does depth/feel).

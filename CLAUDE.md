@@ -895,11 +895,18 @@ Google login); verify by inspection + device testing.
   `VERIFICATION.md`.
 - **Pricing**: Monthly $5.99 / Annual $49.99 / 7-day trial / capped
   Founding-Member Lifetime $129. Not yet built — see `BUSINESS.md`,
-  `PAYMENTS_SPEC.md`. Entitlement Worker (`worker/`) exists but isn't
-  called from the app yet (would paywall current users with no way to pay).
-- **iOS**: planning only, no engineering started. Blocked on a replacement
-  MacBook (prior purchase fell through). Apple Developer enrollment is the
-  next actionable step once hardware exists.
+  `PAYMENTS_SPEC.md`. Owner leaning (2026-08-28, ~95% confident, not final):
+  gate only the Upgraded/Kokoro voice behind the paywall, keep Standard/
+  Piper free — needs a real unit-economics re-run before it's final.
+  Entitlement Worker (`worker/`) exists, runs on **D1** (migrated off KV
+  2026-08-28, live in production + staging — see `TODO.md`'s "D1
+  migration"), but isn't called from the app yet (would paywall current
+  users with no way to pay).
+- **iOS**: planning only, no engineering started. Hardware is no longer the
+  blocker — an M1 MacBook Air was acquired 2026-08-29 (the earlier purchase
+  that fell through 2026-08-10 was replaced). No `ios/` Capacitor platform
+  exists yet (`@capacitor/ios` isn't a dependency). Apple Developer
+  enrollment and `npx cap add ios` are the next actionable steps.
 - **Legal**: ToS/Privacy drafted, pricing/lifetime clauses added, **lawyer
   review requested 2026-08-10, still awaiting response** — treat as not
   lawyer-reviewed until confirmed otherwise. Jurisdiction: Québec, Canada.

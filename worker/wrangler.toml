@@ -2,16 +2,36 @@ name = "phonoleaf-entitlement"
 main = "src/index.js"
 compatibility_date = "2025-06-01"
 
-# Cloudflare KV: entitlement records, keyed by sub_hash (PAYMENTS_SPEC.md §2).
-# Create both namespaces once:
-#   npx wrangler kv namespace create ENTITLEMENTS
-#   npx wrangler kv namespace create ENTITLEMENTS --preview
-# then paste the two ids this prints below. The preview id is what local
-# `wrangler dev` uses, so local testing never touches production data.
-[[kv_namespaces]]
-binding = "ENTITLEMENTS"
-id = "3cedc9460e7940da81ac6cca4c4ced7a"
-preview_id = "37a17adbffdc4feeaf0c184a669152d0"
+# Explicit rather than left to Wrangler's defaults (2026-08-28, after the
+# first `deploy` warned both were unset). No custom domain exists for
+# production yet, so it needs workers.dev; Preview URLs (a separate public
+# URL per deployed version, persisting even after a newer version ships)
+# add exposed surface this backend doesn't have a use for — `wrangler dev`
+# covers local testing and the staging environment below covers
+# pre-production testing, so there's no gap this would fill.
+workers_dev = true
+preview_urls = false
+
+# Cloudflare D1: entitlement records, keyed by sub_hash (PAYMENTS_SPEC.md §2).
+# Migrated off KV (2026-08-28) — D1 turned out both strongly consistent AND
+# cheaper per-operation than KV at any scale this app will realistically
+# hit; see PAYMENTS_SPEC.md §13 for the full reasoning.
+#
+# Database created 2026-08-28 (`npx wrangler d1 create phonoleaf-entitlement`).
+# Still needed before this is live: apply the schema
+# (migrations/0001_create_entitlements.sql) to the real database, then
+# deploy:
+#   npx wrangler d1 migrations apply phonoleaf-entitlement --remote
+#   npx wrangler deploy
+# For local dev, `wrangler dev` runs entirely against a local emulated D1
+# file (no cloud auth needed, never touches production data) — apply the
+# same migration locally first:
+#   npx wrangler d1 migrations apply phonoleaf-entitlement --local
+[[d1_databases]]
+binding = "DB"
+database_name = "phonoleaf-entitlement"
+database_id = "b5c17050-89e4-490d-98d4-10d8ab3dcaf8"
+migrations_dir = "migrations"
 
 [vars]
 # Non-secret config. Both are already public (they're in index.html /
@@ -34,7 +54,7 @@ TRIAL_DAYS = "7"
 # Staging environment (PAYMENTS_SPEC.md §11 #9 / §12): the next CASA
 # assessment's DAST scan needs a URL that maps to a subdomain of an
 # Authorized domain registered with Google — a *.workers.dev URL doesn't
-# qualify. Deliberately a SEPARATE environment (own KV namespace below),
+# qualify. Deliberately a SEPARATE environment (own D1 database below),
 # not a route pointed at the production Worker/data — §12 also calls for a
 # staging-only, environment-gated auth-bypass route for the lab's test
 # account later, which must be physically absent from production.
@@ -49,12 +69,24 @@ TRIAL_DAYS = "7"
 routes = [
   { pattern = "api.staging.phonoleaf.com", custom_domain = true }
 ]
+# Reachable ONLY via the custom domain above — a workers.dev fallback
+# would defeat the point of keeping staging on a separate, deliberately
+# chosen URL (§12), and Preview URLs are off for the same
+# minimal-surface reasoning as production above.
+workers_dev = false
+preview_urls = false
 
 [env.staging.vars]
 GOOGLE_CLIENT_ID = "88179965472-codmbgtm99mgik9qke2kucbvfkbug3ul.apps.googleusercontent.com"
 GOOGLE_ANDROID_CLIENT_ID = "88179965472-cs9869nsk2b9i00v5ebo8sd9mrq9kmmn.apps.googleusercontent.com"
 TRIAL_DAYS = "7"
 
-[[env.staging.kv_namespaces]]
-binding = "ENTITLEMENTS"
-id = "13b20759b4d64e3db1b149a163bf62a3"
+# Own database from production (§12: a leak during a third-party security
+# scan against staging can't touch real entitlement data). Created
+# 2026-08-28. Apply the schema + deploy the same way as production above,
+# targeting this database name and --env staging.
+[[env.staging.d1_databases]]
+binding = "DB"
+database_name = "phonoleaf-entitlement-staging"
+database_id = "4b5de02b-d72d-41e3-9cbb-bc2932eca035"
+migrations_dir = "migrations"
