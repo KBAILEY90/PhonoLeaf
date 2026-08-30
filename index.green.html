@@ -9888,19 +9888,21 @@ const StorageModal = {
       document.getElementById('storage-modal').classList.remove('open');
   },
 
-  // .set-section-label reuses Settings' own group-heading spacing (owner
-  // wanted more breathing room between groups here too, same fix).
+  // Same boxed-group treatment as Settings: a heading (.set-section-label's
+  // spacing) above a bordered .set-group card, rows separated by .set-row's
+  // own hairline with the first row's dropped via .set-row-first — any
+  // grouped-rows screen should look like this, not just Settings.
   _section(label, bodyHTML) {
-    return `<div class="sec-label set-section-label"><span>${esc(label)}</span></div>${bodyHTML}`;
+    return `<div class="sec-label set-section-label"><span>${esc(label)}</span></div><div class="set-group">${bodyHTML}</div>`;
   },
-  _row(name, size, removeCall, actionLabel) {
+  _row(name, size, removeCall, actionLabel, first) {
     const right = removeCall
       ? `<button class="set-link danger" onclick="${removeCall}">${esc(actionLabel || I18n.t('remove'))}</button>`
       : `<span class="sr-sub">${esc(size)}</span>`;
-    return `<div class="set-row"><div><div class="sr-k">${esc(name)}</div>${removeCall ? `<div class="sr-sub">${esc(size)}</div>` : ''}</div>${right}</div>`;
+    return `<div class="set-row${first ? ' set-row-first' : ''}"><div><div class="sr-k">${esc(name)}</div>${removeCall ? `<div class="sr-sub">${esc(size)}</div>` : ''}</div>${right}</div>`;
   },
   _empty() {
-    return `<div class="set-row"><div class="sr-sub">${esc(I18n.t('storage_none'))}</div></div>`;
+    return `<div class="set-row set-row-first"><div class="sr-sub">${esc(I18n.t('storage_none'))}</div></div>`;
   },
 
   async render() {
@@ -9944,12 +9946,12 @@ const StorageModal = {
 
     document.getElementById('storage-sections').innerHTML = [
       this._section(I18n.t('storage_books'), bookRows.length
-        ? bookRows.map(r => this._row(r.name, fmtBytes(r.bytes), `StorageModal.removeBook('${esc(r.id)}')`)).join('')
+        ? bookRows.map((r, i) => this._row(r.name, fmtBytes(r.bytes), `StorageModal.removeBook('${esc(r.id)}')`, null, i === 0)).join('')
         : this._empty()),
       packsAvailable ? this._section(I18n.t('storage_packs'), packRows.length
-        ? packRows.map(r => this._row(I18n.t(this._PACK_LABEL[r.model] || r.model), fmtBytes(r.bytes), `StorageModal.removePack('${r.model}')`)).join('')
+        ? packRows.map((r, i) => this._row(I18n.t(this._PACK_LABEL[r.model] || r.model), fmtBytes(r.bytes), `StorageModal.removePack('${r.model}')`, null, i === 0)).join('')
         : this._empty()) : '',
-      this._section(I18n.t('storage_covers'), this._row(I18n.t('storage_covers'), fmtBytes(coversBytes), coversBytes ? `StorageModal.clearCovers()` : null, I18n.t('clear'))),
+      this._section(I18n.t('storage_covers'), this._row(I18n.t('storage_covers'), fmtBytes(coversBytes), coversBytes ? `StorageModal.clearCovers()` : null, I18n.t('clear'), true)),
     ].join('');
   },
 
