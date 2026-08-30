@@ -9904,6 +9904,13 @@ const StorageModal = {
   _empty() {
     return `<div class="set-row set-row-first"><div class="sr-sub">${esc(I18n.t('storage_none'))}</div></div>`;
   },
+  // Size string with this item's share of the grand total appended — 0
+  // total (nothing cached anywhere yet) skips the percentage rather than
+  // showing a meaningless 0%/NaN%.
+  _sizeWithPct(bytes, total) {
+    const size = fmtBytes(bytes);
+    return total ? `${size} · ${Math.round((bytes / total) * 100)}%` : size;
+  },
 
   async render() {
     // Cached books — pl_offline_books already stores exact bytes per book,
@@ -9946,12 +9953,12 @@ const StorageModal = {
 
     document.getElementById('storage-sections').innerHTML = [
       this._section(I18n.t('storage_books'), bookRows.length
-        ? bookRows.map((r, i) => this._row(r.name, fmtBytes(r.bytes), `StorageModal.removeBook('${esc(r.id)}')`, null, i === 0)).join('')
+        ? bookRows.map((r, i) => this._row(r.name, this._sizeWithPct(r.bytes, grandTotal), `StorageModal.removeBook('${esc(r.id)}')`, null, i === 0)).join('')
         : this._empty()),
       packsAvailable ? this._section(I18n.t('storage_packs'), packRows.length
-        ? packRows.map((r, i) => this._row(I18n.t(this._PACK_LABEL[r.model] || r.model), fmtBytes(r.bytes), `StorageModal.removePack('${r.model}')`, null, i === 0)).join('')
+        ? packRows.map((r, i) => this._row(I18n.t(this._PACK_LABEL[r.model] || r.model), this._sizeWithPct(r.bytes, grandTotal), `StorageModal.removePack('${r.model}')`, null, i === 0)).join('')
         : this._empty()) : '',
-      this._section(I18n.t('storage_covers'), this._row(I18n.t('storage_covers'), fmtBytes(coversBytes), coversBytes ? `StorageModal.clearCovers()` : null, I18n.t('clear'), true)),
+      this._section(I18n.t('storage_covers'), this._row(I18n.t('storage_covers'), this._sizeWithPct(coversBytes, grandTotal), coversBytes ? `StorageModal.clearCovers()` : null, I18n.t('clear'), true)),
     ].join('');
   },
 
