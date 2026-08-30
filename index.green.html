@@ -2889,7 +2889,6 @@ const STRINGS = {
     view: 'View', clear: 'Clear',
     storage_total_line: 'Using {total} total',
     storage_books: 'Cached books', storage_packs: 'Voice packs', storage_covers: 'Cover images',
-    storage_sort: 'Sort', storage_sort_size: 'By size', storage_sort_alpha: 'A-Z',
     storage_none: 'None cached', storage_covers_cleared: 'Cover cache cleared',
     kb: '{kb} KB', gb: '{gb} GB', // mb reuses the existing key below (voice-pack download strings)
 
@@ -3154,7 +3153,6 @@ const STRINGS = {
     view: 'Afficher', clear: 'Effacer',
     storage_total_line: 'Utilise {total} au total',
     storage_books: 'Livres en cache', storage_packs: 'Packs de voix', storage_covers: 'Images de couverture',
-    storage_sort: 'Trier', storage_sort_size: 'Par taille', storage_sort_alpha: 'A-Z',
     storage_none: 'Aucun élément en cache', storage_covers_cleared: 'Cache des couvertures vidé',
     kb: '{kb} Ko', gb: '{gb} Go', // mb reuses the existing key below (voice-pack download strings)
 
@@ -7213,12 +7211,16 @@ const Reader = {
     }
   },
 
-  close() {
+  // `finished`: true when this close is the reader auto-closing after TTS
+  // reached the true end of the book — asks for a store review only once
+  // the reader has actually closed, not at the moment the finish is detected.
+  close(finished) {
     this._persistPosition();
     TTS.stop();
     this.showChrome();
     Library.render();              // refresh progress indicators in the grid
     Nav.go(Nav.current || 'home'); // back to the tab we came from (re-renders Home)
+    if (finished) StoreReview.maybeAsk();
   },
 };
 
@@ -8027,9 +8029,8 @@ const TTS = {
       // location metadata, matching this file's existing distrust of that
       // metadata elsewhere (see nextPage()'s own overshoot corrector).
       if (State.rendition && Reader._isAtBookEnd()) {
-        this.stop();
         toast(I18n.t('book_finished'));
-        StoreReview.maybeAsk(); // reaching the actual last page while listening is a genuine finish too
+        Reader.close(true); // owner-requested: finishing the book closes the reader, not just stops it
         return;
       }
       this._awaitingPage = true;
@@ -9735,7 +9736,9 @@ const BookDetail = {
     p.ts = p.ts || Date.now();
     try { localStorage.setItem('pl_prog', JSON.stringify(State.progress)); } catch (_) {}
     toast(I18n.t('marked_finished'));
-    StoreReview.maybeAsk(); // finishing a book is exactly the positive moment BACKLOG.md's spec calls for
+    // Deliberately no StoreReview.maybeAsk() here — owner feedback: a manual
+    // mark isn't the genuine finish moment the prompt is meant for; that's
+    // reserved for actually reading/listening to the true end (Reader.close(true)).
     this.close();
     if (Nav.current === 'home') Home.render();
     if (Nav.current === 'library') Library.render();
@@ -9875,7 +9878,6 @@ const NoVoiceModal = {
 // invented: cached books, voice packs, cover cache, connected folder.
 const StorageModal = {
   _PACK_LABEL: { us: 'lang_en_us', gb: 'lang_en_gb', fr: 'lang_fr', de: 'lang_de', es: 'lang_es', kokoro: 'lang_en' },
-  _bookSort: 'size', // 'size' | 'alpha' — owner-requested toggle, defaults to size
 
   async open() {
     document.getElementById('storage-modal').classList.add('open');
@@ -9885,13 +9887,11 @@ const StorageModal = {
     if (!e || e.target.classList.contains('modal-backdrop'))
       document.getElementById('storage-modal').classList.remove('open');
   },
-  setBookSort(mode) {
-    this._bookSort = mode;
-    this.render();
-  },
 
-  _section(label, bodyHTML, extraHTML) {
-    return `<div class="sec-label"><span>${esc(label)}</span>${extraHTML || ''}</div>${bodyHTML}`;
+  // .set-section-label reuses Settings' own group-heading spacing (owner
+  // wanted more breathing room between groups here too, same fix).
+  _section(label, bodyHTML) {
+    return `<div class="sec-label set-section-label"><span>${esc(label)}</span></div>${bodyHTML}`;
   },
   _row(name, size, removeCall, actionLabel) {
     const right = removeCall
@@ -9913,8 +9913,7 @@ const StorageModal = {
       const name = (meta?.name || id).replace(/\.epub$/i, '');
       return { id, name, bytes: idx[id].bytes || 0 };
     });
-    if (this._bookSort === 'alpha') bookRows.sort((a, b) => a.name.localeCompare(b.name));
-    else bookRows.sort((a, b) => b.bytes - a.bytes);
+    bookRows.sort((a, b) => b.bytes - a.bytes); // largest first — no user-facing sort control
     const booksTotal = bookRows.reduce((s, r) => s + r.bytes, 0);
 
     // Voice packs — native only. approxBytes is a static per-model estimate
@@ -9943,16 +9942,10 @@ const StorageModal = {
     const grandTotal = booksTotal + packsTotal + coversBytes;
     document.getElementById('storage-total').textContent = I18n.t('storage_total_line', { total: fmtBytes(grandTotal) });
 
-    const sortToggle = bookRows.length > 1 ? `
-      <div class="seg storage-sort-seg" role="group" aria-label="${esc(I18n.t('storage_sort'))}">
-        <button class="${this._bookSort === 'size' ? 'on' : ''}" onclick="StorageModal.setBookSort('size')">${esc(I18n.t('storage_sort_size'))}</button>
-        <button class="${this._bookSort === 'alpha' ? 'on' : ''}" onclick="StorageModal.setBookSort('alpha')">${esc(I18n.t('storage_sort_alpha'))}</button>
-      </div>` : '';
-
     document.getElementById('storage-sections').innerHTML = [
       this._section(I18n.t('storage_books'), bookRows.length
         ? bookRows.map(r => this._row(r.name, fmtBytes(r.bytes), `StorageModal.removeBook('${esc(r.id)}')`)).join('')
-        : this._empty(), sortToggle),
+        : this._empty()),
       packsAvailable ? this._section(I18n.t('storage_packs'), packRows.length
         ? packRows.map(r => this._row(I18n.t(this._PACK_LABEL[r.model] || r.model), fmtBytes(r.bytes), `StorageModal.removePack('${r.model}')`)).join('')
         : this._empty()) : '',

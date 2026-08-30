@@ -618,6 +618,18 @@ so Android ships the redesign while the website stays on the old
 `index.html` — see the native/web split under Tech stack, and the two
 separate deploy paths below.
 
+**Storage-modal spacing/sort + finish-flow fixes (2026-08-30)**: Storage
+popup's book/pack/cover groups now use `.set-section-label`'s spacing
+(same fix Settings already got) and the size/A-Z sort toggle is gone —
+cached books always sort by size, no user-facing control. Reaching the
+true end of the book while listening now calls `Reader.close(true)`
+(closes the reader back to the previous tab) instead of just stopping
+playback in place; `StoreReview.maybeAsk()` moved to fire from inside
+`Reader.close()` only when `finished` is true, i.e. after the reader has
+actually closed from a genuine finish — and it no longer fires from
+`BookDetail.markFinished()` (manual mark), per owner feedback that a
+manual mark isn't the moment the prompt is for. Not yet device-tested.
+
 ## How to deploy
 
 **Two separate targets since the 2026-08-28 native/web split — a push ships
