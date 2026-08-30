@@ -43,15 +43,20 @@ devDependency only — it never ships in the deployed Worker.
    cd worker
    npm install
    ```
-2. Create the KV namespace (once, needs a Cloudflare login —
+2. Create the D1 database (once, needs a Cloudflare login —
    `npx wrangler login` first if you haven't):
    ```
-   npx wrangler kv namespace create ENTITLEMENTS
-   npx wrangler kv namespace create ENTITLEMENTS --preview
+   npx wrangler d1 create phonoleaf-entitlement
    ```
-   Paste the two ids this prints into `wrangler.toml` (`id` and
-   `preview_id`). The preview namespace is what local `wrangler dev` uses,
-   so local testing never touches production data.
+   Paste the id this prints into `wrangler.toml`'s `[[d1_databases]]`
+   block, replacing `REPLACE_ME_RUN_WRANGLER_D1_CREATE`. Then apply the
+   schema (`migrations/0001_create_entitlements.sql`) to both the remote
+   database and a local one — local `wrangler dev` runs against its own
+   emulated copy, so local testing never touches production data:
+   ```
+   npx wrangler d1 migrations apply phonoleaf-entitlement --remote
+   npx wrangler d1 migrations apply phonoleaf-entitlement --local
+   ```
 3. Generate the entitlement-signing keypair (once):
    ```
    npm run generate-keys
@@ -108,11 +113,18 @@ test account later, which must be physically absent from the production
 Worker, so keeping the environments separate from day one avoids that ever
 being bolted onto production under deadline pressure.
 
-- Own KV namespace (`ENTITLEMENTS_STAGING`, bound as `ENTITLEMENTS` inside
+- Own D1 database (`phonoleaf-entitlement-staging`, bound as `DB` inside
   the `staging` environment) and its own `SUB_HASH_PEPPER` /
   `ENTITLEMENT_JWT_PRIVATE_KEY` secrets — freshly generated, not shared
   with production, so a leak during a third-party security scan can't
-  touch real entitlement data.
+  touch real entitlement data. Create + migrate it the same way as
+  production (see "Local setup" above), substituting the staging database
+  name — **and add `--env staging`**, since this database is defined
+  under `[env.staging.d1_databases]`, not the top-level config:
+  `npx wrangler d1 migrations apply phonoleaf-entitlement-staging --remote --env staging`.
+  (Omitting `--env staging` fails with "Couldn't find a D1 DB with the
+  name or binding ... in your wrangler.toml file" — hit this exact error
+  2026-08-28, easy to repeat if this note isn't here.)
 - `wrangler.toml`'s `[env.staging]` block routes
   `api.staging.phonoleaf.com` to this environment via a Cloudflare
   **Custom Domain** (`custom_domain = true`), which self-provisions the
