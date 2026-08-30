@@ -630,6 +630,13 @@ actually closed from a genuine finish — and it no longer fires from
 `BookDetail.markFinished()` (manual mark), per owner feedback that a
 manual mark isn't the moment the prompt is for. Not yet device-tested.
 
+**Storage modal boxed groups (2026-08-30, same day)**: owner asked that any
+grouped-rows screen look like Settings, not just Settings itself. Storage's
+Cached books/Voice packs/Cover images sections now each wrap in `.set-group`
+(the same bordered card Settings uses), with each group's first row on
+`.set-row-first` to drop its top hairline — previously the rows sat as a
+bare unboxed list under the heading. Not yet device-tested.
+
 ## How to deploy
 
 **Two separate targets since the 2026-08-28 native/web split — a push ships
