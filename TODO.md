@@ -355,13 +355,17 @@ anywhere in `worker/`.
       failure modes. Meta descriptions retargeted to 133-146 chars after a
       first pass ran 196-266, which Google truncates around 155 and would
       have cut off the very lead being introduced.
-      **Still open, and now BLOCKED on an owner decision:** the "choose them
-      if" fairness section. `SEO.md` §6 asks for it; an explicit owner
-      instruction from 2026-08-17 forbids conceding ground to a competitor,
-      naming that exact section. The pages follow the owner, not the doc.
-      A second correction: `voice-dream-alternative` and its twin were
-      recorded here as having a fairness section. They do not. Only
-      `speechify-alternative` has a `choose-grid`, and it is one-sided.
+      **DECIDED 2026-08-31: no "choose them if" sections.** The owner
+      reaffirmed the 2026-08-17 rule, in their words: do not sugar-coat the
+      competitors. `SEO.md` §6 and its checklist are corrected at the source,
+      so the docs no longer contradict the instruction. The pages already
+      complied, so nothing was removed.
+      **Also done 2026-08-31: aimed each page at that competitor's own
+      loudest complaint** rather than the generic four failure modes. Three
+      of six were mis-aimed, and `voice-dream` was the worst: it led on
+      background playback, which Voice Dream genuinely has and advertises,
+      instead of the voice quality complaint that is exactly our strength.
+      The per-page targeting table is in `SEO.md` §6.
       Also still open: one dedicated page for the reliability cluster.
       Original finding:
       `COMPETITOR_SWOT.md`'s strongest finding never reached the website

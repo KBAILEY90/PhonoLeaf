@@ -240,9 +240,11 @@ Body outline (write in full, honest, nominative use of the competitor name only)
   uploaded, price, and whether it is built around your own book library. Use the
   verified prices from `STORE_LISTINGS.md` and the business plan (Speechify about
   $139 a year; PhonoLeaf $5.99 a month or $49.99 a year).
-- "Choose PhonoLeaf if" list: you want privacy and offline, you mainly listen to
-  your own ebooks, you want a lower price. "Choose Speechify if" list (be fair): you
-  need to read PDFs, scanned pages and web articles, or want their specific voices.
+- "Choose PhonoLeaf if" list: reliability first, then that you mainly listen to
+  your own ebooks, then price. **No "Choose [competitor] if" list.** Owner
+  instruction 2026-08-17, reaffirmed 2026-08-31: a comparison page does not
+  concede ground to the competitor, and carries no table row where they win
+  outright. This supersedes the earlier "be fair" framing that stood here.
 - FAQ with schema: Is PhonoLeaf really private? Does it work offline? Can it read my
   own epub files? How much does it cost?
 - Call to action to open the app and start the free trial.
@@ -251,6 +253,29 @@ The same template makes `vs-google-play-books.html` (angle: better voices, your
 whole Drive library across ecosystems, not locked to one store) and
 `naturalreader-alternative.html` (angle: private, on device, built around your
 books).
+
+### Aim each page at THAT competitor's loudest complaint (added 2026-08-31)
+
+The four failure modes in §1 are aggregate findings across all six
+competitors. They are the right frame for `home.html`, but on a comparison
+page the aggregate is weaker than the specific, and it can even be wrong:
+leading a Voice Dream page on background playback attacks something Voice
+Dream genuinely does well and says so, while ignoring the complaint that is
+exactly our strength. Take the lead from that competitor's own
+`COMPETITOR_SWOT.md` "Recurring complaints" section:
+
+| Page | Lead on |
+| --- | --- |
+| `speechify-alternative` | Endless scanning and the silent downgrade to a worse voice when it judges the network weak |
+| `naturalreader-alternative` | Metering the good voices by the day, even on paid plans |
+| `play-books-alternative` | Read-aloud controls so crude you cannot properly pause or choose where to start |
+| `elevenreader-alternative` | Downloads expiring at 60 days, no export, and total network dependence |
+| `voice-aloud-alternative` | Ads, and playback dying at screen lock, which its own developer says he cannot fix |
+| `voice-dream-alternative` | Voices its own reviewers now call stilted and robotic |
+
+**Do not lead a Voice Dream or @Voice page on offline or on-device.** Both
+genuinely have it and say so, so that angle attacks a strength. Applied
+2026-08-31; before that, three of the six led on the generic message.
 
 ## 7. First three months
 
@@ -284,26 +309,13 @@ books).
       descriptions now lead on reliability. Descriptions were retargeted to
       133-146 chars after a first pass ran 196-266, which Google truncates
       around 155 and would have cut off the new lead.
-- [!] **BLOCKED, owner decision needed: the "choose them if" fairness section
-      conflicts with a standing owner instruction.** This checklist item and
-      §6 both ask for it. An explicit owner instruction from 2026-08-17 says
-      the opposite: on a comparison page, include nothing that concedes
-      ground to the competitor, specifically no "choose [competitor] if"
-      sections and no table rows where they win outright.
-      **The pages currently follow the owner instruction, not this file.**
-      Checked 2026-08-31: only `speechify-alternative` and its French twin
-      have a `choose-grid` at all, and it holds solely "Choose PhonoLeaf if"
-      with no competitor side. Two claims previously recorded here were
-      wrong and are corrected: `voice-dream-alternative` and its twin have
-      NO fairness section (they have a "Genuinely offline" feature block,
-      which is not the same thing), and the count is six pairs, not five.
-      **Do not add competitor-side sections without the owner reopening it.**
-      The argument for them, kept because it is why §6 asked: a page that
-      admits what a competitor is genuinely better at reads as more
-      credible, and stays defensible when that competitor reads it. The
-      argument against is the owner’s call about what a comparison page is
-      for. Resolve §6 and this line together once decided, so the two files
-      stop disagreeing.
+- [x] **DECIDED 2026-08-31: no "choose them if" sections, ever.** The owner
+      reaffirmed the 2026-08-17 instruction: do not sugar-coat competitors
+      and do not concede ground to them. §6 has been corrected at the source
+      so the two files no longer disagree. The pages already complied, so
+      nothing had to be removed. Two record corrections made at the same
+      time: there are six pairs, not five, and `voice-dream-alternative`
+      never had a fairness section despite this file once saying it did.
 - [ ] Consider one dedicated page for the reliability cluster, e.g.
       `audiobook-app-that-doesnt-stop.html`, answering the four failure modes
       directly. Nobody competes for these terms because nobody writes pages
