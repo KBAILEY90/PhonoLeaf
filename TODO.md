@@ -356,7 +356,23 @@ anywhere in `worker/`.
       Touches `home.html`/`home-fr.html` and the comparison pages, and
       pairs naturally with the doc accuracy pass above since both edit the
       same marketing surface. `SWOT.md` Opportunities + recommendation 7.
-- [ ] **[SWOT] Prune stale branches.** Thirteen remote branches as of
+- [x] **[SWOT] Prune stale branches.** **Done 2026-08-31.** Twenty remote
+      branches down to four, and seven local down to two. Every deletion was
+      verified with `git merge-base --is-ancestor <branch> origin/main` first,
+      not by reading the branch name, so nothing unique was lost; the SHAs were
+      recorded before deleting in case one is ever wanted back.
+      **Kept deliberately:** `archive/hero-redesign-2026-08-28-branch` (the
+      preserved archived fork), `claude/docs-code-review-tam2pr` (genuinely
+      unmerged: its Phase 2/3 work was re-implemented by hand rather than
+      merged, so git still sees unique commits, and its payments/D1 content was
+      separately rescued in PR #13), and `claude/update-status-dooe1q`
+      (unmerged, contents not investigated, so left alone).
+      One trap worth remembering: `redesign/port-phase-2-3` had a local tip 8
+      commits ahead of its own remote, which made `git branch -d` refuse even
+      though every one of those commits was already in `origin/main`. That is
+      also exactly what real unpushed work looks like, so check ancestry
+      against `origin/main` before reaching for `-D`.
+      Original finding: Thirteen remote branches as of
       2026-08-30, several already merged (`docs/stale-cleanup`,
       `feature/storage-*`, `fix/storage-finish-flow`,
       `redesign/converge-to-main`). Keep `archive/hero-redesign-2026-08-28-branch`
