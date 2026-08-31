@@ -44,11 +44,26 @@ terms that need a decision, and one may not be usable commercially at all.
       English Piper voices and CC BY-SA on French require credit. The app needs
       a credits surface naming each model, its source and its licence. See the
       About/credits split in the product ideas section.
-- [ ] **Check whether espeak-ng ships in the build.** Piper voices commonly use
-      the espeak-ng phonemizer, which is GPL. If it is bundled in the APK, that
-      has implications for a proprietary app that the CC licences above do not.
-      Not yet verified either way.
-
+- [ ] **CONFIRMED 2026-08-31: espeak-ng (GPL-3.0) is statically linked into
+      the sherpa-onnx AAR you ship. Most serious licence finding in this set,
+      and it needs the lawyer before any release.**
+      Evidence, reproducible in a minute: `android/app/libs/sherpa-onnx.aar`
+      has no separate `libespeak-ng.so`, but the strings `espeak-ng` and
+      `espeak-ng-data` appear inside both `libsherpa-onnx-jni.so` and
+      `libsherpa-onnx-c-api.so`, which ship in the APK. `gh api
+      repos/espeak-ng/espeak-ng` reports GPL-3.0.
+      **Why it outranks the CC questions:** GPLv3 statically linked into a
+      proprietary app is the textbook propagation case. sherpa-onnx is itself
+      Apache 2.0, but Apache is one-way compatible with GPLv3, so the
+      combination lands on GPLv3 rather than cancelling out. Selling a GPLv3
+      app is allowed; keeping its source closed is not.
+      **Options, cheapest first, none costed yet:** build sherpa-onnx without
+      espeak-ng if the models can phonemize another way; find a prebuilt
+      espeak-free variant; change phonemizer; change engine. Note this is not
+      a Piper-only problem, so dropping Piper would not obviously fix it.
+      **Not legal advice.** Static vs dynamic linking and the scope of
+      propagation are precisely what the lawyer is for. Ask it alongside the
+      fr_FR ShareAlike question, since both are one conversation.
 Sources: hexgrad/Kokoro-82M on Hugging Face (Apache 2.0), rhasspy/piper-voices
 MODEL_CARD files per voice, and rhasspy/piper discussion #271 on licensing.
 
