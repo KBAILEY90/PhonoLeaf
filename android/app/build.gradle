@@ -1,6 +1,24 @@
 apply plugin: 'com.android.application'
 apply plugin: 'kotlin-android'
 
+// Release signing. The keystore and its passwords must NEVER be committed —
+// see .gitignore, which excludes *.jks/*.keystore and this properties file.
+// Create android/keystore.properties (gitignored) with:
+//     storeFile=C:/path/outside/the/repo/phonoleaf-release.jks
+//     storePassword=...
+//     keyAlias=phonoleaf
+//     keyPassword=...
+// If that file is absent, no release signingConfig is registered at all and
+// `assembleRelease` produces an unsigned build — deliberate, so a fresh clone
+// and every debug build still work with nothing extra set up. Losing this
+// keystore means never being able to update the Play listing again: back it
+// up somewhere durable and off this machine before the first upload.
+def keystorePropsFile = rootProject.file('keystore.properties')
+def keystoreProps = new Properties()
+if (keystorePropsFile.exists()) {
+    keystorePropsFile.withInputStream { keystoreProps.load(it) }
+}
+
 android {
     namespace = "com.phonoleaf.app"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -8,6 +26,13 @@ android {
         applicationId "com.phonoleaf.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
+        // Versioning scheme: versionCode is a plain integer that MUST increase
+        // on every upload to Play (it is the only thing Play orders builds by,
+        // and a code already uploaded can never be reused, even after a
+        // rollback). versionName is the human string shown in the store and in
+        // Settings. Bump versionCode by 1 for every build sent to any Play
+        // track including internal testing, and move versionName only when the
+        // release is user-visible.
         versionCode 1
         versionName "1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
@@ -39,12 +64,29 @@ android {
     kotlinOptions {
         jvmTarget = '21'
     }
+    signingConfigs {
+        // Registered only when keystore.properties exists (see the top of this
+        // file). Referencing a signingConfig that was never created is a
+        // configuration-time failure, which is why the buildType below guards
+        // on the same condition rather than naming it unconditionally.
+        if (keystorePropsFile.exists()) {
+            release {
+                storeFile file(keystoreProps['storeFile'])
+                storePassword keystoreProps['storePassword']
+                keyAlias keystoreProps['keyAlias']
+                keyPassword keystoreProps['keyPassword']
+            }
+        }
+    }
     buildTypes {
         release {
             minifyEnabled false
             // Newer AGP rejects 'proguard-android.txt' (it forces -dontoptimize);
             // the -optimize variant is required. minifyEnabled is false anyway.
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            if (keystorePropsFile.exists()) {
+                signingConfig signingConfigs.release
+            }
         }
     }
 }

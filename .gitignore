@@ -10,6 +10,13 @@ android/app/build/
 android/local.properties
 android/app/release/
 
+# Release signing — the keystore and its passwords. Committing either one
+# hands anyone who clones the repo the ability to sign builds as PhonoLeaf,
+# so these are excluded by extension anywhere in the tree, not just by path.
+*.jks
+*.keystore
+android/keystore.properties
+
 # IDE state (created when Android Studio opened the repo root by mistake)
 .idea/
 

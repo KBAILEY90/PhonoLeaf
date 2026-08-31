@@ -21,6 +21,41 @@ books aloud" style queries, not the generic "text to speech" head term where
 Speechify and NaturalReader dominate. Our angle in every title: **turn any ebook
 into an audiobook, from your own library, private and offline.**
 
+### Revised 2026-08-30: lead with reliability, keep privacy as support
+
+`COMPETITOR_SWOT.md` mined actual store reviews across all six competitors, and
+the finding changes what the copy should lead with. The highest upvoted
+complaints in that entire research set are **not** about privacy. They are about
+things breaking:
+
+- playback dying when the screen locks (three of the six, and @Voice's own
+  developer says it "cannot be fixed in the app code")
+- losing your reading position (Speechify: "it drops you SOMEWHERE in the
+  vicinity, and that could be a couple chapters forward or backward", 270 found
+  helpful)
+- endless loading and failed imports (Speechify: "a book that's been scanning for
+  more than 2 weeks", 276 found helpful)
+- the good voice silently downgrading when the network is judged weak
+
+**Privacy is why people approve. Reliability is why people switch.** Somebody
+searching "privacy" is browsing; somebody searching "audiobook app keeps stopping
+when screen turns off" is actively churning off a competitor and is the single
+highest intent visitor we can get.
+
+PhonoLeaf's architecture happens to fix all four of those, and not as a feature
+choice: generating on device means there is no server round trip to fail, no
+network state to misjudge, and no queue to get stuck in. So the reliability claim
+is structural, which is exactly what makes it defensible in copy.
+
+**Practical rule for every page:** keep "turn any ebook into an audiobook" as the
+head term in `<title>` and `<h1>` (it is the category term people search and we
+should not surrender it), and spend the lede, the first feature block, and the
+meta description on reliability. Privacy moves to the supporting paragraph, where
+it still does its job.
+
+This supersedes `COMPETITORS.md`'s strategic takeaway #3 ("keep the privacy story
+loud"), which is now cross referenced from that file so the two do not disagree.
+
 ## 2. Keyword map (by intent)
 
 **Core (medium head terms, our category):**
@@ -47,6 +82,29 @@ into an audiobook, from your own library, private and offline.**
 - read aloud app for dyslexia
 - listen to books while commuting
 - convert ebook to audio
+
+**Reliability / failure mode (added 2026-08-30, highest intent in the whole map):**
+
+These are what somebody types when a competitor has just failed them. Volumes are
+low individually, competition is near zero because nobody writes pages targeting
+their own product's failures, and intent is as high as it gets: the searcher has
+already decided to leave something. Long tail phrasing matters more than exact
+match here, so answer the question plainly in the copy.
+
+- audiobook app keeps stopping when screen turns off
+- text to speech stops when phone locks
+- app loses my place in the book
+- text to speech app forgets where I stopped
+- ebook reader stuck on processing
+- text to speech not working offline
+- read aloud app that works without internet
+- text to speech app that doesn't need wifi
+- audiobook app no loading
+
+**French (`fr-CA`) equivalents:**
+- la lecture s'arrête quand l'écran s'éteint
+- application qui perd ma page
+- synthèse vocale sans connexion Internet
 
 **Comparison / bottom of funnel (high converting, build pages):**
 - Speechify alternative
@@ -214,6 +272,22 @@ books).
   with better titles and descriptions.
 
 ## 9. Code task checklist (for Claude Code)
+
+**Added 2026-08-30, from the reliability revision in §1:**
+- [x] Rewrite `home.html` / `home-fr.html` to lead with reliability, keeping the
+      head term in `<title>`/`<h1>`. Done 2026-08-30.
+- [ ] Rewrite the five comparison page pairs' hero copy on the same principle.
+      Their factual corrections already landed 2026-08-30; the reliability
+      reframe is the separate, still open half.
+- [ ] Give every comparison page the "choose them if / choose us if" fairness
+      section §6 already asks for. Only `voice-dream-alternative` and its French
+      twin have one today, added 2026-08-30. A page that admits what the
+      competitor is genuinely better at is more persuasive, not less, and it is
+      also what keeps the page defensible when the competitor reads it.
+- [ ] Consider one dedicated page for the reliability cluster, e.g.
+      `audiobook-app-that-doesnt-stop.html`, answering the four failure modes
+      directly. Nobody competes for these terms because nobody writes pages
+      about their own product breaking.
 - [ ] Add `robots.txt` and `sitemap.xml` at the repo root (section 5).
 - [ ] Add the `<head>` SEO block and JSON-LD to `home.html` (section 4).
 - [ ] Create the use case and comparison page shells from the `home.html` template,
