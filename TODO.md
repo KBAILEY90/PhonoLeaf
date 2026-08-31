@@ -145,8 +145,7 @@ anywhere in `worker/`.
       manager ("On this phone") screen, and in-book full-text search are
       all now in `index.green.html`, re-implemented by hand against the
       forest version's markup (not a git merge — see `CLAUDE_HISTORY.md`'s
-      2026-08-29 entry). Not yet device-tested — verify via `npm run sync`
-      + Android Studio before the next Play Console upload.
+      2026-08-29 entry). **Device-tested and passed 2026-08-31.**
 - [x] **Stale doc cleanup**, surfaced 2026-08-20, done 2026-08-29:
       `BACKLOG.md` section H (Kokoro-on-strong-devices) no longer says "not
       implemented" — marked done as of 2026-08-08 with a pointer to
@@ -163,8 +162,7 @@ anywhere in `worker/`.
       finished" or reaching the actual last page while listening), gated
       by a local 60-day timestamp. iOS deferred (no `ios/` platform exists
       yet); no web fallback (no reviewable web listing to link to). Not
-      yet device-tested — verify the review sheet actually appears via
-      `npm run sync` + Android Studio.
+      **Device-tested and passed 2026-08-31.**
 
 ## Bug, just fixed, needs device confirmation
 

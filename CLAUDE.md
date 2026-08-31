@@ -136,7 +136,8 @@ regardless of `border-radius`. **Still not ported into the real
 `index.html`** (the website's file) — only the native build uses it.
 See `CLAUDE_HISTORY.md` for the full Phase 1/2/3 scope split. Phase 2/3
 (storage manager, in-book search, motion/gesture system, full
-accessibility pass) is done as of 2026-08-29, not yet device-tested.
+accessibility pass) is done as of 2026-08-29, **device-tested and passed
+2026-08-31**.
 `scratchpad`-style working files (`PhonoLeaf Redesign.dc.html`) are a local
 reference copy of the Claude Design source, not part of the shipped app.
 
@@ -635,20 +636,21 @@ playback in place; `StoreReview.maybeAsk()` moved to fire from inside
 `Reader.close()` only when `finished` is true, i.e. after the reader has
 actually closed from a genuine finish — and it no longer fires from
 `BookDetail.markFinished()` (manual mark), per owner feedback that a
-manual mark isn't the moment the prompt is for. Not yet device-tested.
+manual mark isn't the moment the prompt is for. Device-tested and passed
+2026-08-31.
 
 **Storage modal boxed groups (2026-08-30, same day)**: owner asked that any
 grouped-rows screen look like Settings, not just Settings itself. Storage's
 Cached books/Voice packs/Cover images sections now each wrap in `.set-group`
 (the same bordered card Settings uses), with each group's first row on
 `.set-row-first` to drop its top hairline — previously the rows sat as a
-bare unboxed list under the heading. Not yet device-tested.
+bare unboxed list under the heading. Device-tested and passed 2026-08-31.
 
 **Storage modal per-item percentages (2026-08-30, same day)**: each cached
 book/pack/cover row's size now also shows its share of the grand total
 (`StorageModal._sizeWithPct`, e.g. "12 MB · 34%"), skipping the percentage
-entirely when nothing is cached yet (avoids a meaningless 0%/NaN%). Not yet
-device-tested.
+entirely when nothing is cached yet (avoids a meaningless 0%/NaN%).
+Device-tested and passed 2026-08-31.
 
 ## How to deploy
 
@@ -691,7 +693,7 @@ only ONE of them.**
   PR #4) — see `CLAUDE_HISTORY.md` for the full writeup. **Phase 2/3's four
   features were ported into this file 2026-08-29** (re-implemented by hand
   against the forest markup, not a git merge) — see `CLAUDE_HISTORY.md`'s
-  2026-08-29 entry. Not yet device-tested.
+  2026-08-29 entry. Device-tested and passed 2026-08-31.
   **Safeguard, so this doesn't happen again**: before starting substantial
   work on `index.green.html`, run `git log --all --oneline --
   index.green.html` and `git branch -r` — a 10-second check for other
