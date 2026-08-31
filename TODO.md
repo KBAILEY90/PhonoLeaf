@@ -130,12 +130,35 @@ itself calls non-English support thin with weak G2P.
 | **Kokoro + misaki-rs** | Apache 2.0 + MIT | misaki-rs (MIT) | 8 incl. FR | Clean licensing. French is thin, and Kokoro is gated to strong devices, so it cannot replace Piper for most phones. |
 | Commercial SDKs | paid | n/a | many | ReadSpeaker, Cerence, Acapela, CereProc. All enterprise sales, no public pricing. Acapela publishes a Google Play licence agreement, so it at least caters to app developers. |
 
-- [ ] **Verify the Supertonic OpenRAIL-M terms before anything else.** It is
-      the only candidate that removes the phonemizer entirely rather than
-      swapping one for another. OpenRAIL licences generally permit commercial
-      use but attach behavioural use restrictions, and whether those are
-      acceptable in a paid consumer app is a lawyer question, not a reading
-      question. If the terms are workable this is the cleanest exit found.
+- [x] **Supertonic OpenRAIL-M terms read 2026-08-31. Workable, with one
+      condition that lands in the ToS.**
+      Good: commercial use is permitted and you may charge for it; there is
+      NO requirement to publish source or weights, so the app stays closed;
+      attribution is required, which the licences page already handles.
+      **The condition:** the use restrictions must be passed downstream as an
+      enforceable provision, meaning our Terms of Service would have to bind
+      users to them. That is a real obligation, not a formality. It folds
+      into the ToS review already sitting with the lawyer rather than being
+      a separate job.
+      The restrictions themselves are the usual responsible-AI list (illegal
+      use, harassment, impersonation, discrimination, medical or legal
+      advice, undisclosed AI-generated content, and similar). None obviously
+      conflicts with reading someone their own ebook aloud, and dropping MP3
+      export helps here, since nothing leaves the device to be passed off as
+      anything.
+- [ ] **Android is NOT a listed Supertonic platform. Prove it works before
+      committing.** The project documents Python, Node, C++, C#, Go, Swift,
+      Java, Rust, iOS, Flutter, browser and Raspberry Pi, but not Android.
+      It runs on ONNX Runtime, which we already ship, and Java/C++ bindings
+      exist, so Android is plausible rather than proven. Treat this as the
+      main engineering risk of the option, ahead of the licence.
+- [ ] **Kokoro French is now a real fallback worth keeping in view.** Kokoro
+      v1.0 covers French (`ff_siwis`, Apache 2.0), which the 2026-08-08 note
+      said did not exist. Paired with misaki-rs (MIT) it is a fully
+      permissive French path with no espeak and no CC BY-SA. Two caveats: it
+      is one voice trained on under 11 hours, and Kokoro only runs on devices
+      that pass `_KOKORO_MIN_GFLOPS`, so it cannot serve French on mid-tier
+      phones. Useful as a component of a mixed answer, not as the answer.
 - [ ] **Benchmark Supertonic quality and speed against Piper** on a mid-tier
       phone before committing. 99M parameters against Piper medium is not a
       like-for-like comparison, and the whole product positions on the voice
