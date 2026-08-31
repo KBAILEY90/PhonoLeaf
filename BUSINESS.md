@@ -91,6 +91,27 @@ does not need one.
   Cloudflare Worker; Android = Play Billing; lifetime = non consumable IAP / one-
   time Stripe charge, entitlement stored durably so a backend change can't revoke it.
 
+### The Standard/Upgraded tier split: RESOLVED 2026-08-31, one tier stands
+
+**Owner decision 2026-08-31, framed as provisional ("for now"): keep the one
+tier above ($5.99/mo, $49.99/yr) and treat Kokoro as a free quality upgrade on
+devices that pass the benchmark, which is how it is already built.** The
+Standard/Upgraded split is rejected. No change to the table above; no new
+billing work; nothing to implement.
+
+**What would reopen it**, since the decision rests on two facts rather than a
+preference: a Kokoro model gaining French/German/Spanish coverage (none exists
+today), or `_KOKORO_MIN_GFLOPS` landing materially lower once borderline-device
+testing gives it a second calibration point (it is 5.0 against a Pixel 7's
+2.47). Either would change the arithmetic below.
+
+**The condition this decision depends on:** $5.99 is defensible for the
+*product*, not for the voice. The positioning therefore has to price the
+product, which is what the 2026-08-30 reliability reframe in `SEO.md` §1 does.
+Do not let "upgraded voice" become the headline claim anywhere.
+
+The analysis that produced this follows.
+
 ### The Standard/Upgraded tier split: analysis (raised 2026-08-21, worked through 2026-08-30)
 
 `TODO.md` carries this as an open decision: leave Standard (Piper) free or cheap
