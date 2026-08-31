@@ -108,6 +108,38 @@ serves.
       Confidence note: findings 1-3 are from primary sources (CMakeLists,
       the licence, the model cards). Finding 4 is from crate metadata and is
       NOT yet validated against a working Kokoro pipeline on Android.
+
+### Engine options researched 2026-08-31 (owner asked for #3 and #4)
+
+**Clarification that reframes this: Piper itself is NOT the GPL problem.**
+The voice weights are CC BY / CC BY-SA / CC0 and the Piper repo is MIT. The
+GPL comes only from espeak-ng, used by piper-phonemize for the text-to-
+phoneme step. The catch is that Piper voices were TRAINED on espeak phoneme
+sets, so they need espeak-compatible input, which is why espeak cannot just
+be deleted and Piper kept as-is.
+
+**Correction to the 2026-08-08 note in PhonoLeafTtsPlugin.kt:** Kokoro v1.0
+upstream now covers 8 languages including French (`ff_siwis`). That note was
+right about the sherpa-onnx assets at the time, but upstream moved. Caveat:
+French is ONE voice on under 11 hours of training data, and the model card
+itself calls non-English support thin with weak G2P.
+
+| Candidate | Licence | Phonemizer | Languages | Note |
+| --- | --- | --- | --- | --- |
+| **Supertonic** | code MIT, model OpenRAIL-M | **none at all** | 31 | Best lead. No espeak, no phonemizer, no lexicon: text is NFKD-normalised through a Unicode index table, so the whole problem class disappears. OpenRAIL-M carries use restrictions that are NOT yet verified. |
+| **Kokoro + misaki-rs** | Apache 2.0 + MIT | misaki-rs (MIT) | 8 incl. FR | Clean licensing. French is thin, and Kokoro is gated to strong devices, so it cannot replace Piper for most phones. |
+| Commercial SDKs | paid | n/a | many | ReadSpeaker, Cerence, Acapela, CereProc. All enterprise sales, no public pricing. Acapela publishes a Google Play licence agreement, so it at least caters to app developers. |
+
+- [ ] **Verify the Supertonic OpenRAIL-M terms before anything else.** It is
+      the only candidate that removes the phonemizer entirely rather than
+      swapping one for another. OpenRAIL licences generally permit commercial
+      use but attach behavioural use restrictions, and whether those are
+      acceptable in a paid consumer app is a lawyer question, not a reading
+      question. If the terms are workable this is the cleanest exit found.
+- [ ] **Benchmark Supertonic quality and speed against Piper** on a mid-tier
+      phone before committing. 99M parameters against Piper medium is not a
+      like-for-like comparison, and the whole product positions on the voice
+      not being robotic.
 Sources: hexgrad/Kokoro-82M on Hugging Face (Apache 2.0), rhasspy/piper-voices
 MODEL_CARD files per voice, and rhasspy/piper discussion #271 on licensing.
 
