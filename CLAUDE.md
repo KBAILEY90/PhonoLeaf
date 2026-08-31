@@ -16,15 +16,26 @@ producing hours of duplicated work on the same files. Committed work is
 visible; work in progress is invisible. These four steps are what make it
 visible. They are not optional and they take about a minute.**
 
-1. **Fetch and check for upstream work FIRST, before reading anything else:**
+1. **Get onto an up-to-date `main` FIRST, before reading anything else.** Run
+   this at the start of every session, without waiting to be asked and without
+   first judging whether it looks necessary:
    ```
-   git fetch origin && git log --oneline HEAD..origin/main
+   git fetch origin
+   git checkout main && git pull --ff-only
+   git log --oneline HEAD..origin/main
    ```
-   If that prints anything, **rebase onto `origin/main` before editing a single
-   file**. On 2026-08-31 a session skipped this until push time and found
+   If you are deliberately continuing on a feature branch instead of `main`,
+   still fetch first, and **rebase onto `origin/main` before editing a single
+   file** if that last command prints anything.
+
+   Two real failure modes, both from 2026-08-31, and neither detectable by
+   reading files. A session skipped the fetch until push time and found
    `origin/main` six commits ahead, including a KV to D1 migration that broke
    its tests and ten comparison pages another session had already corrected the
-   same day. Fetching first would have cost ten seconds and saved all of it.
+   same day. Later the same day another session opened on a branch that had
+   already been merged, with local `main` two commits stale, so every file it
+   read was one PR out of date and its status report described the previous
+   day's tree. Ten seconds of git rules out both.
 
 2. **Claim the work in `TODO.md` before doing it.** Mark the item `[>]` with
    the date and your branch name, then commit and push *that one line change on
