@@ -17,6 +17,17 @@
     if (!wantFr) { location.replace('about.green.html'); }
   } catch (e) {}
 })();
+/* Mirror the app's own Light/Dark/Auto choice. Same localStorage key
+   (pl_theme, written by Theme.apply()) and same pre-paint pattern as
+   index.green.html's own init, so a page opened from the app can never
+   disagree with the app that linked to it. Absent or 'auto' leaves it to
+   prefers-color-scheme, matching the app's own default. */
+(function () {
+  try {
+    var t = localStorage.getItem('pl_theme');
+    if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
+  } catch (e) {}
+})();
 </script>
 <style>
   :root {
@@ -141,6 +152,11 @@
   th { color: var(--text-dim); font-weight: 600; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.02em; }
   code { font: 0.82em ui-monospace, Menlo, monospace; }
   .foot { margin-top: 1.6rem; color: var(--text-dim); font-size: 0.8rem; }
+  /* Gives the intro box the same rule-and-gap treatment the sections below
+     it already have, so the line above the box matches the one under it.
+     3.5rem matches the gap below the box exactly (its own 2.2rem bottom
+     margin plus the section padding), so both sides read identically. */
+  .summary-sec { margin-top: 3.5rem; }
 </style>
 </head>
 <body>
@@ -159,10 +175,12 @@
 
   <h1>&Agrave; propos de PhonoLeaf</h1>
 
-  <div class="summary-box">
-    <b>N&rsquo;importe quel livre, partout, en tout temps.</b>
-    <p>C&rsquo;est la raison d&rsquo;&ecirc;tre de PhonoLeaf.</p>
-  </div>
+  <section class="summary-sec">
+    <div class="summary-box">
+      <b>N&rsquo;importe quel livre, partout, en tout temps.</b>
+      <p>C&rsquo;est la raison d&rsquo;&ecirc;tre de PhonoLeaf.</p>
+    </div>
+  </section>
 
   <section>
     <h2>Pourquoi PhonoLeaf existe</h2>

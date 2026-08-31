@@ -18,6 +18,17 @@
     if (!wantFr) { location.replace('licences.green.html'); }
   } catch (e) {}
 })();
+/* Mirror the app's own Light/Dark/Auto choice. Same localStorage key
+   (pl_theme, written by Theme.apply()) and same pre-paint pattern as
+   index.green.html's own init, so a page opened from the app can never
+   disagree with the app that linked to it. Absent or 'auto' leaves it to
+   prefers-color-scheme, matching the app's own default. */
+(function () {
+  try {
+    var t = localStorage.getItem('pl_theme');
+    if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
+  } catch (e) {}
+})();
 </script>
 <style>
   :root {
