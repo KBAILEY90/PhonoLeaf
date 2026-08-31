@@ -316,10 +316,14 @@ genuinely have it and say so, so that angle attacks a strength. Applied
       nothing had to be removed. Two record corrections made at the same
       time: there are six pairs, not five, and `voice-dream-alternative`
       never had a fairness section despite this file once saying it did.
-- [ ] Consider one dedicated page for the reliability cluster, e.g.
-      `audiobook-app-that-doesnt-stop.html`, answering the four failure modes
-      directly. Nobody competes for these terms because nobody writes pages
-      about their own product breaking.
+- [x] **Dedicated reliability-cluster page. Done 2026-08-31.**
+      `audiobook-app-that-doesnt-stop.html` plus its French twin. One section
+      per failure mode from §2, each naming why it happens in other apps before
+      saying why it does not happen here, then a section arguing the whole thing
+      is structural rather than a feature that could be traded away later.
+      Five FAQ entries with schema, targeting the long-tail question phrasings
+      directly. Wired into `sitemap.xml` with full hreflang blocks and linked
+      from both home pages, per the standing EN/FR pairing rule.
 - [ ] Add `robots.txt` and `sitemap.xml` at the repo root (section 5).
 - [ ] Add the `<head>` SEO block and JSON-LD to `home.html` (section 4).
 - [ ] Create the use case and comparison page shells from the `home.html` template,

@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#3E8E6B">
+<meta name="description" content="Stops when the screen turns off? Forgets your place? Stalls on processing? That happens because the audio comes from a server. PhonoLeaf's does not.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%233E8E6B'/%3E%3Cpath d='M50 24 C68 38 68 66 50 82 C32 66 32 38 50 24 Z' fill='%23F4F1E8'/%3E%3Cpath d='M50 82 L50 90' stroke='%23F4F1E8' stroke-width='3.2' stroke-linecap='round'/%3E%3Cpath d='M35 53 Q40 42 45 53 T55 53 T65 53' fill='none' stroke='%233E8E6B' stroke-width='3.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<title>An audiobook app that doesn't stop · PhonoLeaf</title>
+<link rel="canonical" href="https://phonoleaf.com/audiobook-app-that-doesnt-stop.html">
+<link rel="alternate" hreflang="en" href="https://phonoleaf.com/audiobook-app-that-doesnt-stop.html">
+<link rel="alternate" hreflang="fr-ca" href="https://phonoleaf.com/audiobook-app-that-doesnt-stop-fr.html">
+<link rel="alternate" hreflang="x-default" href="https://phonoleaf.com/audiobook-app-that-doesnt-stop.html">
+<meta property="og:type" content="website">
+<meta property="og:title" content="An audiobook app that doesn't stop · PhonoLeaf">
+<meta property="og:description" content="Playback that survives the screen going off, a place that is never lost, and no waiting on a server. PhonoLeaf generates the voice on your device.">
+<meta property="og:url" content="https://phonoleaf.com/audiobook-app-that-doesnt-stop.html">
+<meta name="twitter:card" content="summary_large_image">
+<meta property="og:image" content="https://phonoleaf.com/brand/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="PhonoLeaf: turn your ebooks into audiobooks">
+<meta name="twitter:image" content="https://phonoleaf.com/brand/og-image.png">
+<script>
+(function () {
+  try {
+    var saved = localStorage.getItem('pl_lang');
+    var prefersFr = (navigator.languages || [navigator.language || 'en'])
+      .some(function (l) { return /^fr/i.test(l); });
+    var wantFr = saved ? saved === 'fr' : prefersFr;
+    if (wantFr) { location.replace('audiobook-app-that-doesnt-stop-fr.html'); }
+  } catch (e) {}
+})();
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Why does my audiobook app stop when the screen turns off?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Almost always because it streams audio from a server. When the screen locks, the operating system suspends the app and the stream drops. An app that generates audio on your device and runs a proper background service does not have that problem."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Why do reading apps lose my place in a book?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Because the position is stored on a server and only synced occasionally. If the app closes or loses signal before it syncs, it falls back to an older position. PhonoLeaf saves your position on your device on every page turn."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Does PhonoLeaf work without an internet connection?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes. Save a book for offline listening and both the book and the voice work with no connection at all, because the voice is generated on your device rather than fetched."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Why does my ebook get stuck on \"processing\"?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Cloud apps upload your file, convert it, and put it in a queue shared with every other user. PhonoLeaf opens the file directly from your Google Drive, so there is nothing to upload and nothing to queue."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Does the voice quality drop on a weak connection?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Not in PhonoLeaf. Cloud apps often switch to a lower-quality voice when they judge your network to be weak. PhonoLeaf generates the voice on your device, so there is no such decision to make."
+      }
+    }
+  ]
+}
+</script>
+<style>
+  :root {
+    --bg:        #F4F1E8;
+    --surface:   #FBF9F2;
+    --card:      #FFFFFF;
+    --accent:    #3E8E6B;
+    --accent2:   #C98A3C;
+    --text:      #1E2A22;
+    --text-dim:  #6E7A70;
+    --line:      #E6E1D3;
+    --font-ui:   'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg:#0F1310; --surface:#161B14; --card:#1D241B;
+      --accent:#6FC598; --accent2:#E0A857;
+      --text:#E8ECE1; --text-dim:#97A290; --line:#2A3225;
+    }
+  }
+  @font-face {
+    font-family:'Manrope'; font-style:normal; font-weight:100 900;
+    font-display:swap; src:url('fonts/manrope.woff2') format('woff2');
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 400 1rem/1.65 var(--font-ui);
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 2.5rem 1.5rem 5rem; }
+  .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 3rem; }
+  .brand { display: flex; align-items: center; gap: 0.6rem; text-decoration: none; color: var(--text); }
+  .brand svg { flex-shrink: 0; }
+  .brand span { font-weight: 800; font-size: 1.15rem; letter-spacing: -0.01em; }
+  .langswitch { font-size: 0.8rem; }
+  .langswitch a, .langswitch b { text-decoration: none; padding: 0.2rem 0.4rem; }
+  .langswitch a { color: var(--text-dim); }
+  .langswitch b { color: var(--text); }
+
+  .hero { text-align: center; margin-bottom: 3.5rem; }
+  .hero .mark { margin-bottom: 1.2rem; }
+  h1 { font-size: 2rem; font-weight: 800; margin: 0 0 0.6rem; letter-spacing: -0.02em; line-height: 1.25; }
+  .tagline { color: var(--accent2); font-weight: 700; font-size: 0.95rem; letter-spacing: 0.02em; margin-bottom: 1.1rem; }
+  .lede { color: var(--text-dim); font-size: 1.05rem; max-width: 34rem; margin: 0 auto 1.8rem; }
+  .cta {
+    display: inline-block; background: var(--accent); color: #fff; text-decoration: none;
+    font-weight: 700; font-size: 0.98rem; padding: 0.8rem 1.7rem; border-radius: 999px;
+  }
+  .cta-note { display: block; color: var(--text-dim); font-size: 0.82rem; margin-top: 0.8rem; }
+
+  h2 { font-size: 1.2rem; font-weight: 700; margin: 2.8rem 0 0.9rem; color: var(--accent); }
+  p { margin: 0 0 1rem; }
+  a { color: var(--accent); }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.9rem; margin: 1.2rem 0 1rem; }
+  .feat {
+    background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 1.1rem 1.2rem;
+  }
+  .feat b { display: block; margin-bottom: 0.25rem; font-size: 0.95rem; }
+  .feat span { color: var(--text-dim); font-size: 0.88rem; }
+
+  ul { margin: 0 0 1rem; padding-left: 1.3rem; }
+  li { margin-bottom: 0.45rem; }
+  .foot { margin-top: 3.5rem; padding-top: 1.5rem; border-top: 1px solid var(--line); color: var(--text-dim); font-size: 0.82rem; }
+
+  /* FAQ */
+  .faq-item { margin-bottom: 1.3rem; }
+  .faq-item b { display: block; margin-bottom: 0.3rem; font-size: 0.98rem; }
+  .faq-item p { color: var(--text-dim); margin: 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <a class="brand" href="home.html">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="28" height="28" aria-hidden="true"><rect width="100" height="100" rx="22" fill="#3E8E6B"/><path d="M50 24 C68 38 68 66 50 82 C32 66 32 38 50 24 Z" fill="#F4F1E8"/><path d="M50 82 L50 90" stroke="#F4F1E8" stroke-width="3.2" stroke-linecap="round"/><path d="M35 53 Q40 42 45 53 T55 53 T65 53" fill="none" stroke="#3E8E6B" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span>PhonoLeaf</span>
+    </a>
+    <div class="langswitch">
+      <b>EN</b> ·
+      <a href="audiobook-app-that-doesnt-stop-fr.html" onclick="try{localStorage.setItem('pl_lang','fr')}catch(e){}">FR</a>
+    </div>
+  </div>
+
+  <div class="hero">
+    <div class="mark">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="76" height="76" aria-hidden="true"><rect width="100" height="100" rx="22" fill="#3E8E6B"/><path d="M50 24 C68 38 68 66 50 82 C32 66 32 38 50 24 Z" fill="#F4F1E8"/><path d="M50 82 L50 90" stroke="#F4F1E8" stroke-width="3.2" stroke-linecap="round"/><path d="M35 53 Q40 42 45 53 T55 53 T65 53" fill="none" stroke="#3E8E6B" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+    <h1>The audiobook app that doesn't stop when your screen turns off</h1>
+    <div class="tagline">No stalling, no lost place, no waiting</div>
+    <p class="lede">
+      Four things break most read-aloud apps: playback dies when the screen locks, the app forgets where you were, a book sits on &ldquo;processing&rdquo; forever, and the good voice quietly disappears when your signal dips. PhonoLeaf has none of them, and not by accident.
+    </p>
+    <a class="cta" href="index.html">Open PhonoLeaf</a>
+    <span class="cta-note">Free 7-day trial · Sign in with Google · Nothing to install</span>
+  </div>
+
+  <h2>Why apps stop when the screen turns off</h2>
+  <p>Most reading apps stream their audio from a server, a sentence or a paragraph at a time. When your screen locks, the operating system suspends the app to save battery, the stream is dropped, and playback dies with it. Some apps also lose your speed setting and the book you had open on the way down.</p>
+  <p>PhonoLeaf generates the audio on your device instead, and runs playback as a real background service with a wake lock, so locking your phone does not interrupt it. Play, pause, chapter and page controls stay on your lock screen.</p>
+
+  <h2>Why apps lose your place</h2>
+  <p>When your position lives on a server, it is only as good as the last time the app managed to sync it. Close the app at the wrong moment, or lose signal, and you come back somewhere near where you were rather than exactly where you were.</p>
+  <p>PhonoLeaf saves your position on your device, on every page turn, and again whenever you leave the app. It is stored per book, so switching between several and coming back weeks later still lands you on the right page.</p>
+
+  <h2>Why books get stuck on &ldquo;processing&rdquo;</h2>
+  <p>Cloud reading apps have to receive your file, convert it, and queue it for synthesis before you can hear anything. That queue is shared with everyone else using the service, which is why a book can sit unprocessed for days and why the wait gets worse at busy times.</p>
+  <p>PhonoLeaf reads the file where it already is. Your books stay in your own Google Drive, they are opened directly, and there is no upload, no conversion step and no queue. A book is ready to listen to as soon as it appears in your library.</p>
+
+  <h2>Why the voice gets worse on a weak connection</h2>
+  <p>Apps that generate speech in the cloud have to decide what to do when your connection looks poor. Most of them silently fall back to a lower-quality voice, which is why a book can start in a natural voice and continue in a flat robotic one without you touching anything.</p>
+  <p>PhonoLeaf never makes that decision, because there is nothing to decide. The voice is generated on your device, at the same quality, whether you have full signal, patchy signal, or none at all.</p>
+
+  <h2>This is structural, not a promise</h2>
+  <p>None of the above is a feature that could be traded away in a future release. They follow from one architectural choice: the audio is made on your device rather than fetched from a server. There is no round trip to fail, no queue to get stuck in, no network state to misjudge, and no server bill that grows with your listening.</p>
+  <div class="grid">
+    <div class="feat">
+      <b>Keeps playing, screen off</b>
+      <span>A real background service with a wake lock, plus lock-screen play, pause, page and chapter controls.</span>
+    </div>
+    <div class="feat">
+      <b>Never loses your place</b>
+      <span>Saved on your device on every page turn and every time you leave, stored separately for each book.</span>
+    </div>
+    <div class="feat">
+      <b>Nothing to upload</b>
+      <span>Your books are read straight from your own Google Drive. No conversion step, no shared queue, no waiting.</span>
+    </div>
+    <div class="feat">
+      <b>Same voice with no signal</b>
+      <span>Generated on your device, so the quality never drops because the network looked weak.</span>
+    </div>
+  </div>
+
+  <h2>Frequently asked questions</h2>
+  <div class="faq-item">
+    <b>Why does my audiobook app stop when the screen turns off?</b>
+    <p>Almost always because it streams audio from a server. When the screen locks, the operating system suspends the app and the stream drops. An app that generates audio on your device and runs a proper background service does not have that problem.</p>
+  </div>
+  <div class="faq-item">
+    <b>Why do reading apps lose my place in a book?</b>
+    <p>Because the position is stored on a server and only synced occasionally. If the app closes or loses signal before it syncs, it falls back to an older position. PhonoLeaf saves your position on your device on every page turn.</p>
+  </div>
+  <div class="faq-item">
+    <b>Does PhonoLeaf work without an internet connection?</b>
+    <p>Yes. Save a book for offline listening and both the book and the voice work with no connection at all, because the voice is generated on your device rather than fetched.</p>
+  </div>
+  <div class="faq-item">
+    <b>Why does my ebook get stuck on "processing"?</b>
+    <p>Cloud apps upload your file, convert it, and put it in a queue shared with every other user. PhonoLeaf opens the file directly from your Google Drive, so there is nothing to upload and nothing to queue.</p>
+  </div>
+  <div class="faq-item">
+    <b>Does the voice quality drop on a weak connection?</b>
+    <p>Not in PhonoLeaf. Cloud apps often switch to a lower-quality voice when they judge your network to be weak. PhonoLeaf generates the voice on your device, so there is no such decision to make.</p>
+  </div>
+
+  <div class="foot">
+    <a href="home.html">About PhonoLeaf</a> ·
+    <a href="privacy.html">Privacy Policy</a> ·
+    <a href="terms.html">Terms of Service</a> ·
+    <a href="index.html">Open the app</a><br><br>
+    Contact: <a href="mailto:support@phonoleaf.com">support@phonoleaf.com</a>
+  </div>
+
+</div>
+<!-- Cloudflare Web Analytics --><script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "cbc3149663944543a36ea8d6090ec58b"}'></script><!-- End Cloudflare Web Analytics -->
+</body>
+</html>

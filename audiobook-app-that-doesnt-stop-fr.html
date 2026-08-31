@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#3E8E6B">
+<meta name="description" content="S’arrête quand l’écran s’éteint ? Oublie votre page ? Bloque au traitement ? C’est que l’audio vient d’un serveur. Pas celui de PhonoLeaf.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%233E8E6B'/%3E%3Cpath d='M50 24 C68 38 68 66 50 82 C32 66 32 38 50 24 Z' fill='%23F4F1E8'/%3E%3Cpath d='M50 82 L50 90' stroke='%23F4F1E8' stroke-width='3.2' stroke-linecap='round'/%3E%3Cpath d='M35 53 Q40 42 45 53 T55 53 T65 53' fill='none' stroke='%233E8E6B' stroke-width='3.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<title>Une application audio qui ne s'arrête pas · PhonoLeaf</title>
+<link rel="canonical" href="https://phonoleaf.com/audiobook-app-that-doesnt-stop-fr.html">
+<link rel="alternate" hreflang="en" href="https://phonoleaf.com/audiobook-app-that-doesnt-stop.html">
+<link rel="alternate" hreflang="fr-ca" href="https://phonoleaf.com/audiobook-app-that-doesnt-stop-fr.html">
+<link rel="alternate" hreflang="x-default" href="https://phonoleaf.com/audiobook-app-that-doesnt-stop.html">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Une application audio qui ne s'arrête pas · PhonoLeaf">
+<meta property="og:description" content="Une lecture qui survit à l’écran éteint, une place jamais perdue, et aucune attente serveur. PhonoLeaf génère la voix sur votre appareil.">
+<meta property="og:url" content="https://phonoleaf.com/audiobook-app-that-doesnt-stop-fr.html">
+<meta name="twitter:card" content="summary_large_image">
+<meta property="og:image" content="https://phonoleaf.com/brand/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="PhonoLeaf: turn your ebooks into audiobooks">
+<meta name="twitter:image" content="https://phonoleaf.com/brand/og-image.png">
+<script>
+(function () {
+  try {
+    var saved = localStorage.getItem('pl_lang');
+    var prefersFr = (navigator.languages || [navigator.language || 'en'])
+      .some(function (l) { return /^fr/i.test(l); });
+    var wantFr = saved ? saved === 'fr' : prefersFr;
+    if (!wantFr) { location.replace('audiobook-app-that-doesnt-stop.html'); }
+  } catch (e) {}
+})();
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Pourquoi mon application de livres audio s’arrête-t-elle quand l’écran s’éteint ?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Presque toujours parce qu’elle diffuse l’audio depuis un serveur. Quand l’écran se verrouille, le système suspend l’application et le flux est coupé. Une application qui génère l’audio sur votre appareil et exécute un vrai service en arrière-plan n’a pas ce problème."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Pourquoi les applications de lecture perdent-elles ma page ?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Parce que la position est stockée sur un serveur et synchronisée seulement de temps en temps. Si l’application se ferme ou perd le signal avant la synchronisation, elle revient à une position plus ancienne. PhonoLeaf enregistre votre position sur votre appareil à chaque changement de page."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "PhonoLeaf fonctionne-t-il sans connexion Internet ?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Oui. Enregistrez un livre pour l’écoute hors ligne et le livre comme la voix fonctionnent sans aucune connexion, parce que la voix est générée sur votre appareil plutôt que récupérée."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Pourquoi mon livre numérique reste-t-il bloqué en traitement ?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Les applications infonuagiques téléversent votre fichier, le convertissent et le placent dans une file partagée avec tous les autres utilisateurs. PhonoLeaf ouvre le fichier directement depuis votre Google Drive : rien à téléverser, rien à mettre en file."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "La qualité de la voix baisse-t-elle quand la connexion est faible ?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Pas dans PhonoLeaf. Les applications infonuagiques basculent souvent vers une voix de moindre qualité lorsqu’elles jugent le réseau faible. PhonoLeaf génère la voix sur votre appareil : cette décision n’existe pas."
+      }
+    }
+  ]
+}
+</script>
+<style>
+  :root {
+    --bg:        #F4F1E8;
+    --surface:   #FBF9F2;
+    --card:      #FFFFFF;
+    --accent:    #3E8E6B;
+    --accent2:   #C98A3C;
+    --text:      #1E2A22;
+    --text-dim:  #6E7A70;
+    --line:      #E6E1D3;
+    --font-ui:   'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg:#0F1310; --surface:#161B14; --card:#1D241B;
+      --accent:#6FC598; --accent2:#E0A857;
+      --text:#E8ECE1; --text-dim:#97A290; --line:#2A3225;
+    }
+  }
+  @font-face {
+    font-family:'Manrope'; font-style:normal; font-weight:100 900;
+    font-display:swap; src:url('fonts/manrope.woff2') format('woff2');
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 400 1rem/1.65 var(--font-ui);
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 2.5rem 1.5rem 5rem; }
+  .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 3rem; }
+  .brand { display: flex; align-items: center; gap: 0.6rem; text-decoration: none; color: var(--text); }
+  .brand svg { flex-shrink: 0; }
+  .brand span { font-weight: 800; font-size: 1.15rem; letter-spacing: -0.01em; }
+  .langswitch { font-size: 0.8rem; }
+  .langswitch a, .langswitch b { text-decoration: none; padding: 0.2rem 0.4rem; }
+  .langswitch a { color: var(--text-dim); }
+  .langswitch b { color: var(--text); }
+
+  .hero { text-align: center; margin-bottom: 3.5rem; }
+  .hero .mark { margin-bottom: 1.2rem; }
+  h1 { font-size: 2rem; font-weight: 800; margin: 0 0 0.6rem; letter-spacing: -0.02em; line-height: 1.25; }
+  .tagline { color: var(--accent2); font-weight: 700; font-size: 0.95rem; letter-spacing: 0.02em; margin-bottom: 1.1rem; }
+  .lede { color: var(--text-dim); font-size: 1.05rem; max-width: 34rem; margin: 0 auto 1.8rem; }
+  .cta {
+    display: inline-block; background: var(--accent); color: #fff; text-decoration: none;
+    font-weight: 700; font-size: 0.98rem; padding: 0.8rem 1.7rem; border-radius: 999px;
+  }
+  .cta-note { display: block; color: var(--text-dim); font-size: 0.82rem; margin-top: 0.8rem; }
+
+  h2 { font-size: 1.2rem; font-weight: 700; margin: 2.8rem 0 0.9rem; color: var(--accent); }
+  p { margin: 0 0 1rem; }
+  a { color: var(--accent); }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.9rem; margin: 1.2rem 0 1rem; }
+  .feat {
+    background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 1.1rem 1.2rem;
+  }
+  .feat b { display: block; margin-bottom: 0.25rem; font-size: 0.95rem; }
+  .feat span { color: var(--text-dim); font-size: 0.88rem; }
+
+  ul { margin: 0 0 1rem; padding-left: 1.3rem; }
+  li { margin-bottom: 0.45rem; }
+  .foot { margin-top: 3.5rem; padding-top: 1.5rem; border-top: 1px solid var(--line); color: var(--text-dim); font-size: 0.82rem; }
+
+  /* FAQ */
+  .faq-item { margin-bottom: 1.3rem; }
+  .faq-item b { display: block; margin-bottom: 0.3rem; font-size: 0.98rem; }
+  .faq-item p { color: var(--text-dim); margin: 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <a class="brand" href="home-fr.html">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="28" height="28" aria-hidden="true"><rect width="100" height="100" rx="22" fill="#3E8E6B"/><path d="M50 24 C68 38 68 66 50 82 C32 66 32 38 50 24 Z" fill="#F4F1E8"/><path d="M50 82 L50 90" stroke="#F4F1E8" stroke-width="3.2" stroke-linecap="round"/><path d="M35 53 Q40 42 45 53 T55 53 T65 53" fill="none" stroke="#3E8E6B" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span>PhonoLeaf</span>
+    </a>
+    <div class="langswitch">
+      <a href="audiobook-app-that-doesnt-stop.html" onclick="try{localStorage.setItem('pl_lang','en')}catch(e){}">EN</a> ·
+      <b>FR</b>
+    </div>
+  </div>
+
+  <div class="hero">
+    <div class="mark">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="76" height="76" aria-hidden="true"><rect width="100" height="100" rx="22" fill="#3E8E6B"/><path d="M50 24 C68 38 68 66 50 82 C32 66 32 38 50 24 Z" fill="#F4F1E8"/><path d="M50 82 L50 90" stroke="#F4F1E8" stroke-width="3.2" stroke-linecap="round"/><path d="M35 53 Q40 42 45 53 T55 53 T65 53" fill="none" stroke="#3E8E6B" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+    <h1>L’application qui ne s’arrête pas quand votre écran s’éteint</h1>
+    <div class="tagline">Aucun blocage, aucune page perdue, aucune attente</div>
+    <p class="lede">
+      Quatre choses cassent la plupart des applications de lecture à voix haute : la lecture meurt quand l’écran se verrouille, l’application oublie où vous étiez, un livre reste indéfiniment en &laquo;&nbsp;traitement&nbsp;&raquo;, et la bonne voix disparaît discrètement quand le signal faiblit. PhonoLeaf n’a aucun de ces défauts, et ce n’est pas un hasard.
+    </p>
+    <a class="cta" href="index.html">Ouvrir PhonoLeaf</a>
+    <span class="cta-note">Essai gratuit de 7 jours · Connexion avec Google · Rien à installer</span>
+  </div>
+
+  <h2>Pourquoi les applications s’arrêtent quand l’écran s’éteint</h2>
+  <p>La plupart des applications de lecture diffusent leur audio depuis un serveur, une phrase ou un paragraphe à la fois. Quand l’écran se verrouille, le système suspend l’application pour économiser la batterie, le flux est coupé, et la lecture meurt avec lui. Certaines perdent aussi votre vitesse de lecture et le livre ouvert au passage.</p>
+  <p>PhonoLeaf génère plutôt l’audio sur votre appareil et exécute la lecture comme un véritable service en arrière-plan, avec verrou d’éveil : verrouiller votre téléphone ne l’interrompt pas. Les commandes de lecture, de pause, de page et de chapitre restent sur votre écran verrouillé.</p>
+
+  <h2>Pourquoi les applications perdent votre page</h2>
+  <p>Quand votre position vit sur un serveur, elle ne vaut que la dernière synchronisation réussie. Fermez l’application au mauvais moment, ou perdez le signal, et vous revenez près de votre page plutôt qu’exactement dessus.</p>
+  <p>PhonoLeaf enregistre votre position sur votre appareil, à chaque changement de page, et de nouveau chaque fois que vous quittez l’application. Elle est conservée par livre : passer de l’un à l’autre et revenir des semaines plus tard vous ramène à la bonne page.</p>
+
+  <h2>Pourquoi les livres restent bloqués en &laquo;&nbsp;traitement&nbsp;&raquo;</h2>
+  <p>Les applications infonuagiques doivent recevoir votre fichier, le convertir, puis le mettre en file d’attente pour la synthèse avant que vous entendiez quoi que ce soit. Cette file est partagée avec tous les autres utilisateurs du service, d’où des livres qui restent des jours sans être traités et une attente qui empire aux heures de pointe.</p>
+  <p>PhonoLeaf lit le fichier là où il se trouve déjà. Vos livres restent dans votre propre Google Drive, ils sont ouverts directement, et il n’y a ni téléversement, ni conversion, ni file d’attente. Un livre est prêt à écouter dès qu’il apparaît dans votre bibliothèque.</p>
+
+  <h2>Pourquoi la voix se dégrade quand la connexion faiblit</h2>
+  <p>Les applications qui génèrent la parole dans le nuage doivent décider quoi faire quand votre connexion semble mauvaise. La plupart basculent discrètement vers une voix de moindre qualité : c’est pourquoi un livre peut commencer avec une voix naturelle et continuer avec une voix plate et robotique sans que vous ayez touché à quoi que ce soit.</p>
+  <p>PhonoLeaf ne prend jamais cette décision, parce qu’il n’y a rien à décider. La voix est générée sur votre appareil, à la même qualité, que vous ayez un signal complet, un signal faible, ou aucun signal.</p>
+
+  <h2>C’est structurel, pas une promesse</h2>
+  <p>Rien de ce qui précède n’est une fonctionnalité qu’une future version pourrait retirer. Tout découle d’un seul choix d’architecture : l’audio est fabriqué sur votre appareil plutôt que récupéré sur un serveur. Il n’y a aucun aller-retour qui puisse échouer, aucune file où rester coincé, aucun état réseau à mal juger, et aucune facture serveur qui augmente avec votre écoute.</p>
+  <div class="grid">
+    <div class="feat">
+      <b>Continue écran éteint</b>
+      <span>Un véritable service en arrière-plan avec verrou d’éveil, plus les commandes de lecture, pause, page et chapitre sur l’écran verrouillé.</span>
+    </div>
+    <div class="feat">
+      <b>Ne perd jamais votre page</b>
+      <span>Enregistrée sur votre appareil à chaque changement de page et à chaque sortie, séparément pour chaque livre.</span>
+    </div>
+    <div class="feat">
+      <b>Rien à téléverser</b>
+      <span>Vos livres sont lus directement depuis votre Google Drive. Aucune conversion, aucune file partagée, aucune attente.</span>
+    </div>
+    <div class="feat">
+      <b>La même voix sans signal</b>
+      <span>Générée sur votre appareil : la qualité ne baisse jamais parce que le réseau a semblé faible.</span>
+    </div>
+  </div>
+
+  <h2>Questions fréquentes</h2>
+  <div class="faq-item">
+    <b>Pourquoi mon application de livres audio s’arrête-t-elle quand l’écran s’éteint ?</b>
+    <p>Presque toujours parce qu’elle diffuse l’audio depuis un serveur. Quand l’écran se verrouille, le système suspend l’application et le flux est coupé. Une application qui génère l’audio sur votre appareil et exécute un vrai service en arrière-plan n’a pas ce problème.</p>
+  </div>
+  <div class="faq-item">
+    <b>Pourquoi les applications de lecture perdent-elles ma page ?</b>
+    <p>Parce que la position est stockée sur un serveur et synchronisée seulement de temps en temps. Si l’application se ferme ou perd le signal avant la synchronisation, elle revient à une position plus ancienne. PhonoLeaf enregistre votre position sur votre appareil à chaque changement de page.</p>
+  </div>
+  <div class="faq-item">
+    <b>PhonoLeaf fonctionne-t-il sans connexion Internet ?</b>
+    <p>Oui. Enregistrez un livre pour l’écoute hors ligne et le livre comme la voix fonctionnent sans aucune connexion, parce que la voix est générée sur votre appareil plutôt que récupérée.</p>
+  </div>
+  <div class="faq-item">
+    <b>Pourquoi mon livre numérique reste-t-il bloqué en traitement ?</b>
+    <p>Les applications infonuagiques téléversent votre fichier, le convertissent et le placent dans une file partagée avec tous les autres utilisateurs. PhonoLeaf ouvre le fichier directement depuis votre Google Drive : rien à téléverser, rien à mettre en file.</p>
+  </div>
+  <div class="faq-item">
+    <b>La qualité de la voix baisse-t-elle quand la connexion est faible ?</b>
+    <p>Pas dans PhonoLeaf. Les applications infonuagiques basculent souvent vers une voix de moindre qualité lorsqu’elles jugent le réseau faible. PhonoLeaf génère la voix sur votre appareil : cette décision n’existe pas.</p>
+  </div>
+
+  <div class="foot">
+    <a href="home-fr.html">À propos de PhonoLeaf</a> ·
+    <a href="privacy-fr.html">Politique de confidentialité</a> ·
+    <a href="terms-fr.html">Conditions d’utilisation</a> ·
+    <a href="index.html">Ouvrir l’application</a><br><br>
+    Contact: <a href="mailto:support@phonoleaf.com">support@phonoleaf.com</a>
+  </div>
+
+</div>
+<!-- Cloudflare Web Analytics --><script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "cbc3149663944543a36ea8d6090ec58b"}'></script><!-- End Cloudflare Web Analytics -->
+</body>
+</html>

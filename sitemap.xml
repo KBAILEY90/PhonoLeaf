@@ -245,4 +245,16 @@
     <xhtml:link rel="alternate" hreflang="fr-ca" href="https://phonoleaf.com/privacy-fr.html"/>
     <xhtml:link rel="alternate" hreflang="x-default" href="https://phonoleaf.com/privacy.html"/>
   </url>
+  <url>
+    <loc>https://phonoleaf.com/audiobook-app-that-doesnt-stop.html</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://phonoleaf.com/audiobook-app-that-doesnt-stop.html"/>
+    <xhtml:link rel="alternate" hreflang="fr-ca" href="https://phonoleaf.com/audiobook-app-that-doesnt-stop-fr.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://phonoleaf.com/audiobook-app-that-doesnt-stop.html"/>
+  </url>
+  <url>
+    <loc>https://phonoleaf.com/audiobook-app-that-doesnt-stop-fr.html</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://phonoleaf.com/audiobook-app-that-doesnt-stop.html"/>
+    <xhtml:link rel="alternate" hreflang="fr-ca" href="https://phonoleaf.com/audiobook-app-that-doesnt-stop-fr.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://phonoleaf.com/audiobook-app-that-doesnt-stop.html"/>
+  </url>
 </urlset>
