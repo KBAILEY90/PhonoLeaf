@@ -7531,3 +7531,73 @@ book/pack/cover row's size now also shows its share of the grand total
 entirely when nothing is cached yet (avoids a meaningless 0%/NaN%).
 Device-tested and passed 2026-08-31.
 
+## Session protocol cut down to a solo workflow (2026-08-31)
+
+Owner call: this is a one-person project with no reviewer, so the branch,
+PR, task-claiming and WIP-visibility steps were pure overhead and are gone.
+`CLAUDE.md` now keeps only the two things that still earn their place:
+start every session on an up-to-date `main`, and test before pushing,
+because for the website a push is the deploy.
+
+The full four-step protocol is preserved below because the collisions that
+produced it were real (2026-08-28 and 2026-08-30/31, hours of duplicated
+work each). It is the right procedure again the moment two sessions run in
+parallel; it was simply solving a problem that does not exist with one
+session at a time.
+
+
+**Multiple Claude sessions work this repo, often on the same day. Two have
+already collided badly (2026-08-28, and again 2026-08-30/31), each time
+producing hours of duplicated work on the same files. Committed work is
+visible; work in progress is invisible. These four steps are what make it
+visible. They are not optional and they take about a minute.**
+
+1. **Get onto an up-to-date `main` FIRST, before reading anything else.** Run
+   this at the start of every session, without waiting to be asked and without
+   first judging whether it looks necessary:
+   ```
+   git fetch origin
+   git checkout main && git pull --ff-only
+   git log --oneline HEAD..origin/main
+   ```
+   If you are deliberately continuing on a feature branch instead of `main`,
+   still fetch first, and **rebase onto `origin/main` before editing a single
+   file** if that last command prints anything.
+
+   Two real failure modes, both from 2026-08-31, and neither detectable by
+   reading files. A session skipped the fetch until push time and found
+   `origin/main` six commits ahead, including a KV to D1 migration that broke
+   its tests and ten comparison pages another session had already corrected the
+   same day. Later the same day another session opened on a branch that had
+   already been merged, with local `main` two commits stale, so every file it
+   read was one PR out of date and its status report described the previous
+   day's tree. Ten seconds of git rules out both.
+
+2. **Claim the work in `TODO.md` before doing it.** Mark the item `[>]` with
+   the date and your branch name, then commit and push *that one line change on
+   its own, immediately*. It is a lock file made of markdown. An unclaimed task
+   will be picked up by another session that has every reason to think it is
+   free.
+
+3. **Push a WIP branch within the first ~20 minutes**, before the work is good.
+   A pushed branch appears in everyone's `git branch -r`; twenty uncommitted
+   files appear to nobody. Polish later, be visible now.
+
+4. **Check the files, not just the branch, before substantial work:**
+   ```
+   git log --all --oneline -- <path>    # any file you are about to change
+   git branch -r
+   ```
+   This generalizes the older `index.green.html`-only safeguard, which did not
+   fire on 2026-08-31 because the collision was in the comparison pages and the
+   worker instead. **Apply it to any file, not just that one.**
+
+**Scope a session by file territory, not by task size.** "Docs and marketing"
+and "worker and payments" cannot collide. "Whatever is next" collides
+constantly. If you are about to work outside your territory, claim it per
+step 2 first.
+
+**When you find a collision anyway:** rebase onto `origin/main` and take the
+merged version as your base, then re-apply only what is genuinely additive.
+Never force push over another session's work, and never resolve a conflict by
+taking your own side wholesale just because it is yours.

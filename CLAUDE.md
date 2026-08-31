@@ -8,63 +8,40 @@ section order as this file. It is NOT auto-loaded — `grep`/`Read` it when you
 need the reasoning behind something below, especially before "fixing"
 anything in the Critical Facts or Gotchas sections.
 
-## START HERE: session protocol (read before touching any file)
+## START HERE: start every session on an up-to-date `main`
 
-**Multiple Claude sessions work this repo, often on the same day. Two have
-already collided badly (2026-08-28, and again 2026-08-30/31), each time
-producing hours of duplicated work on the same files. Committed work is
-visible; work in progress is invisible. These four steps are what make it
-visible. They are not optional and they take about a minute.**
+Run this first, every session, before reading anything else:
 
-1. **Get onto an up-to-date `main` FIRST, before reading anything else.** Run
-   this at the start of every session, without waiting to be asked and without
-   first judging whether it looks necessary:
-   ```
-   git fetch origin
-   git checkout main && git pull --ff-only
-   git log --oneline HEAD..origin/main
-   ```
-   If you are deliberately continuing on a feature branch instead of `main`,
-   still fetch first, and **rebase onto `origin/main` before editing a single
-   file** if that last command prints anything.
+```
+git fetch origin
+git checkout main && git pull --ff-only
+git log --oneline -5
+```
 
-   Two real failure modes, both from 2026-08-31, and neither detectable by
-   reading files. A session skipped the fetch until push time and found
-   `origin/main` six commits ahead, including a KV to D1 migration that broke
-   its tests and ten comparison pages another session had already corrected the
-   same day. Later the same day another session opened on a branch that had
-   already been merged, with local `main` two commits stale, so every file it
-   read was one PR out of date and its status report described the previous
-   day's tree. Ten seconds of git rules out both.
+Opening a session on a stale branch means every file you read is out of
+date, and nothing about reading files reveals it. It happened on
+2026-08-31 and cost a status report written against the previous day's
+tree. Ten seconds of git rules it out.
 
-2. **Claim the work in `TODO.md` before doing it.** Mark the item `[>]` with
-   the date and your branch name, then commit and push *that one line change on
-   its own, immediately*. It is a lock file made of markdown. An unclaimed task
-   will be picked up by another session that has every reason to think it is
-   free.
+**This is a solo project. Work directly on `main` and push when it is
+ready.** No feature branch, no PR, no claiming tasks in `TODO.md` first,
+no WIP branch for visibility. Nobody else reviews this, so those steps
+only cost time. (They existed because two Claude sessions once ran in
+parallel and collided; if that ever happens again, re-read this section
+in `CLAUDE_HISTORY.md`, which keeps the longer version.)
 
-3. **Push a WIP branch within the first ~20 minutes**, before the work is good.
-   A pushed branch appears in everyone's `git branch -r`; twenty uncommitted
-   files appear to nobody. Polish later, be visible now.
+**The one rule that still matters: test before you push, because for the
+website a push IS the deploy.** There is no staging environment. Pushing
+`index.html`, `home.html`, `sw.js`, a legal page or a comparison page to
+`main` puts it on phonoleaf.com in about two minutes.
 
-4. **Check the files, not just the branch, before substantial work:**
-   ```
-   git log --all --oneline -- <path>    # any file you are about to change
-   git branch -r
-   ```
-   This generalizes the older `index.green.html`-only safeguard, which did not
-   fire on 2026-08-31 because the collision was in the comparison pages and the
-   worker instead. **Apply it to any file, not just that one.**
-
-**Scope a session by file territory, not by task size.** "Docs and marketing"
-and "worker and payments" cannot collide. "Whatever is next" collides
-constantly. If you are about to work outside your territory, claim it per
-step 2 first.
-
-**When you find a collision anyway:** rebase onto `origin/main` and take the
-merged version as your base, then re-apply only what is genuinely additive.
-Never force push over another session's work, and never resolve a conflict by
-taking your own side wholesale just because it is yours.
+- **Website files:** verify locally first (open the file, or run the
+  syntax check under "How to verify changes"), then commit and push.
+- **Native app files** (`index.green.html`, `android/`): pushing deploys
+  nothing at all. The app ships locally via `npm run sync` and Android
+  Studio, so commit freely and test on device before building a release.
+- **Docs, `worker/`:** a push deploys nothing. `worker/` goes live only
+  when you run `wrangler deploy` yourself.
 
 ## What this is
 
