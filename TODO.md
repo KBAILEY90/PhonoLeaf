@@ -165,6 +165,29 @@ itself calls non-English support thin with weak G2P.
       an integration. Budget it as such. The upside is that what we would own
       is simpler than the espeak-shaped problem we own today.
       **Cheapest way to de-risk it before committing:** build the ONNX models
+
+- [ ] **SIZE PROBLEM: Supertonic ships fp32 only, 380 MB. Possibly
+      disqualifying as-is. Measured 2026-08-31 from the HF repo.**
+      `vector_estimator.onnx` 244.7 MB, `vocoder.onnx` 96.7 MB,
+      `text_encoder.onnx` 34.7 MB, `duration_predictor.onnx` 3.5 MB. No
+      quantized variant is published: those four files are the only option in
+      the repo.
+      **For scale, our current packs are 67 to 80 MB each.** Supertonic is
+      roughly 5x the largest thing we ship today, and the download flow was
+      designed around ~78 MB.
+      **The memory question is worse than the download.** A 244 MB fp32 model
+      needs its weights resident to run. On a 4 GB mid-tier phone, which is
+      exactly the hardware Kokoro already fails on, that risks the OS killing
+      the app during synthesis. Untested, but it is the right thing to test
+      first, ahead of quality.
+      **Mitigation: quantize it ourselves.** int8 would land near 95 MB, in
+      line with current packs. There is precedent: sherpa-onnx ships
+      `kokoro-int8` rather than fp32, and ONNX Runtime has the tooling. But it
+      is work we would own, and quantization can cost audio quality, which
+      has to be re-checked afterwards.
+      **So the order of questions changed:** size and memory now come BEFORE
+      quality and licence, because a model that cannot load on a mid-tier
+      phone fails regardless of how good it sounds or how clean its terms.
       into a throwaway Android test harness and synthesize one sentence. That
       answers feasibility in a day and needs no product work.
 - [ ] **Kokoro French is now a real fallback worth keeping in view.** Kokoro
