@@ -8,6 +8,53 @@ section order as this file. It is NOT auto-loaded — `grep`/`Read` it when you
 need the reasoning behind something below, especially before "fixing"
 anything in the Critical Facts or Gotchas sections.
 
+## START HERE: session protocol (read before touching any file)
+
+**Multiple Claude sessions work this repo, often on the same day. Two have
+already collided badly (2026-08-28, and again 2026-08-30/31), each time
+producing hours of duplicated work on the same files. Committed work is
+visible; work in progress is invisible. These four steps are what make it
+visible. They are not optional and they take about a minute.**
+
+1. **Fetch and check for upstream work FIRST, before reading anything else:**
+   ```
+   git fetch origin && git log --oneline HEAD..origin/main
+   ```
+   If that prints anything, **rebase onto `origin/main` before editing a single
+   file**. On 2026-08-31 a session skipped this until push time and found
+   `origin/main` six commits ahead, including a KV to D1 migration that broke
+   its tests and ten comparison pages another session had already corrected the
+   same day. Fetching first would have cost ten seconds and saved all of it.
+
+2. **Claim the work in `TODO.md` before doing it.** Mark the item `[>]` with
+   the date and your branch name, then commit and push *that one line change on
+   its own, immediately*. It is a lock file made of markdown. An unclaimed task
+   will be picked up by another session that has every reason to think it is
+   free.
+
+3. **Push a WIP branch within the first ~20 minutes**, before the work is good.
+   A pushed branch appears in everyone's `git branch -r`; twenty uncommitted
+   files appear to nobody. Polish later, be visible now.
+
+4. **Check the files, not just the branch, before substantial work:**
+   ```
+   git log --all --oneline -- <path>    # any file you are about to change
+   git branch -r
+   ```
+   This generalizes the older `index.green.html`-only safeguard, which did not
+   fire on 2026-08-31 because the collision was in the comparison pages and the
+   worker instead. **Apply it to any file, not just that one.**
+
+**Scope a session by file territory, not by task size.** "Docs and marketing"
+and "worker and payments" cannot collide. "Whatever is next" collides
+constantly. If you are about to work outside your territory, claim it per
+step 2 first.
+
+**When you find a collision anyway:** rebase onto `origin/main` and take the
+merged version as your base, then re-apply only what is genuinely additive.
+Never force push over another session's work, and never resolve a conflict by
+taking your own side wholesale just because it is yours.
+
 ## What this is
 
 **PhonoLeaf** — a mobile-first PWA that reads your epubs aloud. Connects to
@@ -22,8 +69,15 @@ fallback.
   as an authorized OAuth origin/JS origin (old installs still work) — do not
   remove it.
 - Repo: https://github.com/KBAILEY90/PhonoLeaf
-- Status: **production-bound** — real users, not a personal project. Treat
-  changes with multi-user/security/cost awareness.
+- Status: **production-bound, but not yet shipped or earning.** Treat changes
+  with multi-user/security/cost awareness: this is built to be a real product,
+  not a personal toy. But be accurate about where it actually is (checked
+  2026-08-30) — **no Play Store release exists** (`versionCode 1`, no
+  `signingConfig`, no keystore, no Play Console account), OAuth is still in
+  **Testing mode under its 100-user cap** because CASA is parked, and the
+  entitlement Worker is deployed but not called from the app, so **nobody can
+  pay yet**. Do not plan as though there is an installed base to protect or
+  revenue to lose. See `SWOT.md`.
 - Brand: **PhonoLeaf**. Nothing may be named `koboaudio` anywhere in code —
   the only permitted appearance is the one-time migration block that deletes
   the old-named IndexedDB/localStorage keys.
@@ -120,7 +174,10 @@ The inline script is organized into plain object "modules": `CONFIG`,
 The "Green Ink"/"Shelf" redesign, sourced from a Claude Design project.
 **No longer a mere test page:** as of 2026-08-28 `stage-www.js` builds the
 Android app from THIS file (see the native/web split above), so it is what
-Play Store users get. The **website** still serves the repo-root
+every Android build is made from, and what Play Store users **will** get once
+a release actually ships. To be exact (corrected 2026-08-30): no Play release
+exists yet, so today its only audience is the owner's own device via
+`npm run sync`. The **website** still serves the repo-root
 `index.html` (older design) and is untouched by it. **This fork is
 deliberate and permanent, not a temporary state pending a merge** — owner
 decision 2026-08-28 (see the KNOWN GAP resolution below), overriding this
