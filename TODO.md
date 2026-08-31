@@ -349,10 +349,20 @@ anywhere in `worker/`.
         and 147 chars. No `sw.js` CACHE bump needed, since `home.html` is not
         precached and HTML navigations are network-first.
       - `SEO.md` §9 has a new checklist for what remains.
-      **Still open:** the five comparison page pairs' hero copy, and the
-      "choose them if" fairness section that `SEO.md` §6 asks for on every one
-      (only `voice-dream-alternative` and its French twin have one). Also
-      worth considering: one dedicated page for the reliability cluster.
+      **Hero copy done 2026-08-31** for all six pairs (12 files), not five as
+      this line previously said. Head term kept in `<title>`/`<h1>`; the h1
+      qualifier, tagline, lede and both meta descriptions now lead on the
+      failure modes. Meta descriptions retargeted to 133-146 chars after a
+      first pass ran 196-266, which Google truncates around 155 and would
+      have cut off the very lead being introduced.
+      **Still open, and now BLOCKED on an owner decision:** the "choose them
+      if" fairness section. `SEO.md` §6 asks for it; an explicit owner
+      instruction from 2026-08-17 forbids conceding ground to a competitor,
+      naming that exact section. The pages follow the owner, not the doc.
+      A second correction: `voice-dream-alternative` and its twin were
+      recorded here as having a fairness section. They do not. Only
+      `speechify-alternative` has a `choose-grid`, and it is one-sided.
+      Also still open: one dedicated page for the reliability cluster.
       Original finding:
       `COMPETITOR_SWOT.md`'s strongest finding never reached the website
       copy: the highest-upvoted complaints across all six competitors are

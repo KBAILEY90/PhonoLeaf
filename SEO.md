@@ -276,14 +276,34 @@ books).
 **Added 2026-08-30, from the reliability revision in §1:**
 - [x] Rewrite `home.html` / `home-fr.html` to lead with reliability, keeping the
       head term in `<title>`/`<h1>`. Done 2026-08-30.
-- [ ] Rewrite the five comparison page pairs' hero copy on the same principle.
-      Their factual corrections already landed 2026-08-30; the reliability
-      reframe is the separate, still open half.
-- [ ] Give every comparison page the "choose them if / choose us if" fairness
-      section §6 already asks for. Only `voice-dream-alternative` and its French
-      twin have one today, added 2026-08-30. A page that admits what the
-      competitor is genuinely better at is more persuasive, not less, and it is
-      also what keeps the page defensible when the competitor reads it.
+- [x] Rewrite the comparison page pairs' hero copy on the same principle.
+      Done 2026-08-31, all **six** pairs (12 files). Note the count: this
+      line said five, but there are six (elevenreader, naturalreader,
+      play-books, speechify, voice-aloud, voice-dream). Head term kept in
+      `<title>`/`<h1>`; the h1 qualifier, tagline, lede and both meta
+      descriptions now lead on reliability. Descriptions were retargeted to
+      133-146 chars after a first pass ran 196-266, which Google truncates
+      around 155 and would have cut off the new lead.
+- [!] **BLOCKED, owner decision needed: the "choose them if" fairness section
+      conflicts with a standing owner instruction.** This checklist item and
+      §6 both ask for it. An explicit owner instruction from 2026-08-17 says
+      the opposite: on a comparison page, include nothing that concedes
+      ground to the competitor, specifically no "choose [competitor] if"
+      sections and no table rows where they win outright.
+      **The pages currently follow the owner instruction, not this file.**
+      Checked 2026-08-31: only `speechify-alternative` and its French twin
+      have a `choose-grid` at all, and it holds solely "Choose PhonoLeaf if"
+      with no competitor side. Two claims previously recorded here were
+      wrong and are corrected: `voice-dream-alternative` and its twin have
+      NO fairness section (they have a "Genuinely offline" feature block,
+      which is not the same thing), and the count is six pairs, not five.
+      **Do not add competitor-side sections without the owner reopening it.**
+      The argument for them, kept because it is why §6 asked: a page that
+      admits what a competitor is genuinely better at reads as more
+      credible, and stays defensible when that competitor reads it. The
+      argument against is the owner’s call about what a comparison page is
+      for. Resolve §6 and this line together once decided, so the two files
+      stop disagreeing.
 - [ ] Consider one dedicated page for the reliability cluster, e.g.
       `audiobook-app-that-doesnt-stop.html`, answering the four failure modes
       directly. Nobody competes for these terms because nobody writes pages
