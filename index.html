@@ -713,6 +713,14 @@
       margin: 0 auto 1rem;
     }
     .modal-title { font-size: 1rem; font-weight: 700; margin-bottom: 1rem; }
+    .sleep-hint { font-size: 0.82rem; color: var(--text); opacity: 0.7; line-height: 1.45; margin-bottom: 0.9rem; }
+    .sleep-chips { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem; }
+    .sleep-chip { -webkit-appearance: none; appearance: none; border: 1px solid var(--line); background: var(--surface); color: var(--text); border-radius: 999px; padding: 0.5rem 0.9rem; font: inherit; font-size: 0.88rem; cursor: pointer; }
+    .sleep-chip.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .sleep-cancel { -webkit-appearance: none; appearance: none; width: 100%; border: 1px solid var(--line); background: transparent; color: var(--text); border-radius: 10px; padding: 0.7rem; font: inherit; font-size: 0.9rem; cursor: pointer; }
+    .sleep-cancel:disabled { opacity: 0.45; cursor: default; }
+    #sleep-btn.on { color: var(--accent); }
+    .sleep-readout { font-size: 0.7rem; margin-left: 0.25rem; }
 
     /* Feedback / bug-report forms */
     .form-label { font-size: 0.78rem; font-weight: 600; color: var(--text-dim); margin: 0.9rem 0 0.35rem; }
@@ -1456,6 +1464,9 @@
       <button class="icon-btn hl-pill" id="hl-btn" onclick="TTS.toggleFollowAlong()" aria-label="Follow along highlighting" data-i18n-title="follow_along" title="Follow along highlighting">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><rect x="3" y="10.3" width="18" height="5.4" rx="1.2" fill="currentColor" stroke="none" opacity="0.35"/><line x1="4" y1="13" x2="20" y2="13"/><line x1="4" y1="19" x2="14" y2="19"/></svg>
       </button>
+      <button class="icon-btn" id="sleep-btn" onclick="SleepModal.open()" aria-label="Sleep timer" data-i18n-title="sleep_timer" title="Sleep timer">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg><span class="sleep-readout"></span>
+      </button>
       <button class="pill-btn" id="voice-btn" onclick="VoiceModal.open()">Voice</button>
     </div>
   </div>
@@ -1513,6 +1524,25 @@
     <div class="modal-handle"></div>
     <div class="modal-title" data-i18n="chapters_title">Chapters</div>
     <div id="chapter-list"></div>
+  </div>
+</div>
+
+<!-- ============== SLEEP TIMER ============== -->
+<div class="modal-backdrop" id="sleep-modal" onclick="SleepModal.close(event)">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title" data-i18n="sleep_timer">Sleep timer</div>
+    <p class="sleep-hint" data-i18n="sleep_hint">Pick a time. The audio fades out over the last minute and stops at the end of a sentence.</p>
+    <div class="sleep-chips">
+      <button class="sleep-chip" data-min="5" onclick="SleepModal.pick(5)">5 min</button>
+      <button class="sleep-chip" data-min="10" onclick="SleepModal.pick(10)">10 min</button>
+      <button class="sleep-chip" data-min="15" onclick="SleepModal.pick(15)">15 min</button>
+      <button class="sleep-chip" data-min="30" onclick="SleepModal.pick(30)">30 min</button>
+      <button class="sleep-chip" data-min="45" onclick="SleepModal.pick(45)">45 min</button>
+      <button class="sleep-chip" data-min="60" onclick="SleepModal.pick(60)">60 min</button>
+      <button class="sleep-chip" id="sleep-chapter-chip" onclick="SleepModal.pickChapter()" data-i18n="sleep_end_of_chapter">end of ch.</button>
+    </div>
+    <button class="sleep-cancel" id="sleep-cancel-btn" onclick="SleepModal.cancel()" data-i18n="sleep_cancel" disabled>Turn off sleep timer</button>
   </div>
 </div>
 
@@ -2008,6 +2038,10 @@ const STRINGS = {
 
     // Chapter / Folder / Confirm modals
     chapters_title: 'Chapters',
+    sleep_timer: 'Sleep timer', sleep_readout: 'sleep {m}',
+    sleep_hint: 'Pick a time. The audio fades out over the last minute and stops at the end of a sentence.',
+    sleep_end_of_chapter: 'end of ch.', sleep_end_of_chapter_short: 'end of ch.',
+    sleep_cancel: 'Turn off sleep timer',
     reset_stats_confirm: 'Are you sure you want to reset your listening data? This cannot be undone.', reset: 'Reset',
     choose_books_folder: 'Choose your books folder',
     fb_currently: 'Currently: {folder} — open a folder to browse, then tap “Use this folder”.',
@@ -2205,6 +2239,10 @@ const STRINGS = {
 
     // Chapitres / dossier / confirmation
     chapters_title: 'Chapitres',
+    sleep_timer: 'Minuterie de sommeil', sleep_readout: 'sommeil {m}',
+    sleep_hint: 'Choisissez une durée. Le son s’estompe durant la dernière minute et s’arrête à la fin d’une phrase.',
+    sleep_end_of_chapter: 'fin du chap.', sleep_end_of_chapter_short: 'fin du chap.',
+    sleep_cancel: 'Désactiver la minuterie',
     reset_stats_confirm: 'Voulez-vous vraiment réinitialiser vos données d’écoute ? Cette action est irréversible.', reset: 'Réinitialiser',
     choose_books_folder: 'Choisissez votre dossier de livres',
     fb_currently: 'Actuellement : {folder} — ouvrez un dossier pour le parcourir, puis touchez « Utiliser ce dossier ».',
@@ -2272,6 +2310,9 @@ const I18n = {
       () => { if (State.books) Library.render(); },
       () => StatsPage.render(),
       () => Settings.render(),
+      // JS-templated, so apply() cannot reach it: the sleep readout must be
+      // re-rendered explicitly on a language switch.
+      () => SleepTimer.syncReadouts(),
     ]) { try { fn(); } catch (_) {} }
   },
   // {name}-style placeholders only — deliberately not a full template
@@ -5059,6 +5100,10 @@ const Reader = {
   // reading page — the Home hero acts as the mini-player.
   async open(index, mode = 'full') {
     const book = State.books[index];
+    // A genuinely different book abandons any running sleep timer: it was
+    // armed for this listening session. Re-opening the SAME book (tapping the
+    // Home hero to expand) must NOT reset an active countdown.
+    if (State.currentBook !== book) SleepTimer.cancel();
     State.currentBook = book;
     const rv = document.getElementById('reader-view');
     rv.classList.remove('hide-chrome');
@@ -6367,6 +6412,10 @@ const TTS = {
       done = true;
       if (performance.now() - t0 < minMs && this._retryN < 3) { retry(); return; }
       this._retryN = 0;
+      // Sleep timer expired: stop here, at the sentence boundary, instead of
+      // starting another chunk. Rides the same gen-guarded choke point that
+      // every other "should the next chunk start" decision goes through.
+      if (this._sleepExpired) { SleepTimer.cancel(); this.stop(); return; }
       this.idx++;
       // Post-pause (2s after a chapter title, 1s after a subtitle).
       if (chunk.post) { clearTimeout(this._gapT); this._gapT = setTimeout(() => { if (this.active && gen === this._gen) this._speak(); }, chunk.post); }
@@ -6909,6 +6958,9 @@ const TTS = {
       a.onended = () => {
         if (url.startsWith('blob:')) URL.revokeObjectURL(url);
         if (!this.active || gen !== this._gen) return;
+        // Sleep timer expired: stop here, at the sentence boundary, never
+        // mid-audio.
+        if (this._sleepExpired) { SleepTimer.cancel(); this.stop(); return; }
         this.idx++;
         if (chunk.post) { clearTimeout(this._gapT); this._gapT = setTimeout(() => { if (this.active && gen === this._gen) this._speak(); }, chunk.post); }
         else this._speak();
@@ -7556,6 +7608,116 @@ const ChapterModal = {
 };
 
 // --- Confirm dialog ----------------------------------------
+// --- Sleep timer -----------------------------------------------------
+// Ported from the native build (index.green.html) 2026-08-31. The timing
+// logic is identical; only the readout/picker presentation differs, since
+// the website keeps its own design and has no drag dial. Expiry never cuts
+// audio mid-sentence: it sets TTS._sleepExpired, which the existing
+// chunk-boundary checks in _speakWeb/_speakNative act on.
+const SleepTimer = {
+  _iv: null,
+  _remaining: 0,    // seconds; meaningless in chapter mode
+  _minutes: 0,      // what the user picked, for chip highlighting
+  mode: null,       // null | 'time' | 'chapter'
+  _startHref: null, // chapter mode: the section we armed in
+
+  set(minutes) {
+    this._clearInterval();
+    this._minutes = minutes;
+    this._remaining = Math.max(1, Math.round(minutes * 60));
+    this.mode = 'time';
+    if (TTS._audio) TTS._audio.volume = 1;
+    TTS._sleepExpired = false;
+    this._iv = setInterval(() => this._tick(), 1000);
+    this.syncReadouts();
+  },
+  setChapterMode() {
+    this._clearInterval();
+    this._minutes = 0;
+    this.mode = 'chapter';
+    this._startHref = State.rendition?.currentLocation?.()?.start?.href || null;
+    if (TTS._audio) TTS._audio.volume = 1;
+    TTS._sleepExpired = false;
+    this._iv = setInterval(() => this._tick(), 1000);
+    this.syncReadouts();
+  },
+  // Must never leave a stale fade running: resets volume, clears the flag,
+  // stops the countdown. Called from the chunk-boundary checks in TTS and
+  // from Reader.open() when a different book is opened.
+  cancel() {
+    this._clearInterval();
+    this.mode = null;
+    this._remaining = 0;
+    this._minutes = 0;
+    this._startHref = null;
+    TTS._sleepExpired = false;
+    if (TTS._audio) TTS._audio.volume = 1;
+    this.syncReadouts();
+  },
+  _clearInterval() { if (this._iv) { clearInterval(this._iv); this._iv = null; } },
+
+  _tick() {
+    if (this.mode === 'chapter') {
+      const href = State.rendition?.currentLocation?.()?.start?.href;
+      if (href && this._startHref && href !== this._startHref) TTS._sleepExpired = true;
+      this.syncReadouts();
+      return;
+    }
+    if (this.mode !== 'time') return;
+    this._remaining = Math.max(0, this._remaining - 1);
+    // Fade out over the final minute.
+    if (this._remaining <= 60 && TTS._audio) {
+      TTS._audio.volume = Math.max(0, this._remaining / 60);
+    }
+    if (this._remaining <= 0) {
+      TTS._sleepExpired = true;
+      this._clearInterval();
+    }
+    this.syncReadouts();
+  },
+
+  label() {
+    if (this.mode === 'chapter') return I18n.t('sleep_end_of_chapter_short');
+    if (this.mode === 'time') return Math.ceil(this._remaining / 60) + 'm';
+    return '';
+  },
+  syncReadouts() {
+    const l = this.label();
+    document.querySelectorAll('.sleep-readout').forEach(el => {
+      el.textContent = l ? I18n.t('sleep_readout', { m: l }) : '';
+    });
+    const btn = document.getElementById('sleep-btn');
+    if (btn) btn.classList.toggle('on', !!this.mode);
+    const cancelBtn = document.getElementById('sleep-cancel-btn');
+    if (cancelBtn) cancelBtn.disabled = !this.mode;
+    SleepModal.syncChips();
+  },
+};
+
+// Sleep picker. Quick-pick chips in the website's existing modal-sheet
+// idiom, deliberately NOT the native build's drag dial, which belongs to
+// the redesign's visual system.
+const SleepModal = {
+  open() {
+    this.syncChips();
+    document.getElementById('sleep-modal').classList.add('open');
+  },
+  close(e) {
+    if (e && e.target !== e.currentTarget) return;
+    document.getElementById('sleep-modal').classList.remove('open');
+  },
+  pick(minutes) { SleepTimer.set(minutes); this.close(); },
+  pickChapter() { SleepTimer.setChapterMode(); this.close(); },
+  cancel() { SleepTimer.cancel(); this.close(); },
+  syncChips() {
+    document.querySelectorAll('#sleep-modal .sleep-chip[data-min]').forEach(c => {
+      c.classList.toggle('on', SleepTimer.mode === 'time' && +c.dataset.min === SleepTimer._minutes);
+    });
+    const ch = document.getElementById('sleep-chapter-chip');
+    if (ch) ch.classList.toggle('on', SleepTimer.mode === 'chapter');
+  },
+};
+
 const ConfirmModal = {
   _cb: null,
   // Defaults are the stats-reset wording this dialog originally had. They're
