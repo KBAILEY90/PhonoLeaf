@@ -8,6 +8,47 @@ don't let it go stale the way `BACKLOG.md`'s old "Next up" section did.
 
 ---
 
+## VOICE MODEL LICENCES — checked 2026-08-31, two real problems
+
+Owner called this a drop-everything question. It is not a full stop: the two
+voices that matter most are clean. But two of the five Piper voices carry
+terms that need a decision, and one may not be usable commercially at all.
+
+| Component | Licence | Commercial | Note |
+| --- | --- | --- | --- |
+| Kokoro int8 en v0.19 | Apache 2.0 | Yes | Clean. This is the Upgraded voice. |
+| Piper engine | MIT | Yes | Clean |
+| en_US libritts_r | CC BY 4.0 | Yes | **Attribution required** |
+| en_GB vctk | CC BY 4.0 | Yes | **Attribution required** |
+| de_DE thorsten | CC0 | Yes | Clean, no conditions |
+| fr_FR upmc | CC BY-SA 4.0 | Yes, but | **ShareAlike copyleft** |
+| es_ES sharvard | CC BY 3.0 on the card | **Unclear** | **Fine-tuned from lessac** |
+
+- [ ] **es_ES sharvard: possible blocker, decide before shipping Spanish.**
+      Its model card states CC BY 3.0, but the same card says it was fine-tuned
+      from the lessac US English voice, and lessac carries the Blizzard licence,
+      which restricts use to research and explicitly excludes commercial voice
+      synthesis products. Whether a fine-tune inherits the base model licence is
+      an unsettled question in ML licensing, and Piper's own maintainer says as
+      much. Cheapest resolution is to drop or replace the Spanish voice rather
+      than to litigate it. Spanish is not a launch market.
+- [ ] **fr_FR upmc is ShareAlike, and French is a core market.** CC BY-SA 4.0
+      requires derivative works to carry the same licence. Whether synthesized
+      audio, or an app shipping the weights, counts as a derivative is exactly
+      the question to put to the lawyer. Matters more than Spanish because
+      Québec is a strategic market, not an afterthought.
+- [ ] **Attribution is now a legal obligation, not a nicety.** CC BY 4.0 on both
+      English Piper voices and CC BY-SA on French require credit. The app needs
+      a credits surface naming each model, its source and its licence. See the
+      About/credits split in the product ideas section.
+- [ ] **Check whether espeak-ng ships in the build.** Piper voices commonly use
+      the espeak-ng phonemizer, which is GPL. If it is bundled in the APK, that
+      has implications for a proprietary app that the CC licences above do not.
+      Not yet verified either way.
+
+Sources: hexgrad/Kokoro-82M on Hugging Face (Apache 2.0), rhasspy/piper-voices
+MODEL_CARD files per voice, and rhasspy/piper discussion #271 on licensing.
+
 ## Blocked on external people/hardware (nothing to build until these move)
 
 - [ ] **Business registration (REQ, Québec)** — with the lawyer, awaiting
