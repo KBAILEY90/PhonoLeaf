@@ -358,3 +358,44 @@ also apply and may govern the transaction.</p>
 > `[LIFETIME_REFUND_WINDOW]` placeholders with the values I give you, and leave a
 > `TODO: lawyer review` comment near the new terms. Then run the repo's JS syntax
 > check and commit. Do not remove the "not reviewed by a lawyer" caveat.
+
+## Platform strategy: the web is SEO and a launcher, not a product (2026-08-31)
+
+Owner decision. The phone apps are the product. `phonoleaf.com` exists to be
+found and to send people to the app stores, not to be the place people listen
+to books. The web app is frozen at its 2026-08-31 feature set: no new
+features, no parity with the native build, no fork convergence.
+
+The reasoning, in order of weight:
+
+1. **The web cannot deliver the headline claim.** Positioning leads on
+   reliability since the 2026-08-30 reframe: playback that survives the screen
+   going off, and a place that is never lost. Android does that with a real
+   foreground service and a wake lock. A browser tab has no equivalent and no
+   amount of work will give it one, so the web is not a cheaper copy of the
+   product, it is a copy that fails at the thing being sold.
+2. **Parity has a permanent tax.** On 2026-08-31 four native features were
+   ported to the website by hand, against different markup, because the two
+   builds forked on 2026-08-28. Every native feature after that carries the
+   same tax, and the two drift with every commit.
+3. **The voice story is worse there.** Kokoro on the web is WASM pulled from a
+   CDN, heavier and slower, and English only regardless.
+
+What the website still does, and why it is frozen rather than removed:
+
+- **SEO.** The comparison pages, the keyword clusters in `SEO.md`, and the
+  landing pages are the acquisition channel and are unaffected by this.
+- **A no-install trial.** An unknown developer asking for read access to your
+  Google Drive is a large ask. "Try it in your browser, nothing to install" is
+  a real answer to it, and one the app-store-only competitors on the
+  comparison pages cannot match.
+- **The only iOS story that exists.** There is no `ios/` platform and no Apple
+  enrollment, so until an iOS app ships the web build is the only way an
+  iPhone user can use PhonoLeaf at all.
+
+**Revisit removing the web player when the Play listing is live AND the iOS
+app has shipped**, the same explicit-trigger approach used for the CASA
+sequencing. Doing it before then would leave a marketing site pointing at app
+stores that carry no listing, while removing the only working build there is:
+as of 2026-08-31 there is no Play release at all (`versionCode 1`, no
+keystore, no Play Console account) and OAuth is still capped at 100 testers.

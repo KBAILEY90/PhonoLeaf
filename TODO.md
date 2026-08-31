@@ -210,20 +210,26 @@ anywhere in `worker/`.
       keystore's SHA-1, with "Enable custom URI scheme" ticked under
       Advanced Settings, since its absence has already cost one debugging
       session. `SWOT.md` Weaknesses + recommendation 3.
-- [ ] **[SWOT] Converge the `index.html` / `index.green.html` fork.**
-      Measured 2026-08-30: eight substantial modules (`StorageModal`,
-      `SleepTimer`, `MiniPlayer`, `BookDetail`, `Forest`, `EraseModal`,
-      `CoverReveal`, `StoreReview`) exist only in the native file, and
-      localization is 218 `data-i18n` attributes against 129, so the
-      website is a materially worse product rather than a slightly older
-      build. `CLAUDE.md` already documents the exact steps: promote the
-      redesign into `index.html`, set `stage-www.js`'s `APP_SOURCE` back to
-      `'index.html'`, drop the `.green` legal pages from that script's
-      `FILES`, delete `stage-test.js`, and bump `sw.js` `CACHE` (now v57).
-      The fork was a deliberate call and the reason for it was sound; the
-      cost is that it compounds with every commit, so this is cheapest
-      today. Worth doing as its own PR with nothing else in it.
-      `SWOT.md` Weaknesses + recommendation 4.
+- [x] **[SWOT] Converge the `index.html` / `index.green.html` fork.**
+      **CANCELLED 2026-08-31 by owner decision, not done and not to be done.**
+      The premise was that the website is a worse copy of the product and
+      should catch up. The owner's call is that the website should not be the
+      product at all: it is SEO plus a launcher for the phone apps, so a
+      permanent fork costs nothing and convergence would buy nothing.
+      Before the decision, four features were ported to the website by hand
+      (sleep timer, in-book search, storage manager, mark-finished/forget plus
+      export confirmation), and the website got a real desktop layout. Those
+      stay: the desktop layout serves the SEO/launcher role directly, and the
+      ported features cost nothing to keep now that they exist.
+      **The website is frozen, not dead.** No new features, no parity work.
+      It keeps earning its place three ways: the SEO surface, a no-install
+      trial for people unwilling to grant Drive access to an unknown
+      developer, and the only way an iPhone user can use PhonoLeaf until an
+      iOS app exists.
+      **Revisit removing the web player when BOTH are true:** the Play listing
+      is live, and the iOS app has shipped. Until then the web build is the
+      only working PhonoLeaf a human can use, so removing it would leave a
+      marketing page pointing at app stores with no listing on them.
 - [x] **[SWOT] Doc accuracy pass, so the docs stop over-reporting reality.**
       **Done 2026-08-30.** All three parts, plus four extra stale claims found
       on the way. Everything was verified against code before editing, never

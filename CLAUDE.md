@@ -98,13 +98,17 @@ fallback.
     but the native build never comes from a push at all (it is local:
     `npm run sync` + Android Studio). Pointing only the staging script at the
     redesign lets the app ship while the website waits for the desktop pass.
-    **To converge:** promote the redesign into `index.html`, set
-    `APP_SOURCE` back to `'index.html'`, drop the `.green` legal pages from
-    that script's `FILES`, and delete `stage-test.js`.
+    **CONVERGENCE CANCELLED, owner decision 2026-08-31.** The two designs
+    stay separate permanently. The website is no longer a product surface:
+    it is SEO plus a launcher for the phone apps, and it keeps the feature
+    set it had on 2026-08-31 without further parity work. Do NOT promote
+    the redesign into `index.html`, and do NOT spend a session converging
+    the fork. See `CLAUDE_HISTORY.md` 2026-08-31 and `BUSINESS.md` for the
+    reasoning and the conditions that would reopen it.
   - **`scripts/stage-test.js`** + `npm run sync:test` — now does the same
     thing `stage-www.js` does (it predates the split, when the redesign was
     only a test page). Kept only so the documented `npm run sync:test` keeps
-    working; retire it at convergence.
+    working. Convergence is cancelled (above), so it simply stays.
   - Installed plugins: `@capacitor/browser` + `@capacitor/app` (native
     auth), `@capacitor/filesystem` (local import, bug-report photos),
     `CapacitorHttp` (core, used for the OAuth token endpoint — no CORS

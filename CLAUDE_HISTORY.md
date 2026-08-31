@@ -7601,3 +7601,105 @@ step 2 first.
 merged version as your base, then re-apply only what is genuinely additive.
 Never force push over another session's work, and never resolve a conflict by
 taking your own side wholesale just because it is yours.
+
+## Website: desktop layout, four ported features, then a strategy decision (2026-08-31)
+
+A session that started as "close the fork gap" and ended by cancelling the
+fork-convergence task outright. Recorded in order, because the later work
+changes how the earlier work should be read.
+
+**1. The website had no desktop layout.** Since 2026-08-28 a large screen got
+the phone layout capped to a centred 480px column. That was a deliberate trade
+at the time (the block comment says so: avoid building and maintaining a second
+layout), but on a 1900px display it reads as a phone app in a strip, and the
+owner rejected it on sight. Replaced with a real layout at a new >=900px
+breakpoint, CSS only, no DOM or JS change, so phones are untouched and none of
+it reaches the native build:
+
+- The 700 to 900px band keeps the centred column, since a window that size
+  genuinely is tablet shaped.
+- The bottom tab bar becomes a left nav rail. Views clear it, except sign-in
+  (own centred layout, no rail) and the reader (hides the rail via Nav.hideBar).
+- Content gets a gutter and caps at 880px: cards drawn for a 480px column
+  stretch into unreadable bands at full width.
+- Library fills the width. The 2/3/4 toggles become large/medium/small covers
+  via auto-fill rather than a literal column count, which on a wide screen
+  would mean four enormous covers.
+- The reader caps `#viewer` to 46rem. epub.js paginates to that box, so capping
+  it is what shortens the line: a max-width on the text inside the iframe would
+  not survive pagination. The chrome, progress line and page-turn zones are
+  anchored to the same column, because those zones are `width: 12%` pinned to
+  `left:0/right:0` and stranded hundreds of pixels from the page without it.
+- Modals become centred dialogs rather than bottom sheets.
+
+**2. Four features ported from `index.green.html`, functionality only.** The
+owner was explicit that the designs stay separate, so nothing visual came
+across: `Forest` and `CoverReveal` were excluded as design, `StoreReview` as
+native-only (no reviewable web listing), and `MiniPlayer` because the website
+already solves it a different way (the Home hero is its mini player).
+
+- **Sleep timer.** Timing logic identical, including that expiry never cuts
+  audio mid-sentence: it sets `TTS._sleepExpired`, which the existing
+  chunk-boundary checks act on. All three hook points existed here already.
+  The native drag dial did not come across; quick-pick chips instead.
+- **In-book search.** Module verbatim. Every dependency already existed here
+  (`TTS._loadSectionChunksWithNodes`, `_currentSectionChunksWithNodes`,
+  `skipPage`, `cfiFromRange`), so only the entry point and presentation are new.
+- **Storage manager.** Needed `fmtBytes()` and `CoverCache.size()/clear()`,
+  which the website lacked. `fmtBytes` is deliberately separate from the
+  existing `fmtSize()`: that one returns an empty string for a falsy size,
+  which its callers rely on, whereas a storage row must show "0 KB". The
+  voice-pack section guards on `VoicePacks.available()`, false on web, so it
+  omits itself.
+- **Mark finished / forget / export confirmation.** The native build reaches
+  the first two from `BookDetail`, which is redesign UI and stayed out, so they
+  got a small per-book menu in the existing modal idiom instead.
+
+Two bugs found by running the code rather than reading it, both worth
+remembering because reading would not have caught either: the sleep modal was
+using the redesign’s `.active` class while this design shows modals with
+`.open`, so it rendered `display:none` while reporting itself open; and the
+sleep readout is JS-templated, so it survived a language switch untranslated
+until `setLang` got an explicit `syncReadouts` call.
+
+**3. A tour bug that the rail exposed.** Reported symptom: the home tour showed
+"2 of 3 / Your statistics" while the spotlight was still around Library. The
+spotlight transitioned `top`/`left` over 0.25s. On the phone tab bar all four
+tabs share a `top`, so only `left` ever changed between steps and a stalled
+`top` transition was invisible. The rail makes every step a `top` change, so a
+latent bug became the visible symptom. Measured both ways at 1440px: with the
+transition on, `top` froze at step one’s value while the inline style already
+held the correct one; with it off, all three steps land exactly. The transition
+was removed from the spotlight and the tip. **Do not add it back.** A spotlight
+that is always on the right element beats a smooth one that sometimes is not,
+and nothing in the app gates on `transitionend`.
+
+**4. Then the decision that reframes all of it.** The owner’s call: the phone
+apps are the product, and the website is SEO plus a launcher for the app
+stores. The web app is frozen at this feature set. Full reasoning and the
+reopening conditions are in `BUSINESS.md`, "Platform strategy". The short
+version is that the web cannot deliver the reliability claim the product now
+leads on, because background playback needs a real foreground service and a
+browser tab has no equivalent.
+
+The agent’s counter-argument, recorded because it is the reason the web player
+was frozen rather than deleted: there is nothing to link to yet. No Play
+release exists, OAuth is capped at 100 testers, and no `ios/` platform exists,
+so today the web build is the only working PhonoLeaf anyone can use and the
+only iOS story there is. Removing it now would leave a marketing page pointing
+at app stores with no listing on them. Hence the explicit trigger: revisit once
+the Play listing is live AND iOS has shipped.
+
+**How to read the four ports in hindsight:** under the new direction they are
+work the owner might not have chosen to buy. They stay because they already
+exist and cost nothing to keep. The desktop layout is different: a site whose
+job is SEO and app-store launching has to look right on a desktop screen, so
+that part serves the new direction directly.
+
+**Still unverified at the end of this session**, all needing a signed-in
+session with real books, which localhost cannot do until
+`http://localhost:3000` is added as an authorized JavaScript origin on the web
+OAuth client: search indexing and jumping through real text, the storage screen
+with real cached sizes, forget actually removing something, the reading measure
+with words on screen (46rem is a guess and easy to nudge), and whether the
+sleep timer genuinely stops at a sentence boundary mid-listen.
