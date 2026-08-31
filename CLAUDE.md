@@ -82,6 +82,13 @@ fallback.
   - **Email composer plugin**: `EmailComposerPlugin.kt` — `ACTION_SEND`
     intent typed `message/rfc822` so only mail apps show in the picker (used
     by Feedback/Report-a-bug, with photo attachment via `FileProvider`).
+  - **Store review plugin**: `StoreReviewPlugin.kt` — Google Play's In-App
+    Review API, fired only after a genuine finish (`Reader.close(true)`,
+    i.e. reading/listening to the true end), never from a manual "Mark as
+    finished" and never on launch. Locally rate-limited to once per 60 days
+    (`pl_review_asked_at`) on top of Play's own opaque limiting. Android
+    only — no `ios/` platform exists yet, and the web build has no
+    reviewable store listing to point at.
   - **Background playback**: `PlaybackService.kt` — our own foreground
     service (`mediaPlayback` type) + a CPU wake lock, since audio is a JS
     `onended`-driven chain that Android would otherwise suspend when
@@ -690,6 +697,15 @@ only ONE of them.**
   index.green.html` and `git branch -r` — a 10-second check for other
   recent activity on this file. That check alone would have caught this
   the first time.
+  **Second safeguard, added 2026-08-30 after the archival orphaned real
+  work**: that branch also carried the entire payments/D1 workstream, which
+  the archival silently disposed of along with the redesign — including
+  a migration already deployed to live Cloudflare infrastructure, leaving
+  `main`'s `worker/` describing storage that no longer existed (recovered
+  in PR #13, see `CLAUDE_HISTORY.md` 2026-08-30). **Before archiving or
+  abandoning any branch, run `git diff <base> <branch> --stat` and rescue
+  everything outside the scope of the decision being made** — a branch is
+  rarely only about the thing you're deciding on.
 
 - A second Claude session has also pushed to `main` in the past — always
   `git fetch` and check `git log HEAD..origin/main` before pushing, rebase
