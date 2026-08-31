@@ -64,6 +64,50 @@ terms that need a decision, and one may not be usable commercially at all.
       **Not legal advice.** Static vs dynamic linking and the scope of
       propagation are precisely what the lawyer is for. Ask it alongside the
       fr_FR ShareAlike question, since both are one conversation.
+
+### Escape routes from espeak-ng, researched 2026-08-31
+
+**Finding 1: stock sherpa-onnx cannot ship TTS without GPL code.** Its
+CMakeLists has exactly one relevant flag, `SHERPA_ONNX_ENABLE_TTS`
+(default ON), and when it is on it unconditionally pulls in espeak-ng and
+piper-phonemize. Off means no TTS at all. There is no fine-grained option.
+
+**Finding 2: the lexicon workaround does NOT fix it.** The community advice
+(precompute phonemes into a lexicon so espeak is not called at runtime)
+solves the wrong problem. GPL obligations attach to DISTRIBUTION, not use.
+The code is still compiled into the .so in the APK whether or not it runs.
+Both upstream threads on this conflate the two, and neither has a
+maintainer answer: hexgrad/kokoro#247 and k2-fsa/sherpa-onnx#2260.
+
+**Finding 3: Piper is structurally tied to espeak.** Piper voices are
+trained against espeak-ng phoneme sets via piper-phonemize, so replacing
+the phonemizer means reproducing espeak output exactly, or retraining.
+
+**Finding 4: Kokoro has a real escape route, English only.** Kokoro is
+Apache 2.0, and `misaki-rs` (MIT, self-contained, lexicons embedded at
+compile time, no external GPL deps) is a G2P built specifically for Kokoro.
+
+**The bind:** Kokoro is English only. French and German are Piper. So the
+clean path is English-only, and there is no clean non-English path yet
+identified. That collides with the Québec market the whole FR strategy
+serves.
+
+- [ ] **Decide the engine path.** Options, roughly cheapest first:
+      1. **Hybrid: Kokoro for English, OS voice for FR/DE.** No GPL anywhere.
+         The built-in system voice tier already exists in the app as the
+         fallback, so French keeps working at lower quality rather than
+         disappearing. Cheapest by far and reversible.
+      2. **Fork sherpa-onnx, strip espeak, drive Kokoro via misaki-rs.**
+         Clean and English-only. Real C++/Rust/JNI work plus a fork to
+         maintain forever.
+      3. **Find a permissively licensed multilingual on-device engine.** Not
+         yet researched; would solve it properly if one exists.
+      4. **Licence a commercial TTS SDK.** Costs money, removes the question.
+      5. **Comply with GPLv3 and open the source.** REJECTED by owner
+         2026-08-31: the app stays closed.
+      Confidence note: findings 1-3 are from primary sources (CMakeLists,
+      the licence, the model cards). Finding 4 is from crate metadata and is
+      NOT yet validated against a working Kokoro pipeline on Android.
 Sources: hexgrad/Kokoro-82M on Hugging Face (Apache 2.0), rhasspy/piper-voices
 MODEL_CARD files per voice, and rhasspy/piper discussion #271 on licensing.
 
