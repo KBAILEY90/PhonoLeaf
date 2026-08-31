@@ -4,6 +4,7 @@
   "version": "1.0.0",
   "description": "PhonoLeaf native app shell (Capacitor). The web app itself is index.html — no build step; scripts/stage-www.js just copies the web files into www/ for the native wrapper.",
   "scripts": {
+    "test": "node --test \"test/*.test.mjs\"",
     "stage": "node scripts/stage-www.js",
     "sync": "node scripts/stage-www.js && npx cap sync android",
     "stage:test": "node scripts/stage-test.js",
