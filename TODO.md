@@ -226,10 +226,16 @@ anywhere in `worker/`.
       trial for people unwilling to grant Drive access to an unknown
       developer, and the only way an iPhone user can use PhonoLeaf until an
       iOS app exists.
-      **Revisit removing the web player when BOTH are true:** the Play listing
-      is live, and the iOS app has shipped. Until then the web build is the
-      only working PhonoLeaf a human can use, so removing it would leave a
-      marketing page pointing at app stores with no listing on them.
+      **DECIDED 2026-08-31: web playback gets REMOVED once both stores carry
+      the app.** Not revisited, removed. The owner rejected the agent's
+      "try before you install" framing: the website pushes the apps, and is
+      not an alternative to them. Trigger is Android AND iOS live, so no
+      visitor is ever left with a site pushing an app they cannot get.
+      Until then, no further effort goes into the web app at all.
+      Scope of the eventual removal, measured 2026-08-31: 30 pages carry an
+      "Open PhonoLeaf" CTA pointing at `index.html`, 26 promise "Nothing to
+      install", plus the sw.js precache, the legal pages' in-app wording, and
+      a call on existing PWA installs. See `BUSINESS.md` "Platform strategy".
 - [x] **[SWOT] Doc accuracy pass, so the docs stop over-reporting reality.**
       **Done 2026-08-30.** All three parts, plus four extra stale claims found
       on the way. Everything was verified against code before editing, never

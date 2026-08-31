@@ -381,21 +381,36 @@ The reasoning, in order of weight:
 3. **The voice story is worse there.** Kokoro on the web is WASM pulled from a
    CDN, heavier and slower, and English only regardless.
 
-What the website still does, and why it is frozen rather than removed:
+What the website is for, and what happens to the player:
 
 - **SEO.** The comparison pages, the keyword clusters in `SEO.md`, and the
-  landing pages are the acquisition channel and are unaffected by this.
-- **A no-install trial.** An unknown developer asking for read access to your
-  Google Drive is a large ask. "Try it in your browser, nothing to install" is
-  a real answer to it, and one the app-store-only competitors on the
-  comparison pages cannot match.
-- **The only iOS story that exists.** There is no `ios/` platform and no Apple
-  enrollment, so until an iOS app ships the web build is the only way an
-  iPhone user can use PhonoLeaf at all.
+  landing pages are the acquisition channel. This is the website's job.
+- **Pushing the apps.** Every page should be driving a visitor to install
+  from a store. The website is a launcher, not a place to listen to books.
+- **The player is a bridge, not a feature.** It exists only because there is
+  currently nothing to install: no Play listing, no `ios/` platform, no
+  Apple enrollment. It is not being kept as a conversion path.
 
-**Revisit removing the web player when the Play listing is live AND the iOS
-app has shipped**, the same explicit-trigger approach used for the CASA
-sequencing. Doing it before then would leave a marketing site pointing at app
-stores that carry no listing, while removing the only working build there is:
-as of 2026-08-31 there is no Play release at all (`versionCode 1`, no
-keystore, no Play Console account) and OAuth is still capped at 100 testers.
+**Owner correction 2026-08-31, recorded because an earlier draft of this
+section got it wrong:** do NOT frame the web player as "try before you
+install". That was the agent's rationale, not the owner's position. The
+owner's view is that users will not use the web version anyway, and the
+site should push the apps rather than offer an alternative to them.
+
+**DECIDED: web playback is removed once BOTH stores carry the app.** Not
+"revisit", not "consider". The trigger is both Android and iOS live, chosen
+so that every visitor always has something they can actually install: with
+Android alone, an iPhone visitor would be left with a site that pushes an
+app they cannot get and a player that no longer works.
+
+Until that day: **no further effort goes into the web app.** No features, no
+parity, no polish. Owner instruction 2026-08-31.
+
+**What removal will actually involve**, scoped now so it is not a surprise
+later. As of 2026-08-31, 30 pages carry an "Open PhonoLeaf" CTA pointing at
+`index.html` and 26 of them promise "Nothing to install". All of those become
+store badges and install copy. Also in scope: the service worker precache,
+the legal pages where they describe in-app behaviour, and a decision about
+anyone who installed the PWA, since this project already treats not breaking
+existing installs as mattering (see the deliberately retained
+`kbailey90.github.io` OAuth origin).

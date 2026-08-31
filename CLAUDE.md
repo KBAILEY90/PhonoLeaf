@@ -101,7 +101,9 @@ fallback.
     **CONVERGENCE CANCELLED, owner decision 2026-08-31.** The two designs
     stay separate permanently. The website is no longer a product surface:
     it is SEO plus a launcher for the phone apps, and it keeps the feature
-    set it had on 2026-08-31 without further parity work. Do NOT promote
+    set it had on 2026-08-31 without further parity work. Its playback is
+    REMOVED once both app stores carry the app (owner decision 2026-08-31),
+    so put no further effort into the web app at all. Do NOT promote
     the redesign into `index.html`, and do NOT spend a session converging
     the fork. See `CLAUDE_HISTORY.md` 2026-08-31 and `BUSINESS.md` for the
     reasoning and the conditions that would reopen it.
