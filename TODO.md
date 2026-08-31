@@ -500,19 +500,22 @@ anywhere in `worker/`.
 
 Logged as-is, no design work done yet.
 
-- [ ] **[SWOT] Competitive feature gaps that are named but unscheduled.**
-      `COMPETITOR_SWOT.md` identified these from real store reviews and
-      none of them had a task until now. In rough order of the evidence
-      behind them: a **pronunciation editor** (the single most-praised
-      feature across NaturalReader, @Voice and Voice Dream, and
-      mispronunciation is the most common voice complaint in all six),
-      **MP3 export** (exists in @Voice and NaturalReader and is cited as a
-      reason to choose them), and **highlight/annotation export** (what
-      makes Voice Dream win with academics). Listed as ideas rather than
-      commitments: each is real work, and none should jump ahead of the
-      release and payments items above. Worth a scoping pass once there is
-      a shipped app collecting its own reviews, since those will say which
-      of the three this audience actually wants.
+- [~] **[SWOT] Competitive feature gaps.** Owner ruled on all three 2026-08-31.
+      - **Pronunciation editor: open, explained but not yet decided.** Best
+        evidenced gap in the set: most-praised feature across NaturalReader,
+        @Voice and Voice Dream, and mispronunciation is the top voice complaint
+        in all six. Proposed v1 is a substitution list applied to chunk text
+        before synthesis, global plus per-book, with an add-from-reader path.
+        Known wrinkle: substitution changes string length, so it must not
+        desync the follow-along highlight offsets.
+      - **MP3 export: BLOCKED on a legal question, add it to the lawyer list.**
+        The risk is less about a user feeding it a pirated epub and more that
+        export turns reading aloud into producing a distributable file, against
+        voice model licences that were NOT verified as of 2026-08-31. Do not
+        build it until both questions are answered.
+      - **Highlight/annotation export: REJECTED 2026-08-31.** Owner call: the
+        brand focuses on books, audiobooks and e-readers, not academic tooling.
+        Do not re-propose it.
 - [ ] **[SWOT] Lifetime tier shutdown reserve, before selling any.**
       Already open as a decision in `PAYMENTS_SPEC.md` §13, restated here
       because the SWOT put a number on it: 500 lifetimes at $129 is $64,500
@@ -548,10 +551,18 @@ Logged as-is, no design work done yet.
         etc. (exact options and copy to be defined later). Would turn the
         brand-voice question above into a per-user preference instead of a
         single global decision.
-- [ ] **An "About" section**, raised 2026-08-27 — not scoped (where it
-      lives, what it says: version number, credits, links to the website/
-      support, licenses for bundled voice models, etc.). Probably belongs
-      in Settings alongside Privacy/Terms.
+- [x] **An "About" section. Done 2026-08-31**, native app only per the web
+      freeze. A Settings row opens a sheet with the version, website, support,
+      privacy and terms links, and the eight open-source components with a link
+      to each upstream project.
+      **Deliberately missing: the licence strings.** Names, versions and
+      upstreams are verifiable facts; the exact licence terms were not checked
+      against each upstream, and a wrong licence line in a shipped app is a
+      compliance problem rather than a typo. Fill them in before any store
+      release. Overlaps the MP3 export question above, since both turn on what
+      the voice model licences actually permit.
+      `About.APP_VERSION` has no build step behind it, so bump it in step with
+      `versionName` in `android/app/build.gradle`.
 - [ ] **Maybe rename to "Bokos"?** Owner's idea, raised 2026-08-29 — came
       from a "Books" typo. Not for now, just logged.
 
