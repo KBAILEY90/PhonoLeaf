@@ -1091,7 +1091,7 @@
        full-bleed phone layout. That width+height pairing is the same trick
        the sign-in screen's own landscape rules above already use to tell
        "landscape phone" apart from "actual big screen". */
-    @media (min-width: 700px) and (min-height: 600px) {
+    @media (min-width: 700px) and (max-width: 899.98px) and (min-height: 600px) {
       :root { --app-max: 480px; }
       .view {
         max-width: var(--app-max); margin: 0 auto;
@@ -1108,6 +1108,92 @@
          but the sheet that slides up inside it belongs in the column. */
       .modal-backdrop { justify-content: center; }
       .modal-sheet { max-width: var(--app-max); }
+    }
+
+    /* ================= DESKTOP (>= 900px wide, >= 600px tall) =================
+       A real desktop layout, not the phone column centred. Added 2026-08-31 at
+       the owner's direction: the block above caps the app at 480px, which on a
+       1900px screen reads as a phone app in a strip. The band from 700 to 900px
+       keeps that column, since it genuinely is a tablet-shaped window.
+
+       Presentation only. The DOM and every module are untouched, so phones are
+       unaffected and none of this reaches the native build, which ships from
+       index.green.html and has its own design.
+
+       Still gated on min-height for the same reason the tablet block is: a phone
+       held in landscape is wide but short, and must keep the phone layout. */
+    @media (min-width: 900px) and (min-height: 600px) {
+      :root { --rail-w: 232px; --desk-gut: clamp(1.5rem, 4vw, 3.5rem); }
+
+      /* Bottom tab bar becomes a left nav rail. It is position:fixed with
+         left:0;right:0, so it needs right:auto and an explicit width — a
+         max-width alone would leave it spanning the viewport. */
+      .tab-bar {
+        top: 0; bottom: 0; left: 0; right: auto;
+        width: var(--rail-w); max-width: none; transform: none;
+        flex-direction: column; justify-content: flex-start; gap: 0.15rem;
+        border-top: none; border-right: 0.5px solid var(--line);
+        padding: 1.1rem 0.7rem;
+      }
+      .tab {
+        flex: 0 0 auto;
+        flex-direction: row; justify-content: flex-start; align-items: center;
+        gap: 0.8rem; padding: 0.7rem 0.85rem;
+        border-radius: 10px;
+        font: 500 0.92rem var(--font-ui);
+      }
+      .tab svg { width: 20px; height: 20px; }
+      .tab.active { background: var(--card); }
+
+      /* Views un-cap and clear the rail. Sign-in has its own centred two-column
+         layout and shows no rail; the reader hides the rail while reading
+         (Nav.hideBar), so neither gets the offset. */
+      .view { max-width: none; margin: 0; border-left: none; border-right: none; }
+      .view:not(#signin-view):not(#reader-view) { padding-left: var(--rail-w); }
+
+      /* No bottom bar left to clear, so the tab-bar allowance goes away and the
+         content gets a real gutter instead. */
+      .scrolly { padding: 1.7rem var(--desk-gut) 2.5rem; }
+      /* Cards and rows were drawn for a 480px column; full width would stretch
+         them into unreadable bands. */
+      .scrolly > * { max-width: 880px; }
+      /* Centred under a phone-width column; over left-aligned desktop content
+         it reads as a stray floating logo. */
+      .home-brand { justify-content: flex-start; }
+
+      /* Library fills the width. The 2/3/4 modes stay meaningful as large /
+         medium / small covers rather than a literal column count, which on a
+         wide screen would mean four enormous covers. */
+      #library-view .books-grid { padding: 1.5rem var(--desk-gut) 2rem; }
+      #books-grid[data-view="2"] { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); }
+      #books-grid[data-view="3"] { grid-template-columns: repeat(auto-fill, minmax(145px, 1fr)); }
+      #books-grid[data-view="4"] { grid-template-columns: repeat(auto-fill, minmax(115px, 1fr)); }
+      .lib-header, .lib-search { padding-left: var(--desk-gut); padding-right: var(--desk-gut); }
+
+      /* Reading measure. epub.js paginates to #viewer's own box, so capping
+         that box is what actually shortens the line — a max-width on the text
+         inside the iframe would not survive its pagination. The chrome is
+         capped to the same column so the back button and controls stay with
+         the text instead of stranding at the screen edges. */
+      #viewer { width: 100%; max-width: 46rem; margin: 0 auto; }
+      .reader-top, .reader-bottom { max-width: 46rem; margin-left: auto; margin-right: auto; }
+      #tts-prog-line { left: 50%; right: auto; transform: translateX(-50%); width: 100%; max-width: 46rem; }
+      /* The page-turn zones are width:12% pinned to left:0/right:0, so once the
+         text is a centred column they strand at the screen edges hundreds of
+         pixels from the page. Re-anchor them just outside the column. At the
+         900px floor this still leaves ~2rem of margin, so they never clip. */
+      .reader-edge { width: 3rem; }
+      .reader-edge.re-left { left: calc(50% - 26rem); justify-content: center; padding-left: 0; }
+      .reader-edge.re-right { right: calc(50% - 26rem); justify-content: center; padding-right: 0; }
+
+      /* Bottom sheets are a phone pattern; on desktop they read as centred
+         dialogs. The drag handle goes with them. */
+      .modal-backdrop { align-items: center; justify-content: center; }
+      .modal-sheet {
+        max-width: 520px; border-radius: 16px; max-height: 78vh;
+        padding-bottom: 1.25rem;
+      }
+      .modal-handle { display: none; }
     }
 
   </style>
