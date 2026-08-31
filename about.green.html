@@ -157,6 +157,11 @@
      3.5rem matches the gap below the box exactly (its own 2.2rem bottom
      margin plus the section padding), so both sides read identically. */
   .summary-sec { margin-top: 3.5rem; }
+  /* The box keeps its own 2.2rem bottom margin from when it stood alone,
+     which pushed it 56px off the lower rule while sitting 21px under the
+     upper one. Inside the section the padding already provides the gap, so
+     drop the margin and the box sits evenly between both rules. */
+  .summary-sec .summary-box { margin-bottom: 0; }
 </style>
 </head>
 <body>
