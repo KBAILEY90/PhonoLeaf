@@ -6864,3 +6864,142 @@ original plan) — by the time all four were implemented their edits had
 interleaved within the same STRINGS blocks and shared regions of the
 file, and retroactively splitting them via `git add -p` was judged more
 likely to introduce a mistake than the value of a cleaner history here.
+
+## Store review prompt after finishing a book (2026-08-30)
+
+`BACKLOG.md` section I, Android only. `StoreReviewPlugin.kt` wraps Google
+Play's In-App Review API (matching this repo's pattern of small
+first-party Kotlin plugins rather than third-party Capacitor packages),
+registered in `MainActivity.java` alongside the others, with
+`com.google.android.play:review:2.0.2` added to `android/app/build.gradle`.
+
+Deliberately scoped down from the original spec in two ways, both for the
+same reason (nothing real to point at yet): **iOS deferred** —
+`SKStoreReviewController` needs an `ios/` Capacitor platform that doesn't
+exist in this repo; **no web fallback** — the original spec wanted "a small
+dismissible prompt linking to the store," but the web app has no reviewable
+store listing of its own, so that prompt would link nowhere.
+
+Rate limiting is two-layered and only one layer is ours: Play's library
+self-governs how often the sheet can actually appear (a handful of times a
+year, silently no-oping if the user already reviewed) and never reports
+back what happened — by design, so apps can't retaliate against a bad
+review. `StoreReview._ASK_EVERY_MS` (60 days, via `pl_review_asked_at`)
+therefore isn't the real rate limit; it just avoids calling the native API
+at every opportunity. Nothing is shown to the user either way, success or
+failure, because there's nothing truthful to show.
+
+## Storage modal spacing/sort + the finish-flow fix (2026-08-30)
+
+Four owner-reported items from a device pass, all in `index.green.html`.
+
+**Storage popup spacing/sort**: the groups were rendering as a bare list of
+rows under a heading. Reused `.set-section-label` (Settings' own group
+heading, `margin-top: 2.25rem`) rather than inventing new spacing, since
+Settings had already been through exactly this feedback loop. The size/A-Z
+sort toggle was removed outright — `_bookSort`, `setBookSort()`, the
+`.seg`-based toggle markup, and the now-orphaned `storage_sort*` STRINGS
+keys in both `en`/`fr`; cached books now always sort by size, largest
+first, with no user-facing control.
+
+**Reader now closes on a genuine finish**: reaching the true end of the
+book while listening used to call `TTS.stop()` and toast in place, leaving
+the reader open on the last page. Now calls `Reader.close(true)`. The
+argument matters: `Reader.close()` is called from several places (the back
+arrow, `Reader.back()`'s minimize path), so the store-review prompt could
+not simply live inside it unconditionally — `finished` gates it, and is
+true only on this path.
+
+**Store review moved off the manual mark**: `StoreReview.maybeAsk()` was
+firing from two places, one of which was `BookDetail.markFinished()`.
+Owner feedback was that a manual "Mark as finished" isn't the positive
+moment the prompt is for (and reported the organic finish not prompting at
+all — because the reader never closed, the prompt fired at a moment the
+user wasn't experiencing as "finished"). It now fires from exactly one
+place: inside `Reader.close()`, gated on `finished`, i.e. after the reader
+has actually closed from a real finish. `markFinished()` carries a comment
+saying why it deliberately doesn't ask, so it doesn't get "fixed" back.
+
+## Storage modal: boxed groups, then per-item percentages (2026-08-30, same day)
+
+**Boxed groups**: owner's ask was general, not specific to this screen —
+*any* grouped-rows screen should look like Settings, not just Settings.
+Each Storage section now wraps in `.set-group` (the same bordered card),
+with each group's first row carrying `.set-row-first` to drop the top
+hairline that would otherwise double up against the box border. `_row()`
+gained a trailing `first` param and the two `.map()` call sites pass
+`i === 0`; the covers row (always single) passes `true` literally. Worth
+knowing for future screens: `.set-group`/`.set-row`/`.set-row-first`/
+`.set-section-label` are all global classes, not scoped to
+`#settings-view`, so reusing them elsewhere needs no CSS changes at all.
+
+**Per-item percentages**: each row's size now also shows its share of the
+grand total (`_sizeWithPct`, e.g. "12 MB · 34%"), using the same `·`
+separator convention already used elsewhere in the file. A zero grand
+total (nothing cached anywhere yet) returns the bare size instead of a
+meaningless 0%/NaN%. Percentages are computed against the grand total
+across all three groups, not per-group, so they answer "what's using my
+space" rather than "how big is this within its own category."
+
+## Recovering payments/D1 work orphaned by the branch reconciliation (2026-08-30)
+
+**The bug**: the owner asked for the current to-do list, and it still
+listed "Pricing model" and "KV vs D1 for entitlement" as open decisions —
+both of which had been decided in this same session on 2026-08-28. Their
+correction ("we did it in this one") was right, and re-reading the session
+transcript found the root cause.
+
+**Root cause**: the 2026-08-28 reconciliation (see that entry above)
+archived `claude/docs-code-review-tam2pr` wholesale and promoted
+`redesign/native-android-ship` to `main`. That decision was *about* the
+`index.green.html` redesign fork — but the archived branch also carried
+completely unrelated work committed to it across the same days: the
+pricing-model lean, the KV→D1 decision, all of `PAYMENTS_SPEC.md` §13's
+decisions, the entire D1 migration (code + real deployed database ids),
+and the competitor-SWOT factual follow-ups. Archiving the branch archived
+all of it. The reconciliation was scoped to a UI question and silently
+took a payments backend with it.
+
+**Why this mattered more than a stale checklist**: the D1 migration wasn't
+just decided, it was *deployed*. Production and staging have been running
+on D1 since 2026-08-28 (the owner ran `wrangler d1 create` /
+`migrations apply` / `deploy` themselves), but `main`'s `worker/` still
+described the KV setup — `[[kv_namespaces]]` blocks with the old namespace
+ids, `env.ENTITLEMENTS.get/put` in `entitlement.js`. The repo was
+describing infrastructure that no longer existed, so anyone redeploying
+from `main` would have deployed against the wrong storage entirely.
+
+**Recovery method**: not a cherry-pick of the eight commits — `TODO.md`
+had been restructured on `main` several times since the fork, so replaying
+those diffs would have conflicted throughout. Instead, verified per-file
+which side had actually changed since the merge base (`d1fc64e`):
+`worker/`, `PAYMENTS_SPEC.md`, and all ten comparison pages were
+**untouched on `main` since the fork**, so those were taken wholesale from
+the archive branch with `git checkout <branch> -- <paths>`. Only `TODO.md`
+and `CLAUDE.md` had diverged on both sides, so their content was
+re-written by hand into `main`'s current structure rather than overwritten.
+`BUSINESS.md` needed nothing — its one relevant fix had already been
+hand-reapplied from PR #4's diff during the 2026-08-29 stale-doc cleanup.
+
+**Two more staleness findings while in there**, neither caused by the
+archival: `TODO.md` still said the MacBook purchase "fell through" (the M1
+Air was acquired 2026-08-29, with a walkthrough given the same day —
+`CLAUDE.md`'s Productization section had the same stale line), and still
+listed the competitor SWOT as "ready to kick off" even though
+`COMPETITOR_SWOT.md` predates the fork entirely and was already done.
+
+**Verified afterward**: swept every remaining open `[ ]` item in `TODO.md`
+against the full session transcript and the repo — Play Console account
+type, iOS engineering (confirmed no `ios/` directory, no `@capacitor/ios`
+dependency; the MacBook walkthrough was instructional only), internal
+SWOT, redesign exploration, device-tier testing, and every product idea
+are all genuinely still open. Nothing else was lost.
+
+**Lesson, worth more than the fix**: the 2026-08-28 entry's safeguard
+(check `git log --all -- index.green.html` before working on it) addresses
+divergence on a *file*. This failure was a different shape — a branch
+carrying two unrelated workstreams, where a decision about one silently
+disposed of the other. Before archiving or abandoning a branch, diff its
+full file list against what the decision is actually about
+(`git diff <base> <branch> --stat`), and rescue anything outside that
+scope first. Especially anything already deployed to real infrastructure.
