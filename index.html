@@ -735,6 +735,37 @@
        box drops it so the box border is not doubled. */
     .set-row-first { border-top: none; }
     #storage-sections { max-height: 52vh; overflow-y: auto; }
+    .book-menu-btn {
+      -webkit-appearance: none; appearance: none;
+      width: 1.6rem; height: 1.6rem; border-radius: 50%; flex-shrink: 0;
+      background: var(--track); color: var(--text-dim);
+      border: none; display: flex; align-items: center; justify-content: center;
+      cursor: pointer; padding: 0; font-size: 0.95rem; line-height: 1;
+    }
+    /* Grid mode: the offline button already owns the cover's top-right, so
+       this takes the top-left. .book-cover is already position:relative. */
+    .book-cover .book-menu-btn {
+      position: absolute; top: 0.35rem; left: 0.35rem; z-index: 2;
+      background: rgba(0,0,0,0.55); color: #fff;
+    }
+    .modal-action {
+      -webkit-appearance: none; appearance: none;
+      width: 100%; border: 1px solid var(--line); background: transparent;
+      color: var(--text); border-radius: 10px; padding: 0.75rem;
+      font: inherit; font-size: 0.9rem; cursor: pointer; margin-bottom: 0.5rem;
+    }
+    /* Same four-state definition as .set-link.danger: a colour defined only
+       inside one theme block would be wrong in the other three. */
+    .modal-action.danger { color: #C0453B; }
+    @media (prefers-color-scheme: dark) { .modal-action.danger { color: #E8776C; } }
+    [data-theme="light"] .modal-action.danger { color: #C0453B; }
+    [data-theme="dark"]  .modal-action.danger { color: #E8776C; }
+    .modal-primary {
+      -webkit-appearance: none; appearance: none;
+      width: 100%; border: none; background: var(--accent); color: #fff;
+      border-radius: 10px; padding: 0.75rem;
+      font: inherit; font-size: 0.95rem; font-weight: 600; cursor: pointer;
+    }
 
     /* Feedback / bug-report forms */
     .form-label { font-size: 0.78rem; font-weight: 600; color: var(--text-dim); margin: 0.9rem 0 0.35rem; }
@@ -1478,7 +1509,7 @@
       </div>
       <div class="set-row">
         <div><div class="sr-k" data-i18n="export_data">Export my data</div><div class="sr-sub" data-i18n="export_data_sub">Download everything stored on this device</div></div>
-        <button class="set-link" data-i18n="export" onclick="MyData.export()">Export</button>
+        <button class="set-link" data-i18n="export" onclick="ExportModal.open()">Export</button>
       </div>
       <div class="set-row">
         <div><div class="sr-k" data-i18n="delete_data">Delete my data</div><div class="sr-sub" data-i18n="delete_data_sub">Erase local data and disconnect Google</div></div>
@@ -1637,6 +1668,26 @@
 <!-- ============== SLEEP TIMER ============== -->
 <!-- ============== IN-BOOK SEARCH ============== -->
 <!-- ============== STORAGE ============== -->
+<!-- ============== PER-BOOK ACTIONS ============== -->
+<div class="modal-backdrop" id="bookactions-modal" onclick="BookActions.close(event)">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="bookactions-title"></div>
+    <button class="modal-action" onclick="BookActions.markFinished()" data-i18n="mark_finished">Mark as finished</button>
+    <button class="modal-action danger" onclick="BookActions.forget()" data-i18n="forget_book">Forget this book</button>
+  </div>
+</div>
+
+<!-- ============== EXPORT MY DATA ============== -->
+<div class="modal-backdrop" id="export-modal" onclick="ExportModal.close(event)">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title" data-i18n="export_data">Export my data</div>
+    <p class="sleep-hint" data-i18n="export_modal_body">A JSON file with your reading progress, listening stats, and settings.</p>
+    <button class="modal-primary" onclick="ExportModal.confirm()" data-i18n="export_to">Export to&hellip;</button>
+  </div>
+</div>
+
 <div class="modal-backdrop" id="storage-modal" onclick="StorageModal.close(event)">
   <div class="modal-sheet" onclick="event.stopPropagation()">
     <div class="modal-handle"></div>
@@ -2185,6 +2236,10 @@ const STRINGS = {
     search_indexing: 'Searching more chapters…', search_no_results: 'No matches found',
     storage_title: 'Storage', storage_sub: "See what's using space, free some up",
     storage_total_line: 'Using {total} total',
+    mark_finished: 'Mark as finished', forget_book: 'Forget this book',
+    marked_finished: 'Marked as finished', book_actions: 'More actions',
+    forget_book_confirm: 'Remove this book from PhonoLeaf? Your progress and any offline copy will be deleted. Files in Google Drive are never touched.',
+    export_modal_body: 'A JSON file with your reading progress, listening stats, and settings.', export_to: 'Export to…',
     storage_books: 'Cached books', storage_packs: 'Voice packs', storage_covers: 'Cover images',
     storage_none: 'None cached', storage_covers_cleared: 'Cover cache cleared',
     kb: '{kb} KB', mb: '{mb} MB', gb: '{gb} GB',
@@ -2394,6 +2449,10 @@ const STRINGS = {
     search_indexing: 'Recherche dans d’autres chapitres…', search_no_results: 'Aucun résultat',
     storage_title: 'Stockage', storage_sub: 'Voir ce qui prend de la place, en libérer',
     storage_total_line: 'Utilise {total} au total',
+    mark_finished: 'Marquer comme terminé', forget_book: 'Oublier ce livre',
+    marked_finished: 'Marqué comme terminé', book_actions: 'Plus d’actions',
+    forget_book_confirm: 'Retirer ce livre de PhonoLeaf ? Votre progression et toute copie hors ligne seront supprimées. Les fichiers dans Google Drive ne sont jamais touchés.',
+    export_modal_body: 'Un fichier JSON avec votre progression, vos statistiques d’écoute et vos réglages.', export_to: 'Exporter vers…',
     storage_books: 'Livres en cache', storage_packs: 'Packs de voix', storage_covers: 'Images de couverture',
     storage_none: 'Aucun élément en cache', storage_covers_cleared: 'Cache des couvertures vidé',
     kb: '{kb} Ko', mb: '{mb} Mo', gb: '{gb} Go',
@@ -4471,6 +4530,7 @@ const Library = {
     const cover = Covers.urls[b.id]
       || (b.thumbnailLink ? b.thumbnailLink.replace('s220', 's400') : '');
     const offlineBtn = this._offlineBtnHTML(b.id);
+    const menuBtn = `<button class="book-menu-btn" onclick="event.stopPropagation(); BookActions.open(${i}, event)" aria-label="${esc(I18n.t('book_actions'))}" title="${esc(I18n.t('book_actions'))}">&hellip;</button>`;
     const coverHTML = `
       <div class="book-cover" data-book-id="${esc(b.id)}">
         <span class="cover-fallback">&#128214;</span>
@@ -4478,7 +4538,7 @@ const Library = {
           ? `<img src="${esc(cover)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">`
           : ''}
         ${pct > 0 ? `<div class="book-progress-bar" style="width:${pct}%"></div>` : ''}
-        ${!isRow ? offlineBtn : ''}
+        ${!isRow ? offlineBtn : ''}${!isRow ? menuBtn : ''}
       </div>`;
     const infoHTML = `
       <div class="book-info">
@@ -4486,7 +4546,7 @@ const Library = {
         <div class="book-meta">${esc(Meta.get(b.id)?.author || '')}</div>
       </div>`;
     const cls = isRow ? 'book-row' : 'book-card';
-    return `<div class="${cls}" data-book-id="${esc(b.id)}" onclick="Reader.open(${i})" role="button" tabindex="0" aria-label="Open ${esc(title)}">${coverHTML}${infoHTML}${isRow ? offlineBtn : ''}</div>`;
+    return `<div class="${cls}" data-book-id="${esc(b.id)}" onclick="Reader.open(${i})" role="button" tabindex="0" aria-label="Open ${esc(title)}">${coverHTML}${infoHTML}${isRow ? offlineBtn : ''}${isRow ? menuBtn : ''}</div>`;
   },
 
   // Resolved display title for sorting/the A-Z scrubber — prefers the
@@ -8128,6 +8188,77 @@ const StorageModal = {
     await CoverCache.clear();
     toast(I18n.t('storage_covers_cleared'));
     await this.render();
+  },
+};
+
+// --- Per-book actions --------------------------------------------------
+// The native build reaches these from its BookDetail screen, which belongs
+// to the redesign's visual system and is not ported. The actions themselves
+// are real functionality the website had no way to reach, so they get a
+// small menu in the existing modal idiom instead.
+const BookActions = {
+  _idx: null,
+  open(i, ev) {
+    if (ev) ev.stopPropagation();
+    const b = State.books?.[i];
+    if (!b) return;
+    this._idx = i;
+    document.getElementById('bookactions-title').textContent = b.name.replace(/\.epub$/i, '');
+    document.getElementById('bookactions-modal').classList.add('open');
+  },
+  close(e) {
+    if (!e || e.target.classList.contains('modal-backdrop'))
+      document.getElementById('bookactions-modal').classList.remove('open');
+  },
+
+  markFinished() {
+    const b = State.books?.[this._idx];
+    if (!b) return;
+    State.progress = State.progress || {};
+    const p = State.progress[b.id] || (State.progress[b.id] = {});
+    p.pct = 100;
+    p.ts = p.ts || Date.now();
+    try { localStorage.setItem('pl_prog', JSON.stringify(State.progress)); } catch (_) {}
+    toast(I18n.t('marked_finished'));
+    this.close();
+    if (Nav.current === 'home') Home.render();
+    if (Nav.current === 'library') Library.render();
+  },
+
+  forget() {
+    const b = State.books?.[this._idx];
+    if (!b) return;
+    const id = b.id;
+    // Closed before confirming, rather than inside the callback as the native
+    // build does, so two sheets are never stacked on top of each other.
+    this.close();
+    ConfirmModal.show(() => {
+      // A locally-imported book's only copy goes; a Drive-backed book just
+      // loses its offline cache, Drive itself is never touched. Either way
+      // the reading progress is cleared: "forget" should mean the app stops
+      // remembering the book, not just the bytes.
+      if (id.startsWith('local:')) Library.removeLocal(id);
+      else if (BookCache.has(id)) Library.toggleOffline(id);
+      if (State.progress?.[id]) {
+        delete State.progress[id];
+        try { localStorage.setItem('pl_prog', JSON.stringify(State.progress)); } catch (_) {}
+      }
+      if (Nav.current === 'home') Home.render();
+      if (Nav.current === 'library') Library.refresh();
+    }, I18n.t('forget_book_confirm'), I18n.t('forget_book'));
+  },
+};
+
+// --- Export: say what the download contains before producing it ---------
+const ExportModal = {
+  open() { document.getElementById('export-modal').classList.add('open'); },
+  close(e) {
+    if (!e || e.target.classList.contains('modal-backdrop'))
+      document.getElementById('export-modal').classList.remove('open');
+  },
+  confirm() {
+    MyData.export();
+    this.close();
   },
 };
 
