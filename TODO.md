@@ -24,14 +24,17 @@ terms that need a decision, and one may not be usable commercially at all.
 | fr_FR upmc | CC BY-SA 4.0 | Yes, but | **ShareAlike copyleft** |
 | es_ES sharvard | CC BY 3.0 on the card | **Unclear** | **Fine-tuned from lessac** |
 
-- [ ] **es_ES sharvard: possible blocker, decide before shipping Spanish.**
-      Its model card states CC BY 3.0, but the same card says it was fine-tuned
-      from the lessac US English voice, and lessac carries the Blizzard licence,
-      which restricts use to research and explicitly excludes commercial voice
-      synthesis products. Whether a fine-tune inherits the base model licence is
-      an unsettled question in ML licensing, and Piper's own maintainer says as
-      much. Cheapest resolution is to drop or replace the Spanish voice rather
-      than to litigate it. Spanish is not a launch market.
+- [x] **es_ES sharvard REMOVED 2026-08-31, owner decision.** Its model card
+      claims CC BY 3.0 but also says it was fine-tuned from lessac, which
+      carries the Blizzard licence excluding commercial voice synthesis
+      products. Removed from `ALL_PACK_MODELS`, the pack catalogue, the voice
+      table, and both Kotlin maps, with a marker comment in
+      `PhonoLeafTtsPlugin.kt` so nobody re-adds it without reading why.
+- [ ] **Find a Spanish voice with a production-clean licence.** Wanted, just
+      not at the cost of an unresolvable licence question. Criteria: a licence
+      that clearly permits commercial use, and no fine-tune ancestry back to a
+      research-only base model. Check the base model, not only the model card:
+      sharvard's card looked clean until you read the line about lessac.
 - [ ] **fr_FR upmc is ShareAlike, and French is a core market.** CC BY-SA 4.0
       requires derivative works to carry the same licence. Whether synthesized
       audio, or an app shipping the weights, counts as a derivative is exactly
@@ -549,11 +552,11 @@ Logged as-is, no design work done yet.
         before synthesis, global plus per-book, with an add-from-reader path.
         Known wrinkle: substitution changes string length, so it must not
         desync the follow-along highlight offsets.
-      - **MP3 export: BLOCKED on a legal question, add it to the lawyer list.**
-        The risk is less about a user feeding it a pirated epub and more that
-        export turns reading aloud into producing a distributable file, against
-        voice model licences that were NOT verified as of 2026-08-31. Do not
-        build it until both questions are answered.
+      - **MP3 export: REJECTED 2026-08-31, owner call.** Not on the legal
+        question, on product grounds: offline listening already works, so an
+        MP3 file adds no capability a user does not already have. That also
+        retires the licence and distribution questions it raised, since there
+        is nothing to distribute. Do not re-propose without a new use case.
       - **Highlight/annotation export: REJECTED 2026-08-31.** Owner call: the
         brand focuses on books, audiobooks and e-readers, not academic tooling.
         Do not re-propose it.

@@ -2058,14 +2058,10 @@
         <div><div class="sr-k" data-i18n="report_bug">Report a bug</div><div class="sr-sub" data-i18n="report_bug_sub">Tell us what went wrong</div></div>
         <button class="set-link" data-i18n="open" onclick="BugReport.open()">Open</button>
       </div>
-      <div class="set-row">
-        <div><div class="sr-k" data-i18n="about_title">About PhonoLeaf</div><div class="sr-sub" data-i18n="about_sub">Version, credits and licences</div></div>
-        <button class="set-link" data-i18n="open" onclick="About.open()">Open</button>
-      </div>
     </div>
     <div style="text-align:center;color:var(--text-dim);font-size:0.7rem;margin-top:1.4rem">
       <span data-i18n="footer_tagline">PhonoLeaf &middot; A voice for every page</span><br>
-      <a href="privacy.green.html" style="color:var(--text-dim)" data-i18n="privacy_policy">Privacy Policy</a> &middot; <a href="terms.green.html" style="color:var(--text-dim)" data-i18n="terms_of_service">Terms of Service</a>
+      <a href="privacy.green.html" style="color:var(--text-dim)" data-i18n="privacy_policy">Privacy Policy</a> &middot; <a href="terms.green.html" style="color:var(--text-dim)" data-i18n="terms_of_service">Terms of Service</a> &middot; <a href="about.green.html" style="color:var(--text-dim)" data-i18n="about_nav">About</a> &middot; <a href="licences.green.html" style="color:var(--text-dim)" data-i18n="licences_nav">Licences</a>
     </div>
   </div>
 </div>
@@ -2143,43 +2139,6 @@
 </div>
 
 <!-- ============== SLEEP TIMER SHEET ============== -->
-<!-- ============== ABOUT ============== -->
-<div class="modal-backdrop" id="about-modal" onclick="About.close(event)">
-  <div class="modal-sheet" onclick="event.stopPropagation()">
-    <div class="modal-handle"></div>
-    <div class="modal-title" data-i18n="about_title">About PhonoLeaf</div>
-    <p class="sleep-hint"><span data-i18n="about_tagline">A voice for every page</span><br><span id="about-version"></span></p>
-    <div class="set-group">
-      <div class="set-row set-row-first">
-        <div><div class="sr-k" data-i18n="about_website">Website</div></div>
-        <a class="set-link" href="https://phonoleaf.com" target="_blank" rel="noopener" data-i18n="open">Open</a>
-      </div>
-      <div class="set-row">
-        <div><div class="sr-k" data-i18n="about_support">Support</div><div class="sr-sub">support@phonoleaf.com</div></div>
-        <a class="set-link" href="mailto:support@phonoleaf.com" data-i18n="open">Open</a>
-      </div>
-      <div class="set-row">
-        <div><div class="sr-k" data-i18n="privacy_policy">Privacy Policy</div></div>
-        <a class="set-link" href="privacy.green.html" data-i18n="open">Open</a>
-      </div>
-      <div class="set-row">
-        <div><div class="sr-k" data-i18n="terms_of_service">Terms of Service</div></div>
-        <a class="set-link" href="terms.green.html" data-i18n="open">Open</a>
-      </div>
-    </div>
-    <div class="sec-label set-section-label"><span data-i18n="about_oss">Open source components</span></div>
-    <div class="set-group">
-      <div class="set-row set-row-first"><div><div class="sr-k">epub.js 0.3.93</div></div><a class="set-link" href="https://github.com/futurepress/epub.js" target="_blank" rel="noopener" data-i18n="about_source">Source</a></div>
-      <div class="set-row"><div><div class="sr-k">JSZip 3.10.1</div></div><a class="set-link" href="https://github.com/Stuk/jszip" target="_blank" rel="noopener" data-i18n="about_source">Source</a></div>
-      <div class="set-row"><div><div class="sr-k">sherpa-onnx</div></div><a class="set-link" href="https://github.com/k2-fsa/sherpa-onnx" target="_blank" rel="noopener" data-i18n="about_source">Source</a></div>
-      <div class="set-row"><div><div class="sr-k">Kokoro int8 en v0.19</div></div><a class="set-link" href="https://github.com/k2-fsa/sherpa-onnx/releases/tag/tts-models" target="_blank" rel="noopener" data-i18n="about_source">Source</a></div>
-      <div class="set-row"><div><div class="sr-k">Piper VITS voices (en_US, en_GB, fr_FR, de_DE, es_ES)</div></div><a class="set-link" href="https://github.com/rhasspy/piper" target="_blank" rel="noopener" data-i18n="about_source">Source</a></div>
-      <div class="set-row"><div><div class="sr-k">Capacitor</div></div><a class="set-link" href="https://github.com/ionic-team/capacitor" target="_blank" rel="noopener" data-i18n="about_source">Source</a></div>
-      <div class="set-row"><div><div class="sr-k">Manrope</div></div><a class="set-link" href="https://github.com/sharanda/manrope" target="_blank" rel="noopener" data-i18n="about_source">Source</a></div>
-      <div class="set-row"><div><div class="sr-k">Literata</div></div><a class="set-link" href="https://github.com/googlefonts/literata" target="_blank" rel="noopener" data-i18n="about_source">Source</a></div>
-    </div>
-  </div>
-</div>
 
 <div class="modal-backdrop" id="sleep-modal" onclick="SleepModal.close(event)">
   <div class="modal-sheet" onclick="event.stopPropagation()">
@@ -2844,10 +2803,7 @@ const STRINGS = {
     local_folder_reconnect_needed: 'Permission to that folder was lost. Reconnect it to refresh.',
     send_feedback: 'Send feedback', send_feedback_sub: 'Ideas or anything on your mind', open: 'Open',
     report_bug: 'Report a bug', report_bug_sub: 'Tell us what went wrong',
-    about_title: 'About PhonoLeaf', about_sub: 'Version, credits and licences',
-    about_tagline: 'A voice for every page', about_version: 'Version {v}',
-    about_website: 'Website', about_support: 'Support',
-    about_oss: 'Open source components', about_source: 'Source',
+    about_nav: 'About', licences_nav: 'Licences',
     app_language: 'App language', app_language_sub: 'Translates the whole app',
     footer_tagline: 'PhonoLeaf · A voice for every page',
     privacy_policy: 'Privacy Policy', terms_of_service: 'Terms of Service',
@@ -3113,10 +3069,7 @@ const STRINGS = {
     local_folder_reconnect_needed: 'L’autorisation pour ce dossier a été perdue. Reconnectez-le pour actualiser.',
     send_feedback: 'Envoyer des commentaires', send_feedback_sub: 'Idées ou tout ce qui vous passe par la tête', open: 'Ouvrir',
     report_bug: 'Signaler un problème', report_bug_sub: 'Dites-nous ce qui n’a pas fonctionné',
-    about_title: 'À propos de PhonoLeaf', about_sub: 'Version, crédits et licences',
-    about_tagline: 'Une voix pour chaque page', about_version: 'Version {v}',
-    about_website: 'Site Web', about_support: 'Assistance',
-    about_oss: 'Composants à code ouvert', about_source: 'Source',
+    about_nav: 'À propos', licences_nav: 'Licences',
     app_language: 'Langue de l’application', app_language_sub: 'Traduit toute l’application',
     footer_tagline: 'PhonoLeaf · Une voix pour chaque page',
     privacy_policy: 'Politique de confidentialité', terms_of_service: 'Conditions d’utilisation',
@@ -4164,7 +4117,7 @@ const VoicePacks = {
   // gate-aware CATALOG below (which only ever shows ONE English variant at a
   // time) would miss one, e.g. wiping every possible pack on "Delete my
   // data" regardless of which the user currently has.
-  ALL_PACK_MODELS: ['us', 'gb', 'fr', 'de', 'es', 'kokoro'],
+  ALL_PACK_MODELS: ['us', 'gb', 'fr', 'de', 'kokoro'],
   // Minimum deviceBench() score (see PhonoLeafTtsPlugin.kt) to even OFFER
   // Kokoro voices. **CALIBRATED against real hardware 2026-08-08.**
   //
@@ -4231,7 +4184,6 @@ const VoicePacks = {
       // PIPER_VOICES comment for details.
       { model: 'fr', label: I18n.t('lang_fr'), approxMB: 77 },
       { model: 'de', label: I18n.t('lang_de'), approxMB: 64 },
-      { model: 'es', label: I18n.t('lang_es'), approxMB: 77 },
     ]);
   },
   _status: {},   // model -> {downloaded, approxBytes}, once known
@@ -9084,22 +9036,6 @@ window.speechSynthesis?.addEventListener('voiceschanged', () => TTS.pickDefaultV
 // handlers (_playAudio's onended, _speakWeb's onend) already check before
 // deciding whether to keep reading — same gen-guarded choke point every
 // other "should the next chunk start" decision in TTS already goes through.
-// --- About: version, links and open-source credits ---------------------
-// APP_VERSION must be kept in step with versionName in
-// android/app/build.gradle. There is no build step to derive it from, so
-// bumping one without the other is the failure mode to watch for.
-const About = {
-  APP_VERSION: '1.0',
-  open() {
-    const el = document.getElementById('about-version');
-    if (el) el.textContent = I18n.t('about_version', { v: this.APP_VERSION });
-    document.getElementById('about-modal').classList.add('open');
-  },
-  close(e) {
-    if (!e || e.target.classList.contains('modal-backdrop'))
-      document.getElementById('about-modal').classList.remove('open');
-  },
-};
 
 const SleepTimer = {
   _iv: null,
@@ -9346,10 +9282,6 @@ const PIPER_VOICES = [
   // "Aline" (owner's pick), Pierre kept as-is (already a real French name).
   ['fr0', 'Aline',  0, 'fr', 'lang_fr', 'gender_female'],
   ['fr1', 'Pierre', 1, 'fr', 'lang_fr', 'gender_male'],
-  // es_ES-sharvard-medium: speaker_id_map {"M":0,"F":1} (bare gender labels,
-  // not names — Mateo/Sofía are our own picks, not from the dataset).
-  ['es0', 'Mateo', 0, 'es', 'lang_es', 'gender_male'],
-  ['es1', 'Sofía', 1, 'es', 'lang_es', 'gender_female'],
   // German (2026-08-05): still a single voice — de_DE-thorsten-medium is
   // genuinely single-speaker (confirmed via config: the only other "medium"
   // German model, thorsten_emotional, has 8 speaker_id_map entries but they're

@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#EFE9DA" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0F1411" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%232F6B4F'/%3E%3Cpath d='M50 24 C68 38 68 66 50 82 C32 66 32 38 50 24 Z' fill='%23EFE9DA'/%3E%3Cpath d='M50 82 L50 90' stroke='%23EFE9DA' stroke-width='3.2' stroke-linecap='round'/%3E%3Cpath d='M35 53 Q40 42 45 53 T55 53 T65 53' fill='none' stroke='%232F6B4F' stroke-width='3.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<title>&Agrave; propos · PhonoLeaf</title>
+<script>
+(function () {
+  try {
+    var saved = localStorage.getItem('pl_lang');
+    var prefersFr = (navigator.languages || [navigator.language || 'en'])
+      .some(function (l) { return /^fr/i.test(l); });
+    var wantFr = saved ? saved === 'fr' : prefersFr;
+    if (!wantFr) { location.replace('about.green.html'); }
+  } catch (e) {}
+})();
+</script>
+<style>
+  :root {
+    --bg:        #EFE9DA;
+    --surface:   #F3EEE1;
+    --accent:    #2F6B4F;
+    --accent2:   #8C3B2F;
+    --text:      #17150F;
+    --text-dim:  #6B6455;
+    --line:      #D6CFBC;
+    --font-ui:   'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-read: 'Literata', Georgia, serif;
+    --shadow-ink: 4px 4px 0 rgba(23,21,15,0.14);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg:#0F1411; --surface:#121711;
+      --accent:#6FBF95; --accent2:#D07A6B;
+      --text:#E4EBE6; --text-dim:#7E8A83; --line:#24302A;
+      --shadow-ink: 4px 4px 0 rgba(0,0,0,0.4);
+    }
+  }
+  /* A forced Light/Dark choice in the app's Settings must win over the
+     device preference, exactly as it does in the app itself — same token
+     blocks, same source-order-wins pattern as index.green.html. Without
+     these blocks (the original state of these pages) the app's own theme
+     setting was ignored entirely and only the OS preference applied, so a
+     user on a dark phone who had chosen Light in PhonoLeaf still got dark
+     legal pages. */
+  [data-theme="light"] {
+    --bg:#EFE9DA; --surface:#F3EEE1;
+    --accent:#2F6B4F; --accent2:#8C3B2F;
+    --text:#17150F; --text-dim:#6B6455; --line:#D6CFBC;
+    --shadow-ink: 4px 4px 0 rgba(23,21,15,0.14);
+  }
+  [data-theme="dark"] {
+    --bg:#0F1411; --surface:#121711;
+    --accent:#6FBF95; --accent2:#D07A6B;
+    --text:#E4EBE6; --text-dim:#7E8A83; --line:#24302A;
+    --shadow-ink: 4px 4px 0 rgba(0,0,0,0.4);
+  }
+  @font-face {
+    font-family:'Manrope'; font-style:normal; font-weight:100 900;
+    font-display:swap; src:url('fonts/manrope.woff2') format('woff2');
+  }
+  @font-face {
+    font-family:'Literata'; font-style:normal; font-weight:100 900;
+    font-display:swap; src:url('fonts/literata.woff2') format('woff2');
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 400 0.94rem/1.65 var(--font-ui);
+    -webkit-font-smoothing: antialiased;
+  }
+  /* Header geometry matched to the app's own .app-header sitting inside
+     .scrolly, so the logo + wordmark land in the IDENTICAL spot here as on
+     Home/Shelves/Log/Settings: .scrolly's 1.1rem padding + .app-header's
+     0.2rem padding-top puts the icon's top edge at the same y, and the
+     1.1rem side padding puts its left edge at the same x. max-width still
+     centres the text column on a wide screen. */
+  .wrap { max-width: 640px; margin: 0 auto; padding: 1.1rem 1.1rem 5rem; }
+  .topbar { display: flex; align-items: center; justify-content: space-between; padding-top: 0.2rem; margin-bottom: 2.1rem; }
+  .brand { display: flex; align-items: center; gap: 0.45rem; text-decoration: none; color: var(--text); }
+  .brand svg { flex-shrink: 0; }
+  .brand span { font: 600 0.82rem var(--font-ui); letter-spacing: -0.01em; color: var(--text); }
+  .langswitch { font: 0.78rem ui-monospace, Menlo, monospace; }
+  .langswitch a, .langswitch b { text-decoration: none; padding: 0.2rem 0.4rem; }
+  .langswitch a { color: var(--text-dim); }
+  .langswitch b { color: var(--accent); }
+  /* Same size/weight/tracking and same top margin as the app's shared
+     .home-title, so a page title reads identically whether you're on
+     Settings or here. */
+  /* padding-top (not margin-top) matches index.green.html's .home-title:
+     0.98rem, so this title lands at the same height as the Now page's own
+     name, not a line higher — see .home-title's own comment there for the
+     full story, including why this MUST be padding (.topbar and h1 are
+     plain block siblings inside .wrap, so a margin-top here would just
+     collapse into .topbar's larger margin-bottom and do nothing) and why
+     it's 0.98rem alone rather than the title's old 0.5rem margin plus
+     0.98rem (that old margin never actually contributed anything once
+     collapsed against .topbar's larger one, so folding it in here would
+     overshoot). */
+  h1 { font: 400 1.625rem/1.15 var(--font-read); font-weight: 400; margin: 0 0 0.35rem; padding-top: 0.98rem; letter-spacing: -0.02em; }
+  .updated { color: var(--text-dim); font: 0.78rem ui-monospace, Menlo, monospace; margin-bottom: 1.8rem; }
+  .summary-box {
+    background: var(--accent); color: var(--bg);
+    padding: 1.2rem 1.3rem; margin: 0 0 2.2rem;
+    box-shadow: var(--shadow-ink);
+  }
+  /* Dark mode's --accent is the BRIGHT light green meant for text sitting on
+     a near-black page (#6FBF95) — fine as text, but as a fill it read as
+     glaringly bright next to everything else in dark mode being muted/near-
+     black. A dedicated deep-green fill + the theme's own light text token
+     (not --bg, which is near-black and would go invisible on a dark fill)
+     keeps the box reading as clearly highlighted without the glare.
+     Both the @media query AND the [data-theme="dark"] override are needed
+     (same source-order-wins pattern the token blocks above already use) —
+     but @media (prefers-color-scheme: dark) alone, with nothing to beat it
+     back, would ALSO win when the OS is dark and the app is explicitly set
+     to Light: [data-theme="light"] must restate the plain var(--accent)
+     look at matching specificity so it wins regardless of source order. */
+  @media (prefers-color-scheme: dark) {
+    .summary-box { background: #1E4534; color: var(--text); }
+  }
+  [data-theme="dark"] .summary-box { background: #1E4534; color: var(--text); }
+  [data-theme="light"] .summary-box { background: var(--accent); color: var(--bg); }
+  .summary-box b { display: block; font: 600 0.68rem var(--font-ui); letter-spacing: 0.16em; text-transform: uppercase; margin-bottom: 0.55rem; }
+  .summary-box p { margin: 0; font-size: 0.92rem; line-height: 1.55; }
+  section { padding: 1.3rem 0; border-top: 1px solid var(--line); }
+  section:last-of-type { border-bottom: 1px solid var(--line); }
+  h2 { font: 600 0.78rem var(--font-ui); letter-spacing: 0.04em; margin: 0 0 0.7rem; color: var(--accent); }
+  p, li { color: var(--text); font-size: 0.88rem; }
+  p { margin: 0 0 0.8rem; }
+  p:last-child, ul:last-child, table:last-child { margin-bottom: 0; }
+  ul { margin: 0 0 0.8rem; padding-left: 1.2rem; }
+  li { margin-bottom: 0.4rem; }
+  strong { font-weight: 700; }
+  a { color: var(--accent); }
+  table { width: 100%; border-collapse: collapse; margin: 0 0 0.8rem; font-size: 0.84rem; }
+  th, td { text-align: left; padding: 0.55rem 0.6rem 0.55rem 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--text-dim); font-weight: 600; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.02em; }
+  code { font: 0.82em ui-monospace, Menlo, monospace; }
+  .foot { margin-top: 1.6rem; color: var(--text-dim); font-size: 0.8rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <a class="brand" href="index.html">
+      <svg width="22" height="22" viewBox="0 0 100 100"><rect width="100" height="100" fill="#2F6B4F"/><path d="M50 24 C68 38 68 66 50 82 C32 66 32 38 50 24 Z" fill="#EFE9DA"/><path d="M50 82 L50 90" stroke="#EFE9DA" stroke-width="3.2" stroke-linecap="round"/><path d="M35 53 Q40 42 45 53 T55 53 T65 53" fill="none" stroke="#2F6B4F" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span>PhonoLeaf</span>
+    </a>
+    <div class="langswitch">
+      <a href="about.green.html" onclick="try{localStorage.setItem('pl_lang','en')}catch(e){}">EN</a> ·
+      <b>FR</b>
+    </div>
+  </div>
+
+  <h1>&Agrave; propos de PhonoLeaf</h1>
+
+  <div class="summary-box">
+    <b>N&rsquo;importe quel livre, partout, en tout temps.</b>
+    <p>C&rsquo;est la raison d&rsquo;&ecirc;tre de PhonoLeaf.</p>
+  </div>
+
+  <section>
+    <h2>Pourquoi PhonoLeaf existe</h2>
+    <p>Lire est une bonne chose qui demande une faveur un peu ingrate : il faut s&rsquo;asseoir, tenir le livre et trouver le temps. La plupart des jours, ce temps n&rsquo;arrive jamais tout &agrave; fait, et le livre reste o&ugrave; vous l&rsquo;avez laiss&eacute;.</p>
+    <p>PhonoLeaf enl&egrave;ve cette condition. Les livres que vous poss&eacute;dez d&eacute;j&agrave; deviennent quelque chose que vous pouvez lire partout o&ugrave; vous &ecirc;tes : dans l&rsquo;autobus, en voiture, dans le train, &agrave; la maison, en for&ecirc;t, sur une planche &agrave; pagaie, ou en d&eacute;rive au large sur tout ce qui flotte. Si vous pouvez &eacute;couter, vous pouvez lire.</p>
+  </section>
+
+  <section>
+    <h2>Vers o&ugrave; nous allons</h2>
+    <p>PhonoLeaf vise &agrave; devenir la r&eacute;f&eacute;rence du march&eacute; du livre audio, en rendant accessible partout et en tout temps n&rsquo;importe quel livre que vous poss&eacute;dez. Pas un catalogue en location, ni un abonnement &agrave; la biblioth&egrave;que de quelqu&rsquo;un d&rsquo;autre. Vos propres livres, lus pour vous, o&ugrave; que vous soyez.</p>
+  </section>
+
+  <section>
+    <h2>Qui le construit</h2>
+    <p>PhonoLeaf est con&ccedil;u de fa&ccedil;on ind&eacute;pendante, par une seule personne, au Qu&eacute;bec. Aucune entreprise derri&egrave;re, aucun investisseur, aucune &eacute;quipe de croissance. C&rsquo;est aussi pourquoi l&rsquo;application n&rsquo;a pas de serveur : tout fonctionne sur votre appareil parce que c&rsquo;est la fa&ccedil;on honn&ecirc;te de la construire.</p>
+  </section>
+
+  <section>
+    <h2>Nous joindre</h2>
+    <p>Id&eacute;es, plaintes et signalements de bogues aboutissent tous au m&ecirc;me endroit : <a href="mailto:support@phonoleaf.com">support@phonoleaf.com</a></p>
+  </section>
+
+  <div class="foot">
+    <a href="privacy-fr.green.html">Politique de confidentialit&eacute;</a> · <a href="terms-fr.green.html">Conditions d&rsquo;utilisation</a> · <a href="licences-fr.green.html">Licences</a> · <a href="index.html">Accueil PhonoLeaf</a>
+  </div>
+
+</div>
+</body>
+</html>

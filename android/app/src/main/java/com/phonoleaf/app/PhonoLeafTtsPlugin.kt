@@ -119,12 +119,16 @@
         // install would needlessly re-download ~78 MB it already has (the
         // exact thing keeping the "kokoro" folder name constant was meant to
         // avoid — see VOICE_PACKS's "us" comment).
+        // NOTE: the Spanish pack (es_ES-sharvard) was REMOVED 2026-08-31 on a
+        // licence finding, not a technical one: its model card claims CC BY 3.0
+        // but also says it was fine-tuned from lessac, which carries the
+        // Blizzard licence excluding commercial voice synthesis products. Do not
+        // re-add it without a replacement whose licence is clean for production.
         private val MODEL_VERSIONS = mapOf(
             "us" to "piper-libritts-r-medium",
             "gb" to "piper-libritts-r-medium",
             "fr" to "piper-fr-upmc-medium-2spk",
             "de" to "piper-libritts-r-medium",
-            "es" to "piper-es-sharvard-medium-2spk",
             "kokoro" to "kokoro-int8-en-v0_19",
         )
         private fun modelVersion(model: String) = MODEL_VERSIONS[model] ?: "piper-libritts-r-medium"
@@ -198,11 +202,6 @@
                 folder = "kokoro-de",
                 url = "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-de_DE-thorsten-medium.tar.bz2",
                 approxBytes = 67214254L,
-            ),
-            "es" to VoicePackInfo(
-                folder = "kokoro-es",
-                url = "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-es_ES-sharvard-medium.tar.bz2",
-                approxBytes = 80318184L,
             ),
             // English, Kokoro-82M v0.19, int8 — the ONLY Kokoro release that
             // fits this app: the "multi-lang" Kokoro releases add Chinese, not

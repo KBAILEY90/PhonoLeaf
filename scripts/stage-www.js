@@ -58,6 +58,11 @@ const FILES = [
   // and the older index.html still links them.
   'privacy.green.html', 'terms.green.html',
   'privacy-fr.green.html', 'terms-fr.green.html',
+  // About + Licences, same .green pairing. The licences page is a licence
+  // OBLIGATION, not a credit roll: two voices are CC BY and one is CC BY-SA,
+  // all of which require attribution, so it must ship with the app.
+  'about.green.html', 'licences.green.html',
+  'about-fr.green.html', 'licences-fr.green.html',
 ];
 const DIRS = ['fonts', 'vendor'];
 
