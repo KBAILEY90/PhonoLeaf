@@ -44,6 +44,36 @@ don't let it go stale the way `BACKLOG.md`'s old "Next up" section did.
       Apple Individual-vs-Organization choice already made (wait for the
       corporation). `PAYMENTS_SPEC.md` §11 #5.
 - [x] **Pricing model: keep one paid tier, or split Standard/Upgraded?**
+      > ✅ **DECIDED 2026-08-31 (owner): ONE TIER, provisionally.** Keep the
+      > committed $5.99/mo, $49.99/yr, and treat Kokoro as a **free quality
+      > upgrade** on devices that pass the benchmark, which is exactly how it
+      > is already built. No new billing work, no tier a French user or a
+      > mid-range phone can never buy. The Standard/Upgraded split below is
+      > **rejected**, for the reasons in the reopening note and in
+      > `BUSINESS.md` §1.
+      >
+      > **Owner framed this as "for now", so here is what would reopen it.**
+      > The decision rests on two facts, not on a preference, and it should be
+      > revisited if either stops being true:
+      > 1. **A Kokoro model gains French (or German/Spanish) coverage.** Today
+      >    none exists. This is the constraint that makes a paid Upgraded tier
+      >    unsellable to the entire Québec market.
+      > 2. **The `_KOKORO_MIN_GFLOPS` gate lands materially lower** after the
+      >    borderline-device testing in this file gives it a second
+      >    calibration point. It is currently 5.0 against a Pixel 7's 2.47, so
+      >    a paid Kokoro tier would exclude most real phones.
+      >
+      > **The condition this decision depends on:** $5.99 is defensible for
+      > the *product*, not for the voice, so the positioning has to price the
+      > product. That is what the 2026-08-30 reliability reframe does, since
+      > it leads on what every user gets regardless of engine. **Do not let
+      > "upgraded voice" become the headline claim anywhere**, or the gap
+      > between promise and delivery reopens.
+      >
+      > Historical note, kept because it explains the two conflicting records
+      > below: the 2026-08-28 leaning was toward the opposite conclusion, and
+      > was reached without the two facts above. See `BUSINESS.md` §1.
+
       > ⚠️ **REOPENED 2026-08-31 by new facts, not by opinion.** The leaning
       > below asks for "the actual unit-economics re-run" before it is final.
       > That re-run now exists in `BUSINESS.md` §1 ("The Standard/Upgraded
