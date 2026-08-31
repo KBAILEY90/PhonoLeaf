@@ -25,7 +25,7 @@ once.** That combination is the whole opportunity.
 
 | App | Group | Reads | Voice | Private / offline | Price | 
 |---|---|---|---|---|---|
-| **PhonoLeaf** | A | Your Drive epubs | On device **neural** | Yes, both | $5.99/mo, $49.99/yr, $129 lifetime |
+| **PhonoLeaf** | A | Your own epubs (Drive or device folder) | On device **neural** | Yes, both | $5.99/mo, $49.99/yr, $129 lifetime |
 | @Voice Aloud Reader | A | Epub, mobi, pdf, web | Device TTS (robotic) | Yes | Free with ads, cheap pro |
 | Moon+ Reader | A | Epub and more | Device TTS | Yes | Free, Pro about $6 once |
 | Legado | A | Epub, web novels | Device TTS | Yes | Free, open source |
@@ -141,12 +141,19 @@ once.** That combination is the whole opportunity.
 - **Genuinely offline** now, device verified, which most neural options cannot claim.
 
 ### Honest gaps
-- **Narrow input:** Google Drive, DRM free epubs only. Speechify reads anything and
-  @Voice reads more formats plus the web. No OCR, no articles, no local or other cloud
-  import yet.
+- **Narrow input:** DRM free epubs only. Speechify reads anything and @Voice reads
+  more formats plus the web. No OCR, no articles, no PDF. Book sources are Google
+  Drive plus a local device folder (both shipped 2026-08-19/20, so "Drive only" is
+  no longer true); Dropbox and OneDrive remain unbuilt, and each would bring its own
+  OAuth app and review burden.
 - **Voice is very good, not the very best:** top cloud voices from ElevenLabs and
-  Speechify still sound more human than on device Piper, and the planned "better voice
-  on strong devices" is not built yet, so it is Piper for everyone today.
+  Speechify still sound more human than either on device model. The "better voice on
+  strong devices" feature **did ship** (2026-08-08): Kokoro is offered alongside
+  Piper, gated by a one time on device CPU benchmark. But the gate is set at 5.0
+  GFLOPS against a Pixel 7's measured 2.47, i.e. roughly twice the reference device,
+  so a large share of real phones still get Piper. Treat "Piper for most users today"
+  as the working assumption until the borderline device testing in `TODO.md` gives
+  the threshold a second calibration point.
 - **Setup friction:** you must already own ebooks, use Google Drive, and connect a
   folder. Free readers just open a file; cloud apps paste any text.
 - **A brand new brand:** no reviews, no track record, no installed base, and app store
@@ -157,9 +164,15 @@ once.** That combination is the whole opportunity.
 
 ### Opportunities
 - Own and repeat the one position only we hold, everywhere in our marketing.
-- Take the accessibility segment from Voice Dream by being cheaper, private, cross
-  platform, and by adding follow along highlighting.
-- Widen input with local file import and Dropbox to shrink the "narrow" gap.
+- Take the accessibility segment from Voice Dream by being cheaper, private, and cross
+  platform. Follow along highlighting **shipped 2026-08-19** and is no longer the gap
+  it was here, though it covers the native neural path only, not the Web Speech
+  fallback. The remaining accessibility differentiator worth building is a
+  pronunciation editor, which `COMPETITOR_SWOT.md` found is the single most praised
+  feature across three competitors.
+- Widen input to shrink the "narrow" gap. Local file import and connect a folder
+  **shipped 2026-08-19/20**; what is still open is Dropbox/OneDrive, and formats
+  beyond EPUB (PDF above all).
 - Lean into the French and Québec market, where there are few local competitors.
 - Undercut Speechify and Voice Dream on price with a stronger privacy story.
 
@@ -170,17 +183,30 @@ once.** That combination is the whole opportunity.
   free tier, and audiobook bundling. It is the main one to watch.
 - The niche is small and discovery is hard, so growth leans on SEO, communities, and
   word of mouth rather than paid reach.
-- We depend on Google Drive and on passing Google's ongoing verification.
+- We depend on Google Drive and on passing Google's ongoing verification. Partly
+  hedged since 2026-08-20: the local device folder is a second ingestion path that
+  needs no Google scope at all, so a `drive.readonly` problem would no longer leave
+  the app with no way to get books in. Still a real dependency, since Drive remains
+  the primary path and Google sign in is required either way.
 
 ## 7. Strategic takeaways
 1. **Compete on the combination, not on any single axis.** We lose a "reads anything"
    fight to Speechify and a "free" fight to @Voice. We win the "neural, private,
    offline, your own library" fight because we are the only one in it.
-2. **Close the two gaps that matter:** widen input (local and Dropbox) and add
-   accessibility follow along highlighting. Those open the dyslexia segment and blunt
-   the "too narrow" weakness.
+2. **Close the gaps that matter.** ~~Widen input (local and Dropbox) and add
+   accessibility follow along highlighting.~~ **Both of those shipped in August 2026**
+   (local import and connect a folder, 2026-08-19/20; follow along highlighting,
+   2026-08-19). The gaps that remain, in the order the review evidence supports, are a
+   **pronunciation editor**, **formats beyond EPUB** (PDF above all), and **MP3
+   export**. See `COMPETITOR_SWOT.md`, which sourced all three from actual store
+   reviews, and `SWOT.md`, which notes none of them is scheduled yet.
 3. **Keep price low and the privacy story loud.** The zero cost to serve is our
    permission to undercut the cloud apps while out classing the free ones on voice.
+   **Caveat added 2026-08-30:** `COMPETITOR_SWOT.md`'s review mining found privacy is
+   why people approve but *reliability* is why they switch, so "loud privacy" is
+   probably the wrong lead for the marketing copy even though it stays true. That
+   reframe is tracked as its own task in `TODO.md`; flagged here so this file and that
+   research do not quietly disagree.
 4. **Watch ElevenReader.** If they ship private or on device, revisit our messaging and
    consider offering a top tier voice to match.
 5. **Do not chase Audible.** Human narration is a different product; our pitch is the
