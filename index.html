@@ -730,6 +730,11 @@
     }
     #search-results { max-height: 46vh; overflow-y: auto; }
     .search-result-item mark { background: var(--overlay); color: var(--accent); font-style: normal; }
+    .set-section-label { margin-top: 2.25rem; color: var(--text-dim); }
+    /* .set-row's hairline separates rows WITHIN a box; the first row in each
+       box drops it so the box border is not doubled. */
+    .set-row-first { border-top: none; }
+    #storage-sections { max-height: 52vh; overflow-y: auto; }
 
     /* Feedback / bug-report forms */
     .form-label { font-size: 0.78rem; font-weight: 600; color: var(--text-dim); margin: 0.9rem 0 0.35rem; }
@@ -1468,6 +1473,10 @@
          there is no server to request anything from. -->
     <div class="set-group">
       <div class="set-row">
+        <div><div class="sr-k" data-i18n="storage_title">Storage</div><div class="sr-sub" data-i18n="storage_sub">See what&#39;s using space, free some up</div></div>
+        <button class="set-link" data-i18n="view" onclick="StorageModal.open()">View</button>
+      </div>
+      <div class="set-row">
         <div><div class="sr-k" data-i18n="export_data">Export my data</div><div class="sr-sub" data-i18n="export_data_sub">Download everything stored on this device</div></div>
         <button class="set-link" data-i18n="export" onclick="MyData.export()">Export</button>
       </div>
@@ -1627,6 +1636,16 @@
 
 <!-- ============== SLEEP TIMER ============== -->
 <!-- ============== IN-BOOK SEARCH ============== -->
+<!-- ============== STORAGE ============== -->
+<div class="modal-backdrop" id="storage-modal" onclick="StorageModal.close(event)">
+  <div class="modal-sheet" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <div class="modal-title" data-i18n="storage_title">Storage</div>
+    <div id="storage-total" class="sleep-hint"></div>
+    <div id="storage-sections"></div>
+  </div>
+</div>
+
 <div class="modal-backdrop" id="search-modal" onclick="Search.close(event)">
   <div class="modal-sheet">
     <div class="modal-handle"></div>
@@ -1946,6 +1965,18 @@ function chapterLabelFor(href, spineIndex) {
   return tocItem?.label?.trim() || `Section ${spineIndex + 1}`;
 }
 
+// Localized byte formatter for the storage screen. Deliberately separate
+// from fmtSize() above: that one returns '' for a falsy size, which callers
+// rely on to hide an unknown size, whereas storage rows must show '0 KB'.
+function fmtBytes(bytes) {
+  const b = bytes || 0;
+  // Math.max(1, ...) only affects a genuinely non-zero size that would
+  // otherwise round to 0 KB - true zero stays '0 KB', not '1 KB'.
+  if (b < 1024 * 1024) return I18n.t('kb', { kb: b === 0 ? 0 : Math.max(1, Math.round(b / 1024)) });
+  if (b < 1024 * 1024 * 1024) return I18n.t('mb', { mb: Math.round(b / (1024 * 1024) * 10) / 10 });
+  return I18n.t('gb', { gb: Math.round(b / (1024 * 1024 * 1024) * 10) / 10 });
+}
+
 function fmtSize(b) {
   if (!b) return '';
   return b > 1048576 ? (b / 1048576).toFixed(1) + ' MB' : Math.round(b / 1024) + ' KB';
@@ -2152,6 +2183,12 @@ const STRINGS = {
     sleep_cancel: 'Turn off sleep timer',
     search_title: 'Search this book', search_book_placeholder: 'Find a word or phrase',
     search_indexing: 'Searching more chapters…', search_no_results: 'No matches found',
+    storage_title: 'Storage', storage_sub: "See what's using space, free some up",
+    storage_total_line: 'Using {total} total',
+    storage_books: 'Cached books', storage_packs: 'Voice packs', storage_covers: 'Cover images',
+    storage_none: 'None cached', storage_covers_cleared: 'Cover cache cleared',
+    kb: '{kb} KB', mb: '{mb} MB', gb: '{gb} GB',
+    remove: 'Remove', clear: 'Clear', view: 'View',
     reset_stats_confirm: 'Are you sure you want to reset your listening data? This cannot be undone.', reset: 'Reset',
     choose_books_folder: 'Choose your books folder',
     fb_currently: 'Currently: {folder} — open a folder to browse, then tap “Use this folder”.',
@@ -2355,6 +2392,12 @@ const STRINGS = {
     sleep_cancel: 'Désactiver la minuterie',
     search_title: 'Rechercher dans ce livre', search_book_placeholder: 'Trouver un mot ou une phrase',
     search_indexing: 'Recherche dans d’autres chapitres…', search_no_results: 'Aucun résultat',
+    storage_title: 'Stockage', storage_sub: 'Voir ce qui prend de la place, en libérer',
+    storage_total_line: 'Utilise {total} au total',
+    storage_books: 'Livres en cache', storage_packs: 'Packs de voix', storage_covers: 'Images de couverture',
+    storage_none: 'Aucun élément en cache', storage_covers_cleared: 'Cache des couvertures vidé',
+    kb: '{kb} Ko', mb: '{mb} Mo', gb: '{gb} Go',
+    remove: 'Supprimer', clear: 'Effacer', view: 'Afficher',
     reset_stats_confirm: 'Voulez-vous vraiment réinitialiser vos données d’écoute ? Cette action est irréversible.', reset: 'Réinitialiser',
     choose_books_folder: 'Choisissez votre dossier de livres',
     fb_currently: 'Actuellement : {folder} — ouvrez un dossier pour le parcourir, puis touchez « Utiliser ce dossier ».',
@@ -4672,6 +4715,36 @@ const CoverCache = {
       const db = await this._open();
       await new Promise(resolve => {
         const req = db.transaction('covers', 'readwrite').objectStore('covers').delete(key);
+        req.onsuccess = () => resolve();
+        req.onerror  = () => resolve();
+      });
+    } catch (_) {}
+  },
+
+  // Added for the storage screen: total bytes held, and a full wipe. Both
+  // resolve rather than reject on failure - a storage readout must never
+  // break the screen it is rendered into.
+  async size() {
+    try {
+      const db = await this._open();
+      return await new Promise(resolve => {
+        let total = 0;
+        const cur = db.transaction('covers', 'readonly').objectStore('covers').openCursor();
+        cur.onsuccess = e => {
+          const c = e.target.result;
+          if (c) { total += (c.value && c.value.size) || 0; c.continue(); }
+          else resolve(total);
+        };
+        cur.onerror = () => resolve(total);
+      });
+    } catch (_) { return 0; }
+  },
+
+  async clear() {
+    try {
+      const db = await this._open();
+      await new Promise(resolve => {
+        const req = db.transaction('covers', 'readwrite').objectStore('covers').clear();
         req.onsuccess = () => resolve();
         req.onerror  = () => resolve();
       });
@@ -7965,6 +8038,96 @@ const Search = {
       toast(I18n.t('could_not_open_chapter'));
       TTS.stop();
     }));
+  },
+};
+
+// --- Storage manager: what is using space on this device ---------------
+// Ported from the native build 2026-08-31. The voice-pack section is
+// guarded by VoicePacks.available(), which is false on the web, so it
+// omits itself rather than showing an empty native-only group.
+const StorageModal = {
+  async open() {
+    document.getElementById('storage-modal').classList.add('open');
+    await this.render();
+  },
+  close(e) {
+    if (!e || e.target.classList.contains('modal-backdrop'))
+      document.getElementById('storage-modal').classList.remove('open');
+  },
+
+  _section(label, bodyHTML) {
+    return `<div class="sec-label set-section-label"><span>${esc(label)}</span></div><div class="set-group">${bodyHTML}</div>`;
+  },
+  _row(name, size, removeCall, actionLabel, first) {
+    const right = removeCall
+      ? `<button class="set-link danger" onclick="${removeCall}">${esc(actionLabel || I18n.t('remove'))}</button>`
+      : `<span class="sr-sub">${esc(size)}</span>`;
+    return `<div class="set-row${first ? ' set-row-first' : ''}"><div><div class="sr-k">${esc(name)}</div>${removeCall ? `<div class="sr-sub">${esc(size)}</div>` : ''}</div>${right}</div>`;
+  },
+  _empty() {
+    return `<div class="set-row set-row-first"><div class="sr-sub">${esc(I18n.t('storage_none'))}</div></div>`;
+  },
+  // 0 total (nothing cached anywhere) skips the percentage rather than
+  // showing a meaningless 0%/NaN%.
+  _sizeWithPct(bytes, total) {
+    const size = fmtBytes(bytes);
+    return total ? `${size} · ${Math.round((bytes / total) * 100)}%` : size;
+  },
+
+  async render() {
+    // pl_offline_books already stores exact bytes per book, so no
+    // measurement is needed. State.books gives a display name; a book
+    // removed from the library but still cached falls back to its id.
+    const idx = BookCache._index();
+    const bookRows = Object.keys(idx).map(id => {
+      const meta = (State.books || []).find(b => b.id === id);
+      const name = (meta?.name || id).replace(/\.epub$/i, '');
+      return { id, name, bytes: idx[id].bytes || 0 };
+    });
+    bookRows.sort((a, b) => b.bytes - a.bytes); // largest first
+    const booksTotal = bookRows.reduce((s, r) => s + r.bytes, 0);
+
+    // Native-only; false on the web, so the whole section is skipped.
+    const packsAvailable = VoicePacks.available();
+    let packRows = [], packsTotal = 0;
+    if (packsAvailable) {
+      await VoicePacks.refresh();
+      packRows = VoicePacks.ALL_PACK_MODELS
+        .filter(m => VoicePacks._status[m]?.downloaded)
+        .map(m => ({ model: m, bytes: VoicePacks._status[m].approxBytes || 0 }));
+      packsTotal = packRows.reduce((s, r) => s + r.bytes, 0);
+    }
+
+    const coversBytes = await CoverCache.size();
+
+    const grandTotal = booksTotal + packsTotal + coversBytes;
+    document.getElementById('storage-total').textContent = I18n.t('storage_total_line', { total: fmtBytes(grandTotal) });
+
+    document.getElementById('storage-sections').innerHTML = [
+      this._section(I18n.t('storage_books'), bookRows.length
+        ? bookRows.map((r, i) => this._row(r.name, this._sizeWithPct(r.bytes, grandTotal), `StorageModal.removeBook('${esc(r.id)}')`, null, i === 0)).join('')
+        : this._empty()),
+      packsAvailable ? this._section(I18n.t('storage_packs'), packRows.length
+        ? packRows.map((r, i) => this._row(I18n.t(r.model), this._sizeWithPct(r.bytes, grandTotal), `StorageModal.removePack('${r.model}')`, null, i === 0)).join('')
+        : this._empty()) : '',
+      this._section(I18n.t('storage_covers'), this._row(I18n.t('storage_covers'), this._sizeWithPct(coversBytes, grandTotal), coversBytes ? `StorageModal.clearCovers()` : null, I18n.t('clear'), true)),
+    ].join('');
+  },
+
+  async removeBook(id) {
+    await BookCache.remove(id);
+    toast(I18n.t('removed_offline'));
+    Library._refreshOfflineBadge?.(id); // keep the grid's download badge in sync
+    await this.render();
+  },
+  async removePack(model) {
+    await VoicePacks.remove(model); // toasts and notifies on its own
+    await this.render();
+  },
+  async clearCovers() {
+    await CoverCache.clear();
+    toast(I18n.t('storage_covers_cleared'));
+    await this.render();
   },
 };
 
