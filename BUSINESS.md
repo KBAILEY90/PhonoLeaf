@@ -91,6 +91,70 @@ does not need one.
   Cloudflare Worker; Android = Play Billing; lifetime = non consumable IAP / one-
   time Stripe charge, entitlement stored durably so a backend change can't revoke it.
 
+### The Standard/Upgraded tier split: analysis (raised 2026-08-21, worked through 2026-08-30)
+
+`TODO.md` carries this as an open decision: leave Standard (Piper) free or cheap
+at $1–2/mo and charge $5.99–6.99 only for Upgraded (Kokoro). Below is the input
+to that decision. Still the owner's call; nothing here changes the committed
+pricing above.
+
+**Two facts about Kokoro make it a bad axis to price on. Both are properties of
+the model, not of our implementation, so neither is fixable by us.**
+
+1. **Kokoro is English only, permanently.** `PhonoLeafTtsPlugin.kt` records this
+   from inspecting the actual release assets on 2026-08-08: the "multi-lang"
+   Kokoro releases add Mandarin, not French, German or Spanish, so there is **no
+   Kokoro coverage for those languages at all**. A French user therefore cannot
+   buy an Upgraded tier. Not "is unlikely to" but *cannot*. We would be showing
+   the Québec market, the one Bill 96 compliance and four French pages exist to
+   serve, an upgrade that is permanently unavailable to it.
+2. **The hardware gate excludes most English users too.** `_KOKORO_MIN_GFLOPS` is
+   5.0 against the reference Pixel 7's measured 2.47, i.e. roughly twice a 2022
+   flagship (the owner's own framing at calibration time: "Pixel 7 is not strong
+   enough but Pixel 12 is").
+
+Together: the addressable market for an Upgraded tier is English speakers on very
+high end phones. Everyone else lands on the cheap tier by default, so the split
+would set the *real* price for most users at $1–2 while the premium tier stays a
+rounding error. That is ARPU collapse rather than segmentation.
+
+**Small monthly prices are destroyed by Stripe's fixed fee**, independent of the
+above. Net revenue per user per year:
+
+| Plan | Gross | Net | Fees |
+|---|---|---|---|
+| Current $49.99/yr | $49.99 | **$48.24** | 3.5% |
+| $1.99/mo billed monthly | $23.88 | **$11.97** | 49.9% |
+| $0.99/mo billed monthly | $11.88 | **$4.15** | 65.1% |
+| $1.99/mo billed annually ($19.99) | $19.99 | **$19.11** | 4.4% |
+
+At $0.99 monthly we keep 35 cents on the dollar. **Any cheap tier must be annual
+only** to survive the $0.30 per transaction. Note this is a billing frequency
+problem, not a "too cheap" problem.
+
+**An argument that was raised and then withdrawn, recorded so it is not made
+again:** that charging for Piper specifically is weak because @Voice users can
+install Piper into it for free. This does not hold. Voice Dream charges **$79.99
+a year** running Acapela, NeoSpeech and Ivona, all older generation engines its
+own reviewers call stilted and robotic, which Piper comfortably beats. The market
+pays for the product (folder sync, per paragraph position tracking, background
+playback that survives the screen locking, offline caching, chapter navigation,
+follow along highlighting), not for the engine inside it. @Voice's ~$15 is a one
+time ad removal unlock on an ad supported app, a different business model, and
+getting Piper into it means the user finds, installs and configures a third party
+engine themselves.
+
+**Conclusion, and the connected marketing point.** $5.99/$49.99 is defensible for
+the *product*, not for the voice. The condition that has to hold is that our
+positioning prices the product rather than the engine. This is exactly why the
+2026-08-30 reliability reframe in `SEO.md` §1 matters commercially and not just
+for search: it leads on what every user receives regardless of engine (keeps
+playing when the screen locks, remembers your exact place, never waits on a
+server) instead of on a voice most users will not get. **Do not let "upgraded
+voice" become the headline claim anywhere**, or the gap between what is promised
+and what most users receive reopens. Treat Kokoro as a free bonus where the
+hardware allows, which is how it is already built.
+
 ---
 
 ## 2. Business priorities (owner view)
