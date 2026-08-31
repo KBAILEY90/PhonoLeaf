@@ -146,12 +146,27 @@ itself calls non-English support thin with weak G2P.
       conflicts with reading someone their own ebook aloud, and dropping MP3
       export helps here, since nothing leaves the device to be passed off as
       anything.
-- [ ] **Android is NOT a listed Supertonic platform. Prove it works before
-      committing.** The project documents Python, Node, C++, C#, Go, Swift,
-      Java, Rust, iOS, Flutter, browser and Raspberry Pi, but not Android.
-      It runs on ONNX Runtime, which we already ship, and Java/C++ bindings
-      exist, so Android is plausible rather than proven. Treat this as the
-      main engineering risk of the option, ahead of the licence.
+- [ ] **Supertonic on Android: plausible, unproven, and you would be the one
+      proving it. Researched 2026-08-31.**
+      **In favour:** the runtime is ONNX Runtime, which we already ship today
+      inside the sherpa AAR, so the hard part is already solved. Supertonic is
+      architecturally SIMPLER than what we run now: ONNX models plus a Unicode
+      text-mapping step, no phonemizer, no lexicon, no native GPL dependency.
+      There is a Kotlin Multiplatform wrapper targeting Android and iOS,
+      `nedmah/supertonic-kmp`, and it is MIT.
+      **Against:** Android is not an officially supported platform. Issue #51
+      asks directly whether it works in a native Android app and has sat open
+      with no maintainer reply since 2025-12-15. Other Android issues are open
+      too (#193 streaming on Android, #45 Tauri Android integration fails).
+      The KMP wrapper is not a dependency to build a business on: zero stars,
+      created and last pushed on 2026-05-24 about half an hour apart, untouched
+      since. Treat it as a reference implementation, not a library.
+      **What this means:** the port is a real engineering project we own, not
+      an integration. Budget it as such. The upside is that what we would own
+      is simpler than the espeak-shaped problem we own today.
+      **Cheapest way to de-risk it before committing:** build the ONNX models
+      into a throwaway Android test harness and synthesize one sentence. That
+      answers feasibility in a day and needs no product work.
 - [ ] **Kokoro French is now a real fallback worth keeping in view.** Kokoro
       v1.0 covers French (`ff_siwis`, Apache 2.0), which the 2026-08-08 note
       said did not exist. Paired with misaki-rs (MIT) it is a fully
