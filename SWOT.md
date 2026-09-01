@@ -107,8 +107,11 @@ produces the wrong priorities.
 deployed, with real ES256 signing and Google JWKS verification) but is deliberately
 not called from the app, and `/checkout`, `/portal`, `/verify-play` and both webhook
 routes are 501 stubs. Everything downstream (Stripe account, bank account, GST and
-QST registration) is blocked behind Québec business registration, which has been with
-the lawyer since 2026-08-10 with no response recorded in 20 days.
+QST registration) waits on Québec business registration, which the lawyer is
+actively working on, with email every 2-3 days (owner, 2026-09-01). **Corrected
+2026-09-01:** this previously said "no response recorded in 20 days", which was
+wrong and got repeated into a false crisis. It is ordinary sequencing, not a
+stalled engagement.
 
 **One person, one device, one data point.** The owner is engineer, designer, QA,
 lawyer liaison, accountant and marketer. Device testing is effectively a single Pixel
@@ -154,10 +157,12 @@ and browser verified, that no user has ever used because there is no release cha
 The value here is gated on distribution rather than on more building, which is a much
 better problem to have and a much worse one to leave sitting.
 
-**Part of the lawyer bottleneck is bypassable in parallel.** A personal Play Console
-account costs $25 and starts a mandatory 12 tester, 14 continuous day closed test
-clock that runs independently of everything legal. That clock has not started, and
-calendar time on it is being spent whether or not anyone is waiting. The organization
+**SUPERSEDED 2026-09-01.** This argued for opening a personal Play Console account
+to start the 12 tester, 14 continuous day closed test clock in parallel. The owner
+has decided every store account is registered **through the corporation**, and the
+14-day clock applies to personal accounts only, so there is no clock to start early
+and no calendar time being lost. The paragraph below is kept for its reasoning about
+the organization
 account alternative removes the 14 day requirement but needs the registered entity
 that is itself blocked, so the honest framing is a real tradeoff rather than a free
 win: going personal now buys two weeks of calendar back, at the cost of a conversion
@@ -251,12 +256,15 @@ Not a plan, a reading of the four quadrants above. Ordered by what unblocks the 
    registration has not landed by then, submit the assessment without the backend and
    budget for the second one. Waiting indefinitely on an unresponsive third party is
    the only path here with no ceiling on the downside.
-2. **Chase or replace the lawyer.** Twenty days of silence on the item gating every
-   other commercial step is itself the answer to whether that engagement is working.
-3. **Create the Play Console account and the release keystore.** Small, cheap, entirely
-   unblocked, and the 14 day tester clock is calendar time that cannot be recovered
-   later. Resolve the personal versus organization question first, since it decides
-   whether that clock applies at all.
+2. **WITHDRAWN 2026-09-01: "chase or replace the lawyer".** Built on a stale claim
+   of twenty days of silence. The engagement is active, with email every 2-3 days.
+   Left in place, struck through rather than deleted, because the failure worth
+   remembering is that a stale status line about a PERSON was repeated across
+   sessions until it read as a crisis. Verify claims like that with the owner.
+3. **Create the release keystore.** Small, cheap and unblocked today. The Play Console
+   account is NOT part of this any more: it gets registered through the corporation
+   once incorporation completes, so it waits on that. No 14-day tester clock applies,
+   since that requirement is for personal accounts only.
 4. **Converge the fork.** Cheapest now, and it doubles the reach of everything already
    built.
 5. **Correct the docs to match reality**: no Play Store users yet, still in OAuth

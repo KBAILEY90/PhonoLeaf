@@ -43,6 +43,28 @@ website a push IS the deploy.** There is no staging environment. Pushing
 - **Docs, `worker/`:** a push deploys nothing. `worker/` goes live only
   when you run `wrangler deploy` yourself.
 
+## WHO YOU ARE TALKING TO: the owner is not a developer
+
+**The owner is not a software engineer and does not read code.** They decide
+everything about this product, but they do not build it. Jargon they have to
+look up is a blocker, not a shortcut, and having to keep asking for plainer
+explanations is the specific thing that frustrates them (said directly on
+2026-09-01).
+
+- **Say what something does and why it matters to the product before naming
+  it.** If a term is genuinely needed, define it once, in plain words.
+- **Avoid unexplained terms**: race condition, CORS, CSP, R8, path traversal,
+  binding, idempotent, fail open, supply chain. Describe the effect on the
+  user or the business instead.
+- **Step-by-step means literal steps**: where to click, what to type, what a
+  good result looks like, what to do when it does not. Naming a command is
+  not an instruction.
+- **Lead with consequences.** "Lose this file and you can never update the app
+  on the Play Store again" beats any explanation of signing keys.
+- This governs chat replies, reports and documents the owner reads. It does
+  NOT govern code comments, commit messages or this file's own technical
+  sections, which exist for whoever is writing code and should stay precise.
+
 ## What this is
 
 **PhonoLeaf** — a mobile-first PWA that reads your epubs aloud. Connects to

@@ -13,16 +13,24 @@ don't let it go stale the way `BACKLOG.md`'s old "Next up" section did.
 **Nothing an agent can build is on the critical path. Every launch blocker is
 an owner action.** In order of leverage:
 
-1. **The lawyer.** Silent 3+ weeks on business registration, which gates the
-   bank, GST/QST and Stripe, and therefore payments. Now carries four
-   questions, all one conversation: (a) does espeak-ng's GPL reach the app
-   given it ships in our APK, (b) does the separate-process architecture we
-   built make that mere aggregation, (c) does the French voice's CC BY-SA
-   ShareAlike reach us, (d) the ToS/Privacy review already outstanding.
-2. **Play Console: personal or organization.** Gates the keystore, the
-   listing, and the 14-day tester clock if it applies. Calendar time that
-   cannot be recovered later.
-3. **CASA trigger date.** Five minutes. Deadline Jan 2, 2027.
+1. **The lawyer is ACTIVE and incorporation is in progress.** Owner
+   confirmed 2026-09-01: they exchange email every 2-3 days. **Do not
+   describe this as stalled, silent, at risk, or critical, and do not
+   suggest replacing the lawyer.** Earlier entries in this file said "20
+   days of silence" and agents kept escalating that stale line into a
+   crisis. It was wrong. The engagement is working; incorporation simply
+   takes the time it takes.
+   Four questions ride along with it, all one conversation: (a) does
+   espeak-ng's GPL reach the app given it ships in our APK, (b) does the
+   separate-process architecture we built make that mere aggregation, (c)
+   does the French voice's CC BY-SA ShareAlike reach us, (d) the ToS/Privacy
+   review.
+2. **CASA trigger date.** Five minutes. Deadline Jan 2, 2027.
+
+**Settled 2026-09-01, stop raising it:** every store and console account
+(Google Play, Apple) gets registered **through the corporation**, once
+incorporation completes. There is no personal-versus-organization decision
+left to make, and therefore no 14-day closed-test clock to worry about.
 
 **Recently settled, do not reopen without new evidence:**
 
@@ -661,20 +669,22 @@ MODEL_CARD files per voice, and rhasspy/piper discussion #271 on licensing.
 
 ## Blocked on external people/hardware (nothing to build until these move)
 
-- [ ] **Business registration (REQ, Québec)** — with the lawyer, awaiting
-      response (engaged 2026-08-10). This is the actual critical path:
-      it gates the bank account, GST/QST registration, and the Stripe
-      account, in that order. `BUSINESS.md` "Gating, do now" #2.
-- [ ] **[SWOT] Chase or replace the lawyer.** As of 2026-08-30 that is 20
-      days of silence on the single item gating every other commercial
-      step (registration, bank, GST/QST, Stripe, payments, and therefore
-      the CASA submission). The length of the silence is itself the
-      evidence about whether this engagement is working. Concretely: send
-      one dated follow-up with a reply-by date, and if that passes, get a
-      second Québec lawyer quoting on the same scope rather than
-      continuing to wait. `SWOT.md` Threats, recommendation 2.
-- [ ] **Lawyer review of ToS/Privacy** — same engagement, also awaiting
-      response. `BUSINESS.md` §3.
+- [~] **Business registration (REQ, Québec)** — **in progress and moving.**
+      The lawyer is actively working on incorporation, with email every 2-3
+      days (owner, 2026-09-01). It still gates the bank account, GST/QST
+      registration and Stripe, in that order, so it remains the sequence
+      everything commercial waits on. That is normal sequencing, not a
+      problem to solve. `BUSINESS.md` "Gating, do now" #2.
+- [x] **[SWOT] "Chase or replace the lawyer" — CLOSED 2026-09-01, it was
+      based on a false premise.** This item claimed 20 days of silence and
+      recommended lining up a second lawyer. The owner corrected it: the
+      engagement is active with email every 2-3 days. **Do not re-raise
+      this, and do not treat lawyer turnaround as a threat.** Kept rather
+      than deleted as a caution: a stale status line in a doc got repeated
+      and escalated by successive agents until it read as a crisis. Check
+      a claim about a PERSON with the owner before building on it.
+- [~] **Lawyer review of ToS/Privacy** — same engagement, in progress
+      alongside incorporation. `BUSINESS.md` §3.
 - [ ] **iOS engineering** — the M1 MacBook Air was acquired 2026-08-29 (the
       earlier purchase that fell through 2026-08-10 was replaced). No
       longer hardware-blocked: a walkthrough was given the same day, but no
@@ -688,12 +698,16 @@ MODEL_CARD files per voice, and rhasspy/piper discussion #271 on licensing.
 
 ## Decisions needed (owner call, not code)
 
-- [ ] **Play Console account type: personal vs organization.** A personal
-      account needs a closed test with 12 testers for 14 continuous days
-      before it can ship to production; an organization account (tied to
-      Everbloom once registered) skips that entirely. Same shape as the
-      Apple Individual-vs-Organization choice already made (wait for the
-      corporation). `PAYMENTS_SPEC.md` §11 #5.
+- [x] **Play Console account type — DECIDED 2026-09-01: organization,
+      through the corporation.** Owner confirmed every store and console
+      account (Google Play, Apple) gets registered under the company once
+      incorporation completes. This also means **no 14-day closed-test
+      clock**: that requirement applies to personal accounts only, so the
+      calendar risk previously logged here does not exist.
+      Practical consequence: the Play Console account cannot be created
+      until incorporation finishes, so anything downstream of it (store
+      listing, internal testing track, the release SHA-1 OAuth client) waits
+      on that and nothing else. `PAYMENTS_SPEC.md` §11 #5.
 - [x] **Pricing model: keep one paid tier, or split Standard/Upgraded?**
       > ✅ **DECIDED 2026-08-31 (owner): ONE TIER, provisionally.** Keep the
       > committed $5.99/mo, $49.99/yr, and treat Kokoro as a **free quality
