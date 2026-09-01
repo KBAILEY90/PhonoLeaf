@@ -762,16 +762,6 @@
         @Volatile private var svc: ITtsService? = null
         private val svcLock = Any()
 
-        private val svcConn = object : ServiceConnection {
-            override fun onServiceConnected(name: ComponentName?, b: IBinder?) {
-                svc = ITtsService.Stub.asInterface(b)
-            }
-            // Android killed the engine process (expected under memory
-            // pressure). Drop the stale handle; the next call rebinds and the
-            // model reloads, costing a fraction of a second rather than failing.
-            override fun onServiceDisconnected(name: ComponentName?) { svc = null }
-        }
-
         /** Binds if needed and waits briefly for the connection. */
         private fun engine(): ITtsService? {
             svc?.let { return it }
