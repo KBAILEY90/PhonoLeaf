@@ -72,8 +72,14 @@ sherpa-onnx is also espeak-based (`PhonoLeafTtsPlugin.kt` sets
 `dataDir = ifExists("espeak-ng-data")` on the Kokoro config, and the release
 ships espeak-ng-data). Note the distinction that matters: the GPL problem is
 the espeak CODE compiled into `libsherpa-onnx-jni.so`, not the data files, so
-making voices downloadable shrinks the APK by 185 MB but changes nothing
-about the licence.
+voice packs being downloads changes nothing about the licence.
+
+**CORRECTION 2026-08-31:** an earlier version of this entry claimed the APK
+bundles 185 MB of voice models. It does not. Those `assets/kokoro*` folders
+are gitignored local build leftovers; `CLAUDE.md` and the code comment are
+right that every pack is a download and nothing ships in the APK. The claim
+came from running `du` on a working directory and treating it as evidence
+about the shipped artifact.
 
 **But the owner's instinct points at a real destination: drop sherpa-onnx
 itself, not just Piper.** That stack is fully permissive end to end:
@@ -85,9 +91,8 @@ itself, not just Piper.** That stack is fully permissive end to end:
 | misaki-rs or similar G2P | MIT | Replaces espeak. Unvalidated. |
 | Built-in device voice | n/a | Already shipped, already the fallback tier |
 
-No GPL, no CC BY-SA, no sherpa fork to maintain. It also drops the 185 MB of
-bundled Piper voices, so the APK gets small and everything downloads on
-demand, which is what the owner proposed independently.
+No GPL, no CC BY-SA, no sherpa fork to maintain. Packs are already downloads, so the APK is already small; what this
+changes is which engine those downloads feed.
 
 - [ ] **VERIFY THE KOKORO GATE. This is now the highest-value cheap test.**
       `_KOKORO_MIN_GFLOPS` is 5.0 and the Pixel 7 benchmarks at 2.47, so the
@@ -99,8 +104,14 @@ demand, which is what the owner proposed independently.
       is direct evidence the proxy is too conservative. Its deliberate margin
       (5.0 rather than 1.0, for CPU contention and prefetch slack) is sound
       reasoning, but a 2x margin on a mis-measured proxy is not.
-      **Measure Kokoro synthesis directly on device instead of trusting the
-      benchmark.** If a Pixel 7 comfortably beats realtime, the gate is wrong,
+      **CORRECTION: the app ALREADY measures Kokoro for real.** `_verifyKokoro`
+      runs a genuine synthesis and can demote a device, and the code says
+      explicitly that a synthetic benchmark can disagree with real inference,
+      which is why it exists. So "measure it directly" was not a new idea.
+      **The narrow residual question is real though:** `screenDevice` is a HARD
+      gate. A device that fails it is never offered Kokoro, so `_verifyKokoro`
+      never runs on it. The real check can only demote, never promote. Nobody
+      has therefore ever measured real Kokoro on a device the screen rejects. If a Pixel 7 comfortably beats realtime, the gate is wrong,
       most mid-tier phones can run Kokoro, and the Kokoro-only stack above
       becomes viable. That single number decides whether the GPL problem is
       solved by an architecture we can build or needs a lawyer to bless.
