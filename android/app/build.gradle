@@ -95,6 +95,27 @@ android {
     buildFeatures {
         aidl true
     }
+
+    // The GPL-3.0 speech engine bridge lives OUTSIDE this module's source tree,
+    // in android/tts-bridge/, with its own LICENSE and its own package name
+    // (com.phonoleaf.ttsbridge). PhonoLeaf's own code is proprietary and lives
+    // under com.phonoleaf.app.
+    //
+    // Keeping them in separate directories with separate licences is the point,
+    // not tidiness: espeak-ng is GPL-3.0 and is linked by the bridge, so the
+    // bridge is licensed GPL-3.0 too. The two are separate programs that meet
+    // only over an inter-process interface, and are combined solely at
+    // packaging time. Mixing the sources back into one directory would weaken
+    // that, on legal advice (2026-09-01).
+    //
+    // Do NOT move these files back under src/main. See
+    // ../tts-bridge/ENGINE_NOTICE.md.
+    sourceSets {
+        main {
+            java.srcDirs += '../tts-bridge/java'
+            aidl.srcDirs += '../tts-bridge/aidl'
+        }
+    }
 }
 
 repositories {

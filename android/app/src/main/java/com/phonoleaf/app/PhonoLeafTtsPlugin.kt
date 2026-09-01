@@ -9,6 +9,12 @@
     import com.getcapacitor.PluginCall
     import com.getcapacitor.PluginMethod
     import com.getcapacitor.annotation.CapacitorPlugin
+    // The speech engine bridge. It lives in android/tts-bridge/, is licensed
+    // GPL-3.0, and has its OWN package on purpose (legal advice, 2026-09-01):
+    // it links GPL espeak-ng, this file must not. These two imports are the
+    // only contact between the two, and both are just the IPC handle.
+    import com.phonoleaf.ttsbridge.ITtsService
+    import com.phonoleaf.ttsbridge.TtsService
     import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
     import org.apache.commons.compress.compressors.bzip2.BZip2CompressorInputStream
     import java.io.BufferedOutputStream

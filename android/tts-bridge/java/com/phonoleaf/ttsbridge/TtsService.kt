@@ -1,4 +1,30 @@
-package com.phonoleaf.app
+/*
+ * Copyright (C) 2026 Kevin Bailey
+ *
+ * This file is part of the PhonoLeaf speech engine bridge: a small, standalone
+ * component that loads an on-device speech synthesis engine and turns text
+ * into audio. It runs in its own operating-system process and is reached only
+ * over an inter-process interface, so no calling application links it.
+ *
+ * It is licensed GPL-3.0 because it links espeak-ng (via sherpa-onnx), which
+ * is GPL-3.0. It depends on nothing but the Android framework, the Java
+ * standard library and that engine, and could be reused by any other
+ * application unchanged. See ENGINE_NOTICE.md in this directory.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+ */
+package com.phonoleaf.ttsbridge
 
 import android.app.Service
 import android.content.Intent
@@ -133,10 +159,10 @@ class TtsService : Service() {
     }
 
     // ---------------------------------------------------------------------
-    // Model loading. Mirrors PhonoLeafTtsPlugin.ensureReady deliberately: while
-    // both paths exist during evaluation, they must behave identically or a
-    // comparison between them means nothing. The plugin's copy goes away when
-    // this one becomes the only route.
+    // Model loading. This is the ONLY route to the engine: the calling
+    // application has no model-loading path of its own and never links the
+    // engine library. (It briefly had a parallel copy while the two were being
+    // compared; that was deleted once this became the only route.)
     // ---------------------------------------------------------------------
     private fun ensureReady(model: String): OfflineTts {
         tts?.let { if (loaded == model) return it }
@@ -215,9 +241,10 @@ class TtsService : Service() {
     companion object {
         private const val TAG = "PhonoLeafTtsSvc"
 
-        // Kept in step with PhonoLeafTtsPlugin's VOICE_PACKS/MODEL_VERSIONS. The
-        // plugin still owns downloading; this side only reads what is already on
-        // disk, so it needs the names and nothing else.
+        // Folder names must match whatever the CALLING APPLICATION used when it
+        // downloaded the packs. The caller owns downloading entirely; this side
+        // only reads what is already on disk, so it needs the names and nothing
+        // else. A different caller can use its own layout by changing this map.
         private val VOICE_FOLDERS = mapOf(
             "us" to "kokoro",
             "gb" to "kokoro-gb",

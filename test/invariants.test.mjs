@@ -113,13 +113,17 @@ describe(`app source invariants (${APP_FILE})`, () => {
     // The lesson worth encoding: strings that cross this boundary are API,
     // not implementation. This test is the thing that was missing.
     const { readFileSync } = await import('node:fs');
-    const dir = new URL('../android/app/src/main/java/com/phonoleaf/app/', import.meta.url);
-    const strip = f => readFileSync(new URL(f, dir), 'utf8')
+    const appDir = new URL('../android/app/src/main/java/com/phonoleaf/app/', import.meta.url);
+    // The engine bridge moved OUT of the app's source tree on 2026-09-01, onto
+    // legal advice: it is GPL-3.0 and the app is proprietary, so they are kept
+    // in separate directories with separate licences and separate packages.
+    const bridgeDir = new URL('../android/tts-bridge/java/com/phonoleaf/ttsbridge/', import.meta.url);
+    const strip = (f, dir) => readFileSync(new URL(f, dir), 'utf8')
       .replace(/\/\*[\s\S]*?\*\//g, '')
       .replace(/\/\/.*$/gm, '');
 
-    const service = strip('TtsService.kt');
-    const plugin = strip('PhonoLeafTtsPlugin.kt');
+    const service = strip('TtsService.kt', bridgeDir);
+    const plugin = strip('PhonoLeafTtsPlugin.kt', appDir);
 
     // 1. The engine still emits the prefix the plugin looks for.
     assert.match(service, /"err:notdownloaded:/,
@@ -167,8 +171,10 @@ describe(`app source invariants (${APP_FILE})`, () => {
     // anywhere else collapses that. See ENGINE_NOTICE.md.
     const { readFileSync, readdirSync } = await import('node:fs');
     const dir = new URL('../android/app/src/main/java/com/phonoleaf/app/', import.meta.url);
+    // No exclusion any more: since 2026-09-01 the bridge lives outside this
+    // directory entirely, so NOTHING under the app package may name the engine.
     const offenders = [];
-    for (const f of readdirSync(dir).filter(f => f.endsWith('.kt') && f !== 'TtsService.kt')) {
+    for (const f of readdirSync(dir).filter(f => f.endsWith('.kt'))) {
       const code = readFileSync(new URL(f, dir), 'utf8')
         .replace(/\/\*[\s\S]*?\*\//g, '')
         .replace(/\/\/.*$/gm, '');
@@ -178,6 +184,49 @@ describe(`app source invariants (${APP_FILE})`, () => {
       `these files reference sherpa-onnx outside TtsService.kt: ${offenders.join(', ')}. ` +
       'That links GPL-3.0 espeak-ng into the app and breaks the licence boundary ' +
       'ENGINE_NOTICE.md describes. Only TtsService.kt may touch the engine.');
+  });
+
+  test('the GPL bridge stays in its own directory, package and licence', async () => {
+    // Structural separation, required on legal advice (2026-09-01). The bridge
+    // links GPL-3.0 espeak-ng; PhonoLeaf is proprietary. The advice was that
+    // keeping GPL sources mixed in with proprietary ones weakens the argument
+    // that they are separate programs combined only at packaging time, so the
+    // bridge has its own directory, its own package name and its own LICENSE.
+    //
+    // This test exists because that separation is invisible at runtime. Nothing
+    // breaks if someone "tidies" the bridge back into the app package; it just
+    // quietly costs the legal position. Fail loudly instead.
+    const { readFileSync, existsSync } = await import('node:fs');
+    const root = new URL('../android/tts-bridge/', import.meta.url);
+    const files = [
+      'java/com/phonoleaf/ttsbridge/TtsService.kt',
+      'aidl/com/phonoleaf/ttsbridge/ITtsService.aidl',
+    ];
+
+    for (const f of files) {
+      const url = new URL(f, root);
+      assert.ok(existsSync(url), `${f} is missing from android/tts-bridge/. The GPL bridge ` +
+        'must stay outside the app source tree.');
+      const text = readFileSync(url, 'utf8');
+      assert.match(text, /package com\.phonoleaf\.ttsbridge/,
+        `${f} must declare package com.phonoleaf.ttsbridge, separate from the app's ` +
+        'com.phonoleaf.app. Two distinct packages is part of the separation argument.');
+      assert.match(text, /GNU General Public License/,
+        `${f} lost its GPL-3.0 header. Required: this file links GPL code.`);
+    }
+
+    assert.ok(existsSync(new URL('LICENSE', root)),
+      'android/tts-bridge/LICENSE is gone. The GPL-3.0 text must ship beside the code it covers.');
+    assert.match(readFileSync(new URL('LICENSE', root), 'utf8'), /GNU GENERAL PUBLIC LICENSE/,
+      'android/tts-bridge/LICENSE is no longer the GPL text.');
+
+    // And the reverse: no proprietary app file may claim the bridge package.
+    const appDir = new URL('../android/app/src/main/java/com/phonoleaf/app/', import.meta.url);
+    const { readdirSync } = await import('node:fs');
+    for (const f of readdirSync(appDir).filter(f => f.endsWith('.kt'))) {
+      assert.doesNotMatch(readFileSync(new URL(f, appDir), 'utf8'), /^package com\.phonoleaf\.ttsbridge/m,
+        `${f} declares the bridge package while sitting in the proprietary app directory.`);
+    }
   });
 
   test('each foreground service still promotes itself with startForeground', async () => {

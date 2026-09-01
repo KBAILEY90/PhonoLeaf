@@ -1,7 +1,33 @@
-package com.phonoleaf.app;
+/*
+ * Copyright (C) 2026 Kevin Bailey
+ *
+ * This file is part of the PhonoLeaf speech engine bridge: a small, standalone
+ * component that loads an on-device speech synthesis engine and turns text
+ * into audio. It runs in its own operating-system process and is reached only
+ * over an inter-process interface, so no calling application links it.
+ *
+ * It is licensed GPL-3.0 because it links espeak-ng (via sherpa-onnx), which
+ * is GPL-3.0. It depends on nothing but the Android framework, the Java
+ * standard library and that engine, and could be reused by any other
+ * application unchanged. See ENGINE_NOTICE.md in this directory.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+ */
+package com.phonoleaf.ttsbridge;
 
 /**
- * The process boundary between PhonoLeaf and the GPL-linked speech engine.
+ * The process boundary between a calling application and the GPL-linked speech engine.
  *
  * Deliberately as arms-length and generic as it can be: primitives and strings
  * in, raw audio written to a path the CALLER chose, a short status string back.
@@ -10,8 +36,8 @@ package com.phonoleaf.app;
  *
  * That shape is not an accident. espeak-ng is GPL-3.0 and is statically linked
  * into the sherpa-onnx library, so the engine runs in its own process
- * (android:process=":tts") and talks only through this interface. See TODO.md's
- * voice model licence section.
+ * (android:process=":tts") and talks only through this interface. See
+ * ENGINE_NOTICE.md in this directory.
  *
  * Audio is written to a FILE rather than returned across the boundary: Binder
  * transactions cap at roughly 1 MB and a sentence of 44.1 kHz audio is larger

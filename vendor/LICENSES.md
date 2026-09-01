@@ -18,7 +18,7 @@ at all, its header having been stripped by minification.
 **JSZip is dual-licensed** under MIT or GPL-3.0, and the licensee chooses.
 **PhonoLeaf elects MIT.** This is not a formality: GPL-3.0 is the licence the
 whole out-of-process speech engine architecture exists to keep at arm's length
-(see `android/app/src/main/java/com/phonoleaf/app/ENGINE_NOTICE.md`), so
+(see `android/tts-bridge/ENGINE_NOTICE.md`), so
 electing it here by silence would be a self-inflicted version of the same
 problem. Record the election anywhere JSZip is listed.
 

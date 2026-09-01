@@ -1,0 +1,53 @@
+Copyright © 2026 Kevin Bailey. All rights reserved.
+
+PhonoLeaf is proprietary, commercial software. No licence to use, copy,
+reproduce, modify, distribute, sublicense or create derivative works of this
+repository's contents is granted, whether expressly, by implication, estoppel
+or otherwise, except as stated below.
+
+The source being publicly readable on GitHub does not place it in the public
+domain and does not grant any permission to use it.
+
+--------------------------------------------------------------------------
+ONE PART OF THIS REPOSITORY IS DIFFERENT: android/tts-bridge/
+--------------------------------------------------------------------------
+
+Everything under `android/tts-bridge/` is licensed under the GNU General
+Public License, version 3, NOT under the terms above. That directory contains
+its own copy of the GPL-3.0 text, and each file in it carries its own licence
+header.
+
+That directory is a small, standalone speech engine bridge. It links espeak-ng
+(by way of sherpa-onnx), which is GPL-3.0, so it is GPL-3.0 as well.
+
+It is a SEPARATE PROGRAM from PhonoLeaf, not a component of it:
+
+  * It runs in its own operating-system process (android:process=":tts").
+  * PhonoLeaf reaches it only over Android's standard inter-process interface,
+    sending text and primitive values and receiving audio written to a file
+    path that PhonoLeaf chose. There is no shared memory, no callback into
+    PhonoLeaf, and no custom type crossing the boundary.
+  * It depends on nothing from PhonoLeaf. Its only dependencies are the
+    Android framework, the Java standard library, and the speech engine. It
+    could be reused unchanged by any other application.
+  * No PhonoLeaf source file links, imports or references the speech engine.
+    This is enforced automatically: `npm test` fails if any file outside that
+    directory names it.
+
+The two are combined only at packaging time, for practical distribution
+through an app store.
+
+See `android/tts-bridge/ENGINE_NOTICE.md` for the reasoning, and
+`android/tts-bridge/LICENSE` for the GPL-3.0 text itself.
+
+--------------------------------------------------------------------------
+NOTES
+--------------------------------------------------------------------------
+
+Third-party components redistributed with this software keep their own
+licences, which are recorded in `vendor/LICENSES.md`, `fonts/LICENSES.md`, and
+in the app under Settings, About, Licences.
+
+This file records copyright in the author's own name. It is expected to be
+assigned to the company once incorporation completes, at which point this
+notice should be updated to name the company instead.

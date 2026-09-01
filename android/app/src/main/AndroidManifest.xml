@@ -81,12 +81,15 @@
              into the sherpa-onnx native library, so it is kept behind a process
              boundary and spoken to only through the ITtsService AIDL interface.
              PhonoLeaf's own code never links it. See TODO.md's voice model
-             licence section and TtsService.kt.
+             licence section and android/tts-bridge/, which is a SEPARATE
+             directory with its own GPL-3.0 LICENSE and its own package name
+             (com.phonoleaf.ttsbridge). That separation is deliberate and was
+             confirmed on legal advice; do not fold it back in.
              exported=false: only we bind to it, never another app. Android may
              kill this process under memory pressure, which is expected and
              harmless — the next synthesize() reloads the model. -->
         <service
-            android:name=".TtsService"
+            android:name="com.phonoleaf.ttsbridge.TtsService"
             android:exported="false"
             android:process=":tts" />
         <provider

@@ -149,6 +149,16 @@ fallback.
     sherpa calls back into the plugin, and keep the interface generic:**
     strings and primitives in, raw audio to a caller-chosen path out. Adding
     a rich or app-aware protocol would undermine the whole point.
+    **RESTRUCTURED 2026-09-01 on legal advice, and now test-enforced.** The two
+    bridge files live in **`android/tts-bridge/`**, outside the app's source
+    tree, under their own package **`com.phonoleaf.ttsbridge`**, with the full
+    GPL-3.0 text in `android/tts-bridge/LICENSE` and a licence header in each
+    file. The repo root now has a proprietary `LICENSE` that carves out that one
+    directory. Counsel's point: publishing source is not licensing it, and GPL
+    files sitting inside a proprietary directory weaken the separate-works
+    argument. `npm test` fails if the files move back, lose their headers, or
+    change package. Do NOT "tidy" any of that away: nothing breaks at runtime,
+    which is precisely why it is guarded.
     Measured on device: warm bind 0 ms, 0.29 realtime, audio identical to the
     old in-process path. Models are still downloaded, nothing in the APK.
     See `TODO.md`'s voice model licence section.
@@ -440,7 +450,7 @@ Google login); verify by inspection + device testing.
   source. `PhonoLeafTtsPlugin.kt` must never import `com.k2fsa.sherpa.onnx`
   again, and the interface must stay generic (strings and primitives in, raw
   audio to a caller-chosen path out). Read
-  `android/app/src/main/java/com/phonoleaf/app/ENGINE_NOTICE.md` before
+  `android/tts-bridge/ENGINE_NOTICE.md` before
   touching any of it.
 - **Error strings crossing that boundary are API, not implementation.** The
   web layer switches voices when a synthesis error starts with
