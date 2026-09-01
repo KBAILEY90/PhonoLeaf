@@ -239,6 +239,21 @@
         // dead code. The value is meaningless; races on it are harmless.
         @Volatile private var benchSink = 0f
 
+        // Thread count for ONNX inference. Lost in the 2026-09-01 cut-over
+        // because it sat next to ensureReady(), but deviceBench still needs it:
+        // the benchmark has to exercise the same parallelism the real engine
+        // gets, or its verdict means nothing.
+        // big.LITTLE tuning (measured on the owner's 8-core phone):
+        //   cores-1 (7 threads) -> ratio ~2.4x realtime (little cores drag)
+        //   2 threads           -> ratio ~1.6x
+        // Up to 4 fills the fast cores without spilling onto the efficiency
+        // ones. MUST stay in step with TtsService.inferenceThreads(), which is
+        // what the engine actually uses now.
+        private fun inferenceThreads(): Int {
+            val cores = Runtime.getRuntime().availableProcessors()
+            return maxOf(2, minOf(4, cores - 4))
+        }
+
         /** deviceBench() -> { gflops, ms, threads, cores }
          *
          *  A pure-CPU matrix-multiply benchmark, used to decide BEFORE
