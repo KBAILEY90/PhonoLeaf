@@ -157,15 +157,24 @@ disclosed in all four privacy pages.
       texts because the project offers a choice. Shipping it is correct and is
       what upstream distributes; PhonoLeaf's election is MIT, recorded in
       `vendor/LICENSES.md`.
-- [ ] **Remove the WASM Kokoro fallback from the native build.** Pinning the
-      version fixed the supply-chain half of this. The other half is that the
-      native app ships a remote-code path it can never reach (`_synth` always
-      takes `_synthNative` when the plugin is present, which on native it always
-      is), and pays for it with `cdn.jsdelivr.net` and the HuggingFace hosts
-      permanently in `script-src`/`connect-src`. Allowlisting a general-purpose
-      npm CDN means the script-src allowlist stops constraining an injection.
-      **Not done here because it is surgery on a 591 KB file that needs a device
-      pass**, and getting it wrong breaks synthesis on the shipping app.
+- [~] **Native CSP tightened 2026-09-01; the dead code itself still ships.**
+      `cdn.jsdelivr.net` and the HuggingFace hosts are GONE from
+      `index.green.html`'s `script-src`/`connect-src`. That was the part with
+      real security value: jsdelivr mirrors all of npm, so allowlisting it meant
+      `script-src` no longer constrained what an injected script could load.
+      Safe because the path is unreachable on native — `_synth` always takes
+      `_synthNative` when the plugin is present, and `MainActivity` registers it
+      unconditionally. Verified by reading the dispatch, not assumed.
+      A guard was added to `TTS._synthKokoro` that rejects on native, so if a
+      future refactor ever routed there it fails with a clear message instead of
+      an opaque CSP violation inside a Web Worker (which, with no Web Speech on
+      native, would present as playback silently stopping — the exact shape that
+      cost a session already).
+      **`index.html` deliberately UNCHANGED**: the website's fallback genuinely
+      runs, so it keeps those hosts. Do not copy the native CSP into it.
+      **Still open:** deleting the dead WASM block from `index.green.html`.
+      Cosmetic now rather than a security item, and still wants a device pass,
+      so it was not worth the risk of surgery on a 591 KB file this session.
 - [ ] **Mirror the voice packs and pin their hashes.** No integrity check exists
       on 65-140 MB archives fetched from a third-party GitHub release and fed to
       a native inference engine. HTTPS covers transit, so the real exposure is

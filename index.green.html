@@ -45,22 +45,34 @@
        injected inline script couldn't load a remote script or exfiltrate data
        to an attacker's server. Hosts: accounts.google.com (sign-in),
        www.googleapis.com + oauth2.googleapis.com (Drive/auth), openlibrary.org
-       (book metadata), cdn.jsdelivr.net + huggingface.co/hf.co/*.hf.co (Kokoro
-       WASM fallback model, browser/web build only — native loads the model
-       from bundled assets), *.googleusercontent.com (Drive thumbnails).
-       wasm-unsafe-eval is required for the WASM Kokoro fallback to run at all.
+       (book metadata), *.googleusercontent.com (Drive thumbnails).
+
+       TIGHTENED 2026-09-01 (audit finding C4): cdn.jsdelivr.net and the
+       HuggingFace hosts were REMOVED from this file. They existed for the
+       browser WASM Kokoro fallback, which this build cannot reach — native
+       synthesis always goes through the AIDL engine (see TTS._synth and the
+       guard in TTS._synthKokoro). Allowing them cost real security for no
+       function: cdn.jsdelivr.net mirrors all of npm, so allowlisting it in
+       script-src meant the allowlist no longer constrained what an injected
+       script could load. THIS FILE IS THE NATIVE BUILD ONLY; the website's
+       index.html keeps those hosts because its fallback genuinely runs.
+       Do not copy this CSP into index.html.
+
+       wasm-unsafe-eval is kept: it is required by ONNX/WASM execution
+       generally, and removing it is a separate change that needs its own
+       device test rather than being folded into this one.
        If the natural voice or sign-in ever silently breaks after a CSP edit,
        check the browser console for a CSP violation first. -->
   <meta http-equiv="Content-Security-Policy" content="
     default-src 'self';
-    script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://accounts.google.com https://cdn.jsdelivr.net;
+    script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://accounts.google.com;
     style-src 'self' 'unsafe-inline';
     img-src 'self' blob: data: https://*.googleusercontent.com;
     font-src 'self';
     media-src 'self' blob:;
     worker-src 'self' blob:;
     frame-src 'self' https://accounts.google.com;
-    connect-src 'self' blob: https://www.googleapis.com https://oauth2.googleapis.com https://accounts.google.com https://openlibrary.org https://cdn.jsdelivr.net https://huggingface.co https://hf.co https://*.hf.co https://*.huggingface.co;
+    connect-src 'self' blob: https://www.googleapis.com https://oauth2.googleapis.com https://accounts.google.com https://openlibrary.org;
     object-src 'none';
     base-uri 'self';
   ">
@@ -8957,6 +8969,21 @@ const TTS = {
   },
   _synthKokoro(text) {
     if (this._kokoroDead) return Promise.reject(new Error('kokoro-dead'));
+    // NATIVE MUST NEVER REACH HERE (audit finding C4). This is the browser
+    // WASM fallback: it dynamically imports kokoro-js from cdn.jsdelivr.net
+    // and pulls ~90 MB of weights from HuggingFace. On Android, _synth()
+    // always takes _synthNative() because MainActivity registers the plugin
+    // unconditionally, so this branch is dead code on the shipping app.
+    //
+    // The guard exists so that stays TRUE rather than merely being true
+    // today. The native CSP no longer allows either host, so if a future
+    // refactor let this run on native it would otherwise fail as an opaque
+    // CSP violation inside a Web Worker — and native has no Web Speech to
+    // fall back to, so playback would simply stop, which is exactly the
+    // silent-failure shape that cost a session already.
+    if (App.isNative()) {
+      return Promise.reject(new Error('wasm-kokoro-unavailable-on-native'));
+    }
     const w = this._kokoroWorkerEl();
     const id = ++this._kid;
     return new Promise((res, rej) => {
