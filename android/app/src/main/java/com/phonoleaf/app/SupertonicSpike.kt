@@ -285,7 +285,13 @@ object SupertonicSpike {
                 for (i in wav.indices) wav[i] = wav[i] * g
             }
 
-            val outFile = File(ctx.cacheDir, "supertonic-spike.wav")
+            // Unique per run: a fixed filename gives convertFileSrc a fixed URL,
+            // which the WebView caches, so every run after the first plays back
+            // the first one. That made four different runs sound identical.
+            ctx.cacheDir.listFiles()?.forEach {
+                if (it.name.startsWith("supertonic-spike-")) it.delete()
+            }
+            val outFile = File(ctx.cacheDir, "supertonic-spike-${System.currentTimeMillis()}.wav")
             writeWav16(outFile, wav)
 
             val audioMs = (wav.size * 1000L) / SAMPLE_RATE

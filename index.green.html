@@ -9114,6 +9114,7 @@ const Spike = {
       if (!r.ok) { this._say('FAILED\n' + r.message); return; }
       this._wav = r.wavPath;
       document.getElementById('spike-play').style.display = '';
+      this._lastName = (r.wavPath || '').split('/').pop();
       this._say([
         r.message,
         '',
@@ -9124,6 +9125,7 @@ const Spike = {
         'native heap:  ' + r.peakNativeHeapMb + ' MB',
         'peak sample:  ' + (r.peak != null ? r.peak.toFixed(3) : '?') + '   <-- >1.0 means we were clipping it',
         'rms:          ' + (r.rms != null ? r.rms.toFixed(4) : '?'),
+        'file:         ' + this._lastName,
         'java heap:    ' + r.javaHeapMb + ' MB',
       ].join('\n'));
     } catch (e) { this._say('Run failed: ' + (e && e.message ? e.message : e)); }
@@ -9131,7 +9133,8 @@ const Spike = {
   play() {
     if (!this._wav) return;
     try {
-      const src = window.Capacitor && Capacitor.convertFileSrc ? Capacitor.convertFileSrc(this._wav) : this._wav;
+      const base = window.Capacitor && Capacitor.convertFileSrc ? Capacitor.convertFileSrc(this._wav) : this._wav;
+      const src = base + (base.indexOf('?') >= 0 ? '&' : '?') + 't=' + Date.now();
       new Audio(src).play();
     } catch (e) { this._say('Playback failed: ' + e); }
   },
