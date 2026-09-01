@@ -374,12 +374,38 @@ ships espeak-ng-data). Note the distinction that matters: the GPL problem is
 the espeak CODE compiled into `libsherpa-onnx-jni.so`, not the data files, so
 voice packs being downloads changes nothing about the licence.
 
-**CORRECTION 2026-08-31:** an earlier version of this entry claimed the APK
-bundles 185 MB of voice models. It does not. Those `assets/kokoro*` folders
-are gitignored local build leftovers; `CLAUDE.md` and the code comment are
-right that every pack is a download and nothing ships in the APK. The claim
-came from running `du` on a working directory and treating it as evidence
-about the shipped artifact.
+**THE 2026-08-31 "CORRECTION" WAS ITSELF WRONG. RE-CORRECTED 2026-09-01 from a
+real signed build.** It claimed the APK does not bundle 185 MB of voice models,
+on the reasoning that the `assets/kokoro*` folders are gitignored local
+leftovers. Gitignored they are. Packaged they also are.
+
+Evidence, from `assembleRelease` run on the owner's machine and the resulting
+APK opened and listed:
+
+| Entry | Size |
+| --- | --- |
+| `assets/kokoro/en_US-libritts_r-medium.onnx` | 74.9 MB |
+| `assets/kokoro-gb/en_GB-vctk-medium.onnx` | 73.4 MB |
+| `assets/kokoro/espeak-ng-data/ru_dict` | 8.1 MB |
+| `assets/kokoro-gb/espeak-ng-data/ru_dict` | 8.1 MB |
+| **Total APK** | **221.7 MB** |
+
+**This is a release blocker.** Google Play caps the per-device download from a
+bundle at 200 MB. It is also pure waste: the app downloads these packs at
+runtime anyway, so a user who installs would carry the model twice.
+
+**Why both previous entries were wrong, which is the reusable lesson.** The
+first claimed bundling from `du` on a working directory. The second denied it
+from `.gitignore`. Neither opened the artifact. Gitignored means "not in the
+repo", NOT "not in the build": anything sitting in `assets/` is packaged by
+aapt regardless of git. And releases are built on this machine, which is
+precisely where the leftovers live. **Check the APK, not the repo.**
+
+- [ ] **Fix before any release.** Empty `android/app/src/main/assets/kokoro/`
+      and `kokoro-gb/` on the build machine, rebuild, and confirm the APK drops
+      to roughly 35-40 MB. Then decide whether to add a Gradle guard that fails
+      the release build if those directories are non-empty, so a stale local
+      copy can never silently add 185 MB again.
 
 **But the owner's instinct points at a real destination: drop sherpa-onnx
 itself, not just Piper.** That stack is fully permissive end to end:
