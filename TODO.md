@@ -166,6 +166,37 @@ itself calls non-English support thin with weak G2P.
       is simpler than the espeak-shaped problem we own today.
       **Cheapest way to de-risk it before committing:** build the ONNX models
 
+
+- [x] **SPIKE RUN ON DEVICE 2026-08-31 (Pixel 7). Supertonic RUNS on Android.**
+      Built and ran first try. The onnxruntime-android + sherpa AAR
+      `libonnxruntime.so` collision resolved cleanly with pickFirst, both
+      being 1.27.0. So the platform risk that looked biggest is retired.
+      | steps | synthesis | realtime factor |
+      | --- | --- | --- |
+      | 8 | ~4.4s | 0.59 to 0.77 |
+      | 16 | ~7.2 to 8.2s | 0.98 to 1.14 |
+      | 32 | ~15s | 2.02 to 2.16 |
+      Audio is 7244 ms against a predicted 7.19s, so duration, latent length
+      and sample rate are all correct. Model load is consistently ~1.1 to 1.3s.
+      **Native heap 448 to 454 MB, flat across step counts** (it is the weights,
+      not the work). Java heap stays ~30 MB, which is exactly why native heap
+      is the number to watch.
+      **Peak sample 1.34 to 1.52 every run**, so the vocoder genuinely runs hot
+      and any wav writer clamping at 1.0 distorts it. Normalisation is
+      mandatory for this model, not a nicety.
+- [ ] **UNRESOLVED: quality is poor through our implementation.** Owner reports
+      it sounds bad, and that 8 vs 32 steps is not audibly different. Note the
+      spike deliberately fixes text, voice (F1) and RNG seed, so identical
+      words and speaker across runs is expected; only quality should vary.
+      Everything checkable has been checked and is correct: tokenizer (85
+      sensible tokens), duration prediction, style JSON nesting ([1,50,256] and
+      [1,8,16]), latent length, sample rate, tensor names, and a denoise loop
+      that matches the reference (replace the latent, pass step counters as
+      conditioning, no dt integration).
+      **Next diagnostic if this is pursued:** compare our output directly
+      against the published `audio_samples/*_supertonic3.wav`, which came from
+      the same model. Materially worse means our pipeline is still wrong;
+      comparable means the model is simply not good enough at this size.
 - [ ] **SIZE PROBLEM: Supertonic ships fp32 only, 380 MB. Possibly
       disqualifying as-is. Measured 2026-08-31 from the HF repo.**
       `vector_estimator.onnx` 244.7 MB, `vocoder.onnx` 96.7 MB,
