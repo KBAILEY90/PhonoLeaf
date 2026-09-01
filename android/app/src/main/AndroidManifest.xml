@@ -60,6 +60,19 @@
             android:exported="false"
             android:foregroundServiceType="dataSync" />
 
+        <!-- The speech engine, in its OWN PROCESS (android:process=":tts").
+             Not an optimisation: espeak-ng is GPL-3.0 and is statically linked
+             into the sherpa-onnx native library, so it is kept behind a process
+             boundary and spoken to only through the ITtsService AIDL interface.
+             PhonoLeaf's own code never links it. See TODO.md's voice model
+             licence section and TtsService.kt.
+             exported=false: only we bind to it, never another app. Android may
+             kill this process under memory pressure, which is expected and
+             harmless — the next synthesize() reloads the model. -->
+        <service
+            android:name=".TtsService"
+            android:exported="false"
+            android:process=":tts" />
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"

@@ -2157,6 +2157,10 @@
     <button class="modal-action" onclick="Spike.run(32)">Run test (32 steps)</button>
     <button class="modal-action" onclick="Spike.run(16, true)">Run 16 steps + normalize</button>
     <button class="modal-action" id="spike-play" onclick="Spike.play()" style="display:none">Play result</button>
+    <hr style="border:none;border-top:1px solid var(--line);margin:0.9rem 0">
+    <p class="sleep-hint">Out-of-process engine: same Piper voice, run in a separate process so the GPL part is isolated. Should sound IDENTICAL to normal reading.</p>
+    <button class="modal-action" onclick="Spike.ipc()">Test engine in separate process</button>
+    <button class="modal-action" onclick="Spike.ipc(true)">Test again (warm process)</button>
     <pre id="spike-out" style="white-space:pre-wrap;font-size:0.78rem;color:var(--text-dim);margin:0.6rem 0 0"></pre>
   </div>
 </div>
@@ -9129,6 +9133,37 @@ const Spike = {
         'java heap:    ' + r.javaHeapMb + ' MB',
       ].join('\n'));
     } catch (e) { this._say('Run failed: ' + (e && e.message ? e.message : e)); }
+  },
+  // Out-of-process engine test. Uses the SAME Piper voice the app already
+  // reads with, so any audible difference is the process boundary rather
+  // than the model. First call pays the bind plus a cold model load;
+  // second call should be warm.
+  async ipc(warm) {
+    const p = this._p(); if (!p) return;
+    if (!p.synthesizeIpc) { this._say('Rebuild needed: synthesizeIpc not present.'); return; }
+    this._say(warm ? 'Running again on the warm process…' : 'Binding to the engine process and synthesizing…');
+    try {
+      const t0 = Date.now();
+      const r = await p.synthesizeIpc({ text: 'PhonoLeaf turns the ebooks you already own into something you can listen to anywhere.', model: 'us', sid: 0, speed: 1.0 });
+      const total = Date.now() - t0;
+      this._wav = r.path;
+      this._lastName = (r.path || '').split('/').pop();
+      document.getElementById('spike-play').style.display = '';
+      this._say([
+        'OUT-OF-PROCESS ENGINE ' + (warm ? '(warm)' : '(cold)'),
+        '',
+        'bind:         ' + r.bindMs + ' ms   <-- cold-start cost',
+        'synthesis:    ' + r.synthMs + ' ms',
+        'audio length: ' + r.durationMs + ' ms',
+        'round trip:   ' + total + ' ms',
+        'realtime x:   ' + (r.durationMs ? (r.synthMs / r.durationMs).toFixed(2) : '?'),
+        'file:         ' + this._lastName,
+        '',
+        'Press Play result. It should sound exactly like normal reading.',
+      ].join('\n'));
+    } catch (e) {
+      this._say('IPC failed: ' + (e && e.message ? e.message : e));
+    }
   },
   play() {
     if (!this._wav) return;

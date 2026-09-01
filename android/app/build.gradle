@@ -95,6 +95,12 @@ android {
     // the version match), so taking either one is safe; a version SKEW here
     // would be the likely cause of an UnsatisfiedLinkError or a native crash,
     // so re-check this if the sherpa AAR is ever updated.
+    // AIDL is off by default from AGP 8 onward and this project is on 9.2.1,
+    // so the ITtsService interface would silently not be generated without
+    // this. Needed for the out-of-process speech engine (see TtsService.kt).
+    buildFeatures {
+        aidl true
+    }
     packagingOptions {
         pickFirst 'lib/**/libonnxruntime.so'
     }

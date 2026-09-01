@@ -26,6 +26,13 @@
     import java.io.OutputStream
     import java.net.HttpURLConnection
     import java.net.URL
+    import android.content.ComponentName
+    import android.content.ServiceConnection
+    import android.os.IBinder
+    import java.nio.ByteBuffer
+    import java.nio.ByteOrder
+    import java.util.concurrent.CountDownLatch
+    import java.util.concurrent.TimeUnit
     import java.util.concurrent.Executors
     
     /**
@@ -888,6 +895,97 @@
             }
         }
     
+        /* ---- OUT-OF-PROCESS ENGINE (evaluation, 2026-08-31) --------------
+         *  Same synthesis, routed through TtsService in the :tts process
+         *  instead of calling sherpa in-process. The point is licence
+         *  isolation: espeak-ng is GPL-3.0 and statically linked into the
+         *  sherpa native library, so keeping it behind a process boundary with
+         *  a generic text-in/audio-out interface is what makes the two
+         *  separable. See TtsService.kt and TODO.md.
+         *
+         *  Runs ALONGSIDE synthesize() while being evaluated, so the shipping
+         *  path keeps working. When this becomes the only route, synthesize(),
+         *  ensureReady() and the sherpa imports all leave this file, which is
+         *  the entire point of the exercise. */
+        @Volatile private var svc: ITtsService? = null
+        private val svcLock = Any()
+
+        private val svcConn = object : ServiceConnection {
+            override fun onServiceConnected(name: ComponentName?, b: IBinder?) {
+                svc = ITtsService.Stub.asInterface(b)
+            }
+            // Android killed the engine process (expected under memory
+            // pressure). Drop the stale handle; the next call rebinds and the
+            // model reloads, costing a fraction of a second rather than failing.
+            override fun onServiceDisconnected(name: ComponentName?) { svc = null }
+        }
+
+        /** Binds if needed and waits briefly for the connection. */
+        private fun engine(): ITtsService? {
+            svc?.let { return it }
+            synchronized(svcLock) {
+                svc?.let { return it }
+                val latch = CountDownLatch(1)
+                val conn = object : ServiceConnection {
+                    override fun onServiceConnected(name: ComponentName?, b: IBinder?) {
+                        svc = ITtsService.Stub.asInterface(b); latch.countDown()
+                    }
+                    override fun onServiceDisconnected(name: ComponentName?) { svc = null }
+                }
+                context.bindService(Intent(context, TtsService::class.java), conn, Context.BIND_AUTO_CREATE)
+                // Binding is fast (process start plus IPC handshake). The model
+                // load happens later, inside the first synthesize.
+                latch.await(5, TimeUnit.SECONDS)
+                return svc
+            }
+        }
+
+        /** synthesizeIpc({text, sid, speed, model}) -> {path, durationMs, bindMs, synthMs} */
+        @PluginMethod
+        fun synthesizeIpc(call: PluginCall) {
+            val text = call.getString("text")
+            if (text.isNullOrBlank()) { call.reject("no text"); return }
+            val sid = call.getInt("sid", 0) ?: 0
+            val speed = call.getFloat("speed", 1.0f) ?: 1.0f
+            val model = call.getString("model") ?: "us"
+            val stamp = epoch
+            genExecutor.execute {
+                try {
+                    if (stamp != epoch) { call.reject("cancelled"); return@execute }
+                    val tb = System.currentTimeMillis()
+                    val e = engine() ?: run { call.reject("engine unavailable"); return@execute }
+                    val bindMs = System.currentTimeMillis() - tb
+                    val raw = File(context.cacheDir, "tts-raw.pcm")
+                    val t0 = System.currentTimeMillis()
+                    val res = e.synthesize(text, sid, speed, model, raw.absolutePath, stamp)
+                    val synthMs = System.currentTimeMillis() - t0
+                    if (res == null || !res.startsWith("ok:")) {
+                        call.reject(res ?: "no response"); return@execute
+                    }
+                    val parts = res.split(":")
+                    val sampleRate = parts[1].toInt()
+                    // Raw float32 in, native order. Gain calibration and WAV
+                    // muxing stay HERE, on our side: they are ours, and keeping
+                    // them out of the published component keeps its surface
+                    // minimal.
+                    val bytes = raw.readBytes()
+                    val bb = ByteBuffer.wrap(bytes).order(ByteOrder.nativeOrder())
+                    val samples = FloatArray(bytes.size / 4) { bb.getFloat(it * 4) }
+                    val f = writeWavFile(model, samples, sampleRate)
+                    val durationMs = (samples.size.toLong() * 1000 / maxOf(1, sampleRate)).toInt()
+                    val ret = JSObject()
+                    ret.put("path", f.absolutePath)
+                    ret.put("durationMs", durationMs)
+                    ret.put("bindMs", bindMs)
+                    ret.put("synthMs", synthMs)
+                    ret.put("sampleRate", sampleRate)
+                    call.resolve(ret)
+                } catch (t: Throwable) {
+                    call.reject(t.message ?: "ipc synth failed")
+                }
+            }
+        }
+
         /** synthesize({ text, sid, speed, model }) -> { path, durationMs } */
         @PluginMethod
         fun synthesize(call: PluginCall) {
