@@ -118,6 +118,50 @@ android {
     }
 }
 
+// Refuse to build a release that bundles voice models (added 2026-09-01).
+//
+// Why this exists: a release APK was built at 221.7 MB because ~185 MB of
+// .onnx models were sitting in src/main/assets/kokoro/ and kokoro-gb/ on the
+// build machine. Removing them took it to 56.2 MB. Google Play caps the
+// per-device download from a bundle at 200 MB, so that build could not ship.
+//
+// The trap worth guarding: those folders are in .gitignore, so a fresh clone
+// never has them and the repo looks clean. But .gitignore governs the REPO,
+// not the BUILD, and aapt packages anything under assets/ regardless. The docs
+// twice concluded from .gitignore that nothing was bundled; nobody opened the
+// APK. This check opens the question at build time instead.
+//
+// Nothing should ever ship a model in assets: every voice is downloaded at
+// runtime into filesDir, and TtsService passes assetManager = null, so a
+// bundled copy is never even read. It is pure weight.
+// Resolved HERE, at configuration time, not inside the check below. Calling
+// file() from inside a doFirst closure fails under Gradle's configuration
+// cache with "references a Gradle script object from a Groovy closure at
+// execution time". Capturing a plain File up front is the supported shape.
+def bundledAssetsDir = file('src/main/assets')
+tasks.configureEach { t ->
+    if (t.name == 'packageRelease') {
+        t.doFirst {
+            def assetsDir = bundledAssetsDir
+            if (assetsDir.exists()) {
+                def models = []
+                assetsDir.eachFileRecurse { f ->
+                    if (f.isFile() && f.name.endsWith('.onnx')) models << f
+                }
+                if (!models.isEmpty()) {
+                    def total = models.sum { it.length() } / (1024 * 1024)
+                    throw new GradleException(
+                        "Release build blocked: ${models.size()} voice model(s) " +
+                        "(${total.round(1)} MB) are bundled under src/main/assets.\n" +
+                        models.collect { "  - ${it.path}" }.join('\n') + "\n" +
+                        "Voice packs are downloaded at runtime and a bundled copy is never read.\n" +
+                        "Move these out of src/main/assets and rebuild. See TODO.md.")
+                }
+            }
+        }
+    }
+}
+
 repositories {
     flatDir{
         dirs '../capacitor-cordova-android-plugins/src/main/libs', 'libs'

@@ -401,11 +401,19 @@ repo", NOT "not in the build": anything sitting in `assets/` is packaged by
 aapt regardless of git. And releases are built on this machine, which is
 precisely where the leftovers live. **Check the APK, not the repo.**
 
-- [ ] **Fix before any release.** Empty `android/app/src/main/assets/kokoro/`
-      and `kokoro-gb/` on the build machine, rebuild, and confirm the APK drops
-      to roughly 35-40 MB. Then decide whether to add a Gradle guard that fails
-      the release build if those directories are non-empty, so a stale local
-      copy can never silently add 185 MB again.
+- [x] **FIXED 2026-09-01, and guarded.** The two folders were moved off the
+      build machine (to `~/phonoleaf-bundled-assets-backup/`, not deleted, in
+      case anything wanted them; nothing did). Verified safe first: `ASSET_DIR`
+      is only ever used as a folder NAME, and `TtsService` passes
+      `assetManager = null`, so a bundled copy is never read even in principle.
+      **APK went from 221.7 MB to 56.2 MB.** No `.onnx` remains inside.
+      A Gradle guard now fails `packageRelease` if any `.onnx` appears under
+      `src/main/assets`, naming the file and its size. Tested both ways: a clean
+      build passes, and a planted 3 MB dummy model blocks the build.
+      One wrinkle worth knowing if that guard is ever edited: the assets path
+      must be resolved with `file()` at CONFIGURATION time and captured, not
+      called inside the `doFirst` closure. Doing the latter fails under
+      Gradle's configuration cache. That mistake was made and fixed here.
 
 **But the owner's instinct points at a real destination: drop sherpa-onnx
 itself, not just Piper.** That stack is fully permissive end to end:
@@ -730,8 +738,19 @@ Incorporation is in progress with the lawyer (email every 2-3 days as of
       applies (that is a personal-account rule).
 - [ ] **Then create the third Android OAuth client** for the release keystore's
       SHA-1, with "Enable custom URI scheme" ticked under Advanced Settings.
-      Its absence has already cost one debugging session. Get the fingerprint
-      with `keytool -list -v -keystore <path> -alias phonoleaf`.
+      Its absence has already cost one debugging session.
+      **The fingerprint is already known** (captured from the real signed build,
+      2026-09-01). Google Cloud Console wants the colon-separated form:
+      ```
+      78:E2:85:55:D4:C6:41:78:E9:CC:61:A0:B1:EE:71:A8:39:68:78:68
+      ```
+      Package name is `com.phonoleaf.app`. This is a public certificate
+      fingerprint, not a secret; the private key it belongs to never leaves the
+      keystore.
+      **If the keystore is ever regenerated this value changes** and must be
+      re-read with
+      `keytool -list -v -keystore <path> -alias phonoleaf`. It already changed
+      once, on 2026-09-01, when the first key was replaced.
 - [ ] **Register the Apple Developer account under the company.** Same
       reasoning, decision already made (wait for the corporation).
 - [ ] **Bank account, then GST/QST registration, then Stripe**, in that order.
