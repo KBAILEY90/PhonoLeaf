@@ -8448,7 +8448,19 @@ const TTS = {
     if (this._appStateListenerBound || !App.isNative()) return;
     const plugin = App._plugin('App'); if (!plugin) return;
     this._appStateListenerBound = true;
-    plugin.addListener('appStateChange', ({ isActive }) => { this._nativeAppActive = !!isActive; });
+    plugin.addListener('appStateChange', ({ isActive }) => {
+      this._nativeAppActive = !!isActive;
+      // Resync HERE too, not just from visibilitychange. Those two events have
+      // no guaranteed order on resume, and the visibilitychange handler bails
+      // unless _nativeAppActive is already true. If it fired first, the resync
+      // was skipped and never retried: the visible reader stayed on the page
+      // where the phone was locked, and the next _persistPosition then
+      // overwrote the good background position with that stale one. Reported
+      // 2026-09-01 as "read a couple of pages locked, reopened, back where I
+      // started". Whichever event lands second now does the work; _bgResync
+      // clears _bgMode via skipPage, so the other one becomes a no-op.
+      if (isActive && TTS._bgMode && !document.hidden) TTS._bgResync();
+    });
   },
   // Canonical "is the app genuinely visible and interactive right now" check —
   // used everywhere background-vs-foreground reading is decided (_speak's

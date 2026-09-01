@@ -100,25 +100,33 @@ load, paid again only if Android reclaims the process.
       changed is that our code no longer links or calls it. That moves the
       position from "clearly one combined work" to the arguable-aggregation
       one, which is an improvement rather than a resolution.
-- [ ] **Background reading does not persist its position. Reported 2026-09-01,
-      almost certainly PRE-EXISTING rather than caused by the cut-over.**
-      Owner locked the phone, the app read a couple of pages aloud, and on
-      reopening it was back on the page where the screen was locked. The pages
-      the app itself showed had not moved either.
-      Why it is probably not the cut-over: the position bookkeeping
-      (`_bgSaveProgress`, `_bgSection`, `cfiFromRange`) is pure JS against
-      epub.js objects. The cut-over only moved where audio bytes are produced.
-      Not verified though, so do not treat that as settled.
-      Where to look: `_bgSaveProgress()` is called after each background chunk,
-      and `_persistPosition()` is supposed to defer to it via the `_bgSection`
-      guard. CLAUDE.md already warns that getting that order wrong lets a stale
-      visible-reader position clobber a good background one, which matches the
-      symptom exactly. Check whether `_bgSection` is cleared before the resume
-      path runs.
-
-- [ ] **Publish `TtsService.kt` + `ITtsService.aidl` as source.** The third
-      leg of the analysis (generic protocol, published source, swappable
-      component). Not done yet, and it is the cheapest of the three.
+- [x] **Background position bug FIXED 2026-09-01. It was a race, and it was
+      pre-existing, not the cut-over.**
+      `_bgResync()` was only ever called from the `visibilitychange` handler,
+      which bails unless `_nativeAppActive` is already true. That flag is set
+      by Capacitor's `appStateChange`, and the two events have NO guaranteed
+      order on resume. When visibilitychange won the race the resync was
+      skipped and never retried, so the visible reader stayed on the page where
+      the phone was locked, and the next `_persistPosition()` then overwrote the
+      good background position with that stale one. Exactly the failure mode
+      `CLAUDE.md` already warned about.
+      Fixed by also resyncing from the `appStateChange` listener, so whichever
+      event lands second does the work. `_bgResync` clears `_bgMode` through
+      `skipPage`, so the loser becomes a no-op.
+      The `_nativeAppActive` guard itself is deliberate and was left alone: it
+      exists because the lock-screen media widget can flip visibilityState to
+      visible while the phone is still locked.
+- [x] **Source publication: already satisfied, now made explicit (2026-09-01).**
+      The repo is PUBLIC, so `TtsService.kt` and `ITtsService.aidl` were already
+      published the moment they were pushed. What was missing was any way to
+      tell that was deliberate, so `ENGINE_NOTICE.md` now sits beside them: why
+      the boundary exists, the three rules for keeping it intact, upstream
+      sources and licences, and an explicit statement that this improves the
+      position rather than settling it.
+      That completes all three conditions the legal analysis named: generic
+      protocol, separate process, published source. **The remaining question is
+      the lawyer's, not an engineering one:** whether one APK containing two
+      separate programs is aggregation or a combined work.
 ### The Kokoro-only stack, and the gate that is blocking it (2026-08-31)
 
 Owner asked whether dropping Piper removes espeak. **It does not:** Kokoro in
