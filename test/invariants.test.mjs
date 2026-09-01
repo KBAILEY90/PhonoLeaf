@@ -77,6 +77,71 @@ describe(`app source invariants (${APP_FILE})`, () => {
       '.view.minimized must hide via z-index, not by removing it from layout');
   });
 
+  test('the model-ready cache is invalidated when the loaded model can change', () => {
+    // Owner-reported 2026-09-01: delete a voice pack, download a different one,
+    // press play, and every sentence stutters.
+    //
+    // Cause: _modelReadyP ("a model is loaded and ready") was assigned once and
+    // NOTHING anywhere ever cleared it. After a pack change the app still
+    // believed the old model was warm, so the new one was never pre-warmed and
+    // every chunk paid the cold load. _modelType was stale too, and
+    // _synthNative resolves the voice sid from it, so the sid was resolved
+    // against the wrong model family.
+    //
+    // Two independent protections, because one alone has a gap:
+    //   * _modelReady() compares the cached model against the selected one and
+    //     self-heals. Covers switching VOICE, and cannot be forgotten by a new
+    //     call site, which is how the original bug happened.
+    //   * Explicit invalidation on pack download/delete. Covers the SAME model
+    //     being re-downloaded, where the name does not change but the engine
+    //     has dropped its copy.
+    assert.match(script, /_invalidateModelReady\s*\(\)\s*\{/,
+      'TTS._invalidateModelReady is gone. Nothing then clears the "model is ready" ' +
+      'cache, and a pack swap goes back to stuttering on every sentence.');
+
+    assert.match(script, /_modelReadyFor/,
+      '_modelReadyFor is gone, so _modelReady() can no longer tell "already warm" ' +
+      'from "warm for a DIFFERENT model" and will hand back a stale promise.');
+
+    // localStorage copy must be cleared too, or a stale family survives a restart.
+    const at = script.indexOf('_invalidateModelReady() {');
+    assert.ok(at > -1, 'could not locate the _invalidateModelReady body');
+    const inv = [script.slice(at, at + 400)];
+    assert.match(inv[0], /removeItem\(['"]pl_modeltype['"]\)/,
+      '_invalidateModelReady no longer clears pl_modeltype. _modelType is restored ' +
+      'from localStorage at parse time, so a stale value would outlive the fix.');
+
+    // And it must actually be CALLED from the pack paths, not just defined.
+    const calls = (script.match(/_invalidateModelReady\(\)/g) || []).length;
+    assert.ok(calls >= 4,
+      `_invalidateModelReady is referenced ${calls} time(s); expected at least 4 ` +
+      '(definition, the self-heal in _modelReady, and the download / delete paths). ' +
+      'A definition nothing calls fixes nothing.');
+  });
+
+  test('a page turn waits for the text to stop changing before reading it', () => {
+    // Owner-reported 2026-09-01: "when the page changes, the voice skips the
+    // first 1-2 lines."
+    //
+    // _resumeRead only retried when it got NOTHING, or got the PREVIOUS page.
+    // Neither catches a PARTIAL page, which is the common case mid-turn: the
+    // column is still settling, the opening lines still measure as belonging to
+    // the outgoing page and fail loadPageText()'s in-view test, and the rest of
+    // the page passes it. That yields a non-empty, non-stale extraction missing
+    // its first lines, which read as success. The lines were never spoken and
+    // nothing reported it.
+    //
+    // The fix requires the same extraction twice in a row. This asserts the
+    // comparison against the previous pass still exists, because removing it
+    // looks like removing a redundant retry and silently drops content again.
+    assert.match(script, /_resumeRead\(tries,\s*prevExtract\)/,
+      '_resumeRead no longer takes prevExtract, so it cannot compare this pass ' +
+      'against the last one and will read partially-laid-out pages again.');
+    assert.match(script, /this\._lastText\s*!==\s*prevExtract/,
+      'the stability comparison in _resumeRead is gone; a page turn can once ' +
+      'again start reading before the first lines have laid out, skipping them.');
+  });
+
   test('no Kotlin caller uses startForegroundService', async () => {
     // startForegroundService arms a ~5s watchdog that already crashed the app
     // once when startForeground() lost the race, so every call site must use

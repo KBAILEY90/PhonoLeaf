@@ -4304,6 +4304,14 @@ const VoicePacks = {
       // engine's single lock, and prefetch never gets ahead: reported as
       // "stuttering on the first page right after downloading a voice",
       // which cleared as soon as the voice was switched away and back.
+      // Clear the "which model is loaded" cache FIRST (2026-09-01). The warm-up
+      // below calls prepare() directly, not through _modelReady(), so without
+      // this the engine gets warmed while the app still believes the PREVIOUS
+      // model is the resident one. That mismatch is what made "delete a pack,
+      // download another, press play" stutter on every sentence: the new model
+      // was never registered as ready, so nothing pre-warmed it for real and
+      // the voice sid was resolved against the wrong model family.
+      TTS._invalidateModelReady();
       try {
         const nat0 = TTS._nativeTts();
         if (nat0 && nat0.prepare) await nat0.prepare({ model });
@@ -4450,6 +4458,9 @@ const VoicePacks = {
     if (!p) return;
     try {
       await p.deletePack({ model });
+      // The engine drops the model when its files go, so anything cached about
+      // "a model is loaded and ready" is now wrong (2026-09-01).
+      TTS._invalidateModelReady();
       this._status[model] = { downloaded: false, approxBytes: (this._status[model] || {}).approxBytes || 0 };
       toast(I18n.t('voice_pack_removed'));
     } catch (e) { toast(I18n.t('could_not_remove_pack', { msg: (e && e.message) || '' })); }
@@ -7282,6 +7293,33 @@ const TTS = {
     this._modelType = t;
     try { localStorage.setItem('pl_modeltype', t); } catch (_) {}
   },
+  /**
+   * Forget everything cached about "which model is loaded and ready".
+   *
+   * THE BUG THIS FIXES (owner-reported 2026-09-01): delete a voice pack,
+   * download a different one, press play, and every sentence stutters.
+   * `_modelReadyP` was set once and never cleared by anything, so after a pack
+   * change the app still believed the OLD model was warm. Two consequences,
+   * both audible: the new model was never pre-warmed, so every chunk paid the
+   * cold load instead of one chunk paying it; and `_modelType` still described
+   * the old family, which `_synthNative` uses to resolve the voice sid — and
+   * CLAUDE.md's Voice engine section warns that a wrong family means the wrong
+   * voice, because sids are model-specific.
+   *
+   * `_modelType` is also persisted in localStorage, so a stale value survived
+   * a restart. It has to be cleared there too, or the next launch inherits it.
+   *
+   * Call this whenever the ENGINE'S resident model may no longer match what we
+   * think: a pack downloaded, re-downloaded or deleted. Changing the selected
+   * VOICE is handled automatically by _modelReady() itself, which re-checks the
+   * model it cached against the one now selected.
+   */
+  _invalidateModelReady() {
+    this._modelReadyP = null;
+    this._modelReadyFor = null;
+    this._modelType = null;
+    try { localStorage.removeItem('pl_modeltype'); } catch (_) {}
+  },
   _gapT: null,  // timer for inter-chunk pauses (chapter/subtitle gaps)
   _preIdx: -1,  // chunk index whose pre-pause has already been applied
 
@@ -7971,7 +8009,7 @@ const TTS = {
 
   // Read the page we just navigated to, retrying until its text is actually
   // laid out — so the audio matches the visible page (no stale or skipped text).
-  _resumeRead(tries) {
+  _resumeRead(tries, prevExtract) {
     if (!this.active) return;
     const doc = document.querySelector('#viewer iframe')?.contentDocument;
     const hasText = !!(doc && doc.body && doc.body.textContent.trim());
@@ -7980,11 +8018,39 @@ const TTS = {
     // Keep retrying while the page isn't laid out yet, OR the text we extracted
     // is still the page we just left (epub can report the old column for a frame).
     const stale = this._lastText && this._lastText === this._prevText;
+    const notReady = (!this.chunks.length && hasText) || stale;
+
+    // STABILITY CHECK (2026-09-01) — fixes "the voice skips the first line or
+    // two after a page turn", owner-reported.
+    //
+    // The two conditions above only catch NOTHING extracted, or the PREVIOUS
+    // page extracted. They cannot see a PARTIAL page, and that is the common
+    // case mid-turn: the column is still settling, so the first lines are
+    // still measured as belonging to the outgoing page and fail
+    // loadPageText()'s in-view test, while the rest of the page passes it.
+    // The result is a non-empty, non-stale extraction that is simply missing
+    // its opening lines, which looked like success and was read from line
+    // three onward. The dropped lines were never spoken and nothing reported
+    // it.
+    //
+    // So: require the SAME text twice in a row before speaking. A page still
+    // moving produces different text each pass; a settled one produces an
+    // identical one. This costs one extra pass (~40ms) on a normal turn, which
+    // is far cheaper than silently skipping the reader's content.
+    //
+    // Guarded on `this._lastText` being non-empty so a genuinely blank page
+    // (a cover, a full-page image) still falls straight through to _speak()'s
+    // skip logic instead of burning all 64 retries confirming emptiness.
+    const unstable = !!this._lastText && this._lastText !== prevExtract;
+
     // A fresh CHAPTER'S first page is a new document parse + layout from
     // scratch, which can take longer to settle than a same-section column
     // shift — 64 tries (~3.8s) gives real books' heavier layouts headroom.
-    if (((!this.chunks.length && hasText) || stale) && (tries || 0) < 64) {
-      setTimeout(() => this._resumeRead((tries || 0) + 1), 60);
+    if ((notReady || unstable) && (tries || 0) < 64) {
+      const seen = this._lastText;
+      // Shorter gap when we already have text and are only confirming it has
+      // stopped changing; the longer one is for a page with nothing yet.
+      setTimeout(() => this._resumeRead((tries || 0) + 1, seen), notReady ? 60 : 40);
       return;
     }
     this._prevText = '';
@@ -8597,17 +8663,34 @@ const TTS = {
   // session ever waits — the answer is cached in `pl_modeltype` and restored
   // at parse time, so later sessions resolve instantly.
   _modelReady() {
-    if (this._modelType) return Promise.resolve(this._modelType);
     const nat = this._nativeTts();
     if (!nat) return Promise.resolve(null); // web build → browser-WASM Kokoro
+    const want = this._voiceModel();
+    // SELF-HEAL (2026-09-01). Everything cached below describes ONE model. If
+    // the selected voice now points at a different one, that cache is about the
+    // wrong model and must go — including the localStorage copy of _modelType,
+    // which otherwise carries the stale family into the next launch.
+    //
+    // Done here, rather than at each of the ~8 places that can change the
+    // voice, deliberately: a check that re-derives the answer cannot be
+    // forgotten by a future call site, and the previous bug was precisely that
+    // nothing anywhere cleared this.
+    if (this._modelReadyFor && this._modelReadyFor !== want) {
+      this._invalidateModelReady();
+    }
+    if (this._modelType) return Promise.resolve(this._modelType);
     if (!this._modelReadyP) {
-      this._modelReadyP = nat.prepare({ model: this._voiceModel() })
+      this._modelReadyFor = want;
+      this._modelReadyP = nat.prepare({ model: want })
         .then(r => { if (r) this._setModelType(r.modelType); return this._modelType; })
-        .catch(() => null);
+        .catch(() => { this._modelReadyP = null; this._modelReadyFor = null; return null; });
     }
     return this._modelReadyP;
   },
   _modelReadyP: null,
+  // Which model _modelReadyP was created for. Without this the cache cannot
+  // tell "already warm" from "warm for something else".
+  _modelReadyFor: null,
   // Every native voice, from EITHER engine, in one list. Needed since
   // 2026-08-08: a device can have a Kokoro pack (English) AND Piper packs
   // (other languages) downloaded at the same time, so "which catalog to look
@@ -10140,6 +10223,7 @@ const MyData = {
       // leftover Piper baseline kept around after a successful Kokoro
       // upgrade (see _verifyKokoro).
       try { await Promise.all(VoicePacks.ALL_PACK_MODELS.map(model => p.deletePack({ model }).catch(() => {}))); } catch (_) {}
+      TTS._invalidateModelReady(); // every pack just went; nothing is loaded
     }
     toast(I18n.t('data_deleted'));
     setTimeout(() => location.reload(), 900);
