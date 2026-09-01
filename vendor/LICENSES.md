@@ -11,7 +11,7 @@ at all, its header having been stripped by minification.
 | File | Project | Version | Copyright | Licence |
 | --- | --- | --- | --- | --- |
 | `epub.min.js` | [epub.js](https://github.com/futurepress/epub.js) | 0.3.93 | Copyright (c) 2013, FuturePress | BSD-2-Clause |
-| `jszip.min.js` | [JSZip](https://github.com/Stuk/jszip) | 3.10.1 | (c) 2009-2016 Stuart Knightley | MIT (elected) or GPL-3.0 |
+| `jszip.min.js` | [JSZip](https://github.com/Stuk/jszip) | 3.10.1 | Copyright (c) 2009-2016 Stuart Knightley, David Duponchel, Franz Buchinger, António Afonso | MIT (elected) or GPL-3.0 |
 
 ## Notes that matter
 
@@ -31,14 +31,13 @@ itself is plainly BSD-2-Clause on reading it. Expect automated scanners, of the
 kind used in store review and technical diligence, to flag it as unknown, and
 have this file ready as the answer.
 
-## Still outstanding
+## The licence texts
 
-The full verbatim licence texts are not reproduced here. Both licences ask for
-their text to accompany redistribution, and the accurate way to satisfy that is
-to copy each file from upstream rather than retype it:
+`epub.js-LICENSE.txt` and `jszip-LICENSE.txt` sit beside this file, fetched
+verbatim from upstream rather than retyped. Both are staged into the app build
+by `scripts/stage-www.js`.
 
-- epub.js: <https://github.com/futurepress/epub.js/blob/master/license>
-- JSZip: <https://github.com/Stuk/jszip/blob/main/LICENSE.markdown>
-
-Drop them in beside this file as `epub.js-LICENSE.txt` and `jszip-LICENSE.txt`.
-It is a copy-paste, but it should be an exact one.
+Note that JSZip's upstream licence file contains the full text of **both** the
+MIT licence and GPL-3.0, because the project offers a choice. Shipping that file
+is correct and is what upstream distributes; it does not put PhonoLeaf under
+GPL-3.0. The election recorded above is MIT, and that is the one that governs.

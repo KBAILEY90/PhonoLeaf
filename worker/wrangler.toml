@@ -33,6 +33,24 @@ database_name = "phonoleaf-entitlement"
 database_id = "b5c17050-89e4-490d-98d4-10d8ab3dcaf8"
 migrations_dir = "migrations"
 
+# Per-IP rate limit on /entitlement (audit finding M3, 2026-09-01). Applied
+# BEFORE Google token verification, because verifying costs a JWKS-backed
+# signature check and a first-time caller then costs a D1 write — so without
+# this, unauthenticated junk traffic bills us on every request.
+#
+# 60 requests per 60s per IP. Deliberately generous: the app calls this on
+# launch and on refresh, not in a loop, and the key is the client IP, so users
+# behind one NAT (an office, a carrier) share a bucket. A real user never comes
+# close; an abusive caller is bounded hard.
+#
+# `period` accepts only 10 or 60. `namespace_id` is a per-account identifier
+# for the limiter, not a secret. The code fails OPEN if this binding is
+# missing, so an older deploy or a local `wrangler dev` without it still works.
+[[ratelimits]]
+name = "RATE_LIMITER"
+namespace_id = "1001"
+simple = { limit = 60, period = 60 }
+
 [vars]
 # Non-secret config. Both are already public (they're in index.html /
 # AndroidManifest.xml) — duplicated here because the Worker deploys
@@ -75,6 +93,13 @@ routes = [
 # minimal-surface reasoning as production above.
 workers_dev = false
 preview_urls = false
+
+# Staging gets its own limiter namespace so a CASA DAST scan hammering
+# staging can never consume production's budget.
+[[env.staging.ratelimits]]
+name = "RATE_LIMITER"
+namespace_id = "1002"
+simple = { limit = 60, period = 60 }
 
 [env.staging.vars]
 GOOGLE_CLIENT_ID = "88179965472-codmbgtm99mgik9qke2kucbvfkbug3ul.apps.googleusercontent.com"

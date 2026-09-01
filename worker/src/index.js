@@ -70,6 +70,36 @@ function notYetAvailable(prereqNumber, what, request) {
   }, 501, request);
 }
 
+/**
+ * Per-IP rate limit, applied BEFORE token verification (audit finding M3).
+ *
+ * The order matters and is the whole point. Verifying a Google ID token costs
+ * a JWKS-backed signature check, and a first-time caller then costs a D1
+ * write. Rate limiting after auth would still pay for both on every junk
+ * request, so this runs first and rejects cheaply.
+ *
+ * Keyed on the client IP rather than the token, because the token is exactly
+ * the thing we have not validated yet at this point. That does mean users
+ * behind one NAT share a bucket, which is why the limit is set generously:
+ * the app calls this on launch and on refresh, not in a loop, so a real user
+ * comes nowhere near it while an abusive caller is bounded hard.
+ *
+ * Fails OPEN if the binding is missing (local `wrangler dev` without it, or a
+ * deploy that predates it). A missing rate limiter must not take the endpoint
+ * down; it is a cost control, not an authorization check, and the bearer token
+ * is what actually protects this.
+ */
+async function withinRateLimit(request, env) {
+  if (!env.RATE_LIMITER) return true;
+  const ip = request.headers.get('cf-connecting-ip') || 'unknown';
+  try {
+    const { success } = await env.RATE_LIMITER.limit({ key: ip });
+    return success;
+  } catch (_) {
+    return true;
+  }
+}
+
 async function requireGoogleAuth(request, env) {
   const authz = request.headers.get('authorization') || '';
   const [scheme, token] = authz.split(' ');
@@ -80,6 +110,10 @@ async function requireGoogleAuth(request, env) {
 }
 
 async function handleEntitlement(request, env) {
+  if (!(await withinRateLimit(request, env))) {
+    return json({ error: 'rate_limited', detail: 'Too many requests. Try again shortly.' }, 429, request);
+  }
+
   let googlePayload;
   try {
     googlePayload = await requireGoogleAuth(request, env);

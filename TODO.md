@@ -41,7 +41,7 @@ replacement Spanish voice with a clean licence.
 
 ---
 
-## SECURITY / CODE / LICENCE AUDIT (2026-09-01) — 13 fixed, 8 remain
+## SECURITY / CODE / LICENCE AUDIT (2026-09-01) — 15 fixed, 6 remain
 
 Full audit taking the software-engineer, security and licence-review angles at
 once. 24 findings. Everything fixable without a device, a keystore or a lawyer
@@ -142,11 +142,21 @@ disclosed in all four privacy pages.
       aggregation succeeds and matters greatly if it does not. Choosing a
       licence for the business is an owner call, which is why no file was
       created here.
-- [ ] **Drop in the two verbatim licence texts.** `vendor/LICENSES.md` and
-      `fonts/LICENSES.md` record every fact (holder, SPDX id, upstream URL) but
-      do not reproduce the licence bodies, which should be copied exactly from
-      upstream rather than retyped. Both files name the exact URLs. Then add
-      `fonts/OFL.txt` to `scripts/stage-www.js` so it ships.
+- [x] **Verbatim licence texts DONE 2026-09-01.** Fetched from upstream with
+      `curl` rather than retyped, so they are exact:
+      `fonts/manrope-OFL.txt`, `fonts/literata-OFL.txt`,
+      `vendor/epub.js-LICENSE.txt`, `vendor/jszip-LICENSE.txt`.
+      Fetching also corrected two copyright lines that had been recorded
+      approximately: the upstream notices are "Copyright 2018 The Manrope
+      Project Authors" and "Copyright 2017 The Literata Project Authors", not
+      the individual/company names first written down.
+      **No staging change was needed** — `stage-www.js` copies `fonts/` and
+      `vendor/` recursively via `DIRS`, so all four already ship. Verified by
+      running `npm run stage` and listing `www/`.
+      Note JSZip's upstream licence file contains BOTH the MIT and GPL-3.0
+      texts because the project offers a choice. Shipping it is correct and is
+      what upstream distributes; PhonoLeaf's election is MIT, recorded in
+      `vendor/LICENSES.md`.
 - [ ] **Remove the WASM Kokoro fallback from the native build.** Pinning the
       version fixed the supply-chain half of this. The other half is that the
       native app ships a remote-code path it can never reach (`_synth` always
@@ -172,8 +182,18 @@ disclosed in all four privacy pages.
       rules for the Capacitor bridge and registered plugins, and a real device
       pass, because plugin registration is exactly what minification breaks
       quietly. Pairs with the first `assembleRelease`, which has still never run.
-- [ ] **Rate-limit `/entitlement`.** Cloudflare configuration, not code. Each
-      call costs a JWKS-verified check plus a D1 write.
+- [x] **Rate limiting DONE 2026-09-01.** Turned out to be code plus config
+      rather than dashboard-only: Cloudflare's Workers rate-limit binding is
+      GA. `[[ratelimits]]` added to `wrangler.toml` for production and staging
+      (separate namespaces, so a CASA DAST scan against staging cannot eat
+      production's budget), and `withinRateLimit()` checks it in
+      `handleEntitlement`.
+      Two deliberate choices: it runs **before** token verification, since
+      verifying is the expensive part being protected; and it **fails open** if
+      the binding is missing, because it is a cost control rather than an
+      authorization check and must not take the endpoint down on an older
+      deploy. Keyed on IP at 60/60s, generous because NAT means users share a
+      bucket. `wrangler.toml` validated as parsing; **not deploy-tested.**
 - [ ] **Rotate the entitlement secrets at launch.** `worker/.dev.vars` holds a
       real signing key and pepper. Correctly gitignored and never committed, but
       development values must not become production values.

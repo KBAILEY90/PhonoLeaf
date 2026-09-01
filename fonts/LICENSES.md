@@ -9,8 +9,8 @@ no attribution of any kind.
 
 | File | Family | Copyright | Licence | Upstream |
 | --- | --- | --- | --- | --- |
-| `manrope.woff2` | Manrope | Copyright Mikhail Sharanda | OFL-1.1 | <https://github.com/sharanda/manrope> |
-| `literata.woff2` | Literata | Copyright Google LLC | OFL-1.1 | <https://github.com/googlefonts/literata> |
+| `manrope.woff2` | Manrope | Copyright 2018 The Manrope Project Authors | OFL-1.1 | <https://github.com/sharanda/manrope> |
+| `literata.woff2` | Literata | Copyright 2017 The Literata Project Authors | OFL-1.1 | <https://github.com/googlefonts/literata> |
 
 Both are variable subsets: Manrope carries the UI type, Literata the reading
 type in the book view.
@@ -28,12 +28,14 @@ any *modified* version be renamed. Neither applies here, since both are shipped
 unmodified as part of an application, but do not subset or rename these files
 without re-reading that clause.
 
-## Still outstanding
+## The licence texts
 
-The verbatim OFL-1.1 text is not reproduced here. Copy it from either upstream
-project rather than retyping it, and save it beside this file as `OFL.txt`. One
-copy covers both faces, since it is the same licence, as long as both copyright
-lines above appear with it.
+`manrope-OFL.txt` and `literata-OFL.txt` sit beside this file. They were
+fetched verbatim from upstream rather than retyped, because an almost-right
+licence text is worse than none. Each carries its own project's copyright line,
+which is why there are two files for one licence.
 
-Once that file exists, add it to the staged output in `scripts/stage-www.js` so
-it ships with the app rather than only living in the repo.
+Both are staged into the app build by `scripts/stage-www.js`, so they ship with
+the product rather than only living in the repo. If a font is ever added,
+removed or subset, update this table, fetch that project's OFL, and add it to
+the staging list in the same pass.

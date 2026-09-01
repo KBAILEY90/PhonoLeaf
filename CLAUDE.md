@@ -545,11 +545,11 @@ Google login); verify by inspection + device testing.
   lawyer-reviewed until confirmed otherwise. Jurisdiction: Québec, Canada.
 - **Business registration (REQ, Québec)**: with the lawyer, blocks the bank
   account / GST-QST registration / Stripe account, in that order.
-- **Security/code/licence audit done 2026-09-01**: 24 findings, 11 fixed the
+- **Security/code/licence audit done 2026-09-01**: 24 findings, 15 fixed the
   same day (error-contract tests, a trial race that could downgrade a payer,
-  JWT `kid`, CORS allowlist, tar traversal guard, `allowBackup=false`, pinned
-  `kokoro-js`, licence record completed in EN+FR). Six remain, all needing a
-  device, a lawyer or an owner call. **Two release blockers: the espeak-ng
+  JWT `kid`, CORS allowlist, per-IP rate limiting, tar traversal guard,
+  `allowBackup=false`, pinned `kokoro-js`, licence record + verbatim texts in
+  EN+FR). Six remain, all needing a device, a lawyer or an owner call. **Two release blockers: the espeak-ng
   GPL question, and that the repo has no `LICENSE` file at all — so the
   engine source is published but not licensed, which is not the same thing.**
   See `TODO.md`'s audit section.
