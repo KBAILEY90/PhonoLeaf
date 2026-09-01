@@ -8,6 +8,39 @@ don't let it go stale the way `BACKLOG.md`'s old "Next up" section did.
 
 ---
 
+## WHERE THINGS STAND (2026-09-01) — read this first
+
+**Nothing an agent can build is on the critical path. Every launch blocker is
+an owner action.** In order of leverage:
+
+1. **The lawyer.** Silent 3+ weeks on business registration, which gates the
+   bank, GST/QST and Stripe, and therefore payments. Now carries four
+   questions, all one conversation: (a) does espeak-ng's GPL reach the app
+   given it ships in our APK, (b) does the separate-process architecture we
+   built make that mere aggregation, (c) does the French voice's CC BY-SA
+   ShareAlike reach us, (d) the ToS/Privacy review already outstanding.
+2. **Play Console: personal or organization.** Gates the keystore, the
+   listing, and the 14-day tester clock if it applies. Calendar time that
+   cannot be recovered later.
+3. **CASA trigger date.** Five minutes. Deadline Jan 2, 2027.
+
+**Recently settled, do not reopen without new evidence:**
+
+- The **engine architecture**. Synthesis runs in a separate `:tts` process
+  behind AIDL so no PhonoLeaf code links GPL espeak-ng. Working on device:
+  warm bind 0 ms, 0.29 realtime, audio identical. See `CLAUDE.md`'s Voice
+  engine section and `ENGINE_NOTICE.md` before touching any of it.
+- The **Kokoro device gate** is correct. Confirmed by ear, not benchmark.
+- **Supertonic** was evaluated on device and rejected on quality.
+- The **website** is SEO plus an app-store launcher, not a product. Its
+  playback is removed once both stores carry the app. No further feature work.
+
+**Best buildable work, if an agent needs something:** the pronunciation editor
+(best-evidenced gap in the competitor research, still unscoped), or a
+replacement Spanish voice with a clean licence.
+
+---
+
 ## VOICE MODEL LICENCES — checked 2026-08-31, two real problems
 
 Owner called this a drop-everything question. It is not a full stop: the two
@@ -40,11 +73,19 @@ terms that need a decision, and one may not be usable commercially at all.
       audio, or an app shipping the weights, counts as a derivative is exactly
       the question to put to the lawyer. Matters more than Spanish because
       Québec is a strategic market, not an afterthought.
-- [ ] **Attribution is now a legal obligation, not a nicety.** CC BY 4.0 on both
+- [x] **Attribution is now a legal obligation, not a nicety.** CC BY 4.0 on both
+      **DONE 2026-08-31.** The Licences page ships in the app (EN and FR), lists
+      every component with its licence and upstream, and is reachable at Settings
+      then About then Licences.
       English Piper voices and CC BY-SA on French require credit. The app needs
       a credits surface naming each model, its source and its licence. See the
       About/credits split in the product ideas section.
-- [ ] **CONFIRMED 2026-08-31: espeak-ng (GPL-3.0) is statically linked into
+- [x] **CONFIRMED 2026-08-31: espeak-ng (GPL-3.0) is statically linked into
+      **ENGINEERING RESPONSE DONE 2026-09-01; the legal question remains.** The
+      engine now runs in a separate `:tts` process behind an AIDL boundary, so no
+      PhonoLeaf code links the GPL library. All three conditions the analysis
+      named are met. The `.so` is still in the APK, so this is an improvement in
+      position rather than a resolution. See the lawyer item below.
       the sherpa-onnx AAR you ship. Most serious licence finding in this set,
       and it needs the lawyer before any release.**
       Evidence, reproducible in a minute: `android/app/libs/sherpa-onnx.aar`
@@ -173,7 +214,12 @@ itself, not just Piper.** That stack is fully permissive end to end:
 No GPL, no CC BY-SA, no sherpa fork to maintain. Packs are already downloads, so the APK is already small; what this
 changes is which engine those downloads feed.
 
-- [ ] **VERIFY THE KOKORO GATE. This is now the highest-value cheap test.**
+- [x] **VERIFY THE KOKORO GATE. This is now the highest-value cheap test.**
+      **CLOSED 2026-08-31: the gate is CORRECT, do not reopen without sustained
+      evidence.** Owner heard real Kokoro on a Pixel 7 read one or two sentences
+      then stall ~10s, repeatedly. The agent had argued the gate was too strict
+      from a one-shot 0.59 realtime measurement, which is exactly the quiet
+      benchmark the code warns about. Only sustained reading counts.
       `_KOKORO_MIN_GFLOPS` is 5.0 and the Pixel 7 benchmarks at 2.47, so the
       app judges a Pixel 7 incapable of Kokoro. The Supertonic spike ran on
       that same Pixel 7: 99M params, four ONNX graphs, eight iterations of a
@@ -239,7 +285,12 @@ clean path is English-only, and there is no clean non-English path yet
 identified. That collides with the Québec market the whole FR strategy
 serves.
 
-- [ ] **Decide the engine path.** Options, roughly cheapest first:
+- [x] **Decide the engine path.** Options, roughly cheapest first:
+      **DECIDED 2026-09-01: keep Piper and sherpa, isolate them in a process.**
+      Every alternative below was eliminated. Kokoro-only fails on device speed,
+      Supertonic failed on quality, a sherpa fork fails because Piper voices are
+      trained on espeak phonemes, and two apps was rejected on UX. The answer was
+      not a different engine but a different boundary.
       1. **Hybrid: Kokoro for English, OS voice for FR/DE.** No GPL anywhere.
          The built-in system voice tier already exists in the app as the
          fallback, so French keeps working at lower quality rather than
@@ -293,7 +344,12 @@ itself calls non-English support thin with weak G2P.
       conflicts with reading someone their own ebook aloud, and dropping MP3
       export helps here, since nothing leaves the device to be passed off as
       anything.
-- [ ] **Supertonic on Android: plausible, unproven, and you would be the one
+- [x] **Supertonic on Android: plausible, unproven, and you would be the one
+      **CLOSED 2026-08-31: proven to RUN, rejected on quality.** It built and ran
+      first try. The libonnxruntime.so collision resolved cleanly with pickFirst
+      since both were 1.27.0. Audio through our implementation was bad and the
+      cause was never found; probable root cause is that the inference contract
+      came from a zero-star repo abandoned within half an hour of creation.
       proving it. Researched 2026-08-31.**
       **In favour:** the runtime is ONNX Runtime, which we already ship today
       inside the sherpa AAR, so the hard part is already solved. Supertonic is
@@ -348,7 +404,11 @@ itself calls non-English support thin with weak G2P.
       weekend project. If this is ever revisited, port from the official
       supertone-inc implementation instead, and validate against the published
       audio samples before trusting anything.
-- [ ] **SIZE PROBLEM: Supertonic ships fp32 only, 380 MB. Possibly
+- [x] **SIZE PROBLEM: Supertonic ships fp32 only, 380 MB. Possibly
+      **MOOT: Supertonic rejected.** Kept only because the numbers are useful if
+      anyone evaluates it again: 380 MB fp32 with no quantized variant published,
+      448 MB native heap, and Play caps per-device download at 200 MB so it would
+      have needed Play Asset Delivery.
       disqualifying as-is. Measured 2026-08-31 from the HF repo.**
       `vector_estimator.onnx` 244.7 MB, `vocoder.onnx` 96.7 MB,
       `text_encoder.onnx` 34.7 MB, `duration_predictor.onnx` 3.5 MB. No
@@ -384,7 +444,10 @@ itself calls non-English support thin with weak G2P.
       pack UX entirely. It is also real work: asset packs are a build-system
       change, not a matter of dropping files into assets/.
 
-- [ ] **NEW ESCAPE ROUTE: a separate TTS engine app. This is how competitors
+- [x] **NEW ESCAPE ROUTE: a separate TTS engine app. This is how competitors
+      **SUPERSEDED 2026-09-01.** Rejected on UX (nobody installs two apps), but it
+      pointed at the architecture that worked: the same process isolation, inside
+      one app, which is what shipped.
       ship Piper without open-sourcing themselves.** Android treats TTS
       engines as standalone installable apps that any app can call through the
       standard `TextToSpeech` API. A GPL engine living in its own app, spoken
@@ -401,14 +464,18 @@ itself calls non-English support thin with weak G2P.
       Worth noting espeak-ng issue #2131 asks upstream to relicense to LGPL,
       which would dissolve this whole problem. Open, not resolved, do not plan
       around it.
-- [ ] **Kokoro French is now a real fallback worth keeping in view.** Kokoro
+- [x] **Kokoro French is now a real fallback worth keeping in view.** Kokoro
+      **DEMOTED to a note.** It was only interesting as part of a Kokoro-only
+      stack, and that is dead on device speed. Kept because the fact is true and
+      non-obvious: Kokoro v1.0 does cover French, contrary to the 2026-08-08 note.
       v1.0 covers French (`ff_siwis`, Apache 2.0), which the 2026-08-08 note
       said did not exist. Paired with misaki-rs (MIT) it is a fully
       permissive French path with no espeak and no CC BY-SA. Two caveats: it
       is one voice trained on under 11 hours, and Kokoro only runs on devices
       that pass `_KOKORO_MIN_GFLOPS`, so it cannot serve French on mid-tier
       phones. Useful as a component of a mixed answer, not as the answer.
-- [ ] **Benchmark Supertonic quality and speed against Piper** on a mid-tier
+- [x] **Benchmark Supertonic quality and speed against Piper** on a mid-tier
+      **MOOT: Supertonic rejected on quality before a fair benchmark was possible.**
       phone before committing. 99M parameters against Piper medium is not a
       like-for-like comparison, and the whole product positions on the voice
       not being robotic.

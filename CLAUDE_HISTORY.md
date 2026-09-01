@@ -7703,3 +7703,162 @@ OAuth client: search indexing and jumping through real text, the storage screen
 with real cached sizes, forget actually removing something, the reading measure
 with words on screen (46rem is a guess and easy to nudge), and whether the
 sleep timer genuinely stops at a sentence boundary mid-listen.
+
+## The GPL problem, found and solved (2026-08-31 to 2026-09-01)
+
+The session that started as "port some features to the website" and ended by
+discovering the app could not legally ship, then fixing it. Recorded in the
+order things were learned, because the later findings invalidate some of the
+earlier work.
+
+### 1. Website work, later made mostly moot
+
+Ported four features from `index.green.html` to `index.html` (sleep timer,
+in-book search, storage manager, mark-finished/forget plus export
+confirmation), and gave the website a real desktop layout: a left nav rail
+instead of the phone tab bar, content gutters, a capped reading measure, and
+centred dialogs, all CSS-only behind a >=900px breakpoint.
+
+Then the owner decided the website should be **SEO plus an app-store launcher,
+not a product**, and that web playback gets removed once both stores carry the
+app. So the four ports are work that would not have been bought under the new
+direction. The desktop layout is not: a marketing site has to look right on a
+desktop. Full reasoning in `BUSINESS.md` "Platform strategy".
+
+**Two bugs the browser caught that reading would not have**, both worth
+remembering as classes of error: the sleep modal used the redesign's `.active`
+class while the website shows modals with `.open`, so it rendered
+`display:none` while reporting itself open; and the sleep readout is
+JS-templated, so it survived a language switch untranslated until `setLang`
+got an explicit re-render call.
+
+### 2. SEO sharpened onto per-competitor weaknesses
+
+The comparison pages were reframed on reliability, then re-aimed again after
+the owner asked whether they targeted each competitor's specific weaknesses.
+They did not: three of six led on the generic four-failure-mode message.
+`voice-dream` was the clearest error, leading on background playback, which
+Voice Dream genuinely has and advertises, while ignoring the complaint that is
+exactly our strength (its own reviewers calling the voices robotic). Per-page
+targeting table now lives in `SEO.md` §6.
+
+Also added `audiobook-app-that-doesnt-stop.html` and its French twin for the
+failure-mode keyword cluster, and settled a long-standing contradiction: the
+owner reaffirmed that comparison pages concede nothing, so `SEO.md` §6's
+"choose them if" instruction was corrected at the source rather than argued
+with again.
+
+### 3. The licence audit, which changed everything
+
+Owner asked whether the voice models were usable in production, calling it a
+drop-everything question. It was.
+
+| Component | Licence | Outcome |
+| --- | --- | --- |
+| Kokoro int8 v0.19 | Apache 2.0 | clean |
+| Piper engine | MIT | clean |
+| en_US libritts_r, en_GB vctk | CC BY 4.0 | fine, attribution required |
+| de_DE thorsten | CC0 | clean |
+| fr_FR upmc | CC BY-SA 4.0 | ShareAlike, lawyer question |
+| es_ES sharvard | CC BY 3.0 on the card | **removed** |
+| **espeak-ng** | **GPL-3.0** | **the real problem** |
+
+Spanish was removed because its model card claims CC BY 3.0 while also saying
+it was fine-tuned from lessac, which carries the Blizzard licence excluding
+commercial voice synthesis. Cheaper to drop than to argue. **Lesson: check the
+base model, not just the card.**
+
+The serious finding was espeak-ng. It is GPL-3.0 and **statically linked into
+the sherpa-onnx AAR**, confirmed by finding `espeak-ng` and `espeak-ng-data`
+strings inside `libsherpa-onnx-jni.so`. GPLv3 statically linked into a
+proprietary app is the textbook propagation case, and the owner will not
+open-source the app. That made shipping legally questionable.
+
+### 4. Escape routes, and one expensive dead end
+
+Researched and eliminated in turn: stock sherpa cannot be built without espeak
+(one all-or-nothing CMake flag); the lexicon workaround solves runtime use but
+not distribution, which is what GPL attaches to; Piper voices are trained on
+espeak phonemes so the phonemizer cannot simply be swapped; and Kokoro-only is
+not viable because a Pixel 7 cannot run Kokoro in real time.
+
+**Supertonic was evaluated properly and failed.** An on-device spike proved it
+runs on Android (0.59 realtime at 8 steps, 448 MB native heap, 380 MB fp32
+download), but audio quality through our implementation was bad and the cause
+was never found. Probable root cause: the inference contract was derived from
+`nedmah/supertonic-kmp`, a zero-star repo created and abandoned within half an
+hour, treated as a specification. Spike deleted; findings kept in `TODO.md`.
+
+**Two reasoning errors made during that spike, recorded because they are easy
+to repeat.** First, claiming the pipeline was "verified" because audio length
+matched the predicted duration: latent length derives from duration and audio
+length from latent length, so they agree by construction and prove nothing.
+That false confidence cleared exactly the area the symptoms pointed at.
+Second, arguing the Kokoro device gate was too strict because the spike hit
+0.59 realtime, when that was a single utterance in isolation, which is
+precisely the "quiet one-shot benchmark" the code already warns about. The
+owner settled it by ear: real Kokoro on a Pixel 7 reads a sentence or two then
+stalls ten seconds. **The gate is correct.**
+
+### 5. The fix that worked: a process boundary
+
+The owner asked why competitors ship Piper without open-sourcing. Answer:
+mostly they do not embed it. Android TTS engines are standalone apps called
+over a standard API, so the GPL code is somebody else's program. Two apps was
+rejected on UX, correctly, but it pointed at the architecture that worked.
+
+The engine now runs in its own `:tts` process behind an AIDL interface
+(`TtsService.kt`, `ITtsService.aidl`), and `PhonoLeafTtsPlugin.kt` no longer
+imports sherpa at all. The boundary is deliberately arms-length: strings and
+primitives in, raw audio written to a caller-chosen path out, no shared memory,
+no callbacks, no custom Parcelables. Audio goes via file because Binder caps
+transactions near 1 MB.
+
+The split was chosen so the published component stays minimal: the service does
+only load-model, generate, write-samples. The loudness calibration and WAV
+muxing stayed on the app side, being ours and not derived from anything GPL.
+
+Measured on device: **warm bind 0 ms, 0.29 realtime, audio indistinguishable**
+from the old in-process path. Cold costs a one-off 303 ms bind plus model load.
+
+All three conditions the legal analysis named are now met: generic protocol,
+separate process, published source (the repo is public, and `ENGINE_NOTICE.md`
+makes the intent explicit). **What remains is a lawyer question, not an
+engineering one:** the sherpa `.so` is still in the APK because both processes
+are one app, so this moves the position from "clearly one combined work" to
+arguable aggregation.
+
+### 6. Three bugs from the cut-over, and one that predated it
+
+- **Deleting a pack killed the voice for the session.** The JS identifies a
+  missing pack by an error starting `PACK_NOT_DOWNLOADED:` and switches voices
+  rather than counting a failure. The cut-over renamed that string, so each
+  attempt counted as an engine failure; two in a row set `_kokoroDead`, and
+  native has no Web Speech fallback, so playback stopped entirely. **The
+  cut-over changed an error CONTRACT, not just an implementation.**
+- **First page after a download stuttered.** `_nativeBench` fires un-awaited,
+  so it raced the user's first page for the engine's single lock, and whichever
+  won also paid the cold model load. Fixed by awaiting `prepare()` first.
+- **`inferenceThreads()` was deleted** as collateral, since it sat beside
+  `ensureReady()`. It now exists in both the plugin and the service on purpose,
+  and the two must stay in step or the benchmark stops predicting the engine.
+- **Background reading lost its position (PRE-EXISTING).** `_bgResync()` was
+  only called from the `visibilitychange` handler, which bails unless
+  `_nativeAppActive` is true, and that flag is set by a separate
+  `appStateChange` event with no ordering guarantee. When visibilitychange won
+  the race the resync never ran, the visible reader stayed on the locked page,
+  and the next `_persistPosition()` overwrote the good background position with
+  the stale one. Fixed by resyncing from both events.
+
+### 7. Other decisions made
+
+- **MP3 export rejected**, on product grounds rather than legal: offline
+  listening already exists, so the file adds no capability.
+- **Highlight/annotation export rejected**: the brand is books and audiobooks,
+  not academic tooling.
+- **About and Licences pages** added for the native app, EN and FR, linked next
+  to Privacy and Terms. The licences page is a legal obligation, not a credit
+  roll: CC BY and CC BY-SA both require attribution. It is deliberately buried
+  one level in and carries `noindex`.
+- **Pronunciation editor** remains open and unscoped. Best-evidenced gap in the
+  competitor research.

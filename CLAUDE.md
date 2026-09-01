@@ -412,10 +412,28 @@ Google login); verify by inspection + device testing.
   spine lookup directly.
 
 **Voice engine**
+- **Synthesis runs in a SEPARATE PROCESS (`:tts`) and is reached only over
+  AIDL.** Not an optimisation: espeak-ng is GPL-3.0 and statically linked
+  into the sherpa AAR, so isolating it is what lets this app stay closed
+  source. `PhonoLeafTtsPlugin.kt` must never import `com.k2fsa.sherpa.onnx`
+  again, and the interface must stay generic (strings and primitives in, raw
+  audio to a caller-chosen path out). Read
+  `android/app/src/main/java/com/phonoleaf/app/ENGINE_NOTICE.md` before
+  touching any of it.
+- **Error strings crossing that boundary are API, not implementation.** The
+  web layer switches voices when a synthesis error starts with
+  `PACK_NOT_DOWNLOADED:`, and treats anything else as an engine failure; two
+  in a row disable the neural voice for the session, and native has no Web
+  Speech to fall back on. Renaming that string during the cut-over is exactly
+  how deleting a pack silently killed playback (2026-09-01). Check consumers
+  before changing any error text.
 - Two native models: **Piper** (baseline, always offered) and **Kokoro**
-  (higher quality, offered only on devices that pass a synthetic CPU
-  benchmark — `_KOKORO_MIN_GFLOPS`, calibrated off one real device; see
-  `pl_kokoro_gate`). Terminology: **Built-in** (device OS voice) / **Standard**
+  (higher quality, gated on a CPU benchmark, `_KOKORO_MIN_GFLOPS`, see
+  `pl_kokoro_gate`). **The gate is CORRECT and was confirmed by ear
+  2026-08-31:** real Kokoro on a Pixel 7 read one or two sentences then
+  stalled ~10s, repeatedly. Do not loosen it on the strength of a one-shot
+  benchmark; only sustained reading counts. Terminology: **Built-in** (device
+  OS voice) / **Standard**
   (Piper) / **Upgraded** (Kokoro) — used consistently in UI copy, EN+FR.
 - All packs are downloaded on-device (`VOICE_PACKS`), nothing bundled in
   the APK. `MODEL_VERSIONS` is a **per-model** version tag used to name the
@@ -423,6 +441,11 @@ Google login); verify by inspection + device testing.
   underlying file changes, or a device with the old file installed will
   never re-download** (this exact bug happened once with the French/Spanish
   packs).
+- **The Spanish pack was REMOVED 2026-08-31 on a licence finding**, not a
+  technical one: its model card claims CC BY 3.0 but says it was fine-tuned
+  from lessac, which is Blizzard-licensed and excludes commercial voice
+  synthesis. Do not re-add it without a replacement whose licence is clean,
+  and check the BASE model, not just the card.
 - Downloads run on their own single-thread executor (never the TTS
   synthesis executor), at `THREAD_PRIORITY_BACKGROUND`, with per-model
   cancellation epochs — never share state across models or across the
