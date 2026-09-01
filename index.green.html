@@ -4285,6 +4285,17 @@ const VoicePacks = {
       await p.downloadPack({ model });
       this._status[model] = { downloaded: true, approxBytes: (this._status[model] || {}).approxBytes || 0 };
       toast(I18n.t('voice_pack_downloaded'));
+      // Warm the engine BEFORE anything else touches it. Since the 2026-09-01
+      // cut-over the model lives in the :tts process and loads on first use,
+      // and the bench below is deliberately NOT awaited. Without this, the
+      // user's first page and that bench race the same cold load through the
+      // engine's single lock, and prefetch never gets ahead: reported as
+      // "stuttering on the first page right after downloading a voice",
+      // which cleared as soon as the voice was switched away and back.
+      try {
+        const nat0 = TTS._nativeTts();
+        if (nat0 && nat0.prepare) await nat0.prepare({ model });
+      } catch (_) { /* warm-up is best-effort; a failure just costs the old stutter */ }
       if (bench) TTS._nativeBench(model); // one-time proactive speed check — see TTS._nativeBench
       // Verify HERE rather than at each call site so every route that can
       // install Kokoro (catalog row, onboarding, Settings → Retry) is covered

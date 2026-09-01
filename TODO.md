@@ -100,6 +100,22 @@ load, paid again only if Android reclaims the process.
       changed is that our code no longer links or calls it. That moves the
       position from "clearly one combined work" to the arguable-aggregation
       one, which is an improvement rather than a resolution.
+- [ ] **Background reading does not persist its position. Reported 2026-09-01,
+      almost certainly PRE-EXISTING rather than caused by the cut-over.**
+      Owner locked the phone, the app read a couple of pages aloud, and on
+      reopening it was back on the page where the screen was locked. The pages
+      the app itself showed had not moved either.
+      Why it is probably not the cut-over: the position bookkeeping
+      (`_bgSaveProgress`, `_bgSection`, `cfiFromRange`) is pure JS against
+      epub.js objects. The cut-over only moved where audio bytes are produced.
+      Not verified though, so do not treat that as settled.
+      Where to look: `_bgSaveProgress()` is called after each background chunk,
+      and `_persistPosition()` is supposed to defer to it via the `_bgSection`
+      guard. CLAUDE.md already warns that getting that order wrong lets a stale
+      visible-reader position clobber a good background one, which matches the
+      symptom exactly. Check whether `_bgSection` is cleared before the resume
+      path runs.
+
 - [ ] **Publish `TtsService.kt` + `ITtsService.aidl` as source.** The third
       leg of the analysis (generic protocol, published source, swappable
       component). Not done yet, and it is the cheapest of the three.
