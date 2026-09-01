@@ -190,6 +190,35 @@ itself calls non-English support thin with weak G2P.
       phone fails regardless of how good it sounds or how clean its terms.
       into a throwaway Android test harness and synthesize one sentence. That
       answers feasibility in a day and needs no product work.
+
+- [x] **380 MB CAN ship with the app, but not in the base module.** Checked
+      2026-08-31. Google Play caps the per-device compressed download from an
+      app bundle at **200 MB**. Anything larger must use Play Asset Delivery
+      or Play Feature Delivery, and asset packs do not count toward that cap
+      (max 100 packs per bundle).
+      So the owner's instinct is right: an install-time asset pack downloads
+      during installation from the store, not in-app, which is exactly the
+      behaviour wanted. It is standard, supported, and removes the language-
+      pack UX entirely. It is also real work: asset packs are a build-system
+      change, not a matter of dropping files into assets/.
+
+- [ ] **NEW ESCAPE ROUTE: a separate TTS engine app. This is how competitors
+      ship Piper without open-sourcing themselves.** Android treats TTS
+      engines as standalone installable apps that any app can call through the
+      standard `TextToSpeech` API. A GPL engine living in its own app, spoken
+      to over IPC, is a separate program rather than code linked into ours, so
+      the copyleft does not reach us. There is already an eSpeak NG engine app
+      published on Google Play built exactly this way.
+      That also answers the owner's question about @Voice: it does not embed
+      espeak at all, it calls whichever engine the user has installed. Its own
+      code stays closed because the GPL part is somebody else's app.
+      **Why it is a fallback and not the plan:** it requires the user to
+      install a second app before good voices work, which would wreck
+      onboarding for a paid product. We already have the plumbing, since the
+      Built-in tier uses this exact API.
+      Worth noting espeak-ng issue #2131 asks upstream to relicense to LGPL,
+      which would dissolve this whole problem. Open, not resolved, do not plan
+      around it.
 - [ ] **Kokoro French is now a real fallback worth keeping in view.** Kokoro
       v1.0 covers French (`ff_siwis`, Apache 2.0), which the 2026-08-08 note
       said did not exist. Paired with misaki-rs (MIT) it is a fully
