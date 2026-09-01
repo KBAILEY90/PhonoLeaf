@@ -2152,7 +2152,10 @@
     <div class="modal-title">Supertonic test</div>
     <p class="sleep-hint" id="spike-status">Checking…</p>
     <button class="modal-action" id="spike-dl" onclick="Spike.download()">Download models (380 MB)</button>
-    <button class="modal-action" id="spike-run" onclick="Spike.run()">Run test</button>
+    <button class="modal-action" onclick="Spike.run(8)">Run test (8 steps)</button>
+    <button class="modal-action" onclick="Spike.run(16)">Run test (16 steps)</button>
+    <button class="modal-action" onclick="Spike.run(32)">Run test (32 steps)</button>
+    <button class="modal-action" onclick="Spike.run(16, true)">Run 16 steps + normalize</button>
     <button class="modal-action" id="spike-play" onclick="Spike.play()" style="display:none">Play result</button>
     <pre id="spike-out" style="white-space:pre-wrap;font-size:0.78rem;color:var(--text-dim);margin:0.6rem 0 0"></pre>
   </div>
@@ -9103,11 +9106,11 @@ const Spike = {
       this.open();
     } catch (e) { this._say('Download failed: ' + (e && e.message ? e.message : e)); }
   },
-  async run() {
+  async run(steps, normalize) {
     const p = this._p(); if (!p) return;
-    this._say('Loading models and synthesizing. This may take a while on first run…');
+    this._say('Running at ' + (steps || 8) + ' steps' + (normalize ? ' with normalize' : '') + '…');
     try {
-      const r = await p.supertonicRun({ text: 'PhonoLeaf turns the ebooks you already own into something you can listen to anywhere.', steps: 8 });
+      const r = await p.supertonicRun({ text: 'PhonoLeaf turns the ebooks you already own into something you can listen to anywhere.', steps: steps || 8, normalize: !!normalize });
       if (!r.ok) { this._say('FAILED\n' + r.message); return; }
       this._wav = r.wavPath;
       document.getElementById('spike-play').style.display = '';
@@ -9118,7 +9121,9 @@ const Spike = {
         'synthesis:    ' + r.synthMs + ' ms',
         'audio length: ' + r.audioMs + ' ms',
         'real-time x:  ' + (r.rtf ? r.rtf.toFixed(2) : '?') + '  (lower is better, <1 = faster than realtime)',
-        'native heap:  ' + r.peakNativeHeapMb + ' MB   <-- the number that matters',
+        'native heap:  ' + r.peakNativeHeapMb + ' MB',
+        'peak sample:  ' + (r.peak != null ? r.peak.toFixed(3) : '?') + '   <-- >1.0 means we were clipping it',
+        'rms:          ' + (r.rms != null ? r.rms.toFixed(4) : '?'),
         'java heap:    ' + r.javaHeapMb + ' MB',
       ].join('\n'));
     } catch (e) { this._say('Run failed: ' + (e && e.message ? e.message : e)); }

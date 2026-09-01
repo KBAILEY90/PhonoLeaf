@@ -172,6 +172,8 @@ object SupertonicSpike {
         val audioMs: Long = 0,
         val rtf: Double = 0.0,
         val peakNativeHeapMb: Long = 0,
+        val peak: Float = 0f,
+        val rms: Float = 0f,
         val javaHeapMb: Long = 0,
         val wavPath: String = "",
     )
@@ -182,7 +184,7 @@ object SupertonicSpike {
      * matters: ONNX Runtime allocates weights natively, so the Java heap
      * barely moves even when we are about to be killed.
      */
-    fun run(ctx: Context, text: String, steps: Int = 8): Report {
+    fun run(ctx: Context, text: String, steps: Int = 8, normalize: Boolean = false): Report {
         val d = dir(ctx)
         if (!isDownloaded(ctx)) return Report(false, "Models not downloaded yet")
 
@@ -267,6 +269,22 @@ object SupertonicSpike {
             val peakNative = (Debug.getNativeHeapAllocatedSize() / (1024 * 1024)) - baselineNative
             val javaHeap = (Runtime.getRuntime().let { it.totalMemory() - it.freeMemory() }) / (1024 * 1024)
 
+            // Measure BEFORE anything touches the samples. A peak well above
+            // 1.0 means writeWav16 was clamping the waveform into distortion,
+            // which sounds like a broken voice rather than a bad one.
+            var peak = 0f
+            var sumSq = 0.0
+            for (v in wav) {
+                val a = kotlin.math.abs(v)
+                if (a > peak) peak = a
+                sumSq += (v * v).toDouble()
+            }
+            val rms = if (wav.isEmpty()) 0f else kotlin.math.sqrt(sumSq / wav.size).toFloat()
+            if (normalize && peak > 0f) {
+                val g = 0.95f / peak
+                for (i in wav.indices) wav[i] = wav[i] * g
+            }
+
             val outFile = File(ctx.cacheDir, "supertonic-spike.wav")
             writeWav16(outFile, wav)
 
@@ -282,6 +300,8 @@ object SupertonicSpike {
                 audioMs = audioMs,
                 rtf = if (audioMs > 0) synthMs.toDouble() / audioMs.toDouble() else 0.0,
                 peakNativeHeapMb = peakNative,
+                peak = peak,
+                rms = rms,
                 javaHeapMb = javaHeap,
                 wavPath = outFile.absolutePath,
             )

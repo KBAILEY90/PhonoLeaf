@@ -542,8 +542,9 @@
         fun supertonicRun(call: PluginCall) {
             val text = call.getString("text") ?: "The quick brown fox jumps over the lazy dog."
             val steps = call.getInt("steps") ?: 8
+            val normalize = call.getBoolean("normalize") ?: false
             Thread {
-                val r = SupertonicSpike.run(context, text, steps)
+                val r = SupertonicSpike.run(context, text, steps, normalize)
                 val ret = JSObject()
                 ret.put("ok", r.ok)
                 ret.put("message", r.message)
@@ -552,6 +553,8 @@
                 ret.put("audioMs", r.audioMs)
                 ret.put("rtf", r.rtf)
                 ret.put("peakNativeHeapMb", r.peakNativeHeapMb)
+                ret.put("peak", r.peak)
+                ret.put("rms", r.rms)
                 ret.put("javaHeapMb", r.javaHeapMb)
                 ret.put("wavPath", r.wavPath)
                 call.resolve(ret)
