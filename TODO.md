@@ -65,6 +65,42 @@ terms that need a decision, and one may not be usable commercially at all.
       propagation are precisely what the lawyer is for. Ask it alongside the
       fr_FR ShareAlike question, since both are one conversation.
 
+### Out-of-process engine: WORKS, measured on device 2026-08-31
+
+The GPL isolation architecture is proven. Piper now runs in a `:tts` process
+behind an AIDL boundary (`ITtsService`, `TtsService.kt`), talking only in
+strings and primitives with raw audio written to a caller-chosen path.
+
+| | cold | warm |
+| --- | --- | --- |
+| bind | 303 ms | **0 ms** |
+| synthesis | 2312 ms | 1111 ms |
+| realtime factor | 0.62 | **0.29** |
+
+Audio is indistinguishable from in-process reading (owner: "sound amazing").
+0.29 realtime is well inside the existing 25% headroom rule, so the boundary
+costs nothing that matters. Cold cost is a one-off 303 ms bind plus the model
+load, paid again only if Android reclaims the process.
+
+- [ ] **CUT OVER: delete the in-process path.** This is the change that
+      actually moves the licence position, and it is mostly deletion:
+      1. Point `TTS._synthNative` at `synthesizeIpc` instead of `synthesize`.
+      2. Delete `synthesize()`, `ensureReady()` and every
+         `com.k2fsa.sherpa.onnx` import from `PhonoLeafTtsPlugin.kt`.
+      3. Keep `downloadPack`, `deviceBench`, `packStatus` where they are:
+         they touch no GPL code.
+      4. Publish `TtsService.kt` + `ITtsService.aidl` as source, per the
+         analysis (generic protocol, published source, swappable component).
+      **What this does and does not change.** The sherpa `.so` is still inside
+      the APK afterwards, because both processes are one app. What changes is
+      that our proprietary code no longer links or calls it: it is reached only
+      over IPC with a text-in/audio-out contract. That is the difference
+      between the current "clearly one combined work" and the "moderate risk,
+      arguable aggregation" position the legal analysis described.
+      **Worth noting separately:** espeak-ng DATA is never distributed by us at
+      all. Voice packs download straight from the k2-fsa GitHub release to the
+      user's device, so only the compiled code in the AAR is ours to answer for.
+
 ### The Kokoro-only stack, and the gate that is blocking it (2026-08-31)
 
 Owner asked whether dropping Piper removes espeak. **It does not:** Kokoro in
