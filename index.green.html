@@ -2058,11 +2058,6 @@
         <div><div class="sr-k" data-i18n="report_bug">Report a bug</div><div class="sr-sub" data-i18n="report_bug_sub">Tell us what went wrong</div></div>
         <button class="set-link" data-i18n="open" onclick="BugReport.open()">Open</button>
       </div>
-      <!-- SPIKE 2026-08-31, throwaway. Remove with SupertonicSpike.kt. -->
-      <div class="set-row" id="spike-row">
-        <div><div class="sr-k">Supertonic test</div><div class="sr-sub">Engine evaluation, not a feature</div></div>
-        <button class="set-link" onclick="Spike.open()">Open</button>
-      </div>
     </div>
     <div style="text-align:center;color:var(--text-dim);font-size:0.7rem;margin-top:1.4rem">
       <span data-i18n="footer_tagline">PhonoLeaf &middot; A voice for every page</span><br>
@@ -2145,25 +2140,6 @@
 
 <!-- ============== SLEEP TIMER SHEET ============== -->
 
-<!-- ============== SUPERTONIC SPIKE (throwaway) ============== -->
-<div class="modal-backdrop" id="spike-modal" onclick="Spike.close(event)">
-  <div class="modal-sheet" onclick="event.stopPropagation()">
-    <div class="modal-handle"></div>
-    <div class="modal-title">Supertonic test</div>
-    <p class="sleep-hint" id="spike-status">Checking…</p>
-    <button class="modal-action" id="spike-dl" onclick="Spike.download()">Download models (380 MB)</button>
-    <button class="modal-action" onclick="Spike.run(8)">Run test (8 steps)</button>
-    <button class="modal-action" onclick="Spike.run(16)">Run test (16 steps)</button>
-    <button class="modal-action" onclick="Spike.run(32)">Run test (32 steps)</button>
-    <button class="modal-action" onclick="Spike.run(16, true)">Run 16 steps + normalize</button>
-    <button class="modal-action" id="spike-play" onclick="Spike.play()" style="display:none">Play result</button>
-    <hr style="border:none;border-top:1px solid var(--line);margin:0.9rem 0">
-    <p class="sleep-hint">Out-of-process engine: same Piper voice, run in a separate process so the GPL part is isolated. Should sound IDENTICAL to normal reading.</p>
-    <button class="modal-action" onclick="Spike.ipc()">Test engine in separate process</button>
-    <button class="modal-action" onclick="Spike.ipc(true)">Test again (warm process)</button>
-    <pre id="spike-out" style="white-space:pre-wrap;font-size:0.78rem;color:var(--text-dim);margin:0.6rem 0 0"></pre>
-  </div>
-</div>
 
 <div class="modal-backdrop" id="sleep-modal" onclick="SleepModal.close(event)">
   <div class="modal-sheet" onclick="event.stopPropagation()">
@@ -9062,118 +9038,6 @@ window.speechSynthesis?.addEventListener('voiceschanged', () => TTS.pickDefaultV
 // deciding whether to keep reading — same gen-guarded choke point every
 // other "should the next chunk start" decision in TTS already goes through.
 
-// --- Supertonic spike (THROWAWAY, 2026-08-31) --------------------------
-// Drives the native SupertonicSpike via three plugin methods. Exists to
-// answer whether Supertonic can replace the GPL-encumbered sherpa/espeak
-// path: does it load on a real phone, how much memory does it take, how
-// fast is it, and does it sound good. Delete with SupertonicSpike.kt.
-const Spike = {
-  _wav: null,
-  _p() {
-    try {
-      if (window.Capacitor && Capacitor.isNativePlatform && Capacitor.isNativePlatform()
-          && Capacitor.Plugins && Capacitor.Plugins.PhonoLeafTts) return Capacitor.Plugins.PhonoLeafTts;
-    } catch (_) {}
-    return null;
-  },
-  _say(s) { const el = document.getElementById('spike-out'); if (el) el.textContent = s; },
-  async open() {
-    document.getElementById('spike-modal').classList.add('open');
-    this._say('');
-    const p = this._p();
-    const st = document.getElementById('spike-status');
-    if (!p) { st.textContent = 'Native plugin unavailable (web build).'; return; }
-    try {
-      const r = await p.supertonicStatus();
-      const mb = Math.round((r.bytes || 0) / 1048576);
-      st.textContent = r.downloaded
-        ? 'Models present (' + mb + ' MB). Ready to run.'
-        : 'Models not downloaded (' + mb + ' MB present). Download first, on wifi.';
-      document.getElementById('spike-dl').style.display = r.downloaded ? 'none' : '';
-    } catch (e) { st.textContent = 'Status failed: ' + (e && e.message ? e.message : e); }
-  },
-  close(e) {
-    if (!e || e.target.classList.contains('modal-backdrop'))
-      document.getElementById('spike-modal').classList.remove('open');
-  },
-  async download() {
-    const p = this._p(); if (!p) return;
-    this._say('Starting…');
-    try {
-      p.addListener && p.addListener('supertonicProgress', d => {
-        this._say('Downloading ' + d.file + ': ' + d.pct + '%');
-      });
-    } catch (_) {}
-    try {
-      const r = await p.supertonicDownload();
-      this._say('Downloaded ' + Math.round((r.bytes || 0) / 1048576) + ' MB.');
-      this.open();
-    } catch (e) { this._say('Download failed: ' + (e && e.message ? e.message : e)); }
-  },
-  async run(steps, normalize) {
-    const p = this._p(); if (!p) return;
-    this._say('Running at ' + (steps || 8) + ' steps' + (normalize ? ' with normalize' : '') + '…');
-    try {
-      const r = await p.supertonicRun({ text: 'PhonoLeaf turns the ebooks you already own into something you can listen to anywhere.', steps: steps || 8, normalize: !!normalize });
-      if (!r.ok) { this._say('FAILED\n' + r.message); return; }
-      this._wav = r.wavPath;
-      document.getElementById('spike-play').style.display = '';
-      this._lastName = (r.wavPath || '').split('/').pop();
-      this._say([
-        r.message,
-        '',
-        'model load:   ' + r.loadMs + ' ms',
-        'synthesis:    ' + r.synthMs + ' ms',
-        'audio length: ' + r.audioMs + ' ms',
-        'real-time x:  ' + (r.rtf ? r.rtf.toFixed(2) : '?') + '  (lower is better, <1 = faster than realtime)',
-        'native heap:  ' + r.peakNativeHeapMb + ' MB',
-        'peak sample:  ' + (r.peak != null ? r.peak.toFixed(3) : '?') + '   <-- >1.0 means we were clipping it',
-        'rms:          ' + (r.rms != null ? r.rms.toFixed(4) : '?'),
-        'file:         ' + this._lastName,
-        'java heap:    ' + r.javaHeapMb + ' MB',
-      ].join('\n'));
-    } catch (e) { this._say('Run failed: ' + (e && e.message ? e.message : e)); }
-  },
-  // Out-of-process engine test. Uses the SAME Piper voice the app already
-  // reads with, so any audible difference is the process boundary rather
-  // than the model. First call pays the bind plus a cold model load;
-  // second call should be warm.
-  async ipc(warm) {
-    const p = this._p(); if (!p) return;
-    if (!p.synthesizeIpc) { this._say('Rebuild needed: synthesizeIpc not present.'); return; }
-    this._say(warm ? 'Running again on the warm process…' : 'Binding to the engine process and synthesizing…');
-    try {
-      const t0 = Date.now();
-      const r = await p.synthesizeIpc({ text: 'PhonoLeaf turns the ebooks you already own into something you can listen to anywhere.', model: 'us', sid: 0, speed: 1.0 });
-      const total = Date.now() - t0;
-      this._wav = r.path;
-      this._lastName = (r.path || '').split('/').pop();
-      document.getElementById('spike-play').style.display = '';
-      this._say([
-        'OUT-OF-PROCESS ENGINE ' + (warm ? '(warm)' : '(cold)'),
-        '',
-        'bind:         ' + r.bindMs + ' ms   <-- cold-start cost',
-        'synthesis:    ' + r.synthMs + ' ms',
-        'audio length: ' + r.durationMs + ' ms',
-        'round trip:   ' + total + ' ms',
-        'realtime x:   ' + (r.durationMs ? (r.synthMs / r.durationMs).toFixed(2) : '?'),
-        'file:         ' + this._lastName,
-        '',
-        'Press Play result. It should sound exactly like normal reading.',
-      ].join('\n'));
-    } catch (e) {
-      this._say('IPC failed: ' + (e && e.message ? e.message : e));
-    }
-  },
-  play() {
-    if (!this._wav) return;
-    try {
-      const base = window.Capacitor && Capacitor.convertFileSrc ? Capacitor.convertFileSrc(this._wav) : this._wav;
-      const src = base + (base.indexOf('?') >= 0 ? '&' : '?') + 't=' + Date.now();
-      new Audio(src).play();
-    } catch (e) { this._say('Playback failed: ' + e); }
-  },
-};
 
 const SleepTimer = {
   _iv: null,

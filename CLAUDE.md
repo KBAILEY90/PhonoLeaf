@@ -115,11 +115,21 @@ fallback.
     auth), `@capacitor/filesystem` (local import, bug-report photos),
     `CapacitorHttp` (core, used for the OAuth token endpoint — no CORS
     headers from Google, so a WebView fetch would be blocked).
-  - **Native TTS plugin**: `PhonoLeafTtsPlugin.kt` (registered in
-    `MainActivity.java`) wraps sherpa-onnx's `OfflineTts` — multi-model
-    (Kokoro + Piper), models are downloaded on-device (nothing bundled in
-    the APK), auto-detects the model family from the folder's files
-    (`voices.bin` → Kokoro). See "Voice engine" below.
+  - **Native TTS, split across a PROCESS BOUNDARY (2026-09-01).** The engine
+    lives in `TtsService.kt`, running in its own `:tts` process, reached only
+    through the `ITtsService` AIDL interface. `PhonoLeafTtsPlugin.kt` no
+    longer imports or links sherpa-onnx at all.
+    **This is a licence boundary, not an optimisation.** espeak-ng is GPL-3.0
+    and is statically linked into the sherpa AAR, which is incompatible with
+    a closed-source app. Keeping it behind a generic text-in/audio-out
+    interface, in a separate process, with `TtsService.kt` published as
+    source, is what makes the two arguably separate works. **Do not move
+    sherpa calls back into the plugin, and keep the interface generic:**
+    strings and primitives in, raw audio to a caller-chosen path out. Adding
+    a rich or app-aware protocol would undermine the whole point.
+    Measured on device: warm bind 0 ms, 0.29 realtime, audio identical to the
+    old in-process path. Models are still downloaded, nothing in the APK.
+    See `TODO.md`'s voice model licence section.
   - **Secure storage plugin**: `SecureStoragePlugin.kt` — Keystore-backed
     `EncryptedSharedPreferences` `get`/`set`/`remove(key)`, used for the
     native OAuth refresh token (`pl_rtoken`).

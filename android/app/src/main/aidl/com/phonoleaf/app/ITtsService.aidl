@@ -41,6 +41,20 @@ interface ITtsService {
      */
     void cancel(int stamp);
 
+    /**
+     * Load `model` without synthesizing, so the first sentence of a book does
+     * not pay the load. Returns "ok:<modelType>" where modelType is "kokoro"
+     * or "vits", or "err:<message>".
+     */
+    String prepare(String model);
+
+    /**
+     * Forget `model` if it is the resident one. Called after a pack is
+     * re-downloaded or deleted, so the next synthesize picks up the new files
+     * instead of serving a model whose bytes have changed underneath it.
+     */
+    void dropModel(String model);
+
     /** Which model is currently resident, or "" if none. Diagnostics only. */
     String loadedModel();
 }

@@ -89,20 +89,11 @@ android {
             }
         }
     }
-    // SPIKE 2026-08-31. Both the sherpa-onnx AAR and onnxruntime-android ship
-    // their own lib/<abi>/libonnxruntime.so, which AGP refuses to merge. Both
-    // are ONNX Runtime 1.27.0 (the sherpa AAR binary was inspected to confirm
-    // the version match), so taking either one is safe; a version SKEW here
-    // would be the likely cause of an UnsatisfiedLinkError or a native crash,
-    // so re-check this if the sherpa AAR is ever updated.
     // AIDL is off by default from AGP 8 onward and this project is on 9.2.1,
     // so the ITtsService interface would silently not be generated without
-    // this. Needed for the out-of-process speech engine (see TtsService.kt).
+    // this. Required for the out-of-process speech engine (TtsService.kt).
     buildFeatures {
         aidl true
-    }
-    packagingOptions {
-        pickFirst 'lib/**/libonnxruntime.so'
     }
 }
 
@@ -143,12 +134,6 @@ dependencies {
     // AAR bundles the onnxruntime JNI .so for all ABIs (self-contained, no
     // transitive deps).
     implementation(name: 'sherpa-onnx', ext: 'aar')
-    // SPIKE 2026-08-31: the ONNX Runtime JAVA API, which the sherpa AAR does
-    // NOT expose (its classes.jar contains only com.k2fsa.sherpa.onnx). Needed
-    // to drive Supertonic's four-stage ONNX pipeline directly. Version pinned
-    // to match the runtime already inside the sherpa AAR. Remove together with
-    // SupertonicSpike.kt if the engine evaluation goes the other way.
-    implementation "com.microsoft.onnxruntime:onnxruntime-android:1.27.0"
     // Streams + extracts the downloadable voice-pack .tar.bz2 archives
     // (PhonoLeafTtsPlugin.downloadPack) straight from the upstream sherpa-onnx
     // GitHub release — java.util.zip has no bzip2 support, so this is the

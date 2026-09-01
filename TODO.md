@@ -82,25 +82,27 @@ Audio is indistinguishable from in-process reading (owner: "sound amazing").
 costs nothing that matters. Cold cost is a one-off 303 ms bind plus the model
 load, paid again only if Android reclaims the process.
 
-- [ ] **CUT OVER: delete the in-process path.** This is the change that
-      actually moves the licence position, and it is mostly deletion:
-      1. Point `TTS._synthNative` at `synthesizeIpc` instead of `synthesize`.
-      2. Delete `synthesize()`, `ensureReady()` and every
-         `com.k2fsa.sherpa.onnx` import from `PhonoLeafTtsPlugin.kt`.
-      3. Keep `downloadPack`, `deviceBench`, `packStatus` where they are:
-         they touch no GPL code.
-      4. Publish `TtsService.kt` + `ITtsService.aidl` as source, per the
-         analysis (generic protocol, published source, swappable component).
-      **What this does and does not change.** The sherpa `.so` is still inside
-      the APK afterwards, because both processes are one app. What changes is
-      that our proprietary code no longer links or calls it: it is reached only
-      over IPC with a text-in/audio-out contract. That is the difference
-      between the current "clearly one combined work" and the "moderate risk,
-      arguable aggregation" position the legal analysis described.
-      **Worth noting separately:** espeak-ng DATA is never distributed by us at
-      all. Voice packs download straight from the k2-fsa GitHub release to the
-      user's device, so only the compiled code in the AAR is ours to answer for.
-
+- [x] **CUT OVER DONE 2026-09-01. The plugin no longer links sherpa.**
+      `synthesize()`, `ensureReady()`, the five sherpa imports and the
+      resident-model fields are all deleted from `PhonoLeafTtsPlugin.kt`;
+      `grep com.k2fsa` on that file now returns nothing. The IPC method took
+      over the name `synthesize` and returns the same fields the web layer
+      already read, so `index.green.html` needed no change at all.
+      Three things had to cross the boundary that the first cut missed:
+      `prepare()` (warms a model), and the two places that invalidate a
+      cached model after a pack is re-downloaded or deleted. `prepare` and
+      `dropModel` were added to the AIDL for those.
+      The Supertonic spike is deleted in the same pass: `SupertonicSpike.kt`,
+      its plugin methods, its Settings row and sheet, and the
+      onnxruntime-android dependency it needed.
+      **Still true after the cut-over, and worth not forgetting:** the sherpa
+      `.so` remains inside the APK, because both processes are one app. What
+      changed is that our code no longer links or calls it. That moves the
+      position from "clearly one combined work" to the arguable-aggregation
+      one, which is an improvement rather than a resolution.
+- [ ] **Publish `TtsService.kt` + `ITtsService.aidl` as source.** The third
+      leg of the analysis (generic protocol, published source, swappable
+      component). Not done yet, and it is the cheapest of the three.
 ### The Kokoro-only stack, and the gate that is blocking it (2026-08-31)
 
 Owner asked whether dropping Piper removes espeak. **It does not:** Kokoro in

@@ -40,6 +40,7 @@ class TtsService : Service() {
 
     @Volatile private var tts: OfflineTts? = null
     @Volatile private var loaded: String? = null
+    @Volatile private var loadedType: String = "?"
 
     /**
      * Newest cancel stamp seen. A synthesize() carrying an older stamp is
@@ -87,7 +88,7 @@ class TtsService : Service() {
                     val durMs = audio.samples.size.toLong() * 1000 /
                         maxOf(1, audio.sampleRate)
                     Log.i(TAG, "gen=${genMs}ms audio=${durMs}ms chars=${text.length} model=$model")
-                    "ok:${audio.sampleRate}:${audio.samples.size}"
+                    "ok:${audio.sampleRate}:${audio.samples.size}:$loadedType"
                 }
             } catch (e: EnginePackMissingException) {
                 // Distinguishable so the app can offer the download instead of
@@ -100,6 +101,24 @@ class TtsService : Service() {
 
         override fun cancel(stamp: Int) {
             if (stamp > cancelStamp) cancelStamp = stamp
+        }
+
+        override fun prepare(model: String?): String {
+            if (model.isNullOrBlank()) return "err:no model"
+            return try {
+                synchronized(lock) { ensureReady(model) }
+                "ok:$loadedType"
+            } catch (e: EnginePackMissingException) {
+                "err:notdownloaded:${e.model}"
+            } catch (t: Throwable) {
+                "err:${t.javaClass.simpleName}: ${t.message ?: "no message"}"
+            }
+        }
+
+        override fun dropModel(model: String?) {
+            synchronized(lock) {
+                if (model != null && loaded == model) { tts = null; loaded = null; loadedType = "?" }
+            }
         }
 
         override fun loadedModel(): String = loaded ?: ""
@@ -151,6 +170,7 @@ class TtsService : Service() {
         // voices.bin present means Kokoro (separate speaker embeddings);
         // otherwise VITS/Piper.
         val hasVoices = File(dest, "voices.bin").exists()
+        loadedType = if (hasVoices) "kokoro" else "vits"
         val modelCfg = if (hasVoices) {
             OfflineTtsModelConfig(
                 kokoro = OfflineTtsKokoroModelConfig(

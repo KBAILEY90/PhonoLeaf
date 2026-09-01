@@ -9,11 +9,6 @@
     import com.getcapacitor.PluginCall
     import com.getcapacitor.PluginMethod
     import com.getcapacitor.annotation.CapacitorPlugin
-    import com.k2fsa.sherpa.onnx.OfflineTts
-    import com.k2fsa.sherpa.onnx.OfflineTtsConfig
-    import com.k2fsa.sherpa.onnx.OfflineTtsKokoroModelConfig
-    import com.k2fsa.sherpa.onnx.OfflineTtsModelConfig
-    import com.k2fsa.sherpa.onnx.OfflineTtsVitsModelConfig
     import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
     import org.apache.commons.compress.compressors.bzip2.BZip2CompressorInputStream
     import java.io.BufferedOutputStream
@@ -60,7 +55,7 @@
      * downloadable pack fetched straight into filesDir on demand via
      * downloadPack(). See VOICE_PACKS for the catalog and for why bundling was
      * dropped (it stored the US model twice on device, ~157 MB total, with only
-     * the filesDir half ever reclaimable). ensureReady() throws a
+     * the filesDir half ever reclaimable). The engine process throws a
      * distinguishable PackNotDownloadedException until a pack has been
      * downloaded; packStatus() lets the UI check that state up front, and the
      * onboarding flow prompts for a first download right after folder setup.
@@ -139,18 +134,18 @@
             "kokoro" to "kokoro-int8-en-v0_19",
         )
         private fun modelVersion(model: String) = MODEL_VERSIONS[model] ?: "piper-libritts-r-medium"
-        @Volatile private var tts: OfflineTts? = null
         // Which model key is currently loaded ("us"|"gb"). Voices from a different
         // accent live in a separate model folder; switching reloads (one model at
         // a time to keep RAM low — two Piper mediums at once risks OOM on low-end).
-        @Volatile private var loadedModel: String? = null
         private val lock = Any()
         // Bumped by cancel() (called when the web layer stops/leaves the reader).
         // Queued-but-not-yet-started synths whose stamp is stale are skipped, so
         // leaving the reader doesn't leave 30s of dead inference pegging the CPU.
         @Volatile private var epoch = 0
         // Which onnxruntime execution provider actually loaded (currently "cpu").
-        @Volatile private var activeProvider = "?"
+        // Always cpu: NNAPI was measured and dropped (~1.45x, no better than
+        // CPU). Kept as a field because the web layer reads it.
+        @Volatile private var activeProvider = "cpu"
         // Model family in use ("kokoro" or "vits"/Piper), auto-detected from the
         // placed files. Surfaced to the readout so we can confirm which engine ran.
         @Volatile private var activeModelType = "?"
@@ -239,110 +234,6 @@
         // voice should be told why it's not speaking, not silently hear the wrong
         // one. Extends FileNotFoundException so it's still caught by every
         // existing `catch (e: Throwable)` site unchanged.
-        private class PackNotDownloadedException(model: String) :
-            FileNotFoundException("PACK_NOT_DOWNLOADED:$model")
-
-        private fun ensureReady(model: String): OfflineTts {
-            tts?.let { if (loadedModel == model) return it }
-            synchronized(lock) {
-                tts?.let { if (loadedModel == model) return it }
-                // Switching models — drop the previous instance first so both
-                // aren't resident at once (keeps peak RAM to one model).
-                tts = null; loadedModel = null
-                val ctx = context
-                val folder = folderFor(model)
-                val dest = File(ctx.filesDir, folder)
-                val marker = File(dest, ".ready-${modelVersion(model)}")
-                if (!marker.exists()) {
-                    // Nothing ships in assets any more — every model, including
-                    // "us", has to come through downloadPack() first. Throwing
-                    // the distinguishable exception lets the JS layer prompt for
-                    // the download instead of treating this like an engine
-                    // failure and striking out the natural voice entirely.
-                    throw PackNotDownloadedException(model)
-                }
-                val base = dest.absolutePath
-                // Only set optional paths that actually exist — the English-only
-                // model (kokoro-en-v0_19) ships espeak-ng-data but no dict/ or
-                // lexicon files (those are for the Chinese multi-lang models), and
-                // sherpa rejects paths that point at nothing.
-                fun ifExists(rel: String): String {
-                    return if (File(dest, rel).exists()) "$base/$rel" else ""
-                }
-                // int8 models name the ONNX file model.int8.onnx (fp32 = model.onnx).
-                // Pointing at a missing file crashes the native loader HARD (the app
-                // just closes — NOT a catchable exception), so resolve the real name:
-                // prefer the exact known names, else any *.onnx present. If none, we
-                // throw a *catchable* error → the web layer falls back to the device
-                // voice instead of the app crashing.
-                val modelFile = when {
-                    File(dest, "model.onnx").exists() -> "model.onnx"
-                    File(dest, "model.int8.onnx").exists() -> "model.int8.onnx"
-                    else -> dest.listFiles { f -> f.name.endsWith(".onnx") }?.firstOrNull()?.name
-                        ?: throw java.io.FileNotFoundException(
-                            "No *.onnx in $base — is the $folder model placed? (TESTING.md 3.6)")
-                }
-                val lexicon = listOf("lexicon-us-en.txt", "lexicon-gb-en.txt", "lexicon-zh.txt")
-                    .map { File(dest, it) }.filter { it.exists() }
-                    .joinToString(",") { it.absolutePath }
-                val threads = inferenceThreads()
-                // Auto-detect the model FAMILY from the files present, so the same
-                // plugin runs either engine (Piper baseline now; Kokoro later as a
-                // premium voice on capable devices — just swap the model files):
-                //   voices.bin present → Kokoro (separate speaker-embedding file)
-                //   otherwise          → VITS / Piper (espeak-based, no voices.bin)
-                // NNAPI was dropped: it engaged on the Pixel but didn't accelerate
-                // the TTS model (~1.45x, no better than CPU) — CPU only now.
-                val hasVoices = File(dest, "voices.bin").exists()
-                activeModelType = if (hasVoices) "kokoro" else "vits"
-                activeProvider = "cpu"
-                val modelCfg = if (hasVoices) {
-                    OfflineTtsModelConfig(
-                        kokoro = OfflineTtsKokoroModelConfig(
-                            model = "$base/$modelFile",
-                            voices = "$base/voices.bin",
-                            tokens = "$base/tokens.txt",
-                            dataDir = ifExists("espeak-ng-data"),
-                            dictDir = ifExists("dict"),
-                            lexicon = lexicon,
-                        ),
-                        numThreads = threads,
-                        provider = "cpu",
-                    )
-                } else {
-                    OfflineTtsModelConfig(
-                        vits = OfflineTtsVitsModelConfig(
-                            model = "$base/$modelFile",
-                            tokens = "$base/tokens.txt",
-                            dataDir = ifExists("espeak-ng-data"), // Piper is espeak-based
-                        ),
-                            numThreads = threads,
-                        provider = "cpu",
-                    )
-                }
-                Log.i("PhonoLeafTts", "init model=$model folder=$folder file=$modelFile type=$activeModelType threads=$threads")
-                val t = OfflineTts(assetManager = null, config = OfflineTtsConfig(model = modelCfg))
-                tts = t
-                loadedModel = model
-                return t
-            }
-        }
-    
-        // Thread count for ONNX inference, shared by ensureReady() and
-        // deviceBench() so the benchmark exercises exactly the parallelism the
-        // real engine will get.
-        // big.LITTLE tuning (measured on the owner's 8-core phone):
-        //   cores-1 (7 threads) → ratio ~2.4x realtime (little cores drag)
-        //   2 threads           → ratio ~1.6x
-        // Modern 8-core phones have ~4 fast cores (prime+performance) + ~4
-        // efficiency cores. Use up to 4 threads to fill the fast cores WITHOUT
-        // spilling onto the slow ones — ~2x the compute of 2 threads, aiming
-        // for ratio < 1 (gapless). Capped at 4 so bigger phones don't start
-        // using little cores.
-        private fun inferenceThreads(): Int {
-            val cores = Runtime.getRuntime().availableProcessors()
-            return maxOf(2, minOf(4, cores - 4))
-        }
 
         // Kept only so the JIT can't eliminate the benchmark's inner loop as
         // dead code. The value is meaningless; races on it are harmless.
@@ -445,8 +336,13 @@
          *  before the first synth. */
         @PluginMethod
         fun prepare(call: PluginCall) {
+            val model = call.getString("model") ?: "us"
+            genExecutor.execute {
             try {
-                ensureReady(call.getString("model") ?: "us")
+                val e = engine() ?: throw IllegalStateException("engine unavailable")
+                val res = e.prepare(model) ?: "err:no response"
+                if (!res.startsWith("ok:")) throw IllegalStateException(res)
+                activeModelType = res.substring(3)
                 val ret = JSObject()
                 ret.put("modelType", activeModelType)
                 call.resolve(ret)
@@ -454,6 +350,7 @@
                 // Catch Throwable (a big model load can OOM = an Error, not an
                 // Exception), but reject() only takes Exception — wrap when needed.
                 call.reject(e.message ?: "prepare failed", e as? Exception ?: RuntimeException(e))
+            }
             }
         }
     
@@ -507,67 +404,6 @@
                 }
             }
 
-        /* ---- SUPERTONIC SPIKE (throwaway, 2026-08-31) -------------------
-         *  Three methods backing the temporary Settings row that answers
-         *  whether Supertonic can replace the GPL-encumbered sherpa/espeak
-         *  path. All real work is in SupertonicSpike.kt; these just marshal.
-         *  Delete all of this, that file, and the Settings row together once
-         *  the engine decision is made. */
-        @PluginMethod
-        fun supertonicStatus(call: PluginCall) {
-            val ret = JSObject()
-            ret.put("downloaded", SupertonicSpike.isDownloaded(context))
-            ret.put("bytes", SupertonicSpike.downloadedBytes(context))
-            call.resolve(ret)
-        }
-
-        /** ~380 MB over six files. Runs on its own thread and emits
-         *  "supertonicProgress" ({file, pct}) so the UI is not a dead screen
-         *  for several minutes. */
-        @PluginMethod
-        fun supertonicDownload(call: PluginCall) {
-            Thread {
-                try {
-                    SupertonicSpike.download(context) { name, pct ->
-                        val ev = JSObject()
-                        ev.put("file", name)
-                        ev.put("pct", pct)
-                        notifyListeners("supertonicProgress", ev)
-                    }
-                    val ret = JSObject()
-                    ret.put("bytes", SupertonicSpike.downloadedBytes(context))
-                    call.resolve(ret)
-                } catch (t: Throwable) {
-                    call.reject("download failed: ${t.message}")
-                }
-            }.start()
-        }
-
-        /** Loads all four models, synthesizes one sentence, reports timings
-         *  and memory. Off the main thread: a 380 MB load would ANR. */
-        @PluginMethod
-        fun supertonicRun(call: PluginCall) {
-            val text = call.getString("text") ?: "The quick brown fox jumps over the lazy dog."
-            val steps = call.getInt("steps") ?: 8
-            val normalize = call.getBoolean("normalize") ?: false
-            Thread {
-                val r = SupertonicSpike.run(context, text, steps, normalize)
-                val ret = JSObject()
-                ret.put("ok", r.ok)
-                ret.put("message", r.message)
-                ret.put("loadMs", r.loadMs)
-                ret.put("synthMs", r.synthMs)
-                ret.put("audioMs", r.audioMs)
-                ret.put("rtf", r.rtf)
-                ret.put("peakNativeHeapMb", r.peakNativeHeapMb)
-                ret.put("peak", r.peak)
-                ret.put("rms", r.rms)
-                ret.put("javaHeapMb", r.javaHeapMb)
-                ret.put("wavPath", r.wavPath)
-                call.resolve(ret)
-            }.start()
-        }
-
         /** packStatus({model}) -> {downloaded, approxBytes}. Uniform for every
          *  model now that nothing is bundled — the `.ready-${modelVersion(model)}`
          *  marker in the pack's filesDir folder is the single source of truth,
@@ -605,7 +441,7 @@
                 val dest = File(context.filesDir, folder)
                 // Extract into a scratch dir first, swap in only on full success —
                 // a failed/cancelled download must never leave a half-written
-                // folder that ensureReady() then treats as ready.
+                // folder the engine process then treats as ready.
                 val tmp = File(context.filesDir, "$folder-tmp")
                 var conn: HttpURLConnection? = null
                 // Tracks whether THIS task told PackDownloadService it started, so
@@ -683,7 +519,7 @@
                                 // The archive wraps everything in one top-level dir
                                 // (e.g. "vits-piper-en_GB-vctk-medium/model.onnx") —
                                 // strip it so files land straight under `dest`,
-                                // matching where ensureReady() expects them.
+                                // matching where the engine process expects them.
                                 val rel = entry.name.substringAfter('/', "")
                                 if (!entry.isDirectory && rel.isNotEmpty()) {
                                     val out = File(tmp, rel)
@@ -696,9 +532,10 @@
                     }
                     if (stamp != currentDownloadEpoch(model)) throw InterruptedIOException("cancelled")
                     synchronized(lock) {
-                        // Drop a loaded instance of the model we just replaced —
-                        // ensureReady() will re-copy/reload from the fresh files.
-                        if (loadedModel == model) { tts = null; loadedModel = null }
+                        // The engine process may hold this model open on the OLD
+                        // bytes we are about to replace. Tell it to forget it, or
+                        // it would keep serving the stale file.
+                        svc?.dropModel(model)
                         dest.deleteRecursively()
                         if (!tmp.renameTo(dest)) throw IOException("could not install pack")
                     }
@@ -732,7 +569,7 @@
         /** deletePack({model}) — reclaim the space a pack uses. Every model is a
          *  real download now (including "us"), so there is exactly ONE copy on
          *  disk and deleting it frees the full ~65-80 MB. No special cases, and
-         *  no "removed" sentinel needed: ensureReady() has nothing to fall back
+         *  no "removed" sentinel needed: the engine has nothing to fall back
          *  to, so a removed pack simply stays removed until downloadPack() runs
          *  again. */
         @PluginMethod
@@ -740,9 +577,7 @@
             val model = call.getString("model")
             if (model.isNullOrEmpty()) { call.reject("model required"); return }
             if (!VOICE_PACKS.containsKey(model)) { call.reject("not a removable pack: $model"); return }
-            synchronized(lock) {
-                if (loadedModel == model) { tts = null; loadedModel = null }
-            }
+            svc?.dropModel(model)
             File(context.filesDir, folderFor(model)).deleteRecursively()
             call.resolve()
         }
@@ -903,10 +738,10 @@
          *  a generic text-in/audio-out interface is what makes the two
          *  separable. See TtsService.kt and TODO.md.
          *
-         *  Runs ALONGSIDE synthesize() while being evaluated, so the shipping
-         *  path keeps working. When this becomes the only route, synthesize(),
-         *  ensureReady() and the sherpa imports all leave this file, which is
-         *  the entire point of the exercise. */
+         *  This IS the only route as of 2026-09-01. The in-process
+         *  synthesize(), ensureReady() and every sherpa import have been
+         *  deleted from this file, so nothing here links the GPL library any
+         *  more: it is reached only across the process boundary. */
         @Volatile private var svc: ITtsService? = null
         private val svcLock = Any()
 
@@ -940,9 +775,11 @@
             }
         }
 
-        /** synthesizeIpc({text, sid, speed, model}) -> {path, durationMs, bindMs, synthMs} */
+        /** synthesize({text, sid, speed, model}) -> {path, durationMs, provider,
+         *  modelType}. Same contract the web layer always had; only the engine
+         *  moved. bindMs/synthMs are extra and ignored by existing callers. */
         @PluginMethod
-        fun synthesizeIpc(call: PluginCall) {
+        fun synthesize(call: PluginCall) {
             val text = call.getString("text")
             if (text.isNullOrBlank()) { call.reject("no text"); return }
             val sid = call.getInt("sid", 0) ?: 0
@@ -964,6 +801,7 @@
                     }
                     val parts = res.split(":")
                     val sampleRate = parts[1].toInt()
+                    if (parts.size > 3) activeModelType = parts[3]
                     // Raw float32 in, native order. Gain calibration and WAV
                     // muxing stay HERE, on our side: they are ours, and keeping
                     // them out of the published component keeps its surface
@@ -979,6 +817,8 @@
                     ret.put("bindMs", bindMs)
                     ret.put("synthMs", synthMs)
                     ret.put("sampleRate", sampleRate)
+                    ret.put("provider", activeProvider)
+                    ret.put("modelType", activeModelType)
                     call.resolve(ret)
                 } catch (t: Throwable) {
                     call.reject(t.message ?: "ipc synth failed")
@@ -986,46 +826,6 @@
             }
         }
 
-        /** synthesize({ text, sid, speed, model }) -> { path, durationMs } */
-        @PluginMethod
-        fun synthesize(call: PluginCall) {
-            val text = call.getString("text")
-            if (text.isNullOrBlank()) { call.reject("no text"); return }
-            val sid = call.getInt("sid", 0) ?: 0
-            val speed = call.getFloat("speed", 1.0f) ?: 1.0f
-            val model = call.getString("model") ?: "us"
-            val stamp = epoch
-            // Off the main thread + serialized: the single-thread executor runs one
-            // generation at a time, so a prefetch never overlaps the current synth.
-            genExecutor.execute {
-                try {
-                    // A cancel() since this was queued means the page/session moved
-                    // on — skip the (potentially multi-second) generation entirely.
-                    if (stamp != epoch) { call.reject("cancelled"); return@execute }
-                    val engine = ensureReady(model)
-                    val t0 = System.currentTimeMillis()
-                    val audio = engine.generate(text, sid, speed)
-                    val genMs = System.currentTimeMillis() - t0
-                    val durationMs = (audio.samples.size.toLong() * 1000 /
-                        maxOf(1, audio.sampleRate)).toInt()
-                    // Pure native generation timing — readable in Android Studio's
-                    // Logcat (filter tag "PhonoLeafTts"). ratio<1 = faster than
-                    // realtime (gaps aren't generation speed); ratio>1 = too slow.
-                    val ratio = genMs.toFloat() / maxOf(1, durationMs)
-                    Log.i("PhonoLeafTts",
-                        "gen=${genMs}ms audio=${durationMs}ms ratio=${"%.2f".format(ratio)} chars=${text.length}")
-                    val f = writeWavFile(model, audio.samples, audio.sampleRate)
-                    val ret = JSObject()
-                    ret.put("path", f.absolutePath)
-                    ret.put("durationMs", durationMs)
-                    ret.put("provider", activeProvider)
-                    ret.put("modelType", activeModelType)
-                    call.resolve(ret)
-                } catch (e: Throwable) {
-                    call.reject(e.message ?: "synth failed", e as? Exception ?: RuntimeException(e))
-                }
-            }
-        }
     
         // Write a mono 16-bit PCM WAV into cacheDir and return the file. Filenames
         // are reused round-robin (RING slots) so the cache never grows unbounded;
