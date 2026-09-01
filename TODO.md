@@ -65,6 +65,45 @@ terms that need a decision, and one may not be usable commercially at all.
       propagation are precisely what the lawyer is for. Ask it alongside the
       fr_FR ShareAlike question, since both are one conversation.
 
+### The Kokoro-only stack, and the gate that is blocking it (2026-08-31)
+
+Owner asked whether dropping Piper removes espeak. **It does not:** Kokoro in
+sherpa-onnx is also espeak-based (`PhonoLeafTtsPlugin.kt` sets
+`dataDir = ifExists("espeak-ng-data")` on the Kokoro config, and the release
+ships espeak-ng-data). Note the distinction that matters: the GPL problem is
+the espeak CODE compiled into `libsherpa-onnx-jni.so`, not the data files, so
+making voices downloadable shrinks the APK by 185 MB but changes nothing
+about the licence.
+
+**But the owner's instinct points at a real destination: drop sherpa-onnx
+itself, not just Piper.** That stack is fully permissive end to end:
+
+| Piece | Licence | Status |
+| --- | --- | --- |
+| ONNX Runtime, used directly | Apache 2.0 | **Proven working on device by the Supertonic spike** |
+| Kokoro | Apache 2.0 | Already a downloadable pack today |
+| misaki-rs or similar G2P | MIT | Replaces espeak. Unvalidated. |
+| Built-in device voice | n/a | Already shipped, already the fallback tier |
+
+No GPL, no CC BY-SA, no sherpa fork to maintain. It also drops the 185 MB of
+bundled Piper voices, so the APK gets small and everything downloads on
+demand, which is what the owner proposed independently.
+
+- [ ] **VERIFY THE KOKORO GATE. This is now the highest-value cheap test.**
+      `_KOKORO_MIN_GFLOPS` is 5.0 and the Pixel 7 benchmarks at 2.47, so the
+      app judges a Pixel 7 incapable of Kokoro. The Supertonic spike ran on
+      that same Pixel 7: 99M params, four ONNX graphs, eight iterations of a
+      244 MB estimator, at 0.59 realtime. Kokoro is 82M params in a single
+      forward pass, far less work.
+      The gate is a synthetic proxy calibrated from one device, and the spike
+      is direct evidence the proxy is too conservative. Its deliberate margin
+      (5.0 rather than 1.0, for CPU contention and prefetch slack) is sound
+      reasoning, but a 2x margin on a mis-measured proxy is not.
+      **Measure Kokoro synthesis directly on device instead of trusting the
+      benchmark.** If a Pixel 7 comfortably beats realtime, the gate is wrong,
+      most mid-tier phones can run Kokoro, and the Kokoro-only stack above
+      becomes viable. That single number decides whether the GPL problem is
+      solved by an architecture we can build or needs a lawyer to bless.
 ### Escape routes from espeak-ng, researched 2026-08-31
 
 **Finding 1: stock sherpa-onnx cannot ship TTS without GPL code.** Its
