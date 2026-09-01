@@ -667,6 +667,40 @@ itself calls non-English support thin with weak G2P.
 Sources: hexgrad/Kokoro-82M on Hugging Face (Apache 2.0), rhasspy/piper-voices
 MODEL_CARD files per voice, and rhasspy/piper discussion #271 on licensing.
 
+## WHEN INCORPORATION COMPLETES — do these in this order
+
+One event unblocks all of it. Collected here so nothing is rediscovered late.
+Incorporation is in progress with the lawyer (email every 2-3 days as of
+2026-09-01); this is a waiting list, not a problem list.
+
+- [ ] **Change the copyright holder in both licence files.** Today they name
+      **Kevin Bailey** personally, which is correct while no company exists:
+      copyright vests in the author until it is assigned. Once the corporation
+      exists, assign it and update the notices to the company name.
+      Two files, one line each:
+      - `LICENSE` (repo root) — the proprietary notice, first line.
+      - `android/tts-bridge/LICENSE` is the GPL-3.0 text itself and must NOT be
+        edited. The copyright line to change is in the header of
+        `android/tts-bridge/java/com/phonoleaf/ttsbridge/TtsService.kt` and
+        `android/tts-bridge/aidl/com/phonoleaf/ttsbridge/ITtsService.aidl`.
+      Ask the lawyer to confirm the assignment is documented, since an
+      assignment that is only implied is the kind of thing that surfaces during
+      due diligence years later. `LICENSE` already carries a note saying this
+      change is expected.
+- [ ] **Register the Google Play Console account under the company.** Decided
+      2026-09-01: organization, not personal. No 14-day closed-test clock
+      applies (that is a personal-account rule).
+- [ ] **Then create the third Android OAuth client** for the release keystore's
+      SHA-1, with "Enable custom URI scheme" ticked under Advanced Settings.
+      Its absence has already cost one debugging session. Get the fingerprint
+      with `keytool -list -v -keystore <path> -alias phonoleaf`.
+- [ ] **Register the Apple Developer account under the company.** Same
+      reasoning, decision already made (wait for the corporation).
+- [ ] **Bank account, then GST/QST registration, then Stripe**, in that order.
+      `BUSINESS.md` "Gating, do now" #2.
+- [ ] **Then payments become buildable**, and the CASA assessment can be
+      submitted once against the finished architecture rather than twice.
+
 ## Blocked on external people/hardware (nothing to build until these move)
 
 - [~] **Business registration (REQ, Québec)** — **in progress and moving.**
