@@ -142,6 +142,44 @@ describe(`app source invariants (${APP_FILE})`, () => {
       'again start reading before the first lines have laid out, skipping them.');
   });
 
+  test('the speed benchmark yields to playback instead of competing with it', () => {
+    // Owner-reported 2026-09-01: "deleted a pack, downloaded another, pressed
+    // play, had to press play again, stuttered for a full page, and when the
+    // page turned the stuttering was gone."
+    //
+    // _nativeBench does a REAL synthesis, and the engine serves one request at
+    // a time. Fired un-awaited from the download path it sat in front of the
+    // reader's own chunks: every sentence queued behind it, prefetch never got
+    // ahead, and the first play press looked dead because it was in the same
+    // queue. The stutter ended exactly when the benchmark finished.
+    //
+    // The fix is a guard that defers the benchmark while TTS.active. Asserted
+    // here because it reads like a redundant early-return: it is informational
+    // work, so nothing breaks or errors if the guard is deleted. Playback just
+    // quietly gets worse again after every download.
+    const at = script.indexOf('async _nativeBench(model)');
+    assert.ok(at > -1, '_nativeBench is gone');
+    const body = script.slice(at, at + 3000);
+
+    const guard = body.indexOf('if (this.active)');
+    const synth = body.indexOf('nat.synthesize');
+    assert.ok(guard > -1,
+      '_nativeBench no longer checks TTS.active. It will run a full synthesis ' +
+      'while the user is reading, and every sentence will queue behind it.');
+    assert.ok(synth > -1, 'could not find the benchmark synthesis call');
+    assert.ok(guard < synth,
+      'the TTS.active guard in _nativeBench no longer comes BEFORE its ' +
+      'synthesize call, so it can still contend with playback.');
+    // Assert the DEFERRAL too, not just a check. An early `return` when active
+    // would satisfy the ordering above while quietly meaning the benchmark
+    // never runs at all on a device that is used for reading -- Settings would
+    // then never label the pack's speed. _benchWait is unique to the retry, so
+    // it distinguishes "yields and comes back" from "gives up".
+    assert.ok(body.includes('_benchWait'),
+      '_nativeBench no longer defers via _benchWait. Either it competes with ' +
+      'playback again, or it silently never runs on a device in active use.');
+  });
+
   test('no Kotlin caller uses startForegroundService', async () => {
     // startForegroundService arms a ~5s watchdog that already crashed the app
     // once when startForeground() lost the race, so every call site must use

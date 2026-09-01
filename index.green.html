@@ -4311,6 +4311,30 @@ const VoicePacks = {
       // download another, press play" stutter on every sentence: the new model
       // was never registered as ready, so nothing pre-warmed it for real and
       // the voice sid was resolved against the wrong model family.
+      // If the currently selected voice's pack is NOT installed, adopt a voice
+      // from the pack just downloaded (2026-09-01, owner-reported).
+      //
+      // Reported as: deleted one pack, downloaded another, pressed play, and
+      // got Amelia (en_GB) instead of anything to do with the new pack. Not a
+      // random choice — with the selected voice's pack gone, the first synth
+      // failed with PACK_NOT_DOWNLOADED and the fallback adopted the first
+      // INSTALLED voice in list order, and PIPER_VOICES comes first in
+      // _allNativeVoices(). So it landed on whichever English pack happened to
+      // be lying around.
+      //
+      // Downloading a pack is a clear statement of intent, so prefer it over an
+      // arbitrary survivor. A voice the user can still actually use is left
+      // alone: this only fires when the current choice is unusable anyway.
+      try {
+        const chosen = localStorage.getItem('pl_voice_native');
+        const cur = TTS._allNativeVoices().find(v => v[0] === chosen);
+        const curModel = cur ? (cur[3] || 'us') : null;
+        const curOk = curModel && (VoicePacks._status[curModel] || {}).downloaded;
+        if (!curOk) {
+          const fresh = TTS._allNativeVoices().find(v => (v[3] || 'us') === model);
+          if (fresh) localStorage.setItem('pl_voice_native', fresh[0]);
+        }
+      } catch (_) { /* selection is a convenience; never fail the download over it */ }
       TTS._invalidateModelReady();
       try {
         const nat0 = TTS._nativeTts();
@@ -9006,6 +9030,37 @@ const TTS = {
     if (this._nativeBenchCached()) return;
     const nat = this._nativeTts();
     if (!nat) return;
+    // NEVER RUN WHILE READING (2026-09-01, owner-reported).
+    //
+    // This does a REAL synthesis, and the engine serves one request at a time
+    // on a single-thread executor. Fired un-awaited from the download path, it
+    // therefore sat in front of the reader's own chunks: every sentence on the
+    // first page queued behind the benchmark, prefetch could never get ahead,
+    // and the first press of play appeared to do nothing because it was stuck
+    // in the same queue. Reported exactly as "stuttered for a full page, and
+    // when the page turned the stuttering was gone" — the page's worth of time
+    // being how long the benchmark took to finish.
+    //
+    // Awaiting it instead would be worse: the user would wait on a measurement
+    // they never asked for. So it yields to playback and tries later. It is
+    // purely informational (it labels a pack's speed in Settings), so being
+    // late, or never running at all this session, costs nothing.
+    if (this.active) {
+      if (this._benchWait) return;               // one pending retry, not a pile
+      let tries = 0;
+      const later = () => {
+        this._benchWait = null;
+        if (this._nativeBenchCached()) return;
+        if (this.active) {
+          if (++tries > 60) return;              // ~10 min of reading; give up quietly
+          this._benchWait = setTimeout(later, 10000);
+          return;
+        }
+        this._nativeBench(model);
+      };
+      this._benchWait = setTimeout(later, 10000);
+      return;
+    }
     try {
       const entry = this._allNativeVoices().find(v => (v[3] || 'us') === model) || this._allNativeVoices()[0];
       const t0 = performance.now();
