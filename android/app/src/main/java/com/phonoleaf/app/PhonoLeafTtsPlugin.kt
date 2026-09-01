@@ -500,6 +500,64 @@
                 }
             }
 
+        /* ---- SUPERTONIC SPIKE (throwaway, 2026-08-31) -------------------
+         *  Three methods backing the temporary Settings row that answers
+         *  whether Supertonic can replace the GPL-encumbered sherpa/espeak
+         *  path. All real work is in SupertonicSpike.kt; these just marshal.
+         *  Delete all of this, that file, and the Settings row together once
+         *  the engine decision is made. */
+        @PluginMethod
+        fun supertonicStatus(call: PluginCall) {
+            val ret = JSObject()
+            ret.put("downloaded", SupertonicSpike.isDownloaded(context))
+            ret.put("bytes", SupertonicSpike.downloadedBytes(context))
+            call.resolve(ret)
+        }
+
+        /** ~380 MB over six files. Runs on its own thread and emits
+         *  "supertonicProgress" ({file, pct}) so the UI is not a dead screen
+         *  for several minutes. */
+        @PluginMethod
+        fun supertonicDownload(call: PluginCall) {
+            Thread {
+                try {
+                    SupertonicSpike.download(context) { name, pct ->
+                        val ev = JSObject()
+                        ev.put("file", name)
+                        ev.put("pct", pct)
+                        notifyListeners("supertonicProgress", ev)
+                    }
+                    val ret = JSObject()
+                    ret.put("bytes", SupertonicSpike.downloadedBytes(context))
+                    call.resolve(ret)
+                } catch (t: Throwable) {
+                    call.reject("download failed: ${t.message}")
+                }
+            }.start()
+        }
+
+        /** Loads all four models, synthesizes one sentence, reports timings
+         *  and memory. Off the main thread: a 380 MB load would ANR. */
+        @PluginMethod
+        fun supertonicRun(call: PluginCall) {
+            val text = call.getString("text") ?: "The quick brown fox jumps over the lazy dog."
+            val steps = call.getInt("steps") ?: 8
+            Thread {
+                val r = SupertonicSpike.run(context, text, steps)
+                val ret = JSObject()
+                ret.put("ok", r.ok)
+                ret.put("message", r.message)
+                ret.put("loadMs", r.loadMs)
+                ret.put("synthMs", r.synthMs)
+                ret.put("audioMs", r.audioMs)
+                ret.put("rtf", r.rtf)
+                ret.put("peakNativeHeapMb", r.peakNativeHeapMb)
+                ret.put("javaHeapMb", r.javaHeapMb)
+                ret.put("wavPath", r.wavPath)
+                call.resolve(ret)
+            }.start()
+        }
+
         /** packStatus({model}) -> {downloaded, approxBytes}. Uniform for every
          *  model now that nothing is bundled — the `.ready-${modelVersion(model)}`
          *  marker in the pack's filesDir folder is the single source of truth,
