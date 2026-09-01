@@ -96,6 +96,90 @@ describe(`app source invariants (${APP_FILE})`, () => {
       `It arms the ~5s watchdog that crashed the app once. Use context.startService().`);
   });
 
+  test('the missing-pack error contract survives both process boundaries', async () => {
+    // THE 2026-09-01 BUG, in test form. Deleting a voice pack killed the
+    // natural voice for the whole session, silently, with no crash.
+    //
+    // Why it happened: a missing pack is signalled by a STRING that crosses
+    // two boundaries. TtsService.kt (a separate OS process) emits
+    // "err:notdownloaded:<model>"; PhonoLeafTtsPlugin.kt renames it to
+    // "PACK_NOT_DOWNLOADED:<model>"; the web layer matches that prefix and
+    // responds by switching voices rather than counting a failure. The
+    // out-of-process cut-over changed the service's wording, the rename no
+    // longer matched, and every attempt counted as an ENGINE failure instead.
+    // Two in a row set _kokoroDead, and native has no Web Speech fallback,
+    // so playback just stopped.
+    //
+    // The lesson worth encoding: strings that cross this boundary are API,
+    // not implementation. This test is the thing that was missing.
+    const { readFileSync } = await import('node:fs');
+    const dir = new URL('../android/app/src/main/java/com/phonoleaf/app/', import.meta.url);
+    const strip = f => readFileSync(new URL(f, dir), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/\/\/.*$/gm, '');
+
+    const service = strip('TtsService.kt');
+    const plugin = strip('PhonoLeafTtsPlugin.kt');
+
+    // 1. The engine still emits the prefix the plugin looks for.
+    assert.match(service, /"err:notdownloaded:/,
+      'TtsService.kt no longer emits "err:notdownloaded:". The plugin matches on ' +
+      'that exact prefix, so renaming it here silently breaks pack-switching.');
+
+    // 2. The plugin still recognises it AND still renames it to what JS expects.
+    assert.match(plugin, /startsWith\("err:notdownloaded:"\)/,
+      'PhonoLeafTtsPlugin.kt no longer matches the service\'s "err:notdownloaded:" prefix.');
+
+    // Both paths must translate: synthesize() AND prepare(). The first cut-over
+    // missed prepare(), so a fix applied to only one of them looks correct
+    // while leaving half the failure live.
+    const translations = plugin.match(/"PACK_NOT_DOWNLOADED:"/g) || [];
+    assert.ok(translations.length >= 2,
+      `PhonoLeafTtsPlugin.kt translates to PACK_NOT_DOWNLOADED: in ${translations.length} ` +
+      'place(s), expected at least 2 (synthesize and prepare). A translation added to ' +
+      'only one path leaves the other reporting a generic engine failure.');
+
+    // 3. The web layer still matches the name the plugin produces.
+    assert.match(script, /startsWith\('PACK_NOT_DOWNLOADED:'\)/,
+      'The web layer no longer matches "PACK_NOT_DOWNLOADED:". Without it a missing ' +
+      'pack counts as an engine failure, and two of those disable the neural voice ' +
+      'for the session with no fallback on native.');
+  });
+
+  test('the cancel error contract still matches across the boundary', () => {
+    // The other string that crosses the same boundary, and the one that
+    // survived the cut-over only by luck: the service says "err:cancelled",
+    // the web layer tests /cancel/i, and those agree solely because
+    // "cancelled" happens to contain "cancel". If either side is reworded to
+    // something like "err:aborted", a user-initiated cancel starts reporting
+    // itself as a download FAILURE toast. Cheap to assert, so assert it.
+    assert.match(script, /\/cancel\/i/,
+      'The web layer no longer tests /cancel/i, so a cancelled download will be ' +
+      'reported to the user as a failure.');
+  });
+
+  test('the speech engine stays behind its licence boundary', async () => {
+    // Not a correctness guard — a LICENCE one, and the most expensive thing in
+    // this repo to get wrong. espeak-ng is GPL-3.0 and is statically linked
+    // into the sherpa-onnx native library. The argument that PhonoLeaf can
+    // stay closed source rests on no PhonoLeaf code linking it: synthesis runs
+    // in its own :tts process, reached only over AIDL. One stray import
+    // anywhere else collapses that. See ENGINE_NOTICE.md.
+    const { readFileSync, readdirSync } = await import('node:fs');
+    const dir = new URL('../android/app/src/main/java/com/phonoleaf/app/', import.meta.url);
+    const offenders = [];
+    for (const f of readdirSync(dir).filter(f => f.endsWith('.kt') && f !== 'TtsService.kt')) {
+      const code = readFileSync(new URL(f, dir), 'utf8')
+        .replace(/\/\*[\s\S]*?\*\//g, '')
+        .replace(/\/\/.*$/gm, '');
+      if (/com\.k2fsa\.sherpa\.onnx/.test(code)) offenders.push(f);
+    }
+    assert.deepEqual(offenders, [],
+      `these files reference sherpa-onnx outside TtsService.kt: ${offenders.join(', ')}. ` +
+      'That links GPL-3.0 espeak-ng into the app and breaks the licence boundary ' +
+      'ENGINE_NOTICE.md describes. Only TtsService.kt may touch the engine.');
+  });
+
   test('each foreground service still promotes itself with startForeground', async () => {
     // The flip side of the rule above: the SERVICE must still promote itself in
     // onStartCommand or Android kills it. Banning the STARTER api must never be

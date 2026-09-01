@@ -427,6 +427,11 @@ Google login); verify by inspection + device testing.
   Speech to fall back on. Renaming that string during the cut-over is exactly
   how deleting a pack silently killed playback (2026-09-01). Check consumers
   before changing any error text.
+  **`npm test` now enforces this** (2026-09-01): `test/invariants.test.mjs`
+  pins the whole chain — the service's `err:notdownloaded:` prefix, the
+  plugin's translation in **both** places (synthesize *and* prepare), the web
+  layer's match, the `/cancel/i` contract, and the ban on `com.k2fsa` outside
+  `TtsService.kt`. If you change an error string, the suite tells you.
 - Two native models: **Piper** (baseline, always offered) and **Kokoro**
   (higher quality, gated on a CPU benchmark, `_KOKORO_MIN_GFLOPS`, see
   `pl_kokoro_gate`). **The gate is CORRECT and was confirmed by ear
@@ -540,5 +545,13 @@ Google login); verify by inspection + device testing.
   lawyer-reviewed until confirmed otherwise. Jurisdiction: Québec, Canada.
 - **Business registration (REQ, Québec)**: with the lawyer, blocks the bank
   account / GST-QST registration / Stripe account, in that order.
+- **Security/code/licence audit done 2026-09-01**: 24 findings, 11 fixed the
+  same day (error-contract tests, a trial race that could downgrade a payer,
+  JWT `kid`, CORS allowlist, tar traversal guard, `allowBackup=false`, pinned
+  `kokoro-js`, licence record completed in EN+FR). Six remain, all needing a
+  device, a lawyer or an owner call. **Two release blockers: the espeak-ng
+  GPL question, and that the repo has no `LICENSE` file at all — so the
+  engine source is published but not licensed, which is not the same thing.**
+  See `TODO.md`'s audit section.
 - See `TODO.md` for the actively-maintained task list (this section is a
   snapshot, `TODO.md` is the live source for "what's next").

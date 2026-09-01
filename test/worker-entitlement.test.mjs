@@ -36,20 +36,43 @@ const now = () => Math.floor(Date.now() / 1000);
  */
 function makeEnv(overrides = {}) {
   const rows = new Map();
+  // Lets a test simulate a lost race: the first N SELECTs report "no row"
+  // even though one exists, which is exactly what a stale read looks like
+  // when a webhook commits between our SELECT and our INSERT.
+  let staleReads = overrides.staleReads || 0;
+  delete overrides.staleReads;
+
   return {
     _rows: rows,
     DB: {
       prepare(sql) {
         const verb = sql.trim().split(/\s+/)[0].toUpperCase();
+        // Two INSERT shapes exist on purpose and must not be conflated:
+        // the 7-arg upsert (putEntitlement, owns the status it writes) and
+        // the 3-arg trial insert (getOrStartTrial, must never modify an
+        // existing row). See entitlement.js's RACE SAFETY note.
+        const doNothing = /DO NOTHING/i.test(sql);
         return {
           bind(...args) {
             return {
               async first() {
                 if (verb !== 'SELECT') throw new Error(`stub: unexpected first() on ${verb}`);
+                if (staleReads > 0) { staleReads--; return null; }
                 return rows.get(args[0]) ?? null;
               },
               async run() {
                 if (verb !== 'INSERT') throw new Error(`stub: unexpected run() on ${verb}`);
+                if (doNothing) {
+                  const [sub_hash, trial_end, updated_at] = args;
+                  // ON CONFLICT DO NOTHING: create only, never overwrite.
+                  if (!rows.has(sub_hash)) {
+                    rows.set(sub_hash, {
+                      status: 'trial', source: null, plan: null,
+                      trial_end, period_end: null, updated_at,
+                    });
+                  }
+                  return { success: true };
+                }
                 const [sub_hash, status, source, plan, trial_end, period_end, updated_at] = args;
                 // Mirrors ON CONFLICT(sub_hash) DO UPDATE: replace by key.
                 rows.set(sub_hash, { status, source, plan, trial_end, period_end, updated_at });
@@ -130,6 +153,25 @@ describe('getOrStartTrial (PAYMENTS_SPEC §3)', () => {
     const rec = await getOrStartTrial(env, 'payer');
     assert.equal(rec.status, 'active');
     assert.equal(rec.plan, 'annual');
+  });
+
+  test('CRITICAL: a lost race cannot downgrade a payer who committed mid-call', async () => {
+    // Audit finding C5. The two tests above prove the LOGIC is right given a
+    // record. This one covers the interleaving they cannot see: our SELECT
+    // returns "no row", a Stripe webhook commits `active`, and only then does
+    // our INSERT land. With ON CONFLICT DO UPDATE that INSERT overwrote the
+    // payment. With DO NOTHING it must be a no-op, and the re-read must
+    // return the webhook's record rather than the trial we tried to write.
+    const raced = makeEnv({ staleReads: 1 });
+    raced._rows.set('racer', {
+      status: 'active', source: 'stripe', plan: 'annual',
+      trial_end: null, period_end: now() + 300 * DAY, updated_at: now(),
+    });
+
+    const rec = await getOrStartTrial(raced, 'racer');
+    assert.equal(rec.status, 'active', 'a trial insert overwrote a paid record');
+    assert.equal(rec.plan, 'annual');
+    assert.equal(raced._rows.get('racer').status, 'active');
   });
 
   test('CRITICAL: never downgrades a lifetime purchaser', async () => {

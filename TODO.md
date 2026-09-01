@@ -41,6 +41,149 @@ replacement Spanish voice with a clean licence.
 
 ---
 
+## SECURITY / CODE / LICENCE AUDIT (2026-09-01) — 13 fixed, 8 remain
+
+Full audit taking the software-engineer, security and licence-review angles at
+once. 24 findings. Everything fixable without a device, a keystore or a lawyer
+was fixed in the same session; the rest is listed below with why it is blocked.
+Nothing was pushed — see "Not pushed" at the end.
+
+### Fixed and verified
+
+- [x] **The error contract that nearly cost Piper now has tests.** Four new
+      assertions in `test/invariants.test.mjs` pin the whole chain:
+      `TtsService.kt` still emits `err:notdownloaded:`, the plugin still matches
+      it AND still translates it in **both** places (synthesize and prepare —
+      the first cut-over missed prepare, so a one-sided fix looks correct), and
+      the web layer still matches `PACK_NOT_DOWNLOADED:`. Plus the `/cancel/i`
+      contract, which had survived only because "cancelled" contains "cancel".
+      **Mutation-tested:** all six ways of breaking the chain, including a
+      faithful replay of the 2026-09-01 regression, are detected. These are real
+      guards, not presence checks that would pass against anything.
+- [x] **The licence boundary is now a test too.** Any `com.k2fsa.sherpa.onnx`
+      reference outside `TtsService.kt` fails the suite. That rule was only
+      prose in `ENGINE_NOTICE.md` before, and it is the single most expensive
+      thing in this repo to get wrong.
+- [x] **Trial creation can no longer downgrade a paying customer.**
+      `getOrStartTrial` read the record then wrote with `ON CONFLICT DO UPDATE`,
+      which overwrites `status` unconditionally. A Stripe webhook committing
+      `active` between the read and the write was silently demoted to `trial`.
+      Now uses a dedicated `DO NOTHING` insert then re-reads. The existing test
+      named "never downgrades a paying subscriber" could not see this: it
+      exercises the pure function, not an interleaving. A new test simulates the
+      stale read directly.
+- [x] **Entitlement JWTs carry a `kid`.** There was no key id, so a leaked
+      signing key could only be replaced by invalidating every token at once,
+      including 365-day lifetime ones. Read from the JWK; the keypair generator
+      now stamps a date-based id into both halves. Free to do now because no
+      JWT has ever been issued; a migration after launch.
+- [x] **Wildcard CORS replaced with an origin allowlist**, echoing the caller
+      and sending `vary: origin`. Note `https://localhost` is in the list on
+      purpose: that is Capacitor's origin, so dropping it breaks the native app
+      while leaving the website working.
+- [x] **Clock-skew tolerance on Google ID token verification** (60s), plus an
+      `iat`-in-the-future rejection. Without it a device with a slightly fast
+      clock fails sign-in for no visible reason.
+- [x] **Tar extraction is bounded.** Added a canonical-path traversal guard and
+      a 512 MB ceiling. Stripping the leading directory did NOT make entries
+      safe: `pack/../../../x` escaped the destination. Only reachable via a
+      compromised upstream, but these archives are unsigned.
+- [x] **`allowBackup="false"`.** Was backing the Drive access token in WebView
+      localStorage up to Google's cloud, and worse, backing up
+      `EncryptedSharedPreferences` whose Keystore key does not transfer between
+      devices — the documented crash-on-restore pattern, hitting someone who
+      just bought a new phone.
+- [x] **`androidx.security:security-crypto` off alpha**, `1.1.0-alpha06` to
+      `1.1.0`. Note the library is deprecated outright as of beta01; the bump
+      removes the alpha exposure, the migration off it is below.
+- [x] **FileProvider narrowed** from the whole external storage volume to the
+      cache dir it actually uses. Stock Capacitor template value; nothing ever
+      shared from external storage.
+- [x] **`kokoro-js` pinned to 1.2.1** in both index files, from the floating
+      `@1` range. A dynamic import cannot carry SRI, so the version pin is the
+      only control available. Any future 1.x would otherwise have executed in
+      the app's origin beside the Drive token.
+- [x] **Licence record corrected and completed.** Restored the BSD-2-Clause
+      header that minification stripped from `vendor/epub.min.js`; added
+      `vendor/LICENSES.md` and `fonts/LICENSES.md`; added the four missing
+      components to the Licences page in EN and FR — **espeak-ng (GPL-3.0)
+      most importantly**, which ships in the APK and was not listed at all —
+      plus ONNX Runtime, Commons Compress and AndroidX, and split the
+      proprietary Play In-App Review SDK into its own section so the table is
+      not read as "all open source". `sw.js` bumped to v60 for the changed
+      precached asset.
+- [x] **Corrected a stale doc claim:** espeak-ng issue #2131 (relicense to
+      LGPL) was recorded here as open. It was closed `not_planned` in January
+      2025. There is no upstream fix coming.
+
+### Verified clean, so nobody re-audits them
+
+Google ID token verification is genuinely correct (`alg` pinned to RS256, `kid`
+matched, signature/exp/iss/aud/sub all checked). Every D1 query is
+parameterised. All three services are `exported=false`. Output escaping is
+disciplined across 39 `innerHTML` sites. **No secret has ever been committed** —
+checked against full history, not the working tree. Commons Compress 1.28.0 has
+no known CVEs. Third-party calls (Open Library, jsdelivr, HuggingFace) are
+disclosed in all four privacy pages.
+
+### Still open, and why
+
+- [ ] **Add a root `LICENSE`, and decide the engine component's terms.**
+      **The sharpest legal finding, and deliberately not actioned by an agent.**
+      `ENGINE_NOTICE.md` counts "published source" as one of three satisfied
+      conditions. But the repo has NO licence file, so under default copyright
+      `TtsService.kt` is all-rights-reserved: visible, but offered under no
+      terms. If the aggregation argument fails, GPL-3.0 compliance requires
+      that component to be *conveyed under GPL-3.0 with its licence text*, and
+      being readable on GitHub does not do that. So the current position
+      satisfies neither reading cleanly.
+      **Put to the lawyer as a specific question:** should the engine component
+      carry an explicit GPL-3.0 header, as a hedge that costs nothing if
+      aggregation succeeds and matters greatly if it does not. Choosing a
+      licence for the business is an owner call, which is why no file was
+      created here.
+- [ ] **Drop in the two verbatim licence texts.** `vendor/LICENSES.md` and
+      `fonts/LICENSES.md` record every fact (holder, SPDX id, upstream URL) but
+      do not reproduce the licence bodies, which should be copied exactly from
+      upstream rather than retyped. Both files name the exact URLs. Then add
+      `fonts/OFL.txt` to `scripts/stage-www.js` so it ships.
+- [ ] **Remove the WASM Kokoro fallback from the native build.** Pinning the
+      version fixed the supply-chain half of this. The other half is that the
+      native app ships a remote-code path it can never reach (`_synth` always
+      takes `_synthNative` when the plugin is present, which on native it always
+      is), and pays for it with `cdn.jsdelivr.net` and the HuggingFace hosts
+      permanently in `script-src`/`connect-src`. Allowlisting a general-purpose
+      npm CDN means the script-src allowlist stops constraining an injection.
+      **Not done here because it is surgery on a 591 KB file that needs a device
+      pass**, and getting it wrong breaks synthesis on the shipping app.
+- [ ] **Mirror the voice packs and pin their hashes.** No integrity check exists
+      on 65-140 MB archives fetched from a third-party GitHub release and fed to
+      a native inference engine. HTTPS covers transit, so the real exposure is
+      upstream mutation and, more likely, upstream disappearance: if that
+      release is retagged or deleted, every voice download breaks for every user
+      at once with no fallback. Mirror to R2, keep upstream as fallback. **Do
+      this before charging anyone** — it converts an uncontracted supplier
+      dependency into a storage line item.
+- [ ] **Migrate off `androidx.security:security-crypto` to the platform
+      Keystore APIs.** Deprecated by Google as of 1.1.0-beta01. The version bump
+      above is the cheap half.
+- [ ] **Enable R8 for release builds.** `minifyEnabled false` today, so once
+      entitlement checks exist the paywall logic ships readable. Needs keep
+      rules for the Capacitor bridge and registered plugins, and a real device
+      pass, because plugin registration is exactly what minification breaks
+      quietly. Pairs with the first `assembleRelease`, which has still never run.
+- [ ] **Rate-limit `/entitlement`.** Cloudflare configuration, not code. Each
+      call costs a JWKS-verified check plus a D1 write.
+- [ ] **Rotate the entitlement secrets at launch.** `worker/.dev.vars` holds a
+      real signing key and pepper. Correctly gitignored and never committed, but
+      development values must not become production values.
+
+**Not pushed.** All of the above is committed locally only. Several changed
+files are website files (`index.html`, `sw.js`, `vendor/`, `fonts/`), and for
+the website a push IS the deploy, so the push is left as an owner decision.
+
+---
+
 ## VOICE MODEL LICENCES — checked 2026-08-31, two real problems
 
 Owner called this a drop-everything question. It is not a full stop: the two
@@ -461,9 +604,14 @@ itself calls non-English support thin with weak G2P.
       install a second app before good voices work, which would wreck
       onboarding for a paid product. We already have the plumbing, since the
       Built-in tier uses this exact API.
-      Worth noting espeak-ng issue #2131 asks upstream to relicense to LGPL,
-      which would dissolve this whole problem. Open, not resolved, do not plan
-      around it.
+      **CORRECTED 2026-09-01: the LGPL relicensing route is CLOSED, not open.**
+      This previously said espeak-ng issue #2131 (asking upstream to relicense
+      to LGPL, which would dissolve the whole problem) was "Open, not resolved,
+      do not plan around it". Checked directly: it was closed as `not_planned`
+      in January 2025, within hours of being opened, and espeak-ng remains
+      GPL-3.0. The instruction not to plan around it was right; the status was
+      wrong. There is no upstream fix coming, so the process boundary plus the
+      lawyer is the entire answer. Do not revive this as a reason to wait.
 - [x] **Kokoro French is now a real fallback worth keeping in view.** Kokoro
       **DEMOTED to a note.** It was only interesting as part of a Kokoro-only
       stack, and that is dead on device speed. Kept because the fact is true and

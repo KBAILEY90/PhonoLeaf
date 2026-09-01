@@ -1,5 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  Paths the FileProvider may hand out as content:// URIs.
+
+  NARROWED 2026-09-01 (audit finding M7). This previously also carried
+  <external-path name="my_images" path="." />, the stock Capacitor template
+  value, which scoped the provider to the ENTIRE external storage volume.
+  Nothing in this app ever shared from external storage, so it granted
+  reach that was only ever unused surface.
+
+  cache-path is the one that is actually needed: the bug-report photo is
+  written with Capacitor Filesystem using directory:'CACHE', which maps to
+  context.cacheDir, and EmailComposerPlugin.kt wraps that file for the mail
+  app. If a future feature shares a file from somewhere else, add the
+  narrowest matching path element rather than widening this one.
+-->
 <paths xmlns:android="http://schemas.android.com/apk/res/android">
-    <external-path name="my_images" path="." />
     <cache-path name="my_cache_images" path="." />
 </paths>

@@ -181,6 +181,10 @@
       <tr><td>pako (via JSZip)</td><td>MIT</td><td><a href="https://github.com/nodeca/pako" target="_blank" rel="noopener">View</a></td></tr>
       <tr><td>Capacitor</td><td>MIT</td><td><a href="https://github.com/ionic-team/capacitor" target="_blank" rel="noopener">View</a></td></tr>
       <tr><td>sherpa-onnx</td><td>Apache 2.0</td><td><a href="https://github.com/k2-fsa/sherpa-onnx" target="_blank" rel="noopener">View</a></td></tr>
+      <tr><td>espeak-ng</td><td>GPL-3.0</td><td><a href="https://github.com/espeak-ng/espeak-ng" target="_blank" rel="noopener">View</a></td></tr>
+      <tr><td>ONNX Runtime</td><td>MIT</td><td><a href="https://github.com/microsoft/onnxruntime" target="_blank" rel="noopener">View</a></td></tr>
+      <tr><td>Apache Commons Compress</td><td>Apache 2.0</td><td><a href="https://commons.apache.org/proper/commons-compress/" target="_blank" rel="noopener">View</a></td></tr>
+      <tr><td>AndroidX libraries</td><td>Apache 2.0</td><td><a href="https://developer.android.com/jetpack/androidx" target="_blank" rel="noopener">View</a></td></tr>
       <tr><td>Piper</td><td>MIT</td><td><a href="https://github.com/rhasspy/piper" target="_blank" rel="noopener">View</a></td></tr>
       <tr><td>Kokoro</td><td>Apache 2.0</td><td><a href="https://huggingface.co/hexgrad/Kokoro-82M" target="_blank" rel="noopener">View</a></td></tr>
       <tr><td>Voice: en_US libritts_r</td><td>CC BY 4.0</td><td><a href="https://huggingface.co/rhasspy/piper-voices" target="_blank" rel="noopener">View</a></td></tr>
@@ -194,6 +198,16 @@
   <section>
     <h2>Voices</h2>
     <p>The neural voices are trained models published by the sherpa-onnx and Piper projects. The English voices are licensed CC BY 4.0 and the French voice CC BY-SA 4.0, all of which ask to be credited. Voices released without that condition are not listed here.</p>
+  </section>
+
+  <section>
+    <h2>The speech engine</h2>
+    <p>Speech synthesis uses espeak-ng, which is licensed GPL-3.0. It runs in a separate operating-system process and is reached only through a generic interface: PhonoLeaf sends text and receives audio, and never links the library into its own code. The source of that component is published at <a href="https://github.com/KBAILEY90/PhonoLeaf" target="_blank" rel="noopener">github.com/KBAILEY90/PhonoLeaf</a>.</p>
+  </section>
+
+  <section>
+    <h2>Not open source</h2>
+    <p>One component is used under its vendor's own terms rather than an open-source licence, and is listed separately so the table above is not misread: Google Play In-App Review, used under the <a href="https://developer.android.com/guide/playcore/license" target="_blank" rel="noopener">Play Core Software Development Kit Terms of Service</a>. It is what shows the rate-this-app prompt.</p>
   </section>
 
   <section>

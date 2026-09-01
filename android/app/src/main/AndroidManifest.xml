@@ -1,8 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- allowBackup=false, deliberately (audit finding M4, 2026-09-01). Two
+         separate reasons, either of which is sufficient:
+         1. Google's cloud backup would carry the WebView's localStorage, which
+            holds the Drive access token (pl_auth). That is user credential
+            material leaving the device to a place we do not control.
+         2. SecureStoragePlugin uses EncryptedSharedPreferences, whose key lives
+            in the Android Keystore and does NOT transfer between devices.
+            Backing up that file and restoring it onto a new phone yields
+            ciphertext with no key — a well-known crash-on-launch pattern for
+            this library. The affected user is someone who just bought a new
+            phone, which is the worst possible moment to fail.
+         Nothing here needs backing up: sign-in re-authenticates, voice packs
+         re-download, and reading progress is restored from the user's account.
+         If backup is ever wanted, do NOT just flip this back — add
+         dataExtractionRules that exclude phonoleaf_secure and the WebView
+         data directory first. -->
     <application
-        android:allowBackup="true"
+        android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"

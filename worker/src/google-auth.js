@@ -48,9 +48,21 @@ export async function verifyGoogleIdToken(idToken, allowedAudiences) {
   );
   if (!ok) throw new Error('Google ID token signature invalid');
 
+  // Small skew allowance. Without it a device whose clock runs a few seconds
+  // fast is rejected on a token Google considers valid, which presents to the
+  // user as an unexplained sign-in failure that fixes itself later. 60s is the
+  // conventional allowance and is far shorter than the ~1h token lifetime, so
+  // it does not meaningfully extend the window an expired token is accepted in.
+  const SKEW = 60;
   const now = Math.floor(Date.now() / 1000);
-  if (typeof payload.exp !== 'number' || payload.exp < now) {
+  if (typeof payload.exp !== 'number' || payload.exp < now - SKEW) {
     throw new Error('Google ID token expired');
+  }
+  // Reject a token that claims to have been issued in the future by more than
+  // the same allowance — that is a clock problem or a forgery attempt, and
+  // either way is not something to hand an entitlement to.
+  if (typeof payload.iat === 'number' && payload.iat > now + SKEW) {
+    throw new Error('Google ID token issued in the future');
   }
   if (payload.iss !== 'https://accounts.google.com' && payload.iss !== 'accounts.google.com') {
     throw new Error(`unexpected issuer: ${payload.iss}`);

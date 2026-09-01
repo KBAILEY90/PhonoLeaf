@@ -110,9 +110,18 @@ dependencies {
     implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
     // Keystore-backed encrypted storage for the native OAuth refresh token
     // (SecureStoragePlugin.kt) — replaces plain WebView localStorage for
-    // pl_rtoken. 1.1.0-alpha06 is the current androidx.security release using
-    // the MasterKey.Builder API (the older MasterKeys object is deprecated).
-    implementation "androidx.security:security-crypto:1.1.0-alpha06"
+    // pl_rtoken.
+    // Moved off 1.1.0-alpha06 to 1.1.0 stable on 2026-09-01 (audit finding M5):
+    // shipping an ALPHA build of anything is bad, and shipping one to hold an
+    // OAuth refresh token is the worst place to do it. 1.1.0 released
+    // 2025-07-30.
+    // KNOWN, and deliberately accepted for now: Google deprecated every API in
+    // this library as of 1.1.0-beta01 (2025-06-04), recommending the platform
+    // Keystore APIs directly. That migration is a real piece of work and is
+    // tracked in TODO.md; the version bump here is the cheap half that removes
+    // the alpha exposure today. Do not read this comment as the library being
+    // healthy — it is stable but no longer developed.
+    implementation "androidx.security:security-crypto:1.1.0"
     // MediaSessionCompat/PlaybackStateCompat/MediaMetadataCompat (still under
     // the legacy android.support.v4.media package despite this artifact name —
     // a known AndroidX quirk) + androidx.media.app.NotificationCompat.MediaStyle,

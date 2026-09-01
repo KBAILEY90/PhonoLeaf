@@ -7292,7 +7292,15 @@ const TTS = {
       function ready(opts) {
         if (loading) return loading;
         loading = (async () => {
-          const mod = await import('https://cdn.jsdelivr.net/npm/kokoro-js@1/+esm');
+          // Pinned to an EXACT version, not the '@1' range it used to carry
+          // (audit finding C4, 2026-09-01). '@1' resolved to whatever the
+          // latest 1.x happened to be at RUN time, so a future release of a
+          // third-party package would execute inside this app's origin, next
+          // to the Drive token in localStorage, with no action from us. A
+          // dynamic import cannot carry subresource integrity, so the version
+          // pin is the only control available here. Bump deliberately, after
+          // checking what changed upstream.
+          const mod = await import('https://cdn.jsdelivr.net/npm/kokoro-js@1.2.1/+esm');
           tts = await mod.KokoroTTS.from_pretrained('onnx-community/Kokoro-82M-v1.0-ONNX', {
             dtype: opts.dtype, device: opts.device,
             progress_callback: p => { if (p.status === 'progress' && p.file && p.file.endsWith('.onnx')) postMessage({ t: 'prog', p: Math.round(p.progress || 0) }); },

@@ -8,7 +8,12 @@
 // auto-saved on open plus an explicit "save for offline" control — a
 // separate, deliberate mechanism from anything in this file.
 
-const CACHE = 'phonoleaf-v59';
+// v60 (2026-09-01): vendor/epub.min.js changed — its stripped BSD-2-Clause
+// licence header was restored — and index.html's kokoro-js import moved from
+// the floating '@1' range to a pinned version. epub.min.js is precached in
+// SHELL below, so without this bump existing installs would keep serving the
+// old copy indefinitely.
+const CACHE = 'phonoleaf-v60';
 const SHELL = [
   './',
   './index.html',

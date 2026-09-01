@@ -69,6 +69,13 @@
     class PhonoLeafTtsPlugin : Plugin() {
 
         companion object {
+            /** Ceiling on the total uncompressed bytes one voice pack may extract to
+             *  (audit finding C3). The largest real pack is a small fraction of this,
+             *  so it never trips on legitimate content; it exists so a malicious or
+             *  corrupt bzip2 archive cannot expand without bound and fill the device.
+             *  Raise it only if a genuine pack ever approaches it, and say why here. */
+            private const val MAX_PACK_UNPACKED_BYTES = 512L * 1024L * 1024L
+
             // Weak so this never keeps a destroyed plugin/Activity alive — PlaybackService
             // (a separate Android component, not directly wired to the Capacitor bridge)
             // uses this to reach back into JS when a lock-screen media button is pressed.
@@ -530,6 +537,10 @@
                     }
                     BZip2CompressorInputStream(progressIn).use { bz ->
                         TarArchiveInputStream(bz).use { tar ->
+                            // Canonical root to contain every extracted path (see the
+                            // traversal guard below). Resolved once, outside the loop.
+                            val tmpRoot = tmp.canonicalFile
+                            var extracted = 0L
                             var entry = tar.nextTarEntry
                             while (entry != null) {
                                 if (stamp != currentDownloadEpoch(model)) throw InterruptedIOException("cancelled")
@@ -540,6 +551,27 @@
                                 val rel = entry.name.substringAfter('/', "")
                                 if (!entry.isDirectory && rel.isNotEmpty()) {
                                     val out = File(tmp, rel)
+
+                                    // TRAVERSAL GUARD (audit finding C3). Stripping the
+                                    // leading directory does NOT make `rel` safe: an entry
+                                    // named "pack/../../../x" reduces to "../../x" and
+                                    // resolves outside `tmp`. Nothing upstream is trusted
+                                    // enough to skip this — these archives are fetched over
+                                    // the network from a third-party release we do not
+                                    // control, and there is no signature on them.
+                                    if (!out.canonicalPath.startsWith(tmpRoot.path + File.separator)) {
+                                        throw IOException("pack entry escapes destination: ${entry.name}")
+                                    }
+
+                                    // Decompression-bomb ceiling. bzip2 ratios are high
+                                    // enough that a small archive can expand without limit
+                                    // and fill the device. The largest real pack is well
+                                    // under this, so a legitimate model never trips it.
+                                    extracted += maxOf(entry.size, 0L)
+                                    if (extracted > MAX_PACK_UNPACKED_BYTES) {
+                                        throw IOException("pack exceeds size ceiling")
+                                    }
+
                                     out.parentFile?.mkdirs()
                                     out.outputStream().use { os -> tar.copyTo(os) }
                                 }

@@ -55,6 +55,22 @@ export async function putEntitlement(env, hash, record) {
  * very first lookup. This is the ONLY place a trial gets created —
  * everything else (Stripe webhooks, Play verification, once they exist)
  * only ever moves status forward from whatever this produced.
+ *
+ * RACE SAFETY (added 2026-09-01, audit finding C5). The obvious shape here
+ * is read-then-write: SELECT, and if the row says `none`, write a trial.
+ * That loses a race. `putEntitlement`'s ON CONFLICT clause overwrites
+ * `status` unconditionally, so a Stripe webhook writing `active` in the
+ * window between the SELECT and the INSERT would be silently demoted back
+ * to `trial` — a paying customer downgraded by a read path.
+ *
+ * The trial insert below therefore uses ON CONFLICT DO NOTHING, which makes
+ * it idempotent: it can create the first row, and it can never modify a row
+ * somebody else already wrote. We then re-read to return whatever actually
+ * won. Do NOT "simplify" this back into putEntitlement — that function is
+ * for callers that legitimately own the status they are setting.
+ *
+ * Note the unit tests for this cannot see an interleaving; they exercise the
+ * function against a record. The guarantee lives in the SQL, not the tests.
  */
 export async function getOrStartTrial(env, hash) {
   const existing = await getEntitlement(env, hash);
@@ -62,13 +78,19 @@ export async function getOrStartTrial(env, hash) {
 
   const trialDays = Number(env.TRIAL_DAYS || '7');
   const now = Math.floor(Date.now() / 1000);
-  return putEntitlement(env, hash, {
-    status: 'trial',
-    source: null,
-    plan: null,
-    trial_end: now + trialDays * 86400,
-    period_end: null,
-  });
+
+  await env.DB
+    .prepare(`
+      INSERT INTO entitlements (sub_hash, status, source, plan, trial_end, period_end, updated_at)
+      VALUES (?, 'trial', NULL, NULL, ?, NULL, ?)
+      ON CONFLICT(sub_hash) DO NOTHING
+    `)
+    .bind(hash, now + trialDays * 86400, now)
+    .run();
+
+  // Re-read rather than returning what we tried to write: if the insert lost
+  // the race it changed nothing, and the winner's record is the true one.
+  return getEntitlement(env, hash);
 }
 
 /**
