@@ -116,6 +116,23 @@ load, paid again only if Android reclaims the process.
       The `_nativeAppActive` guard itself is deliberate and was left alone: it
       exists because the lock-screen media widget can flip visibilityState to
       visible while the phone is still locked.
+- [x] **REGRESSION from the cut-over, fixed 2026-09-01: deleting a pack whose
+      voice was selected killed the natural voice for the session.**
+      Reported symptom: delete one pack, download another, press play, get
+      "downgraded to Built-In", and then nothing plays at all.
+      Cause: the JS identifies a missing pack by an error message starting
+      `PACK_NOT_DOWNLOADED:`, and responds by switching to an installed voice.
+      The cut-over changed that string to `err:notdownloaded:`, so the match
+      failed and each attempt counted as an ENGINE failure instead. Two in a
+      row sets `_kokoroDead`, which disables the neural voice for the session,
+      and on native there is no Web Speech fallback, so playback simply stopped.
+      Fixed by translating the service error back to the prefix the JS expects,
+      in both `synthesize` and `prepare`.
+      **The lesson, worth keeping:** the cut-over changed an error CONTRACT, not
+      just an implementation. Error strings crossing that boundary are API. The
+      other one (`/cancel/i`) survived only by luck, since `err:cancelled` still
+      contains "cancel". Check consumers before changing any of them.
+
 - [x] **Source publication: already satisfied, now made explicit (2026-09-01).**
       The repo is PUBLIC, so `TtsService.kt` and `ITtsService.aidl` were already
       published the moment they were pushed. What was missing was any way to

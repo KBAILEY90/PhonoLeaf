@@ -356,6 +356,8 @@
             try {
                 val e = engine() ?: throw IllegalStateException("engine unavailable")
                 val res = e.prepare(model) ?: "err:no response"
+                if (res.startsWith("err:notdownloaded:"))
+                    throw IllegalStateException("PACK_NOT_DOWNLOADED:" + res.removePrefix("err:notdownloaded:"))
                 if (!res.startsWith("ok:")) throw IllegalStateException(res)
                 activeModelType = res.substring(3)
                 val ret = JSObject()
@@ -812,6 +814,17 @@
                     val res = e.synthesize(text, sid, speed, model, raw.absolutePath, stamp)
                     val synthMs = System.currentTimeMillis() - t0
                     if (res == null || !res.startsWith("ok:")) {
+                        // The JS layer identifies a missing pack by this exact
+                        // prefix and responds by switching to an installed voice.
+                        // Anything else it treats as an engine failure, and two of
+                        // those in a row disable the natural voice for the whole
+                        // session. The 2026-09-01 cut-over changed this string and
+                        // broke that match, so deleting a pack whose voice was
+                        // selected killed the voice instead of switching it.
+                        val miss = res?.removePrefix("err:notdownloaded:")
+                        if (res != null && res.startsWith("err:notdownloaded:")) {
+                            call.reject("PACK_NOT_DOWNLOADED:" + miss); return@execute
+                        }
                         call.reject(res ?: "no response"); return@execute
                     }
                     val parts = res.split(":")
