@@ -184,19 +184,23 @@ itself calls non-English support thin with weak G2P.
       **Peak sample 1.34 to 1.52 every run**, so the vocoder genuinely runs hot
       and any wav writer clamping at 1.0 distorts it. Normalisation is
       mandatory for this model, not a nicety.
-- [ ] **UNRESOLVED: quality is poor through our implementation.** Owner reports
-      it sounds bad, and that 8 vs 32 steps is not audibly different. Note the
-      spike deliberately fixes text, voice (F1) and RNG seed, so identical
-      words and speaker across runs is expected; only quality should vary.
-      Everything checkable has been checked and is correct: tokenizer (85
-      sensible tokens), duration prediction, style JSON nesting ([1,50,256] and
-      [1,8,16]), latent length, sample rate, tensor names, and a denoise loop
-      that matches the reference (replace the latent, pass step counters as
-      conditioning, no dt integration).
-      **Next diagnostic if this is pursued:** compare our output directly
-      against the published `audio_samples/*_supertonic3.wav`, which came from
-      the same model. Materially worse means our pipeline is still wrong;
-      comparable means the model is simply not good enough at this size.
+- [x] **RESOLVED 2026-08-31: our implementation is wrong, the model is fine.**
+      A/B against the published sample from the same model was decisive: ours
+      is far worse, mispronounces, and degrades into a robotic lagging tail.
+      **Correction to two earlier entries in this file:** the claim that the
+      pipeline was verified because audio length matched the predicted duration
+      was CIRCULAR. Latent length is derived from the duration and audio length
+      from the latent length, so they agree by construction and prove nothing.
+      That false confidence ruled out precisely the area the symptoms point at.
+      **Two real suspects, both in what was wrongly cleared:** the tokenizer
+      (mispronunciation means wrong token ids) and the duration or masking (a
+      degraded tail is what an overlong, unconditioned latent sounds like).
+      **Probable root cause:** the contract was derived from
+      `nedmah/supertonic-kmp`, a zero-star repo created and abandoned within
+      half an hour. It was treated as a specification when it is an unvalidated
+      weekend project. If this is ever revisited, port from the official
+      supertone-inc implementation instead, and validate against the published
+      audio samples before trusting anything.
 - [ ] **SIZE PROBLEM: Supertonic ships fp32 only, 380 MB. Possibly
       disqualifying as-is. Measured 2026-08-31 from the HF repo.**
       `vector_estimator.onnx` 244.7 MB, `vocoder.onnx` 96.7 MB,
