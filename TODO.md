@@ -104,7 +104,25 @@ changes is which engine those downloads feed.
       is direct evidence the proxy is too conservative. Its deliberate margin
       (5.0 rather than 1.0, for CPU contention and prefetch slack) is sound
       reasoning, but a 2x margin on a mis-measured proxy is not.
-      **CORRECTION: the app ALREADY measures Kokoro for real.** `_verifyKokoro`
+      **CLOSED 2026-08-31: the gate is CORRECT. Owner heard real Kokoro on
+      the Pixel 7 and it read 1-2 sentences, stalled ~10 seconds, then read
+      1-2 more.** That is a real sustained-reading measurement and it settles
+      it: a 2022 flagship cannot run Kokoro in realtime, so most devices
+      certainly cannot. Kokoro-only is not a viable stack. Do not reopen this
+      without new evidence of the same kind, meaning sustained reading rather
+      than a one-shot timing.
+      **Why the agent got this wrong, worth remembering:** it argued from the
+      Supertonic spike hitting 0.59 realtime and concluded the device was
+      clearly capable. That was ONE 7-second utterance in isolation, which is
+      exactly the "quiet one-shot benchmark" this file already warns about two
+      entries above. Sustained synthesis competes with rendering, prefetch and
+      thermal throttling.
+      **This also weakens the Supertonic timings recorded above:** they are
+      one-shot numbers too. 0.59 at 8 steps is not evidence it can read a
+      chapter, and 1.0 at 16 steps fails the existing 25% headroom rule
+      outright.
+
+      Superseded note: the app ALREADY measures Kokoro for real. `_verifyKokoro`
       runs a genuine synthesis and can demote a device, and the code says
       explicitly that a synthetic benchmark can disagree with real inference,
       which is why it exists. So "measure it directly" was not a new idea.
