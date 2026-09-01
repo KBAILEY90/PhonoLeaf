@@ -687,6 +687,18 @@ Incorporation is in progress with the lawyer (email every 2-3 days as of
       assignment that is only implied is the kind of thing that surfaces during
       due diligence years later. `LICENSE` already carries a note saying this
       change is expected.
+- [ ] **Transfer the release keystore to the company as an asset.** The signing
+      key is created before incorporation (deliberately: it is a cryptographic
+      file, not a legal document, it is tied to no entity, and waiting would
+      only delay proving the signed build works). Once Everbloom exists it
+      should be listed among the assets assigned to it, alongside the
+      copyright, rather than staying informally personal property.
+      Nothing technical changes: the same file keeps signing the same app. This
+      is a paperwork item for the lawyer, and it belongs in the same assignment
+      conversation as the copyright above.
+      Note the certificate's name fields (organisation, city, and so on) are
+      NOT worth revisiting: they are self-signed, never displayed by Google
+      Play, and never verified by anyone. Only the file and its password matter.
 - [ ] **Register the Google Play Console account under the company.** Decided
       2026-09-01: organization, not personal. No 14-day closed-test clock
       applies (that is a personal-account rule).
