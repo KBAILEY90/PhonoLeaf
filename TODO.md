@@ -773,11 +773,39 @@ Options, cheapest first, none chosen yet:
   3. A Cloudflare Pages preview or a second Worker on a subdomain. Cleanest
      separation, most setup.
 
-**Scope to settle before starting**, since "redesign the website" is not yet a
-brief: which pages (`home.html` and its FR twin only, or the ten comparison
-pages too), whether the app's Green Ink visual system carries over, and what
-the page should ask a visitor to DO once playback is gone and the answer is
-"install the app". That last one is the real design question.
+**SCOPE SETTLED by the owner, 2026-09-02.** The site exists to explain what the
+app does, its advantages, pricing, and how it compares to competitors, and to
+carry the SEO. The visitor has exactly two things to do: **install the app** and
+**subscribe**. Everything on the page should serve one of those or serve search.
+
+That makes it a conversion page, not a brochure, and it sets the running order:
+what it does, why it is better, what it costs, how it compares, then install.
+The existing SEO work already decides the argument — `SEO.md` §1 says lead on
+RELIABILITY (the app does not stop, does not lose your place, keeps playing with
+the screen off), with privacy as support rather than the headline. Pricing is
+already decided in `BUSINESS.md`: $5.99/mo, $49.99/yr, 7-day trial, one tier,
+with the better voice a free upgrade on capable devices rather than a paid tier.
+
+Still open: whether the ten comparison pages get restyled with the home page or
+follow later, and whether the app's Green Ink system carries over to the web.
+
+**A CONSTRAINT ON THE WORD "SUBSCRIBE", checked 2026-09-02.** Google Play
+requires Play's own billing for digital subscriptions consumed inside an Android
+app, and an app may NOT steer users to an outside payment method. Alternatives
+exist only under specific regional programmes (EEA/DMA, US, India, South Korea).
+
+What this does and does not mean:
+  * The WEBSITE may show pricing and sell a subscription. The restriction is on
+    what the APP does, not on marketing outside it.
+  * The ANDROID APP must offer Play Billing for anyone subscribing from inside
+    it, and must not link out to a web checkout.
+  * Honouring a subscription bought on the web is the grey area, and it is
+    exactly the kind of judgement to put to the lawyer already engaged rather
+    than to settle by reading a policy page.
+
+`PAYMENTS_SPEC.md` already has BOTH a Stripe path and a Play path, which is the
+right shape for this. Confirm the split before building either, because it
+decides whether the site's call to action is "Subscribe" or "Get the app".
 
 **Sequencing.** Not blocking anything, and the trigger is the store release, so
 it can wait for incorporation to clear. Worth starting before then only because
