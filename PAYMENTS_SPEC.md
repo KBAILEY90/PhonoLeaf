@@ -1,7 +1,7 @@
 # PhonoLeaf: Payments and entitlement spec (roadmap item 5)
 
 How PhonoLeaf turns "signed in with Google" into "is this user allowed to use the
-paid features," across web (Stripe) and the app stores (Play Billing now, StoreKit
+paid features," across the app stores (Play Billing now, StoreKit
 later), with a 7 day trial and a one time lifetime, without building a password
 system and without compromising the privacy story.
 
@@ -47,7 +47,7 @@ A single Worker (the DNS is already at Cloudflare) with a D1 database,
 ```json
 {
   "status": "none | trial | active | lifetime",
-  "source": "stripe | play | apple",
+  "source": "play | apple",
   "plan":   "monthly | annual | lifetime | null",
   "trial_end":  1731000000,
   "period_end": 1733600000,
@@ -63,17 +63,18 @@ per `CLAUDE.md` roadmap item 5, one backend, not two.)
 ### Endpoints
 | Method + path | Auth | Purpose |
 |---|---|---|
-| `POST /checkout` `{plan}` | Google ID token | Create a Stripe Checkout session (`client_reference_id = sub_hash`); return URL. |
-| `POST /portal` | Google ID token | Return a Stripe Billing Portal URL (manage/cancel/update card). |
 | `GET /entitlement` | Google ID token | Return a **signed** entitlement (see §6). |
 | `POST /verify-play` `{purchaseToken, productId}` | Google ID token | Verify a Play purchase with the Play Developer API, record entitlement. |
 | `POST /verify-apple` `{jws}` | Google ID token | (later) Verify a StoreKit2 transaction, record entitlement. |
-| `POST /webhooks/stripe` | Stripe signature | React to subscription/payment lifecycle. |
-| `POST /webhooks/play` | Pub/Sub push (RTDN) | (later) React to Play renewals/cancels/refunds. |
+| `POST /webhooks/play` | Pub/Sub push (RTDN) | React to Play renewals/cancels/refunds. |
+
+There is no checkout, billing-portal or Stripe webhook route: see §4. Adding a
+web source later means adding routes here, not changing anything else, because
+nothing downstream reads `source`.
 
 ## 3. Trial (7 days, no card up front)
 
-Recommended: a **server side trial**, not a Stripe trial that requires a card up front, better
+Recommended: a **server side trial**, owned by the Worker rather than by a store, better
 conversion and it fits the Worker as source of truth model.
 - On first authenticated `GET /entitlement` for a new `sub`, set
   `status:"trial"`, `trial_end = now + 7d`. Return trial.
@@ -83,22 +84,46 @@ conversion and it fits the Worker as source of truth model.
 - Abuse (new Google accounts to start a new trial) is accepted for an indie launch,
   creating Google accounts is real friction. Revisit device signals only if abused.
 
-## 4. Web payments (Stripe)
+## 4. Store billing only — no web checkout, no Stripe
 
-- **Products/prices:** subscription with two prices ($5.99/mo, $49.99/yr) and a
-  **one time** price for lifetime ($129, Checkout `mode: "payment"`).
-- **Flow:** app (user already signed in with Google) → `POST /checkout {plan}` → Worker
-  creates Checkout session with `client_reference_id = sub_hash` and metadata →
-  redirect to Stripe → on return, app fetches again `/entitlement`.
-- **Truth comes from webhooks**, not the redirect: handle
-  `checkout.session.completed`, `customer.subscription.updated/deleted`,
-  `invoice.paid`, `invoice.payment_failed`. Each maps the Stripe
-  customer/subscription to `sub_hash` and writes the KV record (`active` +
-  `period_end`, or `none`). Verify the Stripe signature; make handlers idempotent.
-- **Cancellation / manage:** `POST /portal` → Stripe Billing Portal.
-- **Tax:** enable **Stripe Tax** so GST + QST (Québec) and other jurisdictions are
-  computed and collected. (Registration and remittance is the owner's, see
-  `BUSINESS.md` "Québec compliance".)
+**DECIDED 2026-09-02 (owner). Subscriptions are sold exclusively through Google
+Play and the App Store.** There is no web checkout, no Stripe account, and no
+plan to add one. This section replaces the former "Web payments (Stripe)".
+
+**Why, in order of weight:**
+
+1. **Tax.** Google and Apple act as merchant of record in most markets: they
+   determine, collect and remit consumption tax (VAT/GST) on the customer's
+   behalf. Selling directly makes that PhonoLeaf's job in every jurisdiction it
+   sells to — a permanent, recurring obligation for a one-person business, not a
+   one-time setup. This is the reason that outweighs the others.
+2. **Policy.** Google Play requires Play Billing for digital subscriptions
+   consumed inside an Android app, and an app may not steer users to an outside
+   payment method (regional alternatives exist under specific programmes only).
+   Selling on the web is permitted; the unsettled part is whether the app may
+   HONOUR a web purchase. Store-only avoids the question entirely.
+3. **Two integrations either way.** iOS needs StoreKit and Android needs Play
+   Billing regardless, so "one payment system" was never available. Web selling
+   would have been a THIRD source, not a replacement for one.
+4. **Scope.** It removes checkout, billing portal, webhooks, card failures,
+   dunning, refunds and PCI considerations from the build entirely. The stores
+   handle all of it.
+
+**What it costs:** the store fee, permanently. 15% on Play for subscriptions in
+Canada (10% + 5% billing fee in the EEA/UK/US from mid-2026), Apple comparable.
+A web checkout would have kept roughly 97%. That is the trade, accepted
+deliberately: a percentage in exchange for never handling payments, refunds or
+international tax.
+
+**This is reversible without a redesign, and that is by construction.** The
+entitlement record carries a `source` column that NOTHING in the logic reads —
+`effectiveStatus()` decides purely on status and expiry. A web source would be
+a new writer against an interface that already exists. Do not "simplify" that
+away by hard-coding a store assumption into the record or the app.
+
+**The rule that keeps this simple long-term:** the app asks *"am I entitled?"*,
+never *"did this person buy through Play?"*. The moment a screen branches on
+payment source, every future source has to be threaded through it.
 
 ## 5. Android payments (Google Play Billing)
 
@@ -137,14 +162,13 @@ conversion and it fits the Worker as source of truth model.
   query, anywhere, ever — including internal-only admin/debug scripts.
 - Verify Google ID tokens on every authed call (signature via Google JWKS, `aud`,
   `iss`, `exp`). Reject otherwise.
-- Verify Stripe webhook signatures and Play/Apple receipts **server side**, never
-  trust the client for entitlement.
-- Store the **minimum**: `sub_hash`, entitlement, Stripe customer/subscription id,
-  Play/Apple order ids. **No Google Drive data, no OAuth Drive tokens** in the
+- Verify Play and Apple receipts **server side**, never trust the client for
+  entitlement.
+- Store the **minimum**: `sub_hash`, entitlement, Play/Apple order ids. **No Google Drive data, no OAuth Drive tokens** in the
   payments store, keep it a separate system from the reading app's data.
-- **Privacy policy update:** once Stripe is live, add a line to `privacy.html` /
-  `privacy-fr.html`: payment details are processed by the payment provider
-  (Stripe / the app store) and are not stored by PhonoLeaf; a hashed Google account
+- **Privacy policy update:** once paid plans are live, add a line to
+  `privacy.html` / `privacy-fr.html`: payment details are processed by the app
+  store and are not stored by PhonoLeaf; a hashed Google account
   identifier is stored solely to remember your subscription status. (Today's policy
   says "no backend" becomes "no backend for your books/reading; a minimal
   entitlement service records only subscription status.")
@@ -165,8 +189,8 @@ to a paid subscription and when.
    `GET /entitlement` verifies a Google ID token (web or Android client) against
    Google's live JWKS, derives `sub_hash`, starts the 7-day server-side trial on
    first lookup, and returns a signed ES256 JWT. `/checkout`, `/portal`,
-   `/webhooks/stripe`, `/verify-play`, `/webhooks/play` are routed but 501,
-   each naming the §11 prerequisite it's blocked on. Verified functionally in a
+   `/verify-play`, `/webhooks/play` and `/verify-apple` are routed but 501,
+   each naming in words the account it is blocked on. Verified functionally in a
    Node harness (hashing, the trial state machine, JWT sign+verify+tamper
    detection, Google-token accept/reject paths), then walked through the real
    setup end to end on the owner's machine: KV namespace created, both secrets
@@ -178,15 +202,16 @@ to a paid subscription and when.
    token or 501s. **Not called from the app yet on purpose**: adding the
    `openid` scope and gating the UI on entitlement are held back as separate,
    later steps (see `worker/README.md`'s "Not wired up yet" section), since
-   gating now — before Stripe checkout exists — would show every current user
+   gating now — before any purchase path exists — would show every current user
    a paywall with no way to pay.
-2. Stripe web: products, `/checkout`, `/portal`, webhooks, Stripe Tax. Web paid.
-3. Play Billing: products, purchase flow, `/verify-play`. Android paid + unified.
-4. Offline grace signed entitlement + lifetime durability hardening.
-5. Later: Apple StoreKit2 + `/verify-apple`; Play RTDN + `/webhooks/play`.
+2. Play Billing: products, purchase flow, `/verify-play`. Android paid.
+   **This is now step 2**, since the former Stripe step is deleted (§4).
+3. Offline grace signed entitlement + lifetime durability hardening.
+4. Later: Apple StoreKit2 + `/verify-apple`; Play RTDN + `/webhooks/play`.
 
 ## 10. Testing
-- Stripe **test mode** + test clocks for renewals/trials; verify webhook idempotency.
+- Play **test clocks** / license testing for renewals and trials; verify webhook
+  idempotency (a store can deliver the same notification more than once).
 - Play **license testing** / closed track sandbox for purchase + verification.
 - Entitlement gate: trial start/expiry, active↔none transitions, lifetime never
   expires, offline grace within/after `exp`, cross platform merge (buy on web →
@@ -209,10 +234,10 @@ lead times, and several are strictly ordered.
 
 | # | Prerequisite | Blocks | Owner | Notes |
 |---|---|---|---|---|
-| 1 | **Business registration** (REQ Québec) | 2, 3, 4 | Owner + lawyer | **The actual critical path.** Currently waiting on counsel. Nothing financial can proceed without it. |
-| 2 | Business bank account | 4 | Owner | Needs 1. |
-| 3 | **GST + QST registration** (CRA + Revenu Québec) | Stripe Tax config | Owner + accountant | Mandatory above the $30k small-supplier threshold; register before revenue, not after. |
-| 4 | **Stripe account** | all web payments | Owner | Needs 1 and 2. Business details + bank account + tax IDs. |
+| 1 | **Business registration** (REQ Québec) | 2, 3, 5 | Owner + lawyer | **The actual critical path.** Currently waiting on counsel. Nothing financial can proceed without it. |
+| 2 | Business bank account | 5 | Owner | Needs 1. Still required: both stores pay out to a bank account. |
+| 3 | **GST + QST registration** (CRA + Revenu Québec) | payouts / accounting | Owner + accountant | Mandatory above the $30k small-supplier threshold; register before revenue, not after. |
+| 4 | ~~Stripe account~~ | ~~all web payments~~ | — | **REMOVED 2026-09-02: store-only billing, see §4.** Row kept and struck rather than deleted so numbers 5-9 stay stable — `TODO.md` and `worker/README.md` cite them by number. |
 | 5 | **Play Console account** ($25 one-time) | all Android payments | Owner | Identity verification takes days. **Decide personal vs organization before creating it — converting later is painful and an organization account needs a registered entity plus a D-U-N-S number.** |
 | 6 | Play Developer API service account | `/verify-play` | Owner + Code | Created in Cloud Console, granted access in Play Console. Produces a JSON key (see §12 secrets). |
 | 7 | Cloudflare Workers + KV namespace | everything | Code | Free tier is sufficient at launch. Account already exists (DNS is there). |
@@ -254,8 +279,8 @@ if that rule holds, this changes nothing about assessment scope or cost.
 | Auth 8 | "no publicly exposed interface exists" | An API is exposed. Must confirm no default credentials on it. |
 | Access 3 | "We run no API." | Full endpoint list (§2) becomes the answer. |
 | Access 4 | "no API for IDOR to target" | Real answer needed: entitlement is keyed on server-derived `sub_hash`, never a client-supplied id — that *is* the IDOR defence, and it should be stated that way. |
-| Access 7 | "no administrative interface" | Still true only if we build no admin UI. If one is added it needs MFA. **Argues for no admin panel at all** — use Cloudflare/Stripe dashboards instead. |
-| Config 2 | "no server-side logs exist" | Server logs now exist. **This control is specifically about not logging credentials or payment details** — so log no card data, no Stripe secrets, no ID tokens. Design for this on day one. |
+| Access 7 | "no administrative interface" | Still true only if we build no admin UI. If one is added it needs MFA. **Argues for no admin panel at all** — use the Cloudflare and store consoles instead. |
+| Config 2 | "no server-side logs exist" | Server logs now exist. **This control is specifically about not logging credentials or payment details** — so log no card data, no store credentials, no ID tokens. Design for this on day one. |
 | Config 4 | "no server-side secrets exist" | Becomes a real answer. See the inventory below. |
 | F5 | "N/A. No payment system yet." | **Becomes required**: a log sample captured during a payment. |
 
@@ -279,10 +304,12 @@ if that rule holds, this changes nothing about assessment scope or cost.
 ### Secrets inventory (pre-answers Config 4)
 All belong in Workers secrets (encrypted at rest, never in the repo, never in
 `wrangler.toml`):
-- `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`
 - `SUB_HASH_PEPPER` — the server secret for hashing `sub` (§1)
 - `ENTITLEMENT_JWT_PRIVATE_KEY` — the Worker's signing key (§6)
 - `PLAY_SERVICE_ACCOUNT_JSON` — Play Developer API credentials
+- `APPLE_ISSUER_KEY` — App Store Connect key, when iOS lands
+
+No Stripe secrets: there is no web checkout (§4).
 - `EYDLE_LAB_SECRET` — staging only, for the bypass route above
 Rotation plan matters too: the assessment asks about storage *and* rotation.
 
@@ -296,24 +323,31 @@ These need answers before coding, not during.
   simultaneous checkouts could both land as #500. The counter needs a
   strongly-consistent store: a **D1 row updated inside a transaction** (or a
   Durable Object) that the checkout endpoint checks and increments atomically
-  before creating the Stripe session, not after. This is the one counter in
+  before the purchase is acknowledged, not after. This is the one counter in
   the whole design that can't use KV — everything else (entitlement cache,
   JWT state) is fine with eventual consistency; this specific number isn't.
-- **Currency is USD only, charged and settled — no CAD Stripe product.**
-  Localized pricing is still worth doing, but strictly as **display-only
-  estimate**, not as a second currency: convert USD to the viewer's local
-  currency client-side (or via a Worker endpoint returning a rate cached in KV
-  for ~24h) and show it labeled as an estimate ("$5.99 USD ≈ $8.10 CAD") next
-  to the real USD price. The Stripe Checkout session — and the number the
-  customer actually sees at the point of payment — is always USD. Deliberately
-  NOT using Stripe's Adaptive Pricing / multi-currency Checkout: that feature
-  actually settles in the customer's local currency via Stripe's own
-  conversion, and the amount it displays at checkout is an estimate that can
-  differ from what actually clears once the card network does its own FX —
-  Stripe's own UI carries a "may vary" disclaimer for exactly that reason.
-  Display-only conversion avoids that discrepancy entirely, since the number
-  charged and the number promised are always the same USD figure. GST+QST
-  calculation is unaffected — it still runs against the one USD amount.
+- **Currency: SUPERSEDED by store-only billing (§4, 2026-09-02).** The whole
+  design below existed to work around a single-currency Stripe checkout, and
+  the stores remove the problem rather than solving it: both Google Play and
+  the App Store let you set a price per country, show and charge in the local
+  currency, and handle the conversion themselves. There is no "display-only
+  estimate" to maintain and no gap between the number promised and the number
+  charged, because the store quotes and charges the same local figure.
+  Tax likewise: the stores compute and remit consumption tax in most markets
+  (see §4), so the GST+QST calculation described below is no longer ours to run
+  on the purchase itself.
+  **What still needs deciding** is the price ladder per market — Play and Apple
+  both want an explicit price per country, and simply converting $5.99 gives
+  ugly numbers. That is a pricing exercise for `BUSINESS.md`, not an
+  engineering one.
+  The original reasoning is preserved below for the record, since it explains
+  why localized pricing was approached so cautiously.
+
+  > Original (Stripe era): charge and settle in USD only, with localized prices
+  > shown as display-only estimates converted client-side, deliberately avoiding
+  > Stripe's Adaptive Pricing because it settles in local currency via Stripe's
+  > own conversion and the amount shown at checkout could differ from what
+  > actually cleared once the card network applied its own rate.
 
 **Resolved (owner, 2026-08-28):**
 - **D1 for entitlement generally, not KV.** Originally leaning KV (cheaper,
@@ -331,11 +365,14 @@ These need answers before coding, not during.
   `worker/wrangler.toml`, live on `*.workers.dev`, per §9) — though it
   holds no real entitlement data yet (not called from the app), so this is
   a clean swap, not a data migration. See `TODO.md` for the task list.
-- **Refund mechanics: manual for now.** Owner issues refunds via the
-  Stripe dashboard within the 14-day web window. No code needed at
-  launch. **Automating this is deliberately deferred, not forgotten** —
-  logged as a post-launch item in `TODO.md`, worth revisiting once volume
-  makes manual handling painful.
+- **Refund mechanics: the stores handle them.** SUPERSEDED by the
+  store-only decision (§4, 2026-09-02): refunds go through Google Play
+  and the App Store under their own policies and windows, not through a
+  dashboard we operate. What remains ours is REACTING to one — a refund
+  arrives as a store notification and must move the entitlement to
+  `none`, which is `/webhooks/play` and its Apple equivalent. The former
+  plan (manual refunds in the Stripe dashboard within a 14-day web
+  window) no longer applies.
 - **Lifetime shutdown reserve: a percentage of each lifetime sale, held
   separately.** Mechanism decided — a fixed % (or the $129 price minus a
   margin) of every lifetime purchase gets set aside in a separate
@@ -349,6 +386,7 @@ These need answers before coding, not during.
   Google accounts can still restart the 7-day trial indefinitely,
   matching the ToS language already drafted. Not being fixed now, but
   not being ignored either — logged as a post-launch item in `TODO.md`
-  (candidate approach: tie trial eligibility to a Stripe Radar
-  payment-method fingerprint or device signal, real engineering work when
-  it's worth doing).
+  (candidate approach: tie trial eligibility to a device or store
+  account signal, real engineering work when it's worth doing — note the
+  store-only decision removes the payment-fingerprint option that was
+  previously sketched here).

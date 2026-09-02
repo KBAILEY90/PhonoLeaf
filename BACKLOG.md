@@ -291,21 +291,21 @@ off and differentiates.
 **[ANSWER] We are adding a minimal backend for payments** (the entitlement Cloudflare
 Worker in `PAYMENTS_SPEC.md`). So the old "no server at all" line is now "no server
 for your books or reading data; a small entitlement service records only your
-subscription status." Update the privacy wording accordingly when Stripe goes live
+subscription status." Update the privacy wording accordingly when paid plans go live
 (already noted in `PAYMENTS_SPEC.md` section 7).
 
 **[ANSWER] How we track who paid:** the entitlement Worker plus KV store, fed by
-Stripe and store webhooks, is the record of who is entitled. See `PAYMENTS_SPEC.md`.
+store webhooks, is the record of who is entitled. See `PAYMENTS_SPEC.md`.
 
 **[ANSWER] Customer support workflow (no big help desk needed):**
-- Payment issues: the **Stripe Dashboard** lets you look up any customer by email,
+- Payment issues: the **Play Console** and **App Store Connect** are where purchases and refunds are looked up,
   see charges, and issue refunds. **Google Play Console** and **App Store Connect**
   handle store purchases and refunds.
 - App issues: the in app Feedback and Report a bug forms already email
   support@phonoleaf.com with device diagnostics.
 - Entitlement fixes: the Worker can expose a tiny admin view or script to read or
   correct an entitlement by account, for the rare manual case.
-**[CODE later]** A short internal "support playbook" doc once Stripe is live
+**[CODE later]** A short internal "support playbook" doc once paid plans are live
 (where to look for each issue type). Low effort.
 
 ---

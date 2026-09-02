@@ -1,8 +1,14 @@
 // PhonoLeaf entitlement Worker. Implements PAYMENTS_SPEC.md §2's endpoint
-// table. Only /entitlement is real right now (§9 build order, step 1) —
-// everything else is routed and documented but 501s, because it needs a
-// prerequisite from §11 that doesn't exist yet (Stripe account, Play
-// Developer API service account). See worker/README.md.
+// table. Only /entitlement is real right now — the store verification routes
+// are declared and documented but 501, because each needs an account that does
+// not exist yet (Play Developer API service account, App Store Connect key).
+//
+// STORE BILLING ONLY (owner decision, 2026-09-02). Subscriptions are sold
+// exclusively through Google Play and the App Store; there is no web checkout
+// and no Stripe. See PAYMENTS_SPEC.md §4 for why, including the tax and policy
+// reasoning. The entitlement record deliberately stays source-agnostic, so a
+// web source could be added later without changing anything here except adding
+// a route. See worker/README.md.
 import { verifyGoogleIdToken } from './google-auth.js';
 import { subHash, getOrStartTrial, effectiveStatus } from './entitlement.js';
 import { signEntitlementJwt } from './entitlement-jwt.js';
@@ -63,10 +69,13 @@ function json(body, status = 200, request = null) {
   });
 }
 
-function notYetAvailable(prereqNumber, what, request) {
+// Takes the missing prerequisite in words rather than a section number: the
+// numbers drifted every time PAYMENTS_SPEC.md was reorganised, and a stale
+// pointer is worse than none.
+function notYetAvailable(needs, request) {
   return json({
     error: 'not_yet_available',
-    detail: `${what} is blocked on prerequisite #${prereqNumber} in PAYMENTS_SPEC.md §11.`,
+    detail: `Not available yet: this needs ${needs}. See PAYMENTS_SPEC.md.`,
   }, 501, request);
 }
 
@@ -151,23 +160,14 @@ export default {
       return handleEntitlement(request, env);
     }
 
-    if (url.pathname === '/checkout' && request.method === 'POST') {
-      return notYetAvailable(4, 'Stripe Checkout', request);
-    }
-    if (url.pathname === '/portal' && request.method === 'POST') {
-      return notYetAvailable(4, 'Stripe Billing Portal', request);
-    }
-    if (url.pathname === '/webhooks/stripe' && request.method === 'POST') {
-      return notYetAvailable(4, 'Stripe webhooks', request);
-    }
     if (url.pathname === '/verify-play' && request.method === 'POST') {
-      return notYetAvailable(6, 'Play purchase verification', request);
+      return notYetAvailable('a Play Developer API service account', request);
     }
     if (url.pathname === '/webhooks/play' && request.method === 'POST') {
-      return notYetAvailable(6, 'Play RTDN webhooks', request);
+      return notYetAvailable('a Play Developer API service account', request);
     }
     if (url.pathname === '/verify-apple' && request.method === 'POST') {
-      return notYetAvailable(4, 'Apple StoreKit2 verification (later, per §9 step 5)', request);
+      return notYetAvailable('an App Store Connect key, and an iOS build to buy from', request);
     }
 
     return json({ error: 'not_found' }, 404, request);

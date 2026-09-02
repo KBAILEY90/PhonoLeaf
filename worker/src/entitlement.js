@@ -53,13 +53,13 @@ export async function putEntitlement(env, hash, record) {
 /**
  * Returns the entitlement record for this user, starting a trial on the
  * very first lookup. This is the ONLY place a trial gets created —
- * everything else (Stripe webhooks, Play verification, once they exist)
+ * everything else (Play and Apple verification, once they exist)
  * only ever moves status forward from whatever this produced.
  *
  * RACE SAFETY (added 2026-09-01, audit finding C5). The obvious shape here
  * is read-then-write: SELECT, and if the row says `none`, write a trial.
  * That loses a race. `putEntitlement`'s ON CONFLICT clause overwrites
- * `status` unconditionally, so a Stripe webhook writing `active` in the
+ * `status` unconditionally, so a store webhook writing `active` in the
  * window between the SELECT and the INSERT would be silently demoted back
  * to `trial` — a paying customer downgraded by a read path.
  *

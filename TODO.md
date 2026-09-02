@@ -74,7 +74,7 @@ Nothing was pushed — see "Not pushed" at the end.
       thing in this repo to get wrong.
 - [x] **Trial creation can no longer downgrade a paying customer.**
       `getOrStartTrial` read the record then wrote with `ON CONFLICT DO UPDATE`,
-      which overwrites `status` unconditionally. A Stripe webhook committing
+      which overwrites `status` unconditionally. A store webhook committing
       `active` between the read and the write was silently demoted to `trial`.
       Now uses a dedicated `DO NOTHING` insert then re-reads. The existing test
       named "never downgrades a paying subscriber" could not see this: it
@@ -803,9 +803,12 @@ What this does and does not mean:
     exactly the kind of judgement to put to the lawyer already engaged rather
     than to settle by reading a policy page.
 
-`PAYMENTS_SPEC.md` already has BOTH a Stripe path and a Play path, which is the
-right shape for this. Confirm the split before building either, because it
-decides whether the site's call to action is "Subscribe" or "Get the app".
+**RESOLVED 2026-09-02: store-only.** The site's call to action is therefore
+**"Get the app"**, not "Subscribe". Pricing and what each plan includes still
+belong on the page — that is a large part of why the page exists — but the
+purchase itself happens in the app, through Google Play or the App Store.
+Design accordingly: the page sells the decision, the store takes the money.
+See `PAYMENTS_SPEC.md` §4.
 
 **Sequencing.** Not blocking anything, and the trigger is the store release, so
 it can wait for incorporation to clear. Worth starting before then only because
@@ -897,7 +900,8 @@ Incorporation is in progress with the lawyer (email every 2-3 days as of
       once, on 2026-09-01, when the first key was replaced.
 - [ ] **Register the Apple Developer account under the company.** Same
       reasoning, decision already made (wait for the corporation).
-- [ ] **Bank account, then GST/QST registration, then Stripe**, in that order.
+- [ ] **Bank account, then GST/QST registration**, in that order. Both stores
+      pay out to a bank account, so this is still the gate even with no Stripe.
       `BUSINESS.md` "Gating, do now" #2.
 - [ ] **Then payments become buildable**, and the CASA assessment can be
       submitted once against the finished architecture rather than twice.
@@ -907,8 +911,8 @@ Incorporation is in progress with the lawyer (email every 2-3 days as of
 - [~] **Business registration (REQ, Québec)** — **in progress and moving.**
       The lawyer is actively working on incorporation, with email every 2-3
       days (owner, 2026-09-01). It still gates the bank account, GST/QST
-      registration and Stripe, in that order, so it remains the sequence
-      everything commercial waits on. That is normal sequencing, not a
+      registration and store payout setup, in that order, so it remains the
+      sequence everything commercial waits on. That is normal sequencing, not a
       problem to solve. `BUSINESS.md` "Gating, do now" #2.
 - [x] **[SWOT] "Chase or replace the lawyer" — CLOSED 2026-09-01, it was
       based on a false premise.** This item claimed 20 days of silence and
@@ -1016,9 +1020,8 @@ Incorporation is in progress with the lawyer (email every 2-3 days as of
       below.
 - [x] **Refund mechanics, lifetime shutdown reserve, trial abuse** — all
       decided 2026-08-28, `PAYMENTS_SPEC.md` §13 (now zero open items,
-      nothing left blocking the start of Stripe integration on the
-      decisions front): refunds manual via Stripe dashboard for now
-      (automating it is a post-launch item, see below); lifetime reserve
+      nothing left blocking payments on the decisions front): refunds were to
+      be manual — SUPERSEDED 2026-09-02, the stores own refunds now; lifetime reserve
       is a % of each sale held separately until that sale's 12-month
       window closes — mechanism decided, exact percentage is an ongoing
       operational call for the owner to make with the bank/accountant
@@ -1387,14 +1390,17 @@ anywhere in `worker/`.
       deliberately deferred until OAuth verification fully resolved
       (2026-08-05); CASA being parked rather than resolved means this is
       still on hold, not forgotten.
-- [ ] **Automate refunds**, 2026-08-28 owner call — manual via Stripe
-      dashboard is fine to launch with; revisit once volume makes that
-      painful. `PAYMENTS_SPEC.md` §13.
+- [x] **Automate refunds — DROPPED 2026-09-02, no longer ours.** Google Play
+      and the App Store issue refunds under their own policies. What remains is
+      REACTING to one: a store notification must move the entitlement to
+      `none`, which is `/webhooks/play` and its Apple equivalent, already in
+      the endpoint table. `PAYMENTS_SPEC.md` §4.
 - [ ] **Trial abuse mitigation**, 2026-08-28 owner call — new Google
       accounts can restart the 7-day trial indefinitely today, accepted
       deliberately at launch. Candidate approach when it's worth building:
-      tie trial eligibility to a Stripe Radar payment-method fingerprint
-      or a device signal. `PAYMENTS_SPEC.md` §13.
+      tie trial eligibility to a device or store-account signal. Note the
+      store-only decision removes the payment-fingerprint option previously
+      sketched here. `PAYMENTS_SPEC.md` §4, §13.
 
 ## Product ideas, raised 2026-08-24 — not scoped, not started
 

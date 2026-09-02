@@ -1,9 +1,14 @@
 # PhonoLeaf entitlement Worker
 
 Implements `PAYMENTS_SPEC.md` (repo root) §§1–7: identity, the entitlement
-store, the server-side trial, and signed entitlement delivery. The Stripe
-and Play Billing endpoints from §2 are routed but stubbed (`501
-not_yet_available`) until their prerequisite in §11 exists.
+store, the server-side trial, and signed entitlement delivery. The store
+verification endpoints from §2 are routed but stubbed (`501
+not_yet_available`) until the account each needs exists.
+
+**Billing is store-only** (owner decision, 2026-09-02): subscriptions are sold
+through Google Play and the App Store, never a web checkout. There is no Stripe
+account and no plan for one — see `PAYMENTS_SPEC.md` §4 for the reasoning, which
+is mostly about who is responsible for remitting consumption tax.
 
 ## What's real right now
 
@@ -17,12 +22,16 @@ not_yet_available`) until their prerequisite in §11 exists.
 
 ## What's stubbed, and why
 
-`/checkout`, `/portal`, `/webhooks/stripe` need a Stripe account
-(`PAYMENTS_SPEC.md` §11 #4 — blocked on business registration first).
-`/verify-play`, `/webhooks/play` need a Play Developer API service account
-(§11 #6). `/verify-apple` is later per §9 step 5. Each stub 501s with the
-exact prerequisite number blocking it, so the endpoint table in §2 has
-somewhere real to point today instead of being purely aspirational.
+`/verify-play` and `/webhooks/play` need a Play Developer API service account
+(`PAYMENTS_SPEC.md` §11 #6, itself blocked on business registration).
+`/verify-apple` needs an App Store Connect key and an iOS build to buy from.
+
+Each stub 501s naming in WORDS what it is missing, not a spec section number:
+the numbering drifted every time the spec was reorganised, and a stale pointer
+is worse than none.
+
+The checkout, billing-portal and Stripe webhook routes that used to sit here
+were removed on 2026-09-02 with the store-only decision.
 
 ## Zero runtime dependencies, on purpose
 
@@ -153,7 +162,7 @@ of standing this up:
   currently parked rather than active (see `VERIFICATION.md`), so this is
   believed safe, but worth a quick confirmation with Eydle before it ships
   since it touches the OAuth consent screen.
-- **Gating the app on the entitlement response.** Doing this before Stripe
-  Checkout exists would show every current user a trial countdown and,
-  eventually, a paywall with no way to pay — so this waits until at least
-  §9 step 2 (Stripe web) is real, not until this Worker merely deploys.
+- **Gating the app on the entitlement response.** Doing this before any
+  purchase path exists would show every current user a trial countdown and,
+  eventually, a paywall with no way to pay — so this waits until Play Billing
+  (§9 step 2) is real, not until this Worker merely deploys.

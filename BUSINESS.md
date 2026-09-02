@@ -44,7 +44,7 @@ Confirm all of this with a Québec lawyer/accountant; recorded here so it isn't 
   discontinuation clauses against the CPA.
 - **Tax: GST + QST.** Digital subscriptions to Québec consumers attract GST (5%,
   CRA) and QST (9.975%, Revenu Québec). Register once over the small supplier
-  threshold (or voluntarily); Stripe Tax / the app stores can compute, but
+  threshold (or voluntarily); the app stores compute and remit it, but
   registration and remittance are on you.
 - **Business registration = Registraire des entreprises du Québec (REQ).**
   Operating under the name "PhonoLeaf" (not your own legal name) requires
@@ -85,11 +85,11 @@ does not need one.
   to be the cheapest. Frame the low price as "runs on your device, so there's no
   cloud bill to pass on to you."
 - **Economics:** on device TTS ⇒ ~zero COGS. Net ~$48 per annual web sub after
-  Stripe (2.9% + $0.30); Play/Apple take 15% (steer buyers to annual on web).
+  Play/Apple take 15% on subscriptions. STORE-ONLY as of 2026-09-02 (PAYMENTS_SPEC §4), so that fee applies to all revenue; annual still preferred, but the lever is store pricing, not a web checkout.
   Blended net ARPU modeled ~$42/yr; break even, roughly 25–70 subscribers.
-- **Entitlement:** tied to the Google account (no passwords). Web = Stripe +
+- **Entitlement:** tied to the Google account (no passwords). Sources = the stores +
   Cloudflare Worker; Android = Play Billing; lifetime = non consumable IAP / one-
-  time Stripe charge, entitlement stored durably so a backend change can't revoke it.
+  time store purchase, entitlement stored durably so a backend change can't revoke it.
 
 ### The Standard/Upgraded tier split: RESOLVED 2026-08-31, one tier stands
 
@@ -139,7 +139,7 @@ high end phones. Everyone else lands on the cheap tier by default, so the split
 would set the *real* price for most users at $1–2 while the premium tier stays a
 rounding error. That is ARPU collapse rather than segmentation.
 
-**Small monthly prices are destroyed by Stripe's fixed fee**, independent of the
+**Small monthly prices are hurt by per-transaction fees** (this was written against Stripe's fixed $0.30; store-only billing replaces it with a flat 15%, which removes the fixed-fee cliff but not the argument for annual), independent of the
 above. Net revenue per user per year:
 
 | Plan | Gross | Net | Fees |
@@ -190,10 +190,10 @@ Ordered by what gates revenue or has a deadline. "Code" = implementable in the r
 2. **Register the business + money basics.** Structure (sole prop vs incorporate);
    register the "PhonoLeaf" name with the **Registraire des entreprises du Québec
    (REQ)**; business bank account; register for **GST (CRA) + QST (Revenu
-   Québec)** for digital sales (Stripe Tax / the app stores compute; you register
+   Québec)** for digital sales (the app stores compute and remit consumer tax; you register
    & remit). Needed **before** taking payments. *(Owner + accountant; see "Québec
    compliance".)*
-3. **Payments + paywall backend.** Cloudflare Worker + Stripe (web), Play Billing
+3. **Payments + paywall backend.** Cloudflare Worker + Play Billing
    (Android); 7 day trial; entitlement tied to Google account; lifetime as
    non consumable. Fold in the deferred bug report photo upload endpoint here
    (roadmap item 5). **Full architecture + endpoints + build order in
@@ -254,7 +254,7 @@ Ordered by what gates revenue or has a deadline. "Code" = implementable in the r
 Match `terms.html`'s existing heading/paragraph markup + light/dark styling. Leave a
 `TODO: lawyer review` comment near this block. Also: remove the word "free" from `home.html`
 ("free 7 day trial, then a subscription"; keep "no separate account, sign in with
-Google"); add a payments processor line to `privacy.html` once Stripe is live; bump
+Google"); add a payments processor line to `privacy.html` once paid plans are live; bump
 `sw.js` CACHE + run again `scripts/stage-www.js` when `terms.html`/`home.html` change.
 
 **Québec additions (see `LEGAL_FR.md`):** add the **Governing law (Québec)** clause

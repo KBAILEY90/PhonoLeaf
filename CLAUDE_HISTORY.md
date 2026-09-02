@@ -7954,3 +7954,159 @@ correct on its own but was not sufficient.
   passed even with the protection deleted, because two `if (this.active)`
   occurrences existed and a non-global replace left one standing. Found only by
   trying to break it.
+
+
+## Audit, device bug hunt, infrastructure, and store-only billing (2026-09-01 to 09-02)
+
+A long session: a full security/code/licence audit, then four device-reported
+bugs, then most of the remaining infrastructure. Recorded with the wrong turns,
+because those cost more time than the fixes did.
+
+### The audit
+
+24 findings across security, correctness and licensing. Sixteen were fixed the
+same day; the rest needed a device, an account, or a lawyer. The ones worth
+remembering as classes of problem:
+
+- **The error contract that nearly cost Piper had no test.** A missing pack is
+  signalled by a STRING crossing two process boundaries and being renamed once
+  on the way. Nothing asserted the ends agreed. Now pinned, including a COUNT
+  check that the plugin translates in both places — the original cut-over fixed
+  `synthesize` and missed `prepare`, and a one-sided fix reads as correct.
+- **A read-then-write race could demote a paying customer.** `getOrStartTrial`
+  wrote with `ON CONFLICT DO UPDATE`, so a webhook committing `active` between
+  the SELECT and the INSERT was overwritten with `trial`. The existing test
+  named "never downgrades a paying subscriber" passed either way, because it
+  exercises the pure function and cannot see an interleaving.
+- **"Published source" is not "licensed source."** `ENGINE_NOTICE.md` counted
+  publication as one of three satisfied conditions, but the repo had no LICENSE
+  file at all, so the bridge was visible and offered to nobody.
+- **The APK was 221.7 MB** because ~185 MB of models sat in `assets/` on the
+  build machine. The docs had twice concluded from `.gitignore` that nothing was
+  bundled. `.gitignore` governs the REPO, not the BUILD. Nobody had opened the
+  APK. Now 53 MB, with a Gradle guard that fails the build if a model reappears.
+
+### The lawyer, and what he actually said
+
+Counsel reviewed the GPL boundary and approved the architecture, with changes:
+the bridge moved to its own directory under its own package
+(`com.phonoleaf.ttsbridge`), got explicit GPL-3.0 headers and a LICENSE, and its
+comments were made generic. The root LICENSE is proprietary with that directory
+carved out. His caveat, worth keeping: shipping both in ONE installation package
+leaves residual grey area, which is why the bridge must stay impeccably
+licensed. `npm test` now enforces the structure.
+
+Also corrected: espeak-ng's LGPL relicensing request was closed `not_planned` in
+January 2025. `TODO.md` had it as open. That route is gone permanently.
+
+### Four device bugs, and four wrong theories
+
+Owner reported: stutter after swapping voice packs, the wrong voice selected, a
+3-4s page-turn delay, and follow-along misbehaving.
+
+Two were found by reading code: `_modelReadyP` was assigned once and never
+cleared by anything, so after a pack change the app still believed the old model
+was warm; and `_nativeBench` runs a REAL synthesis un-awaited, so it sat in
+front of the reader's own chunks on a single-threaded engine.
+
+**The third took four wrong theories and should have taken one adb command.**
+Symptom: every sentence collapsed to a fraction of a second of noise. Disproved
+in turn: stale engine state (a force-stop changed nothing), a corrupt pack (the
+installed files were complete and correct), the cut-over dropping a speech-rate
+setting (the old and new configs were byte-identical), and a shared
+`MODEL_VERSIONS` tag (real observation, wrong conclusion — the markers live in
+separate folders and cannot collide).
+
+The cause came from the owner's own testing: it hit `gb`/`fr`/`de` but never
+`us`. espeak initialises its data directory ONCE PER PROCESS, from whichever
+pack loads first, and never revisits it. Installing or deleting a pack deletes
+that directory. `us` maps to the folder `kokoro`, so re-downloading it recreates
+the exact cached path and silently heals; the others use different folders and
+stay broken. **Any theory that fails to explain the `us` exception is wrong.**
+Fixed by restarting the `:tts` process on pack change, which the architecture
+already sanctions.
+
+Freeing the engine object was NOT sufficient and should not be mistaken for the
+fix — the state belongs to the process.
+
+### The build trap that wasted two test rounds
+
+`npm run stage` writes `www/` and stops. Only `npm run sync` runs
+`npx cap sync android`, which copies into the APK's assets. Building and
+installing after a stage-only run ships a FRESH APK containing the PREVIOUS web
+build, silently.
+
+Two follow-along fixes were "tested" that way and reported as not working. Those
+reports were accurate. Worse, the determinism of the symptom ("every single
+sentence") was read as evidence against a timing bug when it was really evidence
+that nothing had changed. Now recorded in `CLAUDE.md`, and every install is
+followed by a hash comparison of the APK's assets against the source.
+
+### Infrastructure, all verified rather than assumed
+
+- Entitlement Worker deployed to production and staging. Verified in
+  production: the origin allowlist echoes a real origin and omits an unknown
+  one, and 90 rapid calls produced 70 `429`s. A first rate-limit test showed
+  nothing because it was too SLOW to reach the limit inside its own window.
+- Voice packs mirrored to R2 and served from `packs.phonoleaf.com`, with the
+  upstream release kept as automatic fallback and every download verified
+  against a recorded SHA-256.
+- R8 enabled with keep rules for everything resolved by NAME at runtime, and the
+  encrypted token store migrated off the deprecated `androidx.security-crypto`
+  onto the platform Keystore, carrying the existing token across.
+
+### Two self-inflicted problems worth remembering
+
+**Verification that rejected everything.** The hash check hashed a stream that
+`BZip2CompressorInputStream.use{}` had already closed, so the digest covered
+part of the body and never matched. Located by re-fetching a pack and comparing
+to the recorded hash, which proved the values were right and the computation
+wrong. Also pinned `Accept-Encoding: identity`, since the HTTP client otherwise
+decodes transparently and would hash different bytes than the file.
+
+**98 MB committed to the repo.** `wrangler r2 object get` writes into the
+current directory; running it from `worker/` to verify the bucket dropped an
+archive into the tree and `git add -A` swept it in. Fixed by amending the
+just-pushed commit, safe only because it was seconds old with nothing after it.
+`*.tar.bz2` is now ignored.
+
+### Testing lessons
+
+A guard that has not been shown to FAIL is not a guard. Two were caught here:
+
+1. A benchmark guard passed with the protection deleted, because two
+   `if (this.active)` occurrences existed and a non-global replace left one.
+2. A highlight guard FAILED against correct code, because it searched a fixed
+   byte window and the explanatory comment above the asserted line filled it.
+
+The second was only caught after adding a **control case** asserting the real
+code PASSES. Checking that broken variants fail proves an assertion can fail; it
+does not prove it asserts the right thing. Both directions are now standard.
+
+### Store-only billing (owner decision, 2026-09-02)
+
+Subscriptions are sold exclusively through Google Play and the App Store. No web
+checkout, no Stripe, no plan for one. Stripe is removed from the code and from
+every document.
+
+The reasoning, in the order that decided it: the stores act as merchant of
+record and remit consumption tax in most markets, which for a one-person
+business is a permanent obligation avoided rather than a setup task; Play
+requires its own billing for in-app subscriptions and forbids steering users
+out; and iOS plus Android means two store integrations regardless, so web
+selling was always a THIRD source rather than a replacement for one.
+
+Cost of the decision: roughly 15% forever. Accepted deliberately.
+
+**It stays reversible by construction, and that must be protected.** The
+entitlement record carries a `source` column that nothing reads —
+`effectiveStatus()` decides on status and expiry alone. The rule that keeps this
+simple long-term: **the app asks "am I entitled?", never "did this person buy
+through Play?"**. The moment a screen branches on payment source, every future
+source has to be threaded through it.
+
+Knock-on effects recorded in the specs: the stores own refunds (ours is only
+reacting to a notification), store-side per-country pricing removes the
+elaborate USD-only display-estimate workaround, and the website's call to action
+becomes "Get the app" rather than "Subscribe" — pricing still belongs on the
+page, but the purchase happens in the app.

@@ -598,7 +598,7 @@ Google login); verify by inspection + device testing.
   review requested 2026-08-10, still awaiting response** — treat as not
   lawyer-reviewed until confirmed otherwise. Jurisdiction: Québec, Canada.
 - **Business registration (REQ, Québec)**: with the lawyer, blocks the bank
-  account / GST-QST registration / Stripe account, in that order.
+  account / GST-QST registration / store payout setup, in that order. **Billing is STORE-ONLY as of 2026-09-02** (Play + App Store, no web checkout, no Stripe) — see `PAYMENTS_SPEC.md` §4.
 - **Security/code/licence audit done 2026-09-01**: 24 findings, 15 fixed the
   same day (error-contract tests, a trial race that could downgrade a payer,
   JWT `kid`, CORS allowlist, per-IP rate limiting, tar traversal guard,

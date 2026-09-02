@@ -106,7 +106,7 @@ produces the wrong priorities.
 **The app cannot currently charge anyone.** The entitlement worker exists (324 lines,
 deployed, with real ES256 signing and Google JWKS verification) but is deliberately
 not called from the app, and `/checkout`, `/portal`, `/verify-play` and both webhook
-routes are 501 stubs. Everything downstream (Stripe account, bank account, GST and
+routes are 501 stubs. Everything downstream (bank account, GST and
 QST registration) waits on Québec business registration, which the lawyer is
 actively working on, with email every 2-3 days (owner, 2026-09-01). **Corrected
 2026-09-01:** this previously said "no response recorded in 20 days", which was
@@ -197,7 +197,7 @@ agent.
 **The CASA deadline is 125 days out and sits behind a dependency chain nobody here
 controls.** January 2, 2027. Submission is deliberately parked until the payments
 backend exists, so the sequence is: lawyer responds, business registers, bank account
-opens, GST and QST register, Stripe account opens, payments get built, then CASA is
+opens, GST and QST register, store accounts open, payments get built, then CASA is
 submitted. The first link has not moved in 20 days. If it has not moved by roughly
 October, the realistic options narrow to submitting without a backend (accepting a
 second assessment plus a DAST scan later, which Eydle has already called a likely
