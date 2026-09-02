@@ -47,15 +47,17 @@
        www.googleapis.com + oauth2.googleapis.com (Drive/auth), openlibrary.org
        (book metadata), *.googleusercontent.com (Drive thumbnails).
 
-       TIGHTENED 2026-09-01 (audit finding C4): cdn.jsdelivr.net and the
-       HuggingFace hosts were REMOVED from this file. They existed for the
-       browser WASM Kokoro fallback, which this build cannot reach — native
-       synthesis always goes through the AIDL engine (see TTS._synth and the
-       guard in TTS._synthKokoro). Allowing them cost real security for no
-       function: cdn.jsdelivr.net mirrors all of npm, so allowlisting it in
-       script-src meant the allowlist no longer constrained what an injected
-       script could load. THIS FILE IS THE NATIVE BUILD ONLY; the website's
-       index.html keeps those hosts because its fallback genuinely runs.
+       No CDN hosts, deliberately. This file is the NATIVE build, and the
+       browser WASM speech fallback that once needed cdn.jsdelivr.net and the
+       HuggingFace hosts has been removed outright (2026-09-02). Its CDN entries
+       went first, on 2026-09-01, because allowlisting cdn.jsdelivr.net is close
+       to allowlisting nothing: it mirrors all of npm, so an injected script
+       could have pulled any package from it.
+       Native synthesis always goes through the AIDL engine, so nothing here
+       needs a remote script. If a future change reintroduces one, weigh that
+       against this: a single CDN entry in script-src can undo the whole
+       directive. The website's index.html still has its fallback, and its own
+       CSP, and is deliberately untouched.
        Do not copy this CSP into index.html.
 
        wasm-unsafe-eval is kept: it is required by ONNX/WASM execution
@@ -7336,9 +7338,6 @@ const TTS = {
   _retryN: 0, // consecutive re-speaks of a starved (instantly-"ended") utterance
   _audio: null,     // shared <audio> element for neural-voice playback
   _preSynth: null,  // prefetched next-chunk audio { key: 'gen:idx', p: Promise<url> }
-  _kworker: null,   // Kokoro Web Worker (model lives there — keeps the UI thread free)
-  _kpend: null,     // pending worker requests: id → {res, rej}
-  _kid: 0,          // worker request id counter
   _kstrikes: 0,     // consecutive neural synthesis failures
   _kokoroDead: false, // 2 strikes or a slow speed-probe → device voice for the session
   _noVoiceShown: false, // NoVoiceModal shown once per session (no pack installed at all)
@@ -8844,7 +8843,14 @@ const TTS = {
   _synth(text) {
     const nat = this._nativeTts();
     if (nat) return this._synthNative(nat, text);
-    return this._synthKokoro(text);
+    // The browser-WASM fallback was REMOVED from this build on 2026-09-02.
+    // This file IS the native app: MainActivity registers the plugin
+    // unconditionally, so _nativeTts() is always present, and the CSP no longer
+    // permits the CDN that fallback needed. Reaching here means the plugin
+    // failed to register, which is a real fault worth surfacing rather than
+    // degrading to something that cannot work anyway.
+    // index.html (the website) keeps its fallback and is deliberately untouched.
+    return Promise.reject(new Error('native TTS plugin unavailable'));
   },
   // Native synth → WAV data URL. Synthesized at speed 1.0; playback speed is
   // applied live via <audio>.playbackRate (so a cached/prefetched chunk stays
@@ -9006,74 +9012,6 @@ const TTS = {
   // dead). Each generation has a 30s timeout; failures fall back to the device
   // voice per chunk, and 2 consecutive failures mark Kokoro dead for the session
   // (_kokoroDead) so playback continues in the standard voice instead of dying.
-  _kokoroOpts() {
-    const gpu = !!navigator.gpu;
-    return { device: gpu ? 'webgpu' : 'wasm', dtype: gpu ? 'fp32' : 'q8' }; // q8 is unreliable on WebGPU
-  },
-  _kokoroWorkerEl() {
-    if (this._kworker) return this._kworker;
-    const src = `
-      let tts = null, loading = null;
-      function ready(opts) {
-        if (loading) return loading;
-        loading = (async () => {
-          // Pinned to an EXACT version, not the '@1' range it used to carry
-          // (audit finding C4, 2026-09-01). '@1' resolved to whatever the
-          // latest 1.x happened to be at RUN time, so a future release of a
-          // third-party package would execute inside this app's origin, next
-          // to the Drive token in localStorage, with no action from us. A
-          // dynamic import cannot carry subresource integrity, so the version
-          // pin is the only control available here. Bump deliberately, after
-          // checking what changed upstream.
-          const mod = await import('https://cdn.jsdelivr.net/npm/kokoro-js@1.2.1/+esm');
-          tts = await mod.KokoroTTS.from_pretrained('onnx-community/Kokoro-82M-v1.0-ONNX', {
-            dtype: opts.dtype, device: opts.device,
-            progress_callback: p => { if (p.status === 'progress' && p.file && p.file.endsWith('.onnx')) postMessage({ t: 'prog', p: Math.round(p.progress || 0) }); },
-          });
-          return tts;
-        })();
-        loading.catch(() => { loading = null; });
-        return loading;
-      }
-      onmessage = async e => {
-        const m = e.data;
-        try {
-          if (m.t === 'load') { await ready(m); postMessage({ t: 'ready' }); }
-          else if (m.t === 'gen') {
-            const k = await ready(m);
-            const audio = await k.generate(m.text, { voice: m.voice });
-            const pcm = audio.audio;
-            postMessage({ t: 'audio', id: m.id, rate: audio.sampling_rate, pcm }, [pcm.buffer]);
-          }
-          else if (m.t === 'bench') {
-            const k = await ready(m);
-            const t0 = performance.now();
-            const audio = await k.generate('The quick brown fox jumps over the lazy dog near the quiet river bank.', { voice: 'af_heart' });
-            postMessage({ t: 'bench', id: m.id, genMs: performance.now() - t0, audioMs: (audio.audio.length / audio.sampling_rate) * 1000 });
-          }
-        } catch (err) { postMessage({ t: 'err', id: m.id, msg: String((err && err.message) || err) }); }
-      };`;
-    const w = new Worker(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })), { type: 'module' });
-    this._kpend = new Map();
-    w.onmessage = e => {
-      const m = e.data;
-      // Download progress/ready are deliberately SILENT — the model warms in
-      // the background and nothing about it should interrupt the user. Its
-      // state is reported in Settings → Natural voice instead.
-      if (m.t === 'prog') return;
-      if (m.t === 'ready') { this.updateVoiceLabel(); this._kokoroBench(); return; }
-      const p = this._kpend.get(m.id);
-      if (!p) return;
-      this._kpend.delete(m.id);
-      if (m.t === 'audio' || m.t === 'bench') p.res(m); else p.rej(new Error(m.msg || 'kokoro'));
-    };
-    w.onerror = () => {
-      for (const [, p] of this._kpend) p.rej(new Error('kokoro-worker'));
-      this._kpend.clear();
-    };
-    this._kworker = w;
-    return w;
-  },
   // The whole warm-up is SILENT. It used to announce itself with a persistent
   // (dur:0) "downloading the voice model…" toast; an earlier fix suppressed
   // that until a folder was chosen, but that gate was the wrong one — a
@@ -9093,49 +9031,6 @@ const TTS = {
     if (nat) {
       this._modelReady().then(() => this.updateVoiceLabel(), () => {});
       return;
-    }
-    // Browser-WASM engine: a cached slow-probe verdict skips the ~90 MB
-    // download entirely and goes straight to fallback.
-    const cached = this._benchCached();
-    if (cached && cached.ratio > 1.25) { this._kokoroDead = true; Settings.render(); return; }
-    try {
-      this._kokoroWorkerEl().postMessage(Object.assign({ t: 'load' }, this._kokoroOpts()));
-    } catch (_) { /* silent — falls back to the device voice per chunk */ }
-  },
-  _benchCached() {
-    try {
-      const b = JSON.parse(localStorage.getItem('pl_kokoro_bench') || 'null'); // key name is historical
-      return (b && b.backend === this._kokoroOpts().device) ? b : null;
-    } catch (_) { return null; }
-  },
-  // Speed probe: generation must be comfortably faster than playback or
-  // continuous reading is impossible (a device 2-3× slower than realtime falls
-  // further behind every sentence — prefetch can't fix that). Runs once after
-  // the model is ready, cached per backend; a slow verdict sets _kokoroDead
-  // with one clear message instead of a 30s timeout on every chunk.
-  // Settings → Retry clears the cache and re-probes.
-  _kokoroBench() {
-    const backend = this._kokoroOpts().device;
-    const cached = this._benchCached();
-    if (cached) { this._applyBench(cached, false); return; }
-    const id = ++this._kid;
-    this._kpend.set(id, {
-      res: m => {
-        const bench = { backend, ratio: +(m.genMs / (m.audioMs || 1)).toFixed(2), t: Date.now() };
-        try { localStorage.setItem('pl_kokoro_bench', JSON.stringify(bench)); } catch (_) {}
-        Diag.push({ e: 'bench', be: backend, r: bench.ratio });
-        this._applyBench(bench, true);
-      },
-      rej: () => {},
-    });
-    this._kokoroWorkerEl().postMessage(Object.assign({ t: 'bench', id }, this._kokoroOpts()));
-  },
-  _applyBench(b, fresh) {
-    if (b.ratio > 1.25 && !this._kokoroDead) {
-      this._kokoroDead = true;
-      // Only toast on a fresh verdict — a cached one re-applies silently at boot.
-      if (fresh) toast(I18n.t('device_cant_run_realtime'));
-      Settings.render();
     }
   },
   _nativeBenchCached() {
@@ -9158,11 +9053,13 @@ const TTS = {
   // downloaded model's own catalog entry avoids that. Runs once, at the
   // earliest point a model actually exists to time, while the user is very
   // likely still looking at onboarding. Piper was specifically chosen to run
-  // under realtime on phones (see CLAUDE.md's "Voice engine" note), so unlike
-  // _kokoroBench a slow verdict here never disables the natural voice
-  // outright — it only labels the onboarding note, the voice picker, and the
-  // Settings status row, since being close to (not wildly over) 1.0 still
-  // leaves prefetch some room to work with.
+  // under realtime on phones (see CLAUDE.md's "Voice engine" note), so a slow
+  // verdict here never disables the natural voice outright — it only labels
+  // the onboarding note, the voice picker, and the Settings status row, since
+  // being close to (not wildly over) 1.0 still leaves prefetch room to work
+  // with. (It contrasted with the browser fallback's harsher probe, which
+  // could switch the voice off entirely; that fallback is gone as of
+  // 2026-09-02.)
   async _nativeBench(model) {
     if (this._nativeBenchCached()) return;
     const nat = this._nativeTts();
@@ -9241,50 +9138,6 @@ const TTS = {
       Diag.push({ e: 'kgate', r: +ratio.toFixed(2), g });
       return ratio;
     } catch (_) { return null; }
-  },
-  _synthKokoro(text) {
-    if (this._kokoroDead) return Promise.reject(new Error('kokoro-dead'));
-    // NATIVE MUST NEVER REACH HERE (audit finding C4). This is the browser
-    // WASM fallback: it dynamically imports kokoro-js from cdn.jsdelivr.net
-    // and pulls ~90 MB of weights from HuggingFace. On Android, _synth()
-    // always takes _synthNative() because MainActivity registers the plugin
-    // unconditionally, so this branch is dead code on the shipping app.
-    //
-    // The guard exists so that stays TRUE rather than merely being true
-    // today. The native CSP no longer allows either host, so if a future
-    // refactor let this run on native it would otherwise fail as an opaque
-    // CSP violation inside a Web Worker — and native has no Web Speech to
-    // fall back to, so playback would simply stop, which is exactly the
-    // silent-failure shape that cost a session already.
-    if (App.isNative()) {
-      return Promise.reject(new Error('wasm-kokoro-unavailable-on-native'));
-    }
-    const w = this._kokoroWorkerEl();
-    const id = ++this._kid;
-    return new Promise((res, rej) => {
-      const to = setTimeout(() => { this._kpend.delete(id); rej(new Error('kokoro-timeout')); }, 30000);
-      this._kpend.set(id, {
-        res: m => { clearTimeout(to); this._kstrikes = 0; res(URL.createObjectURL(this._wavBlob(m.pcm, m.rate))); },
-        rej: err => { clearTimeout(to); rej(err); },
-      });
-      // pl_voice_kokoro: key name kept from the old tier system so existing
-      // installs keep their chosen voice. The WASM fallback loads the Kokoro
-      // v1.0 model, which has every catalog voice EXCEPT bare 'af' — map that
-      // to its default female so the web path always has a valid voice.
-      const sel = localStorage.getItem('pl_voice_kokoro') || 'af';
-      const voice = sel === 'af' ? 'af_heart' : sel;
-      w.postMessage({ t: 'gen', id, text, voice, ...this._kokoroOpts() });
-    });
-  },
-  _wavBlob(f32, rate) { // mono 16-bit PCM WAV from a Float32Array
-    const n = f32.length, buf = new ArrayBuffer(44 + n * 2), v = new DataView(buf);
-    const ws = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
-    ws(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); ws(8, 'WAVEfmt '); v.setUint32(16, 16, true);
-    v.setUint16(20, 1, true); v.setUint16(22, 1, true); v.setUint32(24, rate, true);
-    v.setUint32(28, rate * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true);
-    ws(36, 'data'); v.setUint32(40, n * 2, true);
-    for (let i = 0; i < n; i++) { const s = Math.max(-1, Math.min(1, f32[i])); v.setInt16(44 + i * 2, s < 0 ? s * 0x8000 : s * 0x7FFF, true); }
-    return new Blob([buf], { type: 'audio/wav' });
   },
   setRate(v) {
     this.rate = v;

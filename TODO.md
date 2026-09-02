@@ -745,6 +745,44 @@ itself calls non-English support thin with weak G2P.
 Sources: hexgrad/Kokoro-82M on Hugging Face (Apache 2.0), rhasspy/piper-voices
 MODEL_CARD files per voice, and rhasspy/piper discussion #271 on licensing.
 
+## WEBSITE REDESIGN, BUILT OFF-LIVE, READY FOR LAUNCH DAY (owner, 2026-09-02)
+
+Redesign the website so it is ready to go live the moment the apps do. Build it
+in a **test environment, not on the live site**, and switch over at launch.
+
+**This does not reopen the feature freeze.** `CLAUDE.md` and `BUSINESS.md` still
+stand: the website is SEO plus an app-store launcher, its playback is removed
+once both stores carry the app, and no product features get ported to it. What
+is wanted here is the DESIGN, so a visitor arriving from a store listing or a
+search result meets something that looks like a finished product.
+
+**Why off-live matters.** A push to `main` deploys `index.html` to
+phonoleaf.com in about two minutes. There is no staging branch, so any
+in-progress redesign committed to `main` is immediately public, half-finished,
+on the domain the SEO work points at. Whatever approach is taken has to keep
+the work off the live site until the switch.
+
+Options, cheapest first, none chosen yet:
+  1. A separate file (e.g. `home-v2.html`) developed and reviewed in place, then
+     promoted to `home.html`/`index.html` at launch. No infrastructure, but it
+     IS reachable by URL once pushed, so it must not be linked or indexed
+     (`noindex`, and keep it out of `sitemap.xml`).
+  2. A branch that is never pushed to `main` until launch day. Keeps it fully
+     private, at the cost of the parallel-work risk `CLAUDE.md` already warns
+     about.
+  3. A Cloudflare Pages preview or a second Worker on a subdomain. Cleanest
+     separation, most setup.
+
+**Scope to settle before starting**, since "redesign the website" is not yet a
+brief: which pages (`home.html` and its FR twin only, or the ten comparison
+pages too), whether the app's Green Ink visual system carries over, and what
+the page should ask a visitor to DO once playback is gone and the answer is
+"install the app". That last one is the real design question.
+
+**Sequencing.** Not blocking anything, and the trigger is the store release, so
+it can wait for incorporation to clear. Worth starting before then only because
+launch day is a bad time to be designing.
+
 ## CLOUDFLARE SETUP AS IT STANDS (2026-09-02)
 
 Recorded so nobody re-derives it, and because one constraint has a trap in it.
