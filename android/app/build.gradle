@@ -1,22 +1,50 @@
 apply plugin: 'com.android.application'
 apply plugin: 'kotlin-android'
 
-// Release signing. The keystore and its passwords must NEVER be committed —
-// see .gitignore, which excludes *.jks/*.keystore and this properties file.
-// Create android/keystore.properties (gitignored) with:
-//     storeFile=C:/path/outside/the/repo/phonoleaf-release.jks
-//     storePassword=...
-//     keyAlias=phonoleaf
-//     keyPassword=...
-// If that file is absent, no release signingConfig is registered at all and
+// Release signing. Credentials are read from ENVIRONMENT VARIABLES on the
+// build machine and must never exist as a file anywhere in this tree.
+//
+// THIS IS A SECURITY BOUNDARY, NOT A PREFERENCE. The previous design read
+// android/keystore.properties. That file leaked the signing password into a
+// conversation transcript TWICE (2026-09-01 and 2026-09-02) — not by anyone
+// opening it, but because assistant tooling watches files it has touched and
+// echoes their contents on every change. Rotating the password did not help:
+// the second leak was the rotated value. A secret in a plaintext file next to
+// the code is exposed by the file's existence, so the file has to go.
+//
+// Set these once, per user, outside the repo (PowerShell, then restart
+// Android Studio so it inherits them):
+//     setx PHONOLEAF_STORE_FILE     "C:\path\outside\repo\phonoleaf-release.jks"
+//     setx PHONOLEAF_STORE_PASSWORD "..."
+//     setx PHONOLEAF_KEY_ALIAS      "phonoleaf"
+//     setx PHONOLEAF_KEY_PASSWORD   "..."
+//
+// If they are unset, no release signingConfig is registered and
 // `assembleRelease` produces an unsigned build — deliberate, so a fresh clone
-// and every debug build still work with nothing extra set up. Losing this
-// keystore means never being able to update the Play listing again: back it
-// up somewhere durable and off this machine before the first upload.
-def keystorePropsFile = rootProject.file('keystore.properties')
-def keystoreProps = new Properties()
-if (keystorePropsFile.exists()) {
-    keystorePropsFile.withInputStream { keystoreProps.load(it) }
+// and every debug build still work with nothing extra set up. Losing the
+// keystore FILE means never being able to update the Play listing again: back
+// it up somewhere durable and off this machine before the first upload.
+def signingEnv = [
+    storeFile    : System.getenv('PHONOLEAF_STORE_FILE'),
+    storePassword: System.getenv('PHONOLEAF_STORE_PASSWORD'),
+    keyAlias     : System.getenv('PHONOLEAF_KEY_ALIAS'),
+    keyPassword  : System.getenv('PHONOLEAF_KEY_PASSWORD'),
+]
+def hasSigningEnv = signingEnv.values().every { it != null && !it.trim().isEmpty() }
+
+// Hard stop rather than a silent fallback. If this file reappears — restored
+// from a backup, recreated by a tool, or copied from an old guide — the build
+// fails loudly instead of quietly resuming the leaking path. Deleting it is
+// always the correct fix; the credentials belong in the variables above.
+def legacyPropsFile = rootProject.file('keystore.properties')
+if (legacyPropsFile.exists()) {
+    throw new GradleException(
+        "android/keystore.properties exists. Signing credentials must not be " +
+        "stored in a file — this one leaked a password into a transcript twice. " +
+        "Delete it and set PHONOLEAF_STORE_FILE, PHONOLEAF_STORE_PASSWORD, " +
+        "PHONOLEAF_KEY_ALIAS and PHONOLEAF_KEY_PASSWORD instead. See the " +
+        "comment at the top of android/app/build.gradle."
+    )
 }
 
 android {
@@ -65,16 +93,16 @@ android {
         jvmTarget = '21'
     }
     signingConfigs {
-        // Registered only when keystore.properties exists (see the top of this
-        // file). Referencing a signingConfig that was never created is a
-        // configuration-time failure, which is why the buildType below guards
-        // on the same condition rather than naming it unconditionally.
-        if (keystorePropsFile.exists()) {
+        // Registered only when all four environment variables are set (see the
+        // top of this file). Referencing a signingConfig that was never created
+        // is a configuration-time failure, which is why the buildType below
+        // guards on the same condition rather than naming it unconditionally.
+        if (hasSigningEnv) {
             release {
-                storeFile file(keystoreProps['storeFile'])
-                storePassword keystoreProps['storePassword']
-                keyAlias keystoreProps['keyAlias']
-                keyPassword keystoreProps['keyPassword']
+                storeFile file(signingEnv.storeFile)
+                storePassword signingEnv.storePassword
+                keyAlias signingEnv.keyAlias
+                keyPassword signingEnv.keyPassword
             }
         }
     }
@@ -100,7 +128,7 @@ android {
             // Newer AGP rejects 'proguard-android.txt' (it forces -dontoptimize);
             // the -optimize variant is required.
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-            if (keystorePropsFile.exists()) {
+            if (hasSigningEnv) {
                 signingConfig signingConfigs.release
             }
         }

@@ -82,8 +82,9 @@ fallback.
 - Status: **production-bound, but not yet shipped or earning.** Treat changes
   with multi-user/security/cost awareness: this is built to be a real product,
   not a personal toy. But be accurate about where it actually is (checked
-  2026-08-30) — **no Play Store release exists** (`versionCode 1`, no
-  `signingConfig`, no keystore, no Play Console account), OAuth is still in
+  2026-09-02) — **no Play Store release exists** (`versionCode 1`, no Play
+  Console account; a keystore and a working `signingConfig` DO now exist and
+  a signed 53 MB build has been produced), OAuth is still in
   **Testing mode under its 100-user cap** because CASA is parked, and the
   entitlement Worker is deployed but not called from the app, so **nobody can
   pay yet**. Do not plan as though there is an installed base to protect or
@@ -374,6 +375,25 @@ Google login); verify by inspection + device testing.
   intent-filter exactly — a mismatch breaks the native deep-link return
   silently. Do not change either without the owner explicitly asking.
 - **epub.js must load from jsdelivr, not cdnjs** — the cdnjs path 404s.
+- **Release signing credentials come from ENVIRONMENT VARIABLES
+  (`PHONOLEAF_STORE_FILE`, `PHONOLEAF_STORE_PASSWORD`, `PHONOLEAF_KEY_ALIAS`,
+  `PHONOLEAF_KEY_PASSWORD`), never from a file. Do not create
+  `android/keystore.properties`, and do not add a fallback that reads one.**
+  This is a security boundary, not a preference. That file leaked the signing
+  password into a conversation transcript TWICE (2026-09-01, 2026-09-02) —
+  neither time by anyone reading it: tooling watches files it has touched and
+  echoes their contents on every change, so the file's existence was the
+  exposure. Rotating the password did not help; the second leak was the
+  rotated value. `android/app/build.gradle` therefore throws a
+  `GradleException` if the file reappears, and `test/secrets.test.mjs` fails
+  if it exists, if the build reads a properties file, if that guard is
+  removed, or if any tracked file holds a literal password.
+  **Never write a secret into a file to hand it to the owner** — give them the
+  command and let them type the value. Creating the file is what starts the
+  watching. Never open any `*.jks`, `*.keystore`, or `worker/.dev.vars`.
+  Only the password ever leaked, never the `.jks` itself, so rotation is
+  `keytool -storepasswd`/`-keypasswd` on the existing keystore — a NEW key
+  would change the certificate SHA-1 already recorded in `TODO.md`.
 
 ## Conventions
 

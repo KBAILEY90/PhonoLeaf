@@ -1103,35 +1103,38 @@ anywhere in `worker/`.
 > queue. They are fully unblocked today, and two of them are the reason a
 > finished product currently cannot reach a single user.
 
-- [~] **[SWOT] Make a release build possible at all.** **Code half done
-      2026-08-30; the two owner steps remain.** `android/app/build.gradle`
-      now reads signing credentials from an untracked
-      `android/keystore.properties` and registers the release
-      `signingConfig` only when that file exists, so a fresh clone and every
-      debug build still work untouched. `.gitignore` now excludes `*.jks`,
-      `*.keystore` and that properties file (verified with
-      `git check-ignore`; nothing of the sort was ever tracked). A
-      versioning-scheme comment records the bump discipline.
-      **NOT verified by a real Gradle build** (no Android SDK in this
-      environment), so run `assembleRelease` once before trusting it.
-      **Still owed, both owner actions:** create the keystore with
-      `keytool` and back it up off-machine (losing it means never being
-      able to update the Play listing again), and register the Play Console
-      account once the personal-vs-organization decision above is made,
-      plus the third Android OAuth client for the release SHA-1 with
-      "Enable custom URI scheme" ticked. Original finding:
-      `android/app/build.gradle` is still `versionCode 1` with **no**
-      `signingConfig`, and there is no keystore anywhere in the repo, so no
-      signed APK/AAB can be produced right now. Three pieces, in order:
-      (1) create the release keystore with `keytool` and keep it and its
-      passwords out of git, (2) add the Gradle signing config plus a real
-      `versionCode`/`versionName` scheme, (3) register the Play Console
-      account ($25, identity verification takes days) once the
-      personal-vs-organization decision above is made. Also still owed from
-      `VERIFICATION.md`: a **third Android OAuth client** for the release
-      keystore's SHA-1, with "Enable custom URI scheme" ticked under
-      Advanced Settings, since its absence has already cost one debugging
-      session. `SWOT.md` Weaknesses + recommendation 3.
+- [~] **[SWOT] Make a release build possible at all.** **Signed build DONE
+      2026-09-02; two owner steps remain.** A signed release build was
+      produced and verified (`BUILD SUCCESSFUL`, `CN=Kevin Bailey,
+      O=Everbloom Technologies inc.`, 53.0 MB after R8, checked with
+      `apksigner`). The certificate SHA-1 is recorded below for the third
+      Android OAuth client.
+      **Signing credentials now come from ENVIRONMENT VARIABLES, and this is
+      a security boundary — do not "simplify" it back.** The original design
+      read an untracked `android/keystore.properties`. That file leaked the
+      signing password into a conversation transcript **twice** (2026-09-01
+      and 2026-09-02), never by anyone reading it: assistant tooling watches
+      files it has touched and echoes their contents on every change, so the
+      file's existence was the exposure. Rotating the password did not help —
+      the second leak was the rotated value. `android/app/build.gradle` now
+      reads `PHONOLEAF_STORE_FILE`, `PHONOLEAF_STORE_PASSWORD`,
+      `PHONOLEAF_KEY_ALIAS` and `PHONOLEAF_KEY_PASSWORD` from the
+      environment, registers the release `signingConfig` only when all four
+      are set (so a fresh clone and every debug build still work untouched),
+      and **throws a `GradleException` if `keystore.properties` reappears**
+      — verified by running Gradle with the file present. `.gitignore` still
+      excludes `*.jks`, `*.keystore` and that properties file.
+      `test/secrets.test.mjs` fails if the file exists, if the build reads a
+      properties file, if the reappearance guard is deleted, or if any
+      tracked file holds a literal password.
+      **Still owed, both owner actions:** rotate the store and key passwords
+      on the EXISTING keystore with `keytool -storepasswd` / `-keypasswd`
+      (not a new key — a new key changes the SHA-1 recorded below), and
+      register the Play Console account through the corporation once
+      incorporation completes, plus the third Android OAuth client for the
+      release SHA-1 with "Enable custom URI scheme" ticked under Advanced
+      Settings, since its absence has already cost one debugging session.
+      `SWOT.md` Weaknesses + recommendation 3.
 - [x] **[SWOT] Converge the `index.html` / `index.green.html` fork.**
       **CANCELLED 2026-08-31 by owner decision, not done and not to be done.**
       The premise was that the website is a worse copy of the product and
