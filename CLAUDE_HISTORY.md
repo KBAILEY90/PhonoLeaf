@@ -8110,3 +8110,101 @@ reacting to a notification), store-side per-country pricing removes the
 elaborate USD-only display-estimate workaround, and the website's call to action
 becomes "Get the app" rather than "Subscribe" — pricing still belongs on the
 page, but the purchase happens in the app.
+
+### Release build, unblocked and proven
+
+The signing keystore did not exist and `assembleRelease` had never run once, so
+the conditional signing config in `android/app/build.gradle` was unexercised
+code sitting between the project and any release.
+
+Created with `keytool` outside the repo, wired through the gitignored
+`android/keystore.properties`, and proven: `BUILD SUCCESSFUL`, signed with
+`CN=Kevin Bailey, O=Everbloom Technologies inc.`, verified with `apksigner`.
+The certificate SHA-1 is recorded in `TODO.md` for the third Android OAuth
+client that the release build will need.
+
+Two practical notes for whoever does this next. `keytool` is not on PATH: it
+ships inside Android Studio at `jbr/bin/keytool.exe`, and the same applies to
+`JAVA_HOME` for Gradle. And the owner is on PowerShell, so `~/` and `./gradlew`
+do not work — it is `$HOME` and `.\gradlew.bat`.
+
+**The keystore password reached the transcript twice**, both times through a
+file-change notification rather than anyone pasting it, because the assistant
+had CREATED `keystore.properties` and the harness therefore tracked it. The
+memory rule "never read this file" was not enough; the rule has to be "never
+create it either". The key was regenerated after the first exposure. Nothing
+has shipped, so regeneration remains free — after the first Play release it is
+permanent.
+
+### Stats: a rolling ten days, and the local calendar day
+
+Two owner requests, small individually and worth recording together because the
+second was a real bug hiding behind the first.
+
+The chart showed the current calendar week, Monday-first, which collapses to a
+single bar on a Monday and hides the days immediately before it. Replaced with a
+rolling window of the last 10 days, oldest first, today always rightmost.
+Labels became the day of the MONTH, since over ten days the day letters repeat
+and stop identifying anything. Verified the window arithmetic across month
+rollover, February into March, and year rollover.
+
+Making the days individually visible then exposed the second problem:
+`Stats._key` used `toISOString().slice(0,10)`, which is UTC. In Quebec that
+filed everything after roughly 8pm local under TOMORROW. Harmless in a weekly
+total, plainly wrong in a per-day chart. Now derived from the local getters.
+
+**Not retroactive, deliberately.** A day's total is a single number and nothing
+records which seconds within it were logged in the evening, so any migration
+would be guesswork presented as data. Days before the change may sit one day
+late; everything after is right. The chart now also delegates to `Stats._key`
+rather than keeping its own copy of the derivation — read and write were two
+separate expressions that happened to match, and a change to one would have made
+the chart read days that were never written.
+
+### Website redesign, scoped but not started
+
+Owner asked for a redesign built OFF the live site, ready to switch on when the
+apps go live. The brief, in their words: explain what the app does, its
+advantages, pricing, competitor comparison, and carry the SEO. Two conversions,
+install and subscribe.
+
+That makes it a conversion page rather than a brochure, and it settles the
+running order. Much of the thinking is already done elsewhere and should not be
+redecided: `SEO.md` §1 fixes the argument (lead on reliability, privacy as
+support) and `BUSINESS.md` fixes the pricing.
+
+**This does not reopen the feature freeze.** The website remains SEO plus an
+app-store launcher, and its playback still goes away once both stores carry the
+app. What is wanted is the design.
+
+The constraint that shapes the work: a push to `main` deploys `index.html` in
+about two minutes and there is no staging branch, so an in-progress redesign
+committed the normal way is immediately public on the domain the SEO points at.
+Three options for keeping it off-live are recorded in `TODO.md`.
+
+Store-only billing then answered the last open question: the call to action is
+**"Get the app"**, not "Subscribe". Pricing still belongs on the page; the
+purchase happens in the app.
+
+### Doc drift, and the review that caught it
+
+A review at the end of the session found five places where the documentation
+described a state that had already stopped being true. All five were verified
+against git and the filesystem, then corrected.
+
+Two claimed the security audit was unpushed and awaiting an owner decision; it
+had been pushed, and because `e5817bd` touched `index.html` and `sw.js` those
+fixes were already live. One listed the dead speech code as still shipping,
+after `45adc26` had removed it. One asked for two Cloudflare dashboard items the
+owner had already completed. One told the owner to create a keystore that
+existed and had already signed a build. And `BUSINESS.md` still carried the
+superseded CASA deadline of Nov 3, 2026 rather than the extension to Jan 2, 2027
+that `VERIFICATION.md` had recorded on 2026-08-19.
+
+**The pattern is the lesson, not the individual errors.** Every one was a status
+line that was accurate when written and quietly expired. Four of the five were
+contradicted by a NEWER section of the SAME file, which means the drift was
+detectable without leaving the document. Two mitigations now in place: dated
+"DONE" markers replace open items rather than sitting beside them, and where two
+files carry the same fact one is named authoritative — `VERIFICATION.md` owns
+the CASA date, so the pair cannot silently disagree again.
