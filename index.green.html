@@ -3353,7 +3353,28 @@ const I18n = {
 const Stats = {
   data: JSON.parse(localStorage.getItem('pl_stats') || '{}'),
   _iv: null,
-  _key(o) { return o.toISOString().slice(0, 10); },
+  /**
+   * The LOCAL calendar day an instant belongs to, as YYYY-MM-DD.
+   *
+   * Was toISOString().slice(0,10) until 2026-09-01, which is UTC. In Quebec
+   * (UTC-4/-5) that filed everything after roughly 8pm local under TOMORROW'S
+   * date, so an evening session appeared on the wrong bar. Harmless while the
+   * chart showed weekly totals; obvious once it showed individual days.
+   *
+   * Built from the local getters rather than toISOString so it follows the
+   * device's timezone, including a change of timezone or a DST shift.
+   *
+   * NOT retroactive, deliberately. Existing entries stay under the UTC keys
+   * they were written with. They cannot be corrected: a day's total is a single
+   * number, and there is no record of which seconds within it were logged in
+   * the evening, so any migration would be guesswork dressed up as data. Days
+   * recorded before this change may therefore sit one day late; everything from
+   * here on is right.
+   */
+  _key(o) {
+    const p = n => String(n).padStart(2, '0');
+    return o.getFullYear() + '-' + p(o.getMonth() + 1) + '-' + p(o.getDate());
+  },
   _save() { try { localStorage.setItem('pl_stats', JSON.stringify(this.data)); } catch (_) {} },
   add(sec) {
     this.data.days = this.data.days || {};
@@ -4715,7 +4736,9 @@ const StatsPage = {
   _group: (() => { try { return localStorage.getItem('pl_stats_group') || 'author'; } catch (_) { return 'author'; } })(),
   render() {
     const days = (Stats.data && Stats.data.days) || {}, prog = State.progress || {}, books = State.books || [];
-    const key = o => o.toISOString().slice(0, 10);
+    // MUST match Stats._key exactly — same local-day derivation, or the chart
+    // reads days that were never written. Delegated rather than duplicated.
+    const key = o => Stats._key(o);
     const now = new Date();
     let total = 0; for (const k in days) total += days[k];
     const sum = Stats.summary();
