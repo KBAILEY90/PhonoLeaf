@@ -392,8 +392,18 @@ Google login); verify by inspection + device testing.
   command and let them type the value. Creating the file is what starts the
   watching. Never open any `*.jks`, `*.keystore`, or `worker/.dev.vars`.
   Only the password ever leaked, never the `.jks` itself, so rotation is
-  `keytool -storepasswd`/`-keypasswd` on the existing keystore — a NEW key
-  would change the certificate SHA-1 already recorded in `TODO.md`.
+  `keytool -storepasswd` on the existing keystore — a NEW key would change the
+  certificate SHA-1 already recorded in `TODO.md`. (`-keypasswd` does not apply:
+  the keystore is PKCS12, which has no separate key password.)
+  **Never run a command that prints the whole environment** — `env`, `printenv`,
+  `set`, `Get-ChildItem Env:`, `[Environment]::GetEnvironmentVariables()` — and
+  never `System.getenv()` with no argument. The signing password now lives in
+  `PHONOLEAF_STORE_PASSWORD`, and a Claude Code process started AFTER the owner
+  set it inherits it, so an environment dump would print it straight into the
+  transcript. Read named variables only, and test presence with
+  `[ -n "$VAR" ]` rather than echoing. This is the one residual path left after
+  the file was removed; nothing in the repo enumerates the environment, verified
+  2026-09-02.
 
 ## Conventions
 
