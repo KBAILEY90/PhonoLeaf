@@ -17,18 +17,34 @@ apply plugin: 'kotlin-android'
 //     setx PHONOLEAF_STORE_FILE     "C:\path\outside\repo\phonoleaf-release.jks"
 //     setx PHONOLEAF_STORE_PASSWORD "..."
 //     setx PHONOLEAF_KEY_ALIAS      "phonoleaf"
-//     setx PHONOLEAF_KEY_PASSWORD   "..."
+// (PHONOLEAF_KEY_PASSWORD is optional — see below. A PKCS12 keystore, which
+// is what keytool produces by default, has no separate key password.)
 //
 // If they are unset, no release signingConfig is registered and
 // `assembleRelease` produces an unsigned build — deliberate, so a fresh clone
 // and every debug build still work with nothing extra set up. Losing the
 // keystore FILE means never being able to update the Play listing again: back
 // it up somewhere durable and off this machine before the first upload.
+def envStoreFile     = System.getenv('PHONOLEAF_STORE_FILE')
+def envStorePassword = System.getenv('PHONOLEAF_STORE_PASSWORD')
+def envKeyAlias      = System.getenv('PHONOLEAF_KEY_ALIAS')
+
+// PHONOLEAF_KEY_PASSWORD is OPTIONAL and defaults to the store password.
+// keytool has created PKCS12 keystores by default since JDK 9, and PKCS12 has
+// no separate per-key password — the key is protected by the store password.
+// `keytool -keypasswd` refuses to run on one at all
+// ("not supported if -storetype is PKCS12"), so requiring a distinct value
+// here would mean asking for something that cannot exist, and two variables
+// that must always be identical is a standing invitation to a confusing
+// build failure. Set it only for a legacy JKS keystore with a differing key
+// password.
+def envKeyPassword   = System.getenv('PHONOLEAF_KEY_PASSWORD') ?: envStorePassword
+
 def signingEnv = [
-    storeFile    : System.getenv('PHONOLEAF_STORE_FILE'),
-    storePassword: System.getenv('PHONOLEAF_STORE_PASSWORD'),
-    keyAlias     : System.getenv('PHONOLEAF_KEY_ALIAS'),
-    keyPassword  : System.getenv('PHONOLEAF_KEY_PASSWORD'),
+    storeFile    : envStoreFile,
+    storePassword: envStorePassword,
+    keyAlias     : envKeyAlias,
+    keyPassword  : envKeyPassword,
 ]
 def hasSigningEnv = signingEnv.values().every { it != null && !it.trim().isEmpty() }
 
