@@ -180,6 +180,46 @@ describe(`app source invariants (${APP_FILE})`, () => {
       'playback again, or it silently never runs on a device in active use.');
   });
 
+  test('the follow-along highlight stops when a sentence ends', () => {
+    // Owner-reported 2026-09-01: the highlight flashed back to the START of a
+    // sentence for about a second as that sentence finished, which also read as
+    // the sentence being repeated.
+    //
+    // The loop's guards are `active`, `gen`, and "a newer schedule replaced
+    // mine". A sentence merely ENDING trips none of them: playback continues,
+    // gen changes only on a page turn or stop, and the next schedule is not
+    // installed until the next chunk's audio has loaded. The shared audio
+    // element's currentTime has meanwhile reset to 0, so the still-running loop
+    // resolves to word 0 and highlights the first word of the sentence that
+    // just finished.
+    //
+    // Two protections, deliberately kept together: the ended handler clears the
+    // loop, and the loop itself refuses to act on a finished element. Either
+    // alone fixes the visible symptom, but the ordering of the ended event
+    // against the next animation frame is not guaranteed.
+    //
+    // Worth a test because nothing errors. The highlight simply points at the
+    // wrong words, which is a correctness bug in the one feature whose entire
+    // job is pointing at the right words.
+    const at = script.indexOf('a.onended = () => {');
+    assert.ok(at > -1, 'the native audio ended handler is gone');
+    // Bounded by the sibling onerror handler rather than a byte count: the
+    // comment explaining this fix is itself ~800 chars, so a fixed window sized
+    // to "the handler" silently excluded the very line being asserted.
+    const end = script.indexOf('a.onerror', at);
+    const handler = script.slice(at, end > at ? end : at + 2500);
+    assert.ok(handler.includes('this._clearHighlight()'),
+      'the native ended handler no longer clears the follow-along highlight, so ' +
+      'the loop keeps running into the next chunk and re-highlights word 0.');
+
+    const tickAt = script.indexOf('const tick = () => {');
+    assert.ok(tickAt > -1, 'the highlight tick loop is gone');
+    const tick = script.slice(tickAt, tickAt + 700);
+    assert.ok(tick.includes('a.ended'),
+      'the highlight loop no longer bails on finished audio. currentTime reads 0 ' +
+      'once ended, which resolves to the first word of the sentence just spoken.');
+  });
+
   test('no Kotlin caller uses startForegroundService', async () => {
     // startForegroundService arms a ~5s watchdog that already crashed the app
     // once when startForeground() lost the race, so every call site must use

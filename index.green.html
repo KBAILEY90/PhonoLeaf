@@ -7812,6 +7812,7 @@ const TTS = {
         if (text === this._lastText) return; // same page re-rendered — don't restart
         this._lastText = text;
         this.chunks = this._chunksFromSegments(segs);
+        this._splitLeadChunk();
         this.idx = 0; this._preIdx = -1;
         return;
       }
@@ -7858,8 +7859,44 @@ const TTS = {
     return out;
   },
 
-  _split(text) {
+  /**
+   * Give a freshly loaded page a SHORT first chunk, so audio starts quickly.
+   *
+   * Owner-reported 2026-09-01: an audible gap at every page turn, with the
+   * "Generating audio" notice appearing. Measured on device, this is the one
+   * real cost left in the pipeline: _playAudio prefetches only
+   * `chunks[idx + 1]`, which does not exist on the last chunk of a page, so the
+   * first chunk of the NEXT page is always generated cold. Generation runs at
+   * roughly 0.3-0.5x realtime, so a full 220-char chunk costs 2-3 seconds
+   * before a single word is heard.
+   *
+   * Nothing can prefetch across the boundary: the next page's text is not known
+   * until the page has actually turned. What CAN change is how much has to be
+   * generated before playback starts. Splitting the first chunk at a sentence
+   * boundary means the opening ~90 chars generate in well under a second, and
+   * the remainder is prefetched normally while it plays.
+   *
+   * Only the first chunk is touched, so pacing everywhere else is unchanged,
+   * and the split lands on a sentence boundary, which is where chunks already
+   * break. `pre` stays on the lead and `post` moves to the tail so chapter and
+   * subtitle pauses still land in the right place.
+   */
+  _splitLeadChunk() {
+    const c = this.chunks && this.chunks[0];
+    if (!c || c.text.length <= this._LEAD_MAX) return;
+    const parts = this._split(c.text, this._LEAD_MAX);
+    // A single sentence longer than the cap cannot be helped without cutting
+    // mid-sentence, which would sound worse than the wait.
+    if (parts.length < 2) return;
+    this.chunks.splice(0, 1,
+      { text: parts[0], pre: c.pre, post: 0, node: c.node },
+      { text: parts.slice(1).join(' '), pre: 0, post: c.post, node: c.node });
+  },
+  _LEAD_MAX: 90,
+
+  _split(text, maxLen) {
     if (!text) return [];
+    const cap = maxLen || 220;
     // Split into sentence-sized chunks <= 220 chars. The `(?:…|$)` matters:
     // without the `|$` the regex only captures runs ENDING in terminal
     // punctuation, so the last sentence on a page — cut by the column break and
@@ -7868,7 +7905,7 @@ const TTS = {
     const sentences = text.match(/[^.!?...\n]+(?:[.!?...\n]+|$)/g) || [text];
     const out = []; let cur = '';
     for (const s of sentences) {
-      if ((cur + s).length > 220 && cur) { out.push(cur.trim()); cur = s; }
+      if ((cur + s).length > cap && cur) { out.push(cur.trim()); cur = s; }
       else cur += ' ' + s;
     }
     if (cur.trim()) out.push(cur.trim());
@@ -8457,6 +8494,11 @@ const TTS = {
 
     const tick = () => {
       if (!this.active || gen !== this._gen || this._hlSchedule !== schedule) return;
+      // Finished audio reports currentTime 0, which resolves to the first word.
+      // Returning without requesting another frame ends the loop. Paired with
+      // the _clearHighlight() in onended: either alone fixes the visible bug,
+      // but the ordering of ended-vs-frame is not guaranteed, so both stay.
+      if (a.ended) return;
       const now = a.currentTime;
       let i = schedule.findIndex(w => now >= w.start && now < w.end);
       if (i === -1 && schedule.length && now >= schedule[schedule.length - 1].end) i = schedule.length - 1;
@@ -8802,7 +8844,12 @@ const TTS = {
       if (!url) {
         // No prefetch ready — synthesis is audible latency now; surface it so a
         // slow generation doesn't look like the app died.
-        const genT = setTimeout(() => { if (this.active && gen === this._gen) toast(I18n.t('generating_audio'), 0); }, 600);
+        // 1200ms, not 600: with the short lead chunk (_splitLeadChunk) a normal
+        // page turn now generates in well under a second, and a notice that
+        // flashes up on every single turn reads as the app struggling when it
+        // is working correctly. This should appear only when something is
+        // genuinely slow.
+        const genT = setTimeout(() => { if (this.active && gen === this._gen) toast(I18n.t('generating_audio'), 0); }, 1200);
         try { url = await this._synth(chunk.text); } finally { clearTimeout(genT); hideToast(); }
       }
       if (!this.active || gen !== this._gen) {
@@ -8813,6 +8860,20 @@ const TTS = {
       const a = this._audioEl();
       a.onended = () => {
         if (url.startsWith('blob:')) URL.revokeObjectURL(url);
+        // Stop the follow-along loop IMMEDIATELY, before anything else and
+        // before the guards below (2026-09-01, owner-reported).
+        //
+        // The loop's own guards are `active`, `gen`, and "a newer schedule
+        // replaced mine". A sentence merely ENDING trips none of them: playback
+        // continues, gen only changes on a page turn or stop, and the next
+        // schedule is not installed until the next chunk's audio has loaded.
+        // Meanwhile the shared audio element's currentTime has reset to 0, so
+        // the still-running loop resolves to word 0 and highlights the FIRST
+        // word of the sentence that just finished, holding it there until the
+        // next chunk starts. That is the reported "flashes back to the start of
+        // the sentence for a second", and it reads as the sentence being
+        // repeated.
+        this._clearHighlight();
         if (!this.active || gen !== this._gen) return;
         // Sleep timer expired: stop here, at the sentence boundary, instead of
         // starting another chunk — never mid-audio.
@@ -8826,6 +8887,13 @@ const TTS = {
       a.playbackRate = this.rate;
       try { a.preservesPitch = true; } catch (_) {}
       await a.play();
+      // Which chunk actually STARTED playing. A repeat shows up here as two
+      // entries with the same g and i: the follow-along highlight replaying a
+      // sentence was reported 2026-09-01 and seen once in a 42-sentence device
+      // log as an adjacent duplicate synthesis, but the mechanism is not yet
+      // established and the ended handler contains no retry. Recording it so
+      // the next occurrence carries evidence rather than another theory.
+      try { Diag.push({ e: 'play', g: gen, i: this.idx, len: chunk.text.length }); } catch (_) {}
       if (this._followAlongEnabled()) this._startHighlight(chunk, gen); // no-ops safely if unsupported/disabled
       // Hide synthesis latency: prepare the next chunk while this one plays.
       const n = this.chunks[this.idx + 1];
