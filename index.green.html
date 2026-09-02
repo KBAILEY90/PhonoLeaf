@@ -8492,6 +8492,7 @@ const TTS = {
     this._hlSchedule = schedule;
     this._hlWordIdx = -1;
 
+
     const tick = () => {
       if (!this.active || gen !== this._gen || this._hlSchedule !== schedule) return;
       // Finished audio reports currentTime 0, which resolves to the first word.

@@ -2,5 +2,5 @@
   "appId": "com.phonoleaf.app",
   "appName": "PhonoLeaf",
   "webDir": "www",
-  "loggingBehavior": "none"
+  "loggingBehavior": "debug"
 }

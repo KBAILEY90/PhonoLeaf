@@ -110,6 +110,15 @@ fallback.
   `android/` (committed Capacitor Android project; build outputs gitignored).
   Loop: `npm run sync` (stage + copy into android) → `npm run open` (Android
   Studio) → Run ▶ on device.
+  - **`npm run stage` ALONE DOES NOT UPDATE THE ANDROID APP.** `stage` writes
+    `www/` and stops; only `sync` runs `npx cap sync android`, which copies
+    `www/` into `android/app/src/main/assets/public/`. Building and installing
+    after a stage-only run silently ships the PREVIOUS web build, with no error
+    and no warning — the APK is fresh, its web content is not.
+    This cost two rounds of device testing on 2026-09-01: two follow-along
+    fixes were reported as "still broken" because they were never actually in
+    the installed app, which then sent the investigation looking for a third
+    cause that did not exist. **Always `npm run sync` before building.**
   - **NATIVE AND WEB SHIP DIFFERENT INDEX FILES right now (2026-08-28).**
     `stage-www.js`'s `APP_SOURCE` is **`index.green.html`** (the Shelf/
     Green-Ink redesign), so `npm run sync` builds the Android app from the
