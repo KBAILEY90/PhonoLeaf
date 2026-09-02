@@ -139,6 +139,14 @@
         // but also says it was fine-tuned from lessac, which carries the
         // Blizzard licence excluding commercial voice synthesis products. Do not
         // re-add it without a replacement whose licence is clean for production.
+        // NOTE (checked 2026-09-01): "us", "gb" and "de" deliberately share the
+        // string "piper-libritts-r-medium". This is NOT the shared-constant bug
+        // described above and must not be "fixed": the marker file is written
+        // INSIDE each model's own folder (kokoro / kokoro-gb / kokoro-de), so
+        // three identical filenames in three different directories cannot
+        // collide. Renaming them would force every installed device to
+        // re-download ~150 MB for no behavioural change. If one model's file
+        // ever changes upstream, bump only that entry.
         private val MODEL_VERSIONS = mapOf(
             "us" to "piper-libritts-r-medium",
             "gb" to "piper-libritts-r-medium",
@@ -595,6 +603,10 @@
                         if (!tmp.renameTo(dest)) throw IOException("could not install pack")
                     }
                     File(dest, ".ready-${modelVersion(model)}").createNewFile()
+                    // The pack directory was just replaced underneath the engine
+                    // process; restart it so the phonemizer re-initialises
+                    // against paths that exist. See resetEngineProcess().
+                    resetEngineProcess()
                     val p = JSObject(); p.put("model", model); p.put("downloaded", downloaded); p.put("total", downloaded); p.put("pct", 100)
                     notifyListeners("packProgress", p)
                     call.resolve()
@@ -634,6 +646,9 @@
             if (!VOICE_PACKS.containsKey(model)) { call.reject("not a removable pack: $model"); return }
             svc?.dropModel(model)
             File(context.filesDir, folderFor(model)).deleteRecursively()
+            // This directory may be the one the engine's phonemizer was
+            // initialised from, and no per-instance cleanup can undo that.
+            resetEngineProcess()
             call.resolve()
         }
 
@@ -818,6 +833,35 @@
                 latch.await(5, TimeUnit.SECONDS)
                 return svc
             }
+        }
+
+        /**
+         * Restart the engine process after a pack's files change on disk.
+         *
+         * dropModel() is not enough, and neither is freeing the engine. The
+         * phonemizer inside it initialises its data directory ONCE PER PROCESS,
+         * from whichever pack loads first, and never revisits that path.
+         * Installing or deleting a pack deletes that directory, so the engine
+         * process is left pointing at something that no longer exists and every
+         * later sentence comes out as a fraction of a second of noise.
+         *
+         * Owner-reported 2026-09-01, and the reason it looked so erratic: it
+         * only bit when the deleted pack was the one that had initialised the
+         * phonemizer, and re-downloading "us" appeared to fix it purely because
+         * "us" maps to the folder "kokoro", so the recreated directory happened
+         * to land back on the path already cached. gb/fr/de map to different
+         * folders, so they stayed broken.
+         *
+         * Ending the process is the reliable reset, and the design already
+         * allows for it: AndroidManifest puts the engine in its own process
+         * precisely so it can be killed and restarted. We rebind lazily on the
+         * next call.
+         */
+        private fun resetEngineProcess() {
+            try { svc?.shutdown() } catch (_: Throwable) { /* already gone is fine */ }
+            // Null it ourselves rather than waiting for onServiceDisconnected,
+            // which races the next synthesize.
+            svc = null
         }
 
         /** synthesize({text, sid, speed, model}) -> {path, durationMs, provider,

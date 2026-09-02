@@ -332,6 +332,57 @@ describe(`app source invariants (${APP_FILE})`, () => {
     }
   });
 
+  test('the engine process is restarted whenever a pack changes on disk', async () => {
+    // Owner-reported 2026-09-01, and the hardest bug of the session to find.
+    //
+    // Symptom: play something, delete that voice's pack, download a different
+    // LANGUAGE, play again, and every sentence came out as a fraction of a
+    // second of noise. Measured on device: text that gives 8800ms of audio on a
+    // settled pack gave 487ms, consistently ~14x short.
+    //
+    // Cause: the phonemizer inside the engine initialises its data directory
+    // ONCE PER PROCESS, from whichever pack loads first, and never revisits it.
+    // Installing or deleting a pack deletes that directory, leaving the engine
+    // process pointing at something gone. Freeing the engine object does NOT
+    // fix it, because the state belongs to the process, not the instance.
+    //
+    // Why it looked erratic, and why this is worth a test: it only bit when the
+    // deleted pack was the one that had initialised the phonemizer, and
+    // re-downloading "us" appeared to heal it purely because "us" maps to the
+    // folder "kokoro", so the recreated directory landed back on the cached
+    // path. gb/fr/de map to other folders and stayed broken. Nothing logs an
+    // error in any of this.
+    const { readFileSync } = await import('node:fs');
+    const appDir = new URL('../android/app/src/main/java/com/phonoleaf/app/', import.meta.url);
+    const bridgeDir = new URL('../android/tts-bridge/', import.meta.url);
+    const strip = f => readFileSync(f, 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/\/\/.*$/gm, '');
+
+    const plugin = strip(new URL('PhonoLeafTtsPlugin.kt', appDir));
+    const service = strip(new URL('java/com/phonoleaf/ttsbridge/TtsService.kt', bridgeDir));
+    const aidl = strip(new URL('aidl/com/phonoleaf/ttsbridge/ITtsService.aidl', bridgeDir));
+
+    assert.ok(aidl.includes('void shutdown()'),
+      'ITtsService.shutdown() is gone. Without a process-level reset there is no ' +
+      'way to clear the phonemizer state a pack change invalidates.');
+    assert.ok(service.includes('override fun shutdown()') && service.includes('killProcess'),
+      'TtsService.shutdown() no longer ends its process. Releasing the engine ' +
+      'alone does NOT reset the phonemizer, which is process-global.');
+
+    // Both paths that change a pack's files must trigger it. Install-only or
+    // delete-only leaves half the bug live, and the symptom is silent.
+    const resets = (plugin.match(/resetEngineProcess\(\)/g) || []).length;
+    assert.ok(resets >= 3,
+      `resetEngineProcess is referenced ${resets} time(s) in the plugin; expected at ` +
+      'least 3 (its definition, the pack INSTALL path, and the pack DELETE path).');
+
+    // And the engine must still be freed explicitly rather than left to the GC.
+    assert.ok(service.includes('releaseEngine()') && service.includes('.release()'),
+      'TtsService no longer frees the native engine explicitly. It then lingers ' +
+      'until a finalizer runs, holding memory and stale native state.');
+  });
+
   test('each foreground service still promotes itself with startForeground', async () => {
     // The flip side of the rule above: the SERVICE must still promote itself in
     // onStartCommand or Android kills it. Banning the STARTER api must never be

@@ -483,6 +483,19 @@ Google login); verify by inspection + device testing.
   from lessac, which is Blizzard-licensed and excludes commercial voice
   synthesis. Do not re-add it without a replacement whose licence is clean,
   and check the BASE model, not just the card.
+- **The engine PROCESS must be restarted whenever a pack's files change on
+  disk** (`resetEngineProcess()` in the plugin, `ITtsService.shutdown()`).
+  espeak initialises its data directory ONCE PER PROCESS, from whichever pack
+  loads first, and never revisits it. Installing or deleting a pack deletes
+  that directory, so the engine is left pointing at something gone and every
+  sentence collapses to a fraction of a second of noise — silently, with no
+  error anywhere. Freeing the engine object does NOT help: the state belongs
+  to the process. Owner-reported 2026-09-01; `npm test` guards it.
+  **Why it looked erratic:** it only bit when the deleted pack was the one
+  that had initialised espeak, and re-downloading `us` appeared to heal it
+  purely because `us` maps to the folder `kokoro`, so the recreated directory
+  landed back on the cached path. `gb`/`fr`/`de` use other folders and stayed
+  broken. Any theory that does not explain the `us` exception is wrong.
 - Downloads run on their own single-thread executor (never the TTS
   synthesis executor), at `THREAD_PRIORITY_BACKGROUND`, with per-model
   cancellation epochs — never share state across models or across the

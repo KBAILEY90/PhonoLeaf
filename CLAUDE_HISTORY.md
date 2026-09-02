@@ -7862,3 +7862,95 @@ arguable aggregation.
   one level in and carries `noindex`.
 - **Pronunciation editor** remains open and unscoped. Best-evidenced gap in the
   competitor research.
+
+## The voice that collapsed into a syllable (2026-09-01)
+
+Three device-reported bugs in one session. The third took four wrong theories
+to find, and the record of the wrong turns is the useful part.
+
+### What was reported
+
+"Removed a language pack, downloaded another, pressed play, and it stutters."
+Later, more precisely: it started the wrong voice, needed a second press, then
+stuttered for exactly one page. Later still: stuttered indefinitely.
+
+### Two real bugs found by reading code
+
+**The model-ready cache was never invalidated.** `_modelReadyP` was assigned
+once and nothing anywhere cleared it, so after a pack change the app still
+believed the old model was warm. The new model was never pre-warmed and
+`_modelType` named the wrong family, which `_synthNative` uses to resolve the
+voice sid. Fixed two ways: `_modelReady()` now records which model it cached
+for and self-heals, and pack download/delete invalidate explicitly. The
+self-heal matters more, because the original bug was precisely that every call
+site had forgotten.
+
+**The speed benchmark competed with playback.** `_nativeBench` runs a real
+synthesis, the engine serves one request at a time, and the download path fires
+it un-awaited. Every sentence queued behind it, and the first play press looked
+dead because it was in the same queue. "Stuttered for a full page, gone when
+the page turned" was really "gone when the benchmark finished". It now defers
+while `TTS.active`.
+
+A third fix, for lines being skipped after a page turn: `_resumeRead` only
+retried when it extracted NOTHING or the PREVIOUS page, so a partially
+laid-out page looked like success and reading began at line three. It now
+requires the same extraction twice before speaking.
+
+### The hard one, and four wrong theories
+
+After those fixes the stutter persisted, so the session switched from reading
+code to reading the device over adb. That should have happened sooner.
+
+Wrong theory 1: stale engine state within a session. Disproved by a force-stop
+that changed nothing.
+
+Wrong theory 2: a corrupt or incomplete pack. Disproved by inspecting the
+installed files: 78.5 MB model, correct config, complete espeak-ng-data with
+`phondata`/`phontab`/`phonindex`, 159-line token map, `num_speakers: 904` so
+sid 40 was valid, correct sample rate.
+
+Wrong theory 3: the cut-over dropped a speech-rate setting. Disproved by
+diffing the old in-process config against the new one; byte-identical.
+
+Wrong theory 4: a shared `MODEL_VERSIONS` tag. Real observation, wrong
+conclusion: `us`, `gb` and `de` do share a tag, but each marker lives in its
+own folder so they cannot collide. Now annotated in both files as
+deliberately-not-a-bug, since renaming would force ~150 MB of pointless
+re-downloads.
+
+**What the logs actually showed.** The US voice was healthy: 176 chars giving
+8800 ms of audio at 0.27 realtime. Every broken clip was a different model.
+Pulling the generated WAVs off the device confirmed it: 0.58 s of audio,
+81-88% non-silent, correct 22050 Hz header, for text that should have run nine
+seconds.
+
+**The cause**, which only the owner's testing could have isolated: espeak
+initialises its data directory once per process, from whichever pack loads
+first, and never revisits it. Installing or deleting a pack deletes that
+directory, leaving the engine pointing at something gone. Freeing the engine
+object does not help, because the state belongs to the process.
+
+The owner's observation that it hit `gb`/`fr`/`de` but never `us` is what
+proved it. `us` maps to the folder `kokoro`; the others map to `kokoro-gb`,
+`kokoro-fr`, `kokoro-de`. Re-downloading `us` recreates the exact path espeak
+already cached, so it silently heals. Any other language creates a different
+folder and stays broken. **No theory that fails to explain the `us` exception
+is the right one.**
+
+Fixed by adding `shutdown()` to the AIDL and restarting the `:tts` process
+whenever a pack's files change. The architecture already sanctions this: the
+manifest says the process may be killed at any time and the next synthesize
+reloads. Also added the explicit `release()` the code never called, which is
+correct on its own but was not sufficient.
+
+### Lessons worth keeping
+
+- **Read the device before theorising.** Four theories died to evidence that
+  took one adb command to gather.
+- **An anomaly that a theory cannot explain is the theory failing**, not a
+  detail to set aside. The `us` exception was mentioned and nearly passed over.
+- **Guards must be mutation-tested.** The first version of the benchmark guard
+  passed even with the protection deleted, because two `if (this.active)`
+  occurrences existed and a non-global replace left one standing. Found only by
+  trying to break it.

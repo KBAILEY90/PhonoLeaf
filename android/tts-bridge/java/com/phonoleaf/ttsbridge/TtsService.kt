@@ -77,8 +77,41 @@ class TtsService : Service() {
 
     override fun onBind(intent: Intent?): IBinder = binder
 
+    /**
+     * Free the native engine, not just the Kotlin reference.
+     *
+     * THE BUG THIS FIXES (owner-reported 2026-09-01): delete a voice pack,
+     * download one, press play, and every sentence comes out as a short chopped
+     * syllable. Measured on device: the same book text that gives 8800ms of
+     * audio on a settled pack gave 487ms right after a download, consistently
+     * about 14x too short, across every clip.
+     *
+     * Cause: `tts = null` drops only the Kotlin reference. The native engine
+     * stayed alive until the garbage collector happened to run its finalizer,
+     * which is not prompt and not guaranteed. That matters here specifically
+     * because espeak-ng, which does the text-to-phoneme step, keeps state for
+     * the WHOLE PROCESS rather than per instance. Installing a pack deletes and
+     * recreates its directory (see the plugin's deleteRecursively + renameTo),
+     * so a still-live engine is left holding process-global espeak state that
+     * points at a directory that no longer exists. The next model loads, but
+     * phonemization yields almost nothing, and a sentence collapses to a
+     * syllable.
+     *
+     * It reproduced only after a DOWNLOAD, never when merely switching between
+     * two installed voices, which is exactly what this explains: switching
+     * leaves both directories on disk intact, downloading destroys one.
+     *
+     * So: release explicitly, every time, while holding `lock` so nothing is
+     * mid-generate. release() is safe to call more than once.
+     */
+    private fun releaseEngine() {
+        try { tts?.release() } catch (t: Throwable) { Log.w(TAG, "engine release failed: ${t.message}") }
+        tts = null
+        loaded = null
+    }
+
     override fun onDestroy() {
-        synchronized(lock) { tts = null; loaded = null }
+        synchronized(lock) { releaseEngine() }
         super.onDestroy()
     }
 
@@ -113,7 +146,8 @@ class TtsService : Service() {
                     writeRaw(File(outPath), audio.samples)
                     val durMs = audio.samples.size.toLong() * 1000 /
                         maxOf(1, audio.sampleRate)
-                    Log.i(TAG, "gen=${genMs}ms audio=${durMs}ms chars=${text.length} model=$model")
+                    Log.i(TAG, "gen=${genMs}ms audio=${durMs}ms chars=${text.length} model=$model " +
+                        "sid=$sid speed=$speed rate=${audio.sampleRate} samples=${audio.samples.size}")
                     "ok:${audio.sampleRate}:${audio.samples.size}:$loadedType"
                 }
             } catch (e: EnginePackMissingException) {
@@ -143,8 +177,31 @@ class TtsService : Service() {
 
         override fun dropModel(model: String?) {
             synchronized(lock) {
-                if (model != null && loaded == model) { tts = null; loaded = null; loadedType = "?" }
+                if (model != null && loaded == model) { releaseEngine(); loadedType = "?" }
             }
+        }
+
+        /**
+         * Release the engine and end this process. See ITtsService.shutdown for
+         * why a process-level reset is the only reliable one: the phonemizer
+         * initialises its data directory once per process and never revisits it,
+         * so a caller that deletes that directory leaves state no per-instance
+         * cleanup can repair.
+         *
+         * Safe by design. AndroidManifest declares this component in its own
+         * process precisely so it can die and come back: the caller rebinds and
+         * the next synthesize reloads the model, costing a fraction of a second.
+         *
+         * Killed rather than returned from, and after a short delay, so this
+         * call can return over the binder before the process disappears.
+         */
+        override fun shutdown() {
+            synchronized(lock) { releaseEngine() }
+            Log.i(TAG, "shutdown requested; ending process to reset phonemizer state")
+            Thread {
+                try { Thread.sleep(120) } catch (_: InterruptedException) {}
+                android.os.Process.killProcess(android.os.Process.myPid())
+            }.start()
         }
 
         override fun loadedModel(): String = loaded ?: ""
@@ -166,9 +223,10 @@ class TtsService : Service() {
     // ---------------------------------------------------------------------
     private fun ensureReady(model: String): OfflineTts {
         tts?.let { if (loaded == model) return it }
-        // Switching models drops the previous instance first, so only one is
-        // ever resident and peak memory stays at one model.
-        tts = null; loaded = null
+        // Switching models frees the previous instance first, so only one is
+        // ever resident, peak memory stays at one model, and espeak's
+        // process-global state is not left pointing at the old pack.
+        releaseEngine()
 
         val dest = File(filesDir, folderFor(model))
         if (!File(dest, ".ready-${modelVersion(model)}").exists()) {
@@ -252,6 +310,14 @@ class TtsService : Service() {
             "de" to "kokoro-de",
             "kokoro" to "kokoro-en",
         )
+        // NOTE (checked 2026-09-01): "us", "gb" and "de" deliberately share the
+        // string "piper-libritts-r-medium". This is NOT the shared-constant bug
+        // described above and must not be "fixed": the marker file is written
+        // INSIDE each model's own folder (kokoro / kokoro-gb / kokoro-de), so
+        // three identical filenames in three different directories cannot
+        // collide. Renaming them would force every installed device to
+        // re-download ~150 MB for no behavioural change. If one model's file
+        // ever changes upstream, bump only that entry.
         private val MODEL_VERSIONS = mapOf(
             "us" to "piper-libritts-r-medium",
             "gb" to "piper-libritts-r-medium",

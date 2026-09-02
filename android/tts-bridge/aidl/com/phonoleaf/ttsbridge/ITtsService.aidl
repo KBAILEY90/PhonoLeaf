@@ -81,6 +81,21 @@ interface ITtsService {
      */
     void dropModel(String model);
 
+    /**
+     * Release everything and terminate this process.
+     *
+     * Deliberately blunt, and deliberately part of the interface rather than an
+     * implementation detail: the phonemizer this engine uses keeps state for the
+     * whole PROCESS, initialised once from the first model's data directory and
+     * not revisited. If a caller deletes that directory (for instance when it
+     * replaces a voice pack), no per-instance cleanup can undo that, and every
+     * later synthesis produces near-empty audio.
+     *
+     * Ending the process is the only reliable reset. It is safe by design: the
+     * caller simply rebinds and the next request reloads its model.
+     */
+    void shutdown();
+
     /** Which model is currently resident, or "" if none. Diagnostics only. */
     String loadedModel();
 }
