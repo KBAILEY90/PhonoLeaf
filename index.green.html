@@ -2871,7 +2871,7 @@ const STRINGS = {
     stat_all_time: 'all time', stat_in_library: 'in library', stat_started: 'started', stat_finished: 'finished',
     stat_minutes_week: 'minutes this week', stat_minutes_total: 'total minutes',
     listening_last_14: 'Listening · last 14 days',
-    listening_this_week: 'This week', stat_day_letters: 'M,T,W,T,F,S,S',
+    listening_this_week: 'This week', listening_last_days: 'Last 10 days', stat_day_letters: 'M,T,W,T,F,S,S',
     no_listening_yet: 'No listening yet. Press play to start tracking.',
     breakdown: 'Breakdown',
     group_author: 'By author', group_book: 'By book', group_length: 'By book length', group_genre: 'By genre',
@@ -3137,7 +3137,7 @@ const STRINGS = {
     stat_all_time: 'total', stat_in_library: 'dans la bibliothèque', stat_started: 'commencés', stat_finished: 'terminés',
     stat_minutes_week: 'minutes cette semaine', stat_minutes_total: 'minutes au total',
     listening_last_14: 'Écoute · 14 derniers jours',
-    listening_this_week: 'Cette semaine', stat_day_letters: 'L,M,M,J,V,S,D',
+    listening_this_week: 'Cette semaine', listening_last_days: '10 derniers jours', stat_day_letters: 'L,M,M,J,V,S,D',
     no_listening_yet: 'Aucune écoute pour l’instant. Appuyez sur lecture pour commencer le suivi.',
     breakdown: 'Répartition',
     group_author: 'Par auteur', group_book: 'Par livre', group_length: 'Par longueur', group_genre: 'Par genre',
@@ -4722,18 +4722,30 @@ const StatsPage = {
     const started = Object.values(prog).filter(p => p && p.ts).length;
     const finished = Object.values(prog).filter(p => p && (p.pct || 0) >= 95).length;
 
-    // The current calendar week, Monday-first (matches the day-letter row
-    // below). Scale bar height from raw SECONDS (not rounded minutes) so a
-    // low-volume day still shows a proportional bar; the y-axis max is the
-    // peak day, so the tallest bar is always full height regardless of
-    // absolute volume.
-    const dayLetters = I18n.t('stat_day_letters').split(',');
-    const monday = new Date(now); monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
+    // A rolling window of the last CHART_DAYS days, oldest first, so today is
+    // always the rightmost bar. Replaced the Monday-first calendar week on
+    // 2026-09-01: a calendar week collapses to one or two bars on a Monday and
+    // silently drops the days just before it, which is the stretch a reader
+    // most wants to see.
+    //
+    // Labels are the day of the MONTH, not day letters. Over ten days the
+    // letters repeat (two Mondays, two Tuesdays), so they stop identifying
+    // anything; the date does not. `stat_day_letters` is consequently unused
+    // here, and is left in the dictionaries for any other caller.
+    //
+    // setDate() with a negative or overlarge argument rolls months and years
+    // correctly, so no month-boundary handling is needed.
+    //
+    // Height still scales from raw SECONDS rather than rounded minutes, so a
+    // low-volume day keeps a proportional bar, and the y-axis maximum is the
+    // peak day, so the tallest bar is always full height whatever the absolute
+    // volume.
+    const CHART_DAYS = 10;
     const bars = []; let maxSec = 1;
-    for (let i = 0; i < 7; i++) {
-      const d = new Date(monday); d.setDate(monday.getDate() + i);
+    for (let i = CHART_DAYS - 1; i >= 0; i--) {
+      const d = new Date(now); d.setDate(now.getDate() - i);
       const s = days[key(d)] || 0;
-      bars.push({ s, dayLetter: dayLetters[i], fullLabel: d.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' }) });
+      bars.push({ s, dayLabel: String(d.getDate()), fullLabel: d.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' }) });
       if (s > maxSec) maxSec = s;
     }
 
@@ -4749,9 +4761,9 @@ const StatsPage = {
     const selDay = (this._selectedDay != null && bars[this._selectedDay]) ? bars[this._selectedDay] : null;
     document.getElementById('stats-body').innerHTML =
       `<div class="stat-grid2">${tile(books.length, I18n.t('stat_in_library'))}${tile(started, I18n.t('stat_started'))}${tile(finished, I18n.t('stat_finished'))}${tile(Math.round(sum.secs / 60), I18n.t('stat_minutes_week'))}${tile(Math.round(total / 60), I18n.t('stat_minutes_total'))}${tile(sum.streak, I18n.t('stat_day_streak'))}</div>
-       <div class="sec-label"><span>${I18n.t('listening_this_week')}</span>${selDay ? `<span style="color:var(--accent2)">${esc(fmtMin(selDay.s))}</span>` : ''}</div>
+       <div class="sec-label"><span>${I18n.t('listening_last_days')}</span>${selDay ? `<span style="color:var(--accent2)">${esc(fmtMin(selDay.s))}</span>` : ''}</div>
        ${anyListening
-          ? `<div class="bars">${bars.map((b, i) => { const fp = b.s ? Math.max(4, Math.round((b.s / maxSec) * 92)) : 0; const sel = this._selectedDay === i; return `<div class="bar${sel ? ' show' : ''}" onclick="StatsPage.selectDay(${i})" title="${esc(b.fullLabel)}" role="button" tabindex="0" aria-label="${esc(I18n.t('stat_bar_aria', { label: b.fullLabel, minutes: fmtMin(b.s) }))}"><span class="bar-val" style="bottom:${Math.min(fp + 3, 72)}px">${esc(fmtMin(b.s))}</span><div class="bar-fill" style="height:${fp}px"></div><span class="bar-label">${esc(b.dayLetter)}</span></div>`; }).join('')}</div>`
+          ? `<div class="bars">${bars.map((b, i) => { const fp = b.s ? Math.max(4, Math.round((b.s / maxSec) * 92)) : 0; const sel = this._selectedDay === i; return `<div class="bar${sel ? ' show' : ''}" onclick="StatsPage.selectDay(${i})" title="${esc(b.fullLabel)}" role="button" tabindex="0" aria-label="${esc(I18n.t('stat_bar_aria', { label: b.fullLabel, minutes: fmtMin(b.s) }))}"><span class="bar-val" style="bottom:${Math.min(fp + 3, 72)}px">${esc(fmtMin(b.s))}</span><div class="bar-fill" style="height:${fp}px"></div><span class="bar-label">${esc(b.dayLabel)}</span></div>`; }).join('')}</div>`
           : `<div class="bars-empty">${I18n.t('no_listening_yet')}</div>`}
        ${books.length ? `
          <div class="sec-label">${I18n.t('breakdown')}
