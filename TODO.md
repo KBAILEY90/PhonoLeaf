@@ -745,6 +745,40 @@ itself calls non-English support thin with weak G2P.
 Sources: hexgrad/Kokoro-82M on Hugging Face (Apache 2.0), rhasspy/piper-voices
 MODEL_CARD files per voice, and rhasspy/piper discussion #271 on licensing.
 
+## CLOUDFLARE SETUP AS IT STANDS (2026-09-02)
+
+Recorded so nobody re-derives it, and because one constraint has a trap in it.
+
+**Live and verified:**
+- Entitlement Worker deployed to production and staging, each with its own D1
+  database and its own rate-limit namespace. Verified in production: health
+  endpoint responds, the origin allowlist echoes `phonoleaf.com` and omits the
+  header for an unknown origin, and 90 rapid calls produced 70 `429`s.
+- `packs.phonoleaf.com` serves the voice packs from R2 (min TLS 1.2), with
+  Cloudflare's cache in front (`cf-cache-status: HIT` observed).
+- A usage notification on R2 Class B operations at 1,000,000 reads — inside the
+  10M free tier, so it fires while the bill is still zero.
+- One WAF rate-limiting rule: URI Path contains `.tar.bz2`, 20 requests per
+  10s per IP, block.
+
+**THE TRAP, and the answer to it.** The zone is on the **Free plan**, which
+allows exactly **ONE** rate-limiting rule, Path-or-Verified-Bot matching only,
+per-IP only, and a fixed 10s window and 10s block. That rule is now spent on
+the voice packs. The obvious worry is needing another for payments later.
+
+**It is very likely a false worry.** The entitlement Worker does NOT use a zone
+WAF rule: it uses the Workers rate-limiting binding (`[[ratelimits]]` in
+`worker/wrangler.toml`, checked in `withinRateLimit()`), which is a different
+mechanism and does not consume the zone's single rule. Payments are therefore
+already rate limited, and adding more there costs nothing from this budget.
+
+So only a rule needed on a *zone route* would compete. If that ever happens,
+**sacrifice the packs rule rather than upgrading.** It is the weaker of the
+two by a wide margin: R2 charges nothing for egress, reads are 10M free then
+$0.36/million, the cache absorbs repeats, and the Free plan can only block for
+10 seconds anyway, so a determined caller simply waits. The billing
+notification, not the rule, is what actually protects against a surprise.
+
 ## WHEN INCORPORATION COMPLETES — do these in this order
 
 One event unblocks all of it. Collected here so nothing is rediscovered late.
