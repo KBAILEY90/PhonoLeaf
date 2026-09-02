@@ -26,6 +26,8 @@
     import java.io.InterruptedIOException
     import java.io.OutputStream
     import java.net.HttpURLConnection
+    import java.security.DigestInputStream
+    import java.security.MessageDigest
     import java.net.URL
     import android.content.ComponentName
     import android.content.ServiceConnection
@@ -81,6 +83,32 @@
              *  corrupt bzip2 archive cannot expand without bound and fill the device.
              *  Raise it only if a genuine pack ever approaches it, and say why here. */
             private const val MAX_PACK_UNPACKED_BYTES = 512L * 1024L * 1024L
+
+            /**
+             * SHA-256 of each pack's .tar.bz2, captured 2026-09-01 from the
+             * upstream release and mirrored to our own storage at the same time,
+             * so both copies are known to be these exact bytes.
+             *
+             * A voice pack is ~80 MB of model weights fed straight into a native
+             * inference engine. Before this, whatever arrived was extracted and
+             * loaded on trust: HTTPS proves who served it, not that the bytes are
+             * the ones we expect. Upstream can retag a release in place, and a
+             * mirror can be edited, neither of which HTTPS notices.
+             *
+             * A model whose hash does not match is discarded rather than
+             * installed, so a mismatch costs a failed download, not a corrupted
+             * voice that is hard to attribute later.
+             *
+             * If a pack is deliberately updated, re-hash it and update BOTH this
+             * map and MODEL_VERSIONS, or every device will reject the new file.
+             */
+            private val PACK_SHA256 = mapOf(
+                "us"     to "10dc268f3e371696d721486123e2705a9fc1faa113491979fde4d88dba1f1b1c",
+                "gb"     to "abafd35bdab0a72a3c6b947228ae3cccdf3624db83313c77d1abb5cbc75e1f64",
+                "fr"     to "e9830a331a16f6cc5ef3116a287065e015d3495c3f56b974889a266da7f89a7f",
+                "de"     to "50487d9c95fdf2191f31d2588569381063ba1591dcd4c7d4bdd30f12b2191714",
+                "kokoro" to "c9f0dd393615805b0bab050c340834d5e684e732aec91c0e860cd30e982c08bd",
+            )
 
             // Weak so this never keeps a destroyed plugin/Activity alive — PlaybackService
             // (a separate Android component, not directly wired to the Capacitor bridge)
@@ -518,6 +546,13 @@
                         connectTimeout = 15000
                         readTimeout = 30000
                         instanceFollowRedirects = true
+                        // Ask for the bytes verbatim. HttpURLConnection otherwise
+                        // advertises gzip and silently decodes the response, so
+                        // the stream we hash would not be the FILE we hashed when
+                        // recording PACK_SHA256, and verification would fail on
+                        // every download for a reason nothing in the error says.
+                        // A .tar.bz2 is already compressed, so this costs nothing.
+                        setRequestProperty("Accept-Encoding", "identity")
                         connect()
                     }
                     if (conn.responseCode !in 200..299)
@@ -549,7 +584,14 @@
                             PackDownloadService.progress(context, model, pct)
                         }
                     }
-                    BZip2CompressorInputStream(progressIn).use { bz ->
+                    // Hash the archive as it streams. Wrapping here rather than
+                    // buffering the whole 80 MB to disk first: the digest costs
+                    // nothing extra, and the traversal guard and size ceiling
+                    // below already bound what extraction can do before the hash
+                    // is known.
+                    val digest = MessageDigest.getInstance("SHA-256")
+                    val hashedIn = DigestInputStream(progressIn, digest)
+                    BZip2CompressorInputStream(hashedIn).use { bz ->
                         TarArchiveInputStream(bz).use { tar ->
                             // Canonical root to contain every extracted path (see the
                             // traversal guard below). Resolved once, outside the loop.
@@ -594,6 +636,24 @@
                         }
                     }
                     if (stamp != currentDownloadEpoch(model)) throw InterruptedIOException("cancelled")
+
+                    // Drain whatever the tar reader did not consume (archives are
+                    // block-padded, so the last bytes of the body are usually left
+                    // unread). Without this the digest covers only part of the
+                    // response and NEVER matches, which would look like every pack
+                    // being corrupt.
+                    val skip = ByteArray(8192)
+                    while (hashedIn.read(skip) > 0) { /* digest only */ }
+
+                    val expected = PACK_SHA256[model]
+                    if (expected != null) {
+                        val actual = digest.digest().joinToString("") { "%02x".format(it) }
+                        if (!actual.equals(expected, ignoreCase = true)) {
+                            throw IOException(
+                                "pack failed verification: $model expected $expected got $actual")
+                        }
+                    }
+
                     synchronized(lock) {
                         // The engine process may hold this model open on the OLD
                         // bytes we are about to replace. Tell it to forget it, or

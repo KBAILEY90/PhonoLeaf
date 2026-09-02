@@ -33,3 +33,10 @@ PhonoLeaf Design System.zip
 PhonoLeaf.dc.html
 PhonoLeaf Redesign.dc.html
 design_redesign.dc.html
+
+# Voice pack archives. These are ~80-100 MB each and are NEVER part of the repo:
+# the app downloads them at runtime and they are mirrored in R2. This rule
+# exists because `wrangler r2 object get` writes the object into the CURRENT
+# directory, so verifying a bucket from inside worker/ silently dropped a 98 MB
+# archive into the tree, where `git add -A` swept it into a commit.
+*.tar.bz2
