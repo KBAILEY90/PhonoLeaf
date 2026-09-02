@@ -21,6 +21,7 @@
     import java.io.File
     import java.io.FileNotFoundException
     import java.io.FileOutputStream
+    import java.io.FilterInputStream
     import java.io.IOException
     import java.io.InputStream
     import java.io.InterruptedIOException
@@ -102,6 +103,23 @@
              * If a pack is deliberately updated, re-hash it and update BOTH this
              * map and MODEL_VERSIONS, or every device will reject the new file.
              */
+            /**
+             * Our own mirror of the voice packs (Cloudflare R2, served from
+             * packs.phonoleaf.com). Tried FIRST; the upstream URL in each
+             * VoicePackInfo stays as an automatic fallback.
+             *
+             * Why mirror at all: the packs otherwise come from a third party's
+             * public release page. They owe us nothing and can retag or remove it
+             * at any time, which would break every voice download at once with no
+             * fix we could ship quickly. Falling back keeps that same page as a
+             * safety net rather than a dependency.
+             *
+             * Falling back is safe because BOTH sources are verified against
+             * PACK_SHA256 below. Without that check, a fallback would just widen
+             * the trust surface instead of narrowing it.
+             */
+            private const val MIRROR_BASE = "https://packs.phonoleaf.com"
+
             private val PACK_SHA256 = mapOf(
                 "us"     to "10dc268f3e371696d721486123e2705a9fc1faa113491979fde4d88dba1f1b1c",
                 "gb"     to "abafd35bdab0a72a3c6b947228ae3cccdf3624db83313c77d1abb5cbc75e1f64",
@@ -542,26 +560,49 @@
                     started.put("total", info.approxBytes); started.put("pct", 0)
                     notifyListeners("packProgress", started)
                     tmp.deleteRecursively(); tmp.mkdirs()
-                    conn = (URL(info.url).openConnection() as HttpURLConnection).apply {
-                        connectTimeout = 15000
-                        readTimeout = 30000
-                        instanceFollowRedirects = true
-                        // Ask for the bytes verbatim. HttpURLConnection otherwise
-                        // advertises gzip and silently decodes the response, so
-                        // the stream we hash would not be the FILE we hashed when
-                        // recording PACK_SHA256, and verification would fail on
-                        // every download for a reason nothing in the error says.
-                        // A .tar.bz2 is already compressed, so this costs nothing.
-                        setRequestProperty("Accept-Encoding", "identity")
-                        connect()
+                    // Mirror first, upstream second. Both are hash-verified below,
+                    // so a fallback cannot smuggle in different bytes.
+                    val fileName = info.url.substringAfterLast('/')
+                    var opened: HttpURLConnection? = null
+                    var lastErr: Exception? = null
+                    for (src in listOf("$MIRROR_BASE/$fileName", info.url)) {
+                        if (stamp != currentDownloadEpoch(model)) throw InterruptedIOException("cancelled")
+                        try {
+                            val c = (URL(src).openConnection() as HttpURLConnection).apply {
+                                connectTimeout = 15000
+                                readTimeout = 30000
+                                instanceFollowRedirects = true
+                                // Ask for the bytes verbatim. HttpURLConnection otherwise
+                                // advertises gzip and silently decodes the response, so
+                                // the stream we hash would not be the FILE we hashed when
+                                // recording PACK_SHA256, and verification would fail on
+                                // every download for a reason nothing in the error says.
+                                // A .tar.bz2 is already compressed, so this costs nothing.
+                                setRequestProperty("Accept-Encoding", "identity")
+                                connect()
+                            }
+                            if (c.responseCode !in 200..299) {
+                                val rc = c.responseCode
+                                c.disconnect()
+                                throw IOException("HTTP $rc")
+                            }
+                            opened = c
+                            Log.i("PhonoLeafTts",
+                                "pack $model source=" + (if (src.startsWith(MIRROR_BASE)) "mirror" else "upstream"))
+                            break
+                        } catch (e: Exception) {
+                            lastErr = e
+                            Log.w("PhonoLeafTts", "pack $model source failed ($src): ${e.message}")
+                        }
                     }
-                    if (conn.responseCode !in 200..299)
-                        throw IOException("download failed: HTTP ${conn.responseCode}")
-                    val total = conn.contentLengthLong.let { if (it > 0) it else info.approxBytes }
+                    val live = opened
+                        ?: throw IOException("download failed: ${lastErr?.message ?: "no source reachable"}")
+                    conn = live
+                    val total = live.contentLengthLong.let { if (it > 0) it else info.approxBytes }
                     var downloaded = 0L
                     var lastEmit = 0L
                     val progressIn = ProgressInputStream(
-                        conn.inputStream,
+                        live.inputStream,
                         // Checked on EVERY buffer read, which is what actually
                         // makes Cancel responsive. The per-tar-entry check below
                         // is far too coarse on its own: model.onnx is a single
@@ -591,7 +632,20 @@
                     // is known.
                     val digest = MessageDigest.getInstance("SHA-256")
                     val hashedIn = DigestInputStream(progressIn, digest)
-                    BZip2CompressorInputStream(hashedIn).use { bz ->
+                    // BZip2CompressorInputStream(...).use{} CLOSES what it wraps.
+                    // Handing it `hashedIn` directly meant the stream was already
+                    // closed by the time we tried to drain the archive's trailing
+                    // bytes, so the digest covered only part of the body and could
+                    // never match — every download failed verification
+                    // (owner-reported minutes after this shipped; the recorded
+                    // hashes were confirmed correct against a fresh fetch, which
+                    // is what located the fault here rather than in the values).
+                    // This wrapper swallows the close so the drain below can still
+                    // read; the real stream is closed with the connection.
+                    val keepOpen = object : FilterInputStream(hashedIn) {
+                        override fun close() { /* drained and closed by the caller */ }
+                    }
+                    BZip2CompressorInputStream(keepOpen).use { bz ->
                         TarArchiveInputStream(bz).use { tar ->
                             // Canonical root to contain every extracted path (see the
                             // traversal guard below). Resolved once, outside the loop.
@@ -643,11 +697,18 @@
                     // response and NEVER matches, which would look like every pack
                     // being corrupt.
                     val skip = ByteArray(8192)
-                    while (hashedIn.read(skip) > 0) { /* digest only */ }
+                    try {
+                        while (hashedIn.read(skip) > 0) { /* digest only */ }
+                    } catch (e: IOException) {
+                        // A truncated tail is itself a failed download; let the
+                        // hash comparison below report it rather than guessing.
+                        Log.w("PhonoLeafTts", "drain ended early: ${e.message}")
+                    }
 
                     val expected = PACK_SHA256[model]
                     if (expected != null) {
                         val actual = digest.digest().joinToString("") { "%02x".format(it) }
+                        Log.i("PhonoLeafTts", "pack $model verify expected=$expected actual=$actual")
                         if (!actual.equals(expected, ignoreCase = true)) {
                             throw IOException(
                                 "pack failed verification: $model expected $expected got $actual")

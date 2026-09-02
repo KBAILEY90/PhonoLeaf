@@ -8401,10 +8401,10 @@ const TTS = {
   // the DOM). Never touches _chunksFromSegments/_split/loadPageText.
   _buildWordSchedule(chunk) {
     try {
-      if (!chunk || !chunk.node) return null;
+      if (!chunk || !chunk.node) { console.log('PLWS bail: no chunk.node'); return null; }
       const iframe = document.querySelector('#viewer iframe');
       const doc = iframe && iframe.contentDocument;
-      if (!doc || !chunk.node.isConnected || chunk.node.ownerDocument !== doc) return null;
+      if (!doc || !chunk.node.isConnected || chunk.node.ownerDocument !== doc) { console.log('PLWS bail: node detached/foreign doc=' + !!doc + ' conn=' + chunk.node.isConnected + ' same=' + (chunk.node.ownerDocument === doc)); return null; }
 
       const chunkWordCount = (chunk.text.match(/\S+/g) || []).length;
       if (!chunkWordCount) return null;
@@ -8466,13 +8466,13 @@ const TTS = {
         for (let k = 0; k < anchorLen; k++) { if (blockWords[i + k].text !== runStartWords[k]) { ok = false; break; } }
         if (ok) { anchorIdx = i; break; }
       }
-      if (anchorIdx === -1) return null; // can't anchor — fail closed, never guess
+      if (anchorIdx === -1) { console.log('PLWS bail: no anchor. blockWords=' + blockWords.length + ' need="' + runStartWords.slice(0,5).join(' ') + '" have="' + blockWords.slice(0,8).map(w=>w.text).join(' ') + '"'); return null; }
 
       let wordStart = anchorIdx;
       for (let i = runStartIdx; i < this.idx; i++) {
         wordStart += (this.chunks[i].text.match(/\S+/g) || []).length;
       }
-      if (blockWords.length < wordStart + chunkWordCount) return null; // can't reconcile — fail closed
+      if (blockWords.length < wordStart + chunkWordCount) { console.log('PLWS bail: cannot reconcile blockWords=' + blockWords.length + ' need=' + (wordStart + chunkWordCount) + ' (start=' + wordStart + ' count=' + chunkWordCount + ')'); return null; }
 
       const words = blockWords.slice(wordStart, wordStart + chunkWordCount);
       const totalChars = words.reduce((n, w) => n + w.text.length, 0);
@@ -8504,14 +8504,14 @@ const TTS = {
       });
     }
     if (!this.active || gen !== this._gen) return;
-    if (isNaN(a.duration) || !isFinite(a.duration) || a.duration <= 0) return;
+    if (isNaN(a.duration) || !isFinite(a.duration) || a.duration <= 0) { console.log('PLHL bail: duration=' + a.duration); return; }
 
     const built = this._buildWordSchedule(chunk);
-    if (!built) return;
+    if (!built) { console.log('PLHL bail: schedule null'); return; }
 
     const iframe = document.querySelector('#viewer iframe');
     const iw = iframe && iframe.contentWindow;
-    if (!iw || !iw.CSS || !iw.CSS.highlights || typeof iw.Highlight !== 'function') return; // unsupported — silent no-op
+    if (!iw || !iw.CSS || !iw.CSS.highlights || typeof iw.Highlight !== 'function') { console.log('PLHL bail: CSS.highlights unsupported iw=' + !!iw + ' CSS=' + !!(iw && iw.CSS) + ' hl=' + !!(iw && iw.CSS && iw.CSS.highlights) + ' H=' + (iw && typeof iw.Highlight)); return; }
     if (!this.active || gen !== this._gen) return; // re-check after the awaits above
 
     let t = 0;
