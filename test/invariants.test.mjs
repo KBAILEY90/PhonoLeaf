@@ -212,6 +212,25 @@ describe(`app source invariants (${APP_FILE})`, () => {
       'the native ended handler no longer clears the follow-along highlight, so ' +
       'the loop keeps running into the next chunk and re-highlights word 0.');
 
+    // And the loop must be stopped BEFORE the shared element is handed new
+    // audio. Clearing only on `ended` left a window in which a surviving loop
+    // read the NEW audio's currentTime (near zero) against the OLD sentence's
+    // ranges, resolving to its first word. That was the residual flash after
+    // the first fix, and it is the path-independent guard of the three.
+    const srcAt = script.indexOf('a.src = url;');
+    assert.ok(srcAt > -1, 'the audio src assignment is gone');
+    // Must be the statement IMMEDIATELY before the assignment, not merely
+    // somewhere nearby: the adjacent a.onerror handler also calls
+    // _clearHighlight, so a loose "contains" check passed even with this guard
+    // deleted. Caught by adding a control case to the mutation harness.
+    const beforeSrc = script.slice(Math.max(0, srcAt - 1600), srcAt)
+      .replace(/\/\/.*$/gm, '')
+      .trim();
+    assert.ok(beforeSrc.endsWith('this._clearHighlight();'),
+      'the highlight is no longer cleared before the shared audio element is ' +
+      'given a new source, so a loop from the previous chunk can read the new ' +
+      'audio position against the old word ranges and flash to its first word.');
+
     const tickAt = script.indexOf('const tick = () => {');
     assert.ok(tickAt > -1, 'the highlight tick loop is gone');
     const tick = script.slice(tickAt, tickAt + 700);

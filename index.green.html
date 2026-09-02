@@ -8883,6 +8883,23 @@ const TTS = {
         else this._speak();
       };
       a.onerror = () => { this._clearHighlight(); if (this.active && gen === this._gen) this._speakWeb(chunk, gen); };
+      // Stop any previous highlight loop BEFORE this element starts carrying
+      // different audio (2026-09-01, second pass at the flash-to-start bug).
+      //
+      // Clearing in onended was not enough. The audio element is SHARED, and a
+      // loop only stops when its schedule is replaced, which does not happen
+      // until the next chunk's schedule is installed — after this assignment,
+      // after play(), and after _startHighlight's loadedmetadata wait. In that
+      // window a surviving loop reads THIS chunk's currentTime, near zero, and
+      // maps it onto the PREVIOUS sentence's word ranges. Zero resolves to the
+      // first word, so the highlight jumps to the start of the sentence that
+      // just finished and sits there.
+      //
+      // The `a.ended` guard cannot catch that case, because the element is not
+      // ended, it is playing something new. Clearing here is path-independent:
+      // whatever route reached this point, no loop from an older chunk can
+      // outlive the audio it was built for.
+      this._clearHighlight();
       a.src = url;
       a.playbackRate = this.rate;
       try { a.preservesPitch = true; } catch (_) {}
