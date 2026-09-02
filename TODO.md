@@ -1127,14 +1127,37 @@ anywhere in `worker/`.
       `test/secrets.test.mjs` fails if the file exists, if the build reads a
       properties file, if the reappearance guard is deleted, or if any
       tracked file holds a literal password.
-      **Still owed, both owner actions:** rotate the store and key passwords
-      on the EXISTING keystore with `keytool -storepasswd` / `-keypasswd`
-      (not a new key — a new key changes the SHA-1 recorded below), and
-      register the Play Console account through the corporation once
-      incorporation completes, plus the third Android OAuth client for the
-      release SHA-1 with "Enable custom URI scheme" ticked under Advanced
-      Settings, since its absence has already cost one debugging session.
-      `SWOT.md` Weaknesses + recommendation 3.
+      **PASSWORD ROTATION DONE 2026-09-02, verified end to end.** The store
+      password was changed with `keytool -storepasswd` on the existing
+      keystore, the properties file was deleted, and a signed release build
+      was produced from the environment variables alone: `BUILD SUCCESSFUL`,
+      55,586,182 bytes (53.0 MiB), `apksigner verify` reporting
+      `CN=Kevin Bailey, OU=Unknown, O=Everbloom Technologies inc.,
+      L=Longueuil, ST=Quebec, C=CA`. **The certificate SHA-1 is byte-for-byte
+      the one recorded above** — rotation changed the password and nothing
+      else, so the OAuth client fingerprint is unaffected.
+      `keytool -keypasswd` is NOT part of this and never will be: the
+      keystore is PKCS12, which has no separate key password, and keytool
+      refuses the command outright ("not supported if -storetype is PKCS12").
+      **ONE canonical keystore, in Google Drive**, at
+      `C:\Users\kevin\My Drive (...)\PhonoLeaf\phonoleaf-release.jks`;
+      `PHONOLEAF_STORE_FILE` points there and the build reads it directly.
+      A second copy previously sat in the user folder and was NOT rotated,
+      leaving a duplicate protected by the leaked password — spotted by
+      comparing modification times, and deleted. One file is deliberate: two
+      copies can silently diverge, which is the same class of failure as the
+      properties file, and a single copy in Drive is also the off-machine
+      backup. If a release build ever cannot find it, the folder is set to
+      stream rather than sync; mark it "Available offline".
+      `JAVA_HOME` must be set for command-line builds (Android Studio only
+      supplies its JDK to itself): it is now a user variable pointing at
+      `C:\Program Files\Android\Android Studio\jbr` (OpenJDK 21.0.10,
+      matching this project's `jvmTarget = '21'`).
+      **Still owed, owner action:** register the Play Console account through
+      the corporation once incorporation completes, plus the third Android
+      OAuth client for the release SHA-1 with "Enable custom URI scheme"
+      ticked under Advanced Settings, since its absence has already cost one
+      debugging session. `SWOT.md` Weaknesses + recommendation 3.
 - [x] **[SWOT] Converge the `index.html` / `index.green.html` fork.**
       **CANCELLED 2026-08-31 by owner decision, not done and not to be done.**
       The premise was that the website is a worse copy of the product and

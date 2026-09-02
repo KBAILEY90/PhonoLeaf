@@ -8208,3 +8208,82 @@ detectable without leaving the document. Two mitigations now in place: dated
 "DONE" markers replace open items rather than sitting beside them, and where two
 files carry the same fact one is named authoritative — `VERIFICATION.md` owns
 the CASA date, so the pair cannot silently disagree again.
+
+
+### Signing secrets moved out of a file, after the rule failed twice
+
+The owner had said, in as many words, "do not let this happen again". It
+happened again. That is the important part of this entry.
+
+`android/keystore.properties` leaked the release signing password into the
+transcript on 2026-09-01. The response was a memory rule: never read, print or
+`grep` that file. On 2026-09-02 it leaked again — and the leaked value was the
+ROTATED one, so the rotation bought nothing.
+
+**Why the rule could not have worked.** Neither leak involved reading the file.
+A session had CREATED it, so the harness watched it, and every save pushed the
+full contents into context automatically. The exposure was the file's
+existence. A behavioural rule about opening a file cannot defend against a
+mechanism that never opens it, and "be careful" is not a control when the
+careful party is the one that keeps failing.
+
+Confirmed from the transcript rather than from memory, and without printing any
+secret: matching on the field name only, then comparing SHA-256 prefixes of the
+values. Line 964 carried one value, line 997 was the owner saying they had
+rotated, and line 2375 — a file-change attachment for `keystore.properties` —
+carried a value matching none of the earlier ones. Two other post-rotation hits
+were placeholder text from instructions, not secrets. That is what made the
+second leak a fact rather than a suspicion.
+
+**The fix is structural.** `build.gradle` reads `PHONOLEAF_STORE_FILE`,
+`PHONOLEAF_STORE_PASSWORD`, `PHONOLEAF_KEY_ALIAS` and `PHONOLEAF_KEY_PASSWORD`
+from the environment. **Deliberately no fallback to the file:** a fallback would
+silently resume the leaking path the first time the file reappeared, which is
+precisely the failure being removed. Instead the build throws a
+`GradleException` if it is present — verified by running Gradle with the file in
+place, which failed at line 42 with the intended message. The second error in
+that run (`does not specify compileSdk`) was a knock-on of the throw aborting
+script evaluation before the `android { }` block, and disappeared once the file
+was gone. `test/secrets.test.mjs` fails if the file exists, if the build loads a
+properties file for signing, if the guard is deleted, or if any tracked file
+holds a literal password. The suite was left RED until the owner deleted the
+file: a guard that passes while the problem exists is worse than none.
+
+**Three things the rollout got wrong, all worth keeping.**
+
+`keytool -keypasswd` failed with "not supported if -storetype is PKCS12".
+PKCS12 has been keytool's default since JDK 9 and has no separate key password —
+the key is protected by the store password. The config had been asking for
+something that cannot exist, and requiring two variables that must always hold
+the same string is a standing invitation to a later, confusing failure.
+`PHONOLEAF_KEY_PASSWORD` is now optional and defaults to the store password.
+
+The setup instructions put `YOUR_JKS_PATH` inside a copy-pasteable command
+block, so it was stored verbatim and Gradle looked for
+`android\app\YOUR_JKS_PATH`. **Never put a placeholder in a block meant to be
+run.** Look the real value up first, or split it out as a value to fill in.
+
+`JAVA_HOME` was unset, so `gradlew.bat` could not start. Android Studio supplies
+its JDK only to itself; command-line builds need it pointed at
+`C:\Program Files\Android\Android Studio\jbr` (OpenJDK 21.0.10, matching this
+project's `jvmTarget = '21'`).
+
+**A second keystore copy, holding the leaked password.** Searching for the real
+path turned up TWO `phonoleaf-release.jks` files. Modification times settled
+which was which: the Google Drive copy was touched minutes earlier, when
+`-storepasswd` ran, while the one in the user folder still dated from the
+previous day. So the user-folder copy was a duplicate still protected by the
+leaked password — a live liability nobody had thought about, found only because
+the wrong-path error forced a search. Resolved to ONE canonical file in Drive,
+with the stale copy deleted only after a signed build proved the remaining one
+worked. One copy is deliberate: two can silently diverge, which is the same
+class of failure as the properties file, and the Drive copy doubles as the
+off-machine backup.
+
+**Verified end to end, not assumed.** `BUILD SUCCESSFUL`, 55,586,182 bytes
+(53.0 MiB), `apksigner verify` reporting `CN=Kevin Bailey, OU=Unknown,
+O=Everbloom Technologies inc., L=Longueuil, ST=Quebec, C=CA`, and a certificate
+SHA-1 identical to the value already recorded in `TODO.md` — proving the
+rotation changed the password and nothing else, so the OAuth client fingerprint
+is unaffected. Only the password was ever exposed, never the `.jks`, which is
+why rotating beat regenerating: a new key would have invalidated that SHA-1.
