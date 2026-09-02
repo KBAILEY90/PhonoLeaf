@@ -261,10 +261,15 @@ Not a plan, a reading of the four quadrants above. Ordered by what unblocks the 
    Left in place, struck through rather than deleted, because the failure worth
    remembering is that a stale status line about a PERSON was repeated across
    sessions until it read as a crisis. Verify claims like that with the owner.
-3. **Create the release keystore.** Small, cheap and unblocked today. The Play Console
-   account is NOT part of this any more: it gets registered through the corporation
-   once incorporation completes, so it waits on that. No 14-day tester clock applies,
-   since that requirement is for personal accounts only.
+3. ~~**Create the release keystore.**~~ **DONE 2026-09-02.** The keystore exists
+   outside the repo, `android/keystore.properties` points at it, and a signed
+   release build was produced and verified: `BUILD SUCCESSFUL`, signed with
+   `CN=Kevin Bailey, O=Everbloom Technologies inc.`, 53.0 MB after R8. The
+   certificate SHA-1 is recorded in `TODO.md` for the third OAuth client.
+   This recommendation is closed.
+   Still true and still waiting: the Play Console account gets registered
+   through the corporation once incorporation completes. No 14-day tester clock
+   applies, since that requirement is for personal accounts only.
 4. **Converge the fork.** Cheapest now, and it doubles the reach of everything already
    built.
 5. **Correct the docs to match reality**: no Play Store users yet, still in OAuth

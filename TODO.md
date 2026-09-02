@@ -54,7 +54,7 @@ replacement Spanish voice with a clean licence.
 Full audit taking the software-engineer, security and licence-review angles at
 once. 24 findings. Everything fixable without a device, a keystore or a lawyer
 was fixed in the same session; the rest is listed below with why it is blocked.
-Nothing was pushed — see "Not pushed" at the end.
+All of it is committed AND PUSHED (see the end of this section).
 
 ### Fixed and verified
 
@@ -174,7 +174,7 @@ disclosed in all four privacy pages.
       texts because the project offers a choice. Shipping it is correct and is
       what upstream distributes; PhonoLeaf's election is MIT, recorded in
       `vendor/LICENSES.md`.
-- [~] **Native CSP tightened 2026-09-01; the dead code itself still ships.**
+- [x] **Native CSP tightened 2026-09-01; dead code removed 2026-09-02.**
       `cdn.jsdelivr.net` and the HuggingFace hosts are GONE from
       `index.green.html`'s `script-src`/`connect-src`. That was the part with
       real security value: jsdelivr mirrors all of npm, so allowlisting it meant
@@ -189,9 +189,18 @@ disclosed in all four privacy pages.
       cost a session already).
       **`index.html` deliberately UNCHANGED**: the website's fallback genuinely
       runs, so it keeps those hosts. Do not copy the native CSP into it.
-      **Still open:** deleting the dead WASM block from `index.green.html`.
-      Cosmetic now rather than a security item, and still wants a device pass,
-      so it was not worth the risk of surgery on a 591 KB file this session.
+      **DONE 2026-09-02 in `45adc26`.** The dead block is deleted: about 200
+      lines covering `_kokoroOpts`, `_kokoroWorkerEl` (the worker source with
+      the CDN import), `_benchCached`, `_kokoroBench`, `_applyBench`,
+      `_synthKokoro`, `_wavBlob` and the worker state. `index.green.html` went
+      599471 -> 591627 bytes and now has zero references to any of them.
+      `_synth()` rejects with a clear error instead, since reaching that line
+      would mean the plugin failed to register.
+      KEPT, because the word Kokoro means two things here: `_benchKokoroGate`
+      and the `_nativeBench*` family are the NATIVE model's gate and probe and
+      run through the AIDL engine. Only the browser fallback went.
+      `index.html` (the website) deliberately keeps its fallback; verified it
+      still has it.
 - [x] **DONE 2026-09-02.** All five packs mirrored to Cloudflare R2
       (`phonoleaf-voice-packs`, ~413 MB), served from `packs.phonoleaf.com`
       (min TLS 1.2), with the upstream release page kept as an automatic
@@ -202,9 +211,13 @@ disclosed in all four privacy pages.
       413 MB against a 10 GB free tier; reads are 10M free/month then
       $0.36/million. Reaching $1,000 would take billions of requests, and
       Cloudflare's cache sits in front (verified `cf-cache-status: HIT`).
-      **Still worth doing, dashboard only:** a usage-based billing notification
-      and one rate-limiting rule on `packs.phonoleaf.com`. The wrangler OAuth
-      token cannot write zone rulesets.
+      **BOTH DASHBOARD ITEMS DONE by the owner, 2026-09-02.** A usage
+      notification on R2 Class B operations at 1,000,000 reads (inside the 10M
+      free tier, so it fires while the bill is still zero), and one WAF
+      rate-limiting rule: URI Path contains `.tar.bz2`, 20 requests per 10s per
+      IP, block. See the Cloudflare section below for the Free-plan constraint
+      that shaped the rule and why the packs rule is the one to sacrifice if a
+      zone rule is ever needed elsewhere.
       Original item below.
 - [ ] ~~Mirror the voice packs and pin their hashes.~~ No integrity check exists
       on 65-140 MB archives fetched from a third-party GitHub release and fed to
@@ -259,9 +272,15 @@ disclosed in all four privacy pages.
       real signing key and pepper. Correctly gitignored and never committed, but
       development values must not become production values.
 
-**Not pushed.** All of the above is committed locally only. Several changed
-files are website files (`index.html`, `sw.js`, `vendor/`, `fonts/`), and for
-the website a push IS the deploy, so the push is left as an owner decision.
+**PUSHED AND LIVE.** Corrected 2026-09-02: an earlier draft of this section
+said the work was committed locally only and left the push as an owner
+decision. That was already untrue when written. Commit `e5817bd` includes
+`index.html` and `sw.js`, and it was pushed, so those changes deployed to
+phonoleaf.com within about two minutes. Nothing here is waiting on anyone.
+
+The point that line was reaching for is still worth keeping, just not as a
+status: for the website a push IS the deploy, so any change to `index.html`,
+`sw.js`, `home*.html`, a legal page or a comparison page goes public on push.
 
 ---
 

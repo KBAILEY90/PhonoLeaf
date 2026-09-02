@@ -184,9 +184,11 @@ Ordered by what gates revenue or has a deadline. "Code" = implementable in the r
 "Owner" = needs the owner (and sometimes an accountant/lawyer).
 
 ### Gating, do now
-1. **Google OAuth verification, CASA AL1 assessment.** Hard deadline **Nov 3,
-   2026**; nothing goes public without it. Engage the lab (Eydle), get "in
-   process." *(Owner; see `VERIFICATION.md`.)*
+1. **Google OAuth verification, CASA AL1 assessment.** Hard deadline
+   **Jan 2, 2027** — extended from Nov 3, 2026 (granted 2026-08-19). Nothing
+   goes public without it. The lab (Eydle) is engaged and paid; the assessment
+   is deliberately parked until the payments backend exists so it is only done
+   once. *(Owner; `VERIFICATION.md` is authoritative for this date.)*
 2. **Register the business + money basics.** Structure (sole prop vs incorporate);
    register the "PhonoLeaf" name with the **Registraire des entreprises du Québec
    (REQ)**; business bank account; register for **GST (CRA) + QST (Revenu
