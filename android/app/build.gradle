@@ -79,14 +79,14 @@ android {
         }
     }
     buildTypes {
-        // TEMPORARY, for verifying the R8 keep rules on a build that can be
-        // installed over the existing debug app without losing books or voice
-        // packs (a release build is signed differently and would need an
-        // uninstall). REMOVE once verified: debug builds should stay fast.
-        debug {
-            minifyEnabled true
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-        }
+        // Debug builds are deliberately NOT minified: they should build fast.
+        // R8 was verified on 2026-09-02 by temporarily enabling it here (a
+        // release build is signed differently and installing one would have
+        // required an uninstall, destroying the owner's books and voice packs).
+        // Under minification the app launched clean, Capacitor's plugin
+        // discovery worked, the Keystore migration ran, and the owner confirmed
+        // sign-in, Drive, playback, lock-screen audio and pack download/delete.
+        // Re-enable here temporarily if the keep rules ever need retesting.
         release {
             // Enabled 2026-09-01. Without it the shipped app is trivially
             // readable, which stops mattering only until the entitlement check

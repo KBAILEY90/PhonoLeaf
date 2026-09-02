@@ -136,7 +136,16 @@ disclosed in all four privacy pages.
 
 ### Still open, and why
 
-- [ ] **Add a root `LICENSE`, and decide the engine component's terms.**
+- [x] **DONE 2026-09-01. Root `LICENSE` added and the engine terms settled.**
+      Counsel reviewed the architecture and confirmed the approach: the bridge
+      is GPL-3.0 in its own directory (`android/tts-bridge/`) under its own
+      package, and the root `LICENSE` is proprietary with that directory carved
+      out. He also asked for, and got, the package rename and generic comments.
+      His remaining caveat, recorded because it is the honest position: shipping
+      both in ONE installation package leaves residual grey area, which is why
+      the bridge must stay impeccably licensed. `npm test` enforces the
+      structure. Original item below.
+- [ ] ~~Add a root `LICENSE`, and decide the engine component's terms.~~
       **The sharpest legal finding, and deliberately not actioned by an agent.**
       `ENGINE_NOTICE.md` counts "published source" as one of three satisfied
       conditions. But the repo has NO licence file, so under default copyright
@@ -183,7 +192,21 @@ disclosed in all four privacy pages.
       **Still open:** deleting the dead WASM block from `index.green.html`.
       Cosmetic now rather than a security item, and still wants a device pass,
       so it was not worth the risk of surgery on a 591 KB file this session.
-- [ ] **Mirror the voice packs and pin their hashes.** No integrity check exists
+- [x] **DONE 2026-09-02.** All five packs mirrored to Cloudflare R2
+      (`phonoleaf-voice-packs`, ~413 MB), served from `packs.phonoleaf.com`
+      (min TLS 1.2), with the upstream release page kept as an automatic
+      fallback. Every download is now verified against a recorded SHA-256, so
+      falling back cannot smuggle in different bytes.
+      **Cost question answered with real numbers:** R2 charges nothing for
+      egress, which is the fee that makes this frightening elsewhere. Storage is
+      413 MB against a 10 GB free tier; reads are 10M free/month then
+      $0.36/million. Reaching $1,000 would take billions of requests, and
+      Cloudflare's cache sits in front (verified `cf-cache-status: HIT`).
+      **Still worth doing, dashboard only:** a usage-based billing notification
+      and one rate-limiting rule on `packs.phonoleaf.com`. The wrangler OAuth
+      token cannot write zone rulesets.
+      Original item below.
+- [ ] ~~Mirror the voice packs and pin their hashes.~~ No integrity check exists
       on 65-140 MB archives fetched from a third-party GitHub release and fed to
       a native inference engine. HTTPS covers transit, so the real exposure is
       upstream mutation and, more likely, upstream disappearance: if that
@@ -191,10 +214,31 @@ disclosed in all four privacy pages.
       at once with no fallback. Mirror to R2, keep upstream as fallback. **Do
       this before charging anyone** — it converts an uncontracted supplier
       dependency into a storage line item.
-- [ ] **Migrate off `androidx.security:security-crypto` to the platform
-      Keystore APIs.** Deprecated by Google as of 1.1.0-beta01. The version bump
-      above is the cheap half.
-- [ ] **Enable R8 for release builds.** `minifyEnabled false` today, so once
+- [x] **DONE 2026-09-02.** `SecureStoragePlugin.kt` rewritten onto the
+      platform Keystore directly: AES-256/GCM, a fresh IV per write taken from
+      the Cipher, `setUserAuthenticationRequired(false)` because background
+      playback must read the token with the phone locked, and every failure path
+      returning null so a lost key prompts a sign-in rather than crashing.
+      **The migration is the load-bearing part and was verified on device:** the
+      first `get` reads the legacy EncryptedSharedPreferences once, re-encrypts
+      into the new store and clears the old copy. Logcat confirmed
+      `migrated 'pl_rtoken' from the legacy encrypted store` with no sign-out.
+      The deprecated library stays as a dependency for that one read only;
+      drop it (and `legacyValue()`) once no installed device can still hold a
+      legacy value.
+- [x] **DONE 2026-09-02.** `minifyEnabled true` on release with keep rules in
+      `proguard-rules.pro` for everything resolved by NAME at runtime: the
+      sherpa JNI callbacks (highest risk — native code looks up Kotlin classes
+      by exact name), Capacitor's annotation-driven plugin discovery, Tink's key
+      managers, the manifest's service names, and SourceFile/LineNumberTable so
+      Play Console crash reports stay readable. Release builds 56.2 -> 53.0 MB.
+      Verified by temporarily minifying DEBUG (a release build is signed
+      differently and would have needed an uninstall, destroying the owner's
+      books and packs): clean launch, plugin bridge working, Keystore migration
+      running, and the owner confirmed sign-in, Drive, playback, lock-screen
+      audio and pack download/delete. That debug setting has been removed again.
+      Original item below.
+- [ ] ~~Enable R8 for release builds.~~ `minifyEnabled false` today, so once
       entitlement checks exist the paywall logic ships readable. Needs keep
       rules for the Capacitor bridge and registered plugins, and a real device
       pass, because plugin registration is exactly what minification breaks
