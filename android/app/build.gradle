@@ -79,10 +79,26 @@ android {
         }
     }
     buildTypes {
+        // TEMPORARY, for verifying the R8 keep rules on a build that can be
+        // installed over the existing debug app without losing books or voice
+        // packs (a release build is signed differently and would need an
+        // uninstall). REMOVE once verified: debug builds should stay fast.
+        debug {
+            minifyEnabled true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
         release {
-            minifyEnabled false
+            // Enabled 2026-09-01. Without it the shipped app is trivially
+            // readable, which stops mattering only until the entitlement check
+            // exists — that check is precisely what someone would look for.
+            // See proguard-rules.pro: everything reached by NAME at runtime
+            // (the sherpa JNI callbacks, Capacitor's plugin discovery, Tink's
+            // key managers, the manifest's service names) needs an explicit
+            // keep rule, and getting one wrong fails silently on device rather
+            // than at build time.
+            minifyEnabled true
             // Newer AGP rejects 'proguard-android.txt' (it forces -dontoptimize);
-            // the -optimize variant is required. minifyEnabled is false anyway.
+            // the -optimize variant is required.
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             if (keystorePropsFile.exists()) {
                 signingConfig signingConfigs.release
