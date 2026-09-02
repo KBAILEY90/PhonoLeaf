@@ -6970,6 +6970,7 @@ const Reader = {
       TTS._awaitingPage = false;
       // Resume on the new page ASAP (short initial delay), retrying until its
       // text is actually laid out so the audio matches the visible page.
+      TTS._prTurn = performance.now(); // DIAG: page-turn latency, see _resumeRead
       setTimeout(() => TTS._resumeRead(0), 30);
     }
 
@@ -8072,11 +8073,26 @@ const TTS = {
     // shift — 64 tries (~3.8s) gives real books' heavier layouts headroom.
     if ((notReady || unstable) && (tries || 0) < 64) {
       const seen = this._lastText;
+      // DIAG: one character per retry — n = nothing extracted yet, s = still the
+      // page we just left, u = text still changing between passes.
+      if (!tries) this._prWhy = '';
+      this._prWhy = (this._prWhy || '') + (notReady ? (stale ? 's' : 'n') : 'u');
       // Shorter gap when we already have text and are only confirming it has
       // stopped changing; the longer one is for a page with nothing yet.
       setTimeout(() => this._resumeRead((tries || 0) + 1, seen), notReady ? 60 : 40);
       return;
     }
+    // Page-turn settle timing, into the existing Diag ring buffer rather than
+    // console.log — capacitor.config.json sets loggingBehavior "none", so
+    // console output never reaches logcat and a console diagnostic is invisible.
+    // `why` is one character per retry: n = nothing extracted yet, s = still the
+    // page we just left, u = text still changing between passes. A page turn
+    // that suddenly grows a long `why` string is the thing to look at first.
+    try {
+      const dt = this._prTurn ? Math.round(performance.now() - this._prTurn) : -1;
+      Diag.push({ e: 'pturn', ms: dt, t: (tries || 0), why: this._prWhy || '-', c: this.chunks.length });
+      this._prTurn = 0; this._prWhy = '';
+    } catch (_) {}
     this._prevText = '';
     // Skip the FIRST chunk's lead pre-pause on resume — matches pressing
     // pause+play, which is the workaround the owner found for "the chapter
