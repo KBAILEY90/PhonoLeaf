@@ -1467,14 +1467,20 @@ Logged as-is, no design work done yet.
       - **Highlight/annotation export: REJECTED 2026-08-31.** Owner call: the
         brand focuses on books, audiobooks and e-readers, not academic tooling.
         Do not re-propose it.
-- [ ] **[SWOT] Lifetime tier shutdown reserve, before selling any.**
-      Already open as a decision in `PAYMENTS_SPEC.md` §13, restated here
-      because the SWOT put a number on it: 500 lifetimes at $129 is $64,500
-      gross against a contractual 12-month refund exposure that the ToS
-      already commits to while no reserve policy exists. Voice Dream's
-      one-star "early adopter, punished" reviews are the documented failure
-      mode. Decide the reserve policy before the first lifetime is sold,
-      not after.
+- [x] **[SWOT] Lifetime tier shutdown reserve — CLOSED 2026-09-02, owner
+      decision. Do not re-raise it here.** The mechanism was already decided
+      (`PAYMENTS_SPEC.md` §13: a percentage of each lifetime sale held
+      separately until that sale's 12-month refund window closes). The only
+      remaining piece was the exact percentage, and the owner's ruling is that
+      it does not belong on this list at all: it is a banking and accounting
+      decision made with the bank and the accountant once the business account
+      exists, and no agent has or will have access to that account.
+      Kept as a closed entry rather than deleted, because `SWOT.md`'s Threats
+      section still carries the finding that produced it (500 lifetimes at $129
+      is $64,500 gross against a 12-month refund exposure the ToS commits to).
+      That is a real and correctly recorded risk; it simply is not an
+      engineering task, and re-adding it here would be re-litigating a
+      settled call.
 
 - [ ] **"Mark as finished" below 100%.** The last few pages of a book are
       often glossary/acknowledgments/about-the-author matter that a reader

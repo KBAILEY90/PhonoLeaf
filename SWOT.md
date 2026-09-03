@@ -262,21 +262,35 @@ Not a plan, a reading of the four quadrants above. Ordered by what unblocks the 
    remembering is that a stale status line about a PERSON was repeated across
    sessions until it read as a crisis. Verify claims like that with the owner.
 3. ~~**Create the release keystore.**~~ **DONE 2026-09-02.** The keystore exists
-   outside the repo, `android/keystore.properties` points at it, and a signed
+   outside the repo, at one canonical path in Google Drive, and the build reads
+   its credentials from the `PHONOLEAF_*` **environment variables**. A signed
    release build was produced and verified: `BUILD SUCCESSFUL`, signed with
    `CN=Kevin Bailey, O=Everbloom Technologies inc.`, 53.0 MB after R8. The
    certificate SHA-1 is recorded in `TODO.md` for the third OAuth client.
    This recommendation is closed.
+   **Corrected 2026-09-02: an earlier version of this line said
+   `android/keystore.properties` points at the keystore. Do not act on that.**
+   That file leaked the signing password into a transcript twice and is now
+   banned: `android/app/build.gradle` throws if it reappears and
+   `test/secrets.test.mjs` fails if it exists. This line was written a few
+   commits before the ban landed. See `CLAUDE.md`'s Critical facts section.
    Still true and still waiting: the Play Console account gets registered
    through the corporation once incorporation completes. No 14-day tester clock
    applies, since that requirement is for personal accounts only.
-4. **Converge the fork.** Cheapest now, and it doubles the reach of everything already
-   built.
-5. **Correct the docs to match reality**: no Play Store users yet, still in OAuth
-   Testing mode, and `COMPETITORS.md`'s stale Kokoro claim.
-6. **Add a minimal test harness** for the places where a regression is expensive and
-   silent: chunking and `_split()`, the blank page skip cap, the generation guard, and
-   the entitlement worker's trial state machine. Not a suite, just a few dozen
-   assertions that run in Node.
+4. ~~**Converge the fork.**~~ **CANCELLED 2026-08-31 by owner decision**, and not
+   to be re-raised. The premise was that the website should catch up to the app.
+   The owner's call is that the website is not the product at all: it is SEO plus
+   a launcher for the phone apps, so the fork is permanent and convergence would
+   buy nothing. See `TODO.md`'s entry for what was kept and why.
+5. ~~**Correct the docs to match reality**~~ **DONE 2026-08-30**, plus a second
+   pass on 2026-09-02 that corrected five further claims which had drifted. Both
+   the `CLAUDE.md` status line and `COMPETITORS.md`'s stale Kokoro claim were
+   fixed, along with all ten comparison pages.
+6. ~~**Add a minimal test harness**~~ **DONE 2026-08-30, and grown since.**
+   `npm test` runs **61 assertions** in about half a second with no new
+   dependencies, covering exactly the places named here: `_split()`, the blank
+   page skip cap, the generation guard, and the entitlement worker's trial state
+   machine, plus the voice-engine error contract, the GPL licence boundary and
+   the signing-secret rules.
 7. **Reframe the marketing on reliability**, since the research supporting it is
    already done and unused.
