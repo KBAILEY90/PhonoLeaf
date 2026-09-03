@@ -863,8 +863,11 @@ held to in the funny version, and worth keeping if it wins:
      lifetime card actually gets MORE honest, saying outright that "as long as
      PhonoLeaf runs" is used instead of "forever" because forever is not ours
      to promise. That directly addresses the Voice Dream failure mode.
-  4. **NEVER point a joke at the product. This one took three rounds of owner
-     review to get right, so it is written down.** The test is who the joke is
+  4. **NEVER point a joke at the product. Took three rounds of owner review, so
+     it is now written up properly in `BRAND_VOICE.md`** (the rule, the test,
+     all eleven before/after fixes, the French-is-written-in-French rule, and
+     where humour may not go at all). Summary kept here because it is the one
+     most likely to be re-broken. The test is who the joke is
      at. At the READER ("you have simply run out of eyes", "numbers to feel
      quietly smug about", "the book you abandoned in March") is fine. At a
      SITUATION (a phone in a coat, a tunnel, a map app giving up) is fine. At a

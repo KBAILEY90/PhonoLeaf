@@ -407,6 +407,14 @@ Google login); verify by inspection + device testing.
 
 ## Conventions
 
+- **User-facing copy has a brand voice, and it is written down.** See
+  `BRAND_VOICE.md`. One rule carries most of it: **be funny, never at our own
+  expense.** A joke at the reader, a situation or a competitor is fine; a joke
+  at PhonoLeaf is not, because the app getting out of your way is a FEATURE and
+  must be sold as one. Governs the website, the app's toasts/onboarding/empty
+  states, and store listings, in EN and FR. Humour never touches the Google
+  Drive disclosure, the legal pages, prices, or any factual claim. French
+  humour is written IN French, never translated from the English.
 - **Escape all externally-sourced strings** (filenames, error messages,
   voice names, chapter titles) with `esc()` before `innerHTML`. Prefer
   passing indices to inline handlers over interpolating raw values.
