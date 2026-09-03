@@ -863,6 +863,28 @@ held to in the funny version, and worth keeping if it wins:
      lifetime card actually gets MORE honest, saying outright that "as long as
      PhonoLeaf runs" is used instead of "forever" because forever is not ours
      to promise. That directly addresses the Voice Dream failure mode.
+  4. **NEVER point a joke at the product. This one took three rounds of owner
+     review to get right, so it is written down.** The test is who the joke is
+     at. At the READER ("you have simply run out of eyes", "numbers to feel
+     quietly smug about", "the book you abandoned in March") is fine. At a
+     SITUATION (a phone in a coat, a tunnel, a map app giving up) is fine. At a
+     COMPETITOR ("no newsletter", "no retention email asking whether you are
+     absolutely sure") is fine and on strategy. At OURSELVES is never fine, and
+     it kept slipping in because self-deprecation reads as wit while you are
+     writing it. Every instance found and removed: a heading calling its own
+     section "the less thrilling rest", a voice described as one you could
+     "tolerate", a fallback that was "honest about being" a robot, a setup
+     section promising "then we go quiet", a hero saying the app "leaves you
+     alone" / "vous fiche la paix", a pricing heading calling itself "the part
+     with the numbers" / "le passage obligé des chiffres", and a cancel note
+     answering "we will manage".
+     **Why it matters commercially, in the owner's words: we are not annoying
+     the user, we are providing something beneficial.** Getting out of the way
+     is a FEATURE and must be sold as one. Self-deprecation reads as charm from
+     an established brand and as doubt from an unknown one, and PhonoLeaf is
+     currently the second. **If the funny voice wins, apply this same test to
+     every toast, empty state and onboarding line in the app**, which is the
+     larger half of the job.
 The French humour is written to work in French rather than translated from the
 English jokes, so several lines deliberately land somewhere different.
 
