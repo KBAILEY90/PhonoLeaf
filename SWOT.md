@@ -205,6 +205,16 @@ significant change) or asking for a second extension after having used one. This
 the highest consequence risk in the project and the one with the least local control.
 It deserves a decision date rather than continued waiting.
 
+> **CORRECTION, 2026-09-02.** "The first link has not moved in 20 days" was
+> false, and the owner refuted it on 2026-09-01: the lawyer engagement is
+> active, with email every 2-3 days. This is flagged rather than rewritten
+> because the rest of this document is a snapshot dated 2026-08-30 and is
+> deliberately preserved, but that convention protects claims that were TRUE
+> then and have since changed. This one was wrong when written, it is about a
+> PERSON, and it propagated into two recommendations before anyone checked it.
+> The deadline and the consequence above are real; the urgency was not.
+> See `TODO.md` item 1.
+
 **Recent effort has gone to polish while the revenue gates have not moved.** The last
 five merged pull requests are storage modal percentages, storage modal boxed groups,
 storage modal spacing, the store review prompt, and a home page restyle. Over the same
@@ -252,10 +262,17 @@ starts from a negative prior on price alone.
 
 Not a plan, a reading of the four quadrants above. Ordered by what unblocks the most.
 
-1. **Set a decision date on the CASA sequencing**, for example October 15. If business
-   registration has not landed by then, submit the assessment without the backend and
-   budget for the second one. Waiting indefinitely on an unresponsive third party is
-   the only path here with no ceiling on the downside.
+1. ~~**Set a decision date on the CASA sequencing**, for example October 15.~~
+   **WITHDRAWN 2026-09-02, for the same reason as recommendation 2 below.** Its
+   closing clause gives it away: "waiting indefinitely on an unresponsive third
+   party". The third party is not unresponsive. That was the stale "20 days of
+   silence" claim the owner refuted on 2026-09-01, and this recommendation is
+   recommendation 2's sibling, missed when 2 was withdrawn.
+   The owner's own reason is independent and also sufficient: the date is not
+   theirs to choose, since incorporation governs when payments can be built.
+   **The underlying fact survives and is not softened:** the assessment is
+   required, the deadline is January 2, 2027, and nothing goes public without
+   it. It is tracked as a status item in `TODO.md`, not as an urgency.
 2. **WITHDRAWN 2026-09-01: "chase or replace the lawyer".** Built on a stale claim
    of twenty days of silence. The engagement is active, with email every 2-3 days.
    Left in place, struck through rather than deleted, because the failure worth

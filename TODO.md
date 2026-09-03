@@ -1084,18 +1084,28 @@ anywhere in `worker/`.
       `[env.staging.d1_databases]`, documented in `worker/README.md` so it
       doesn't trip anyone else up) and both redeployed. **Fully live** —
       production and staging both run on D1.
-- [ ] **[SWOT] Set a decision date on the CASA sequencing, e.g. Oct 15.**
-      The current plan (park CASA, build payments, submit once) is sound
-      and remains the preferred path, but it is chained to a lawyer who has
-      not replied, and the deadline is Jan 2, 2027, which is 125 days out
-      as of 2026-08-30. Pick a date now: if business registration has not
-      landed by then, submit the assessment against the current no-backend
-      architecture and budget for the second assessment plus the DAST scan
-      later (Eydle has already called adding a backend a likely significant
-      change, `VERIFICATION.md` 2026-08-14). Deciding the trigger in
-      advance is the whole point, since the failure mode is an open-ended
-      wait with no ceiling on the downside. `SWOT.md` Threats,
-      recommendation 1.
+- [x] **[SWOT] ~~Set a decision date on the CASA sequencing, e.g. Oct 15.~~
+      WITHDRAWN 2026-09-02, owner decision, and it rested on the discredited
+      premise. Do not re-raise it.**
+      Two reasons, and the second is the one that matters.
+      **Owner's reason:** the date is not theirs to pick. Incorporation
+      decides when payments can be built, incorporation is with the lawyer,
+      and asking the owner to name a date is asking them to guess at
+      something outside their control.
+      **The stronger reason, found while removing it:** this task was built
+      on the claim that CASA is "chained to a lawyer who has not replied",
+      which is the SAME false "20 days of silence" line that item 1 at the
+      top of this file exists to kill. `SWOT.md` recommendation 2 ("chase or
+      replace the lawyer") was withdrawn on 2026-09-01 for exactly that
+      reason. This was its sibling, born of the same stale line, and it
+      survived only because one of the two got corrected and the other did
+      not. An urgency built on a premise the owner has already refuted is
+      not a real deadline.
+      **What is NOT withdrawn, because it is a fact rather than an urgency:**
+      the assessment is genuinely required, the deadline is genuinely
+      **Jan 2, 2027**, and nothing ships until it is done. That lives as a
+      status item under "Blocked on external people/hardware" above, where it
+      belongs, and `VERIFICATION.md` remains authoritative for the date.
 
 ## Actionable now, no blockers
 
