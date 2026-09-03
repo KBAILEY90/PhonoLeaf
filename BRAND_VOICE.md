@@ -26,7 +26,7 @@ Ask **who the joke is at**.
 | --- | --- | --- |
 | The **reader** | Fine | "You have simply run out of eyes", "Numbers to feel quietly smug about", "the one you abandoned in March", "the business book someone made you read" |
 | A **situation** | Fine | a phone buried in a coat, a tunnel, "the stretch of countryside where your map app quietly gives up", "regardless of what your hardware thinks of the idea" |
-| A **competitor** | Fine, and on strategy | "no newsletter", "with no retention email asking whether you are absolutely sure", "whatever you are currently arguing with" |
+| A **competitor** | Careful. Aim at an *industry practice*, never at their product's quality | Fine: "no newsletter", "with no retention email asking whether you are absolutely sure" (both aimed at a practice). Too far: "whatever you are currently arguing with" (aimed at their product being bad). See the competitor-pages section below. |
 | **Ourselves** | **Never** | see the table below, all of which had to be removed |
 
 ## Why this is a commercial rule, not a style preference
@@ -64,6 +64,53 @@ self-deprecation reads as wit while you are writing it.
 **The reusable shape:** where a line said *we will stop bothering you*, it now
 says *what you get instead*. The joke usually survives the change; only its
 target moves.
+
+## Competitor pages: respectful, NOT deferential
+
+Added 2026-09-02, immediately after this document failed its first real test.
+The owner asked for the comparison pages to be "respectful and humble of them".
+That was read as *humble about ourselves*, and the Speechify page shipped with
+"PhonoLeaf does less than that, deliberately" / "PhonoLeaf en fait moins,
+délibérément". Which is the rule at the top of this file, broken on the very
+next page written after it.
+
+**The two halves, and they do not trade off:**
+
+- **Respect the competitor.** They are real products that real people are happy
+  with. No sneering, no implying their users are fools, no claims about them we
+  have not checked. Keep the trademark disclaimer and the dated pricing
+  footnote. State plainly that the figures are our reading of their published
+  information.
+- **Be confident about us, and prove it.** We are better at the job the page is
+  about. Say so, then show the evidence: on-device so nothing uploads or
+  queues, the position kept to the paragraph, the voice that does not change
+  when the signal does, about a fifth of the price. Evidence is what makes
+  confidence land instead of boast.
+
+**Never describe PhonoLeaf as doing less, being smaller, or being narrower.**
+Focus is a strength and has to read as one. "Built for one job, and it does
+that job better" says the same true thing and sells.
+
+Worked correction, kept because the difference is subtle in the writing and
+obvious to a reader:
+
+| Wrong | Right |
+| --- | --- |
+| "Speechify is a big, capable product… PhonoLeaf does less than that, deliberately." | "Speechify is a serious product with a wide reach, and it earns the attention it gets. PhonoLeaf is built for one job, reading the books you already own, and it does that job better." |
+| "Narrower on purpose" | "Better at the job you actually want done" |
+| "Where PhonoLeaf probably suits you better" | "Where PhonoLeaf is the better choice" |
+| "If most of these sound like you, it is worth the seven days" | "If any of these are true, PhonoLeaf is built for you and Speechify is not" |
+
+**Do not concede ground in the comparison table.** A row was added to the
+Speechify page in the name of humility, granting that Speechify reads almost
+any document while PhonoLeaf reads EPUB you own. It was removed. The table is
+for the axes that decide the reader's actual question, and this page is about
+reading books you already own. Their breadth can be acknowledged respectfully
+**in prose**, which is where nuance belongs; a table row reads as a scorecard.
+This also restores the standing rule (owner, 2026-08-17 and 2026-08-31): do not
+sugar-coat competitors and do not concede ground to them.
+
+**Still banned, unchanged:** "choose them if" sections, decided twice.
 
 ## Where humour does not go at all
 
