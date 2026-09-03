@@ -187,7 +187,12 @@
   a { color: var(--accent); }
 
   /* ---------- Why it is better ---------- */
-  .why { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; margin: 1.4rem 0 0; }
+  /* Explicit column counts, NOT auto-fit. auto-fit packs as many as will
+     fit and had been leaving 3 boxes on one row and 1 stranded below. Four
+     items therefore go 2x2 (each box carries 2-3 lines, so 4-across at this
+     max-width is cramped), collapsing to a single column on a phone. */
+  .why { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin: 1.4rem 0 0; }
+  @media (max-width: 620px) { .why { grid-template-columns: 1fr; } }
   .why-item {
     background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
     padding: 1.15rem 1.25rem; box-shadow: var(--shadow-ink);
@@ -213,7 +218,8 @@
   .steps span { color: var(--text-dim); font-size: 0.93rem; }
 
   /* ---------- Pricing ---------- */
-  .plans { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; margin: 1.4rem 0 1.1rem; }
+  .plans { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin: 1.4rem 0 1.1rem; }
+  @media (max-width: 620px) { .plans { grid-template-columns: 1fr; } }
   .plan {
     background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
     padding: 1.4rem; box-shadow: var(--shadow-ink); position: relative;
@@ -235,7 +241,11 @@
   .included li { margin-bottom: 0.4rem; font-size: 0.92rem; }
 
   /* ---------- Comparison ---------- */
-  .compare { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.7rem; margin: 1.3rem 0 0; }
+  /* Six items, so 3x2 — never 4 and 2. Short labels, so 3-across is
+     comfortable where the feature boxes above would be cramped. */
+  .compare { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.7rem; margin: 1.3rem 0 0; }
+  @media (max-width: 800px) { .compare { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 520px) { .compare { grid-template-columns: 1fr; } }
   .compare a {
     display: block; text-decoration: none; color: var(--text);
     background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
@@ -308,8 +318,8 @@
     <p class="lede">
       PhonoLeaf reads the ebooks you already own out loud, and then gets out of
       the way. It keeps playing when your screen locks. It remembers your exact
-      place, down to the paragraph. It never stalls on a loading screen, because
-      the voice is made on your phone instead of fetched from a server.
+      place, down to the paragraph. And it never makes you wait for a whole book
+      to convert, because the voice is made on your phone as it reads.
     </p>
 
     <div class="stores">
@@ -346,12 +356,12 @@
       <span>Your position is saved per book, down to the paragraph, across pauses, chapters, restarts and days. Not near where you were. Where you were.</span>
     </div>
     <div class="why-item">
-      <b><span class="tick">✓</span>Nothing to wait for</b>
-      <span>No upload, no processing queue, no spinner between you and the next sentence. The voice is generated on your phone as it reads, so there is no server that can be slow or down.</span>
+      <b><span class="tick">✓</span>No book to convert first</b>
+      <span>Nothing is uploaded and nothing is queued for processing, so you never wait for a whole book before you can start listening. The voice is made on your phone as it reads, sentence by sentence, so there is no server that can be slow or down. Your voice downloads once when you choose it, and after that a new page starts in about a second.</span>
     </div>
     <div class="why-item">
-      <b><span class="tick">✓</span>The same voice on one bar or none</b>
-      <span>Save a book and it plays with no connection at all. The voice never downgrades to a robotic one because the network looked weak.</span>
+      <b><span class="tick">✓</span>Works with no internet at all</b>
+      <span>Save a book and it plays in airplane mode, on the underground, or anywhere the signal drops out. The voice stays exactly the same. It never falls back to a robotic one because your connection looked weak.</span>
     </div>
   </div>
 
@@ -461,7 +471,7 @@
       <li>Never creates, edits, moves or deletes anything in your Drive: the access it holds is read-only.</li>
       <li>Never sends your files or your Drive data to any server of ours. Your books travel from Google straight to your device.</li>
       <li>Never uses your data for advertising, and never sells or transfers it.</li>
-      <li>Never reads anything outside the folder you connect, in normal use.</li>
+      <li>Never opens anything outside the folder you pick. The permission Google grants is broader than that, because it is the only one that lets new books appear without you re-picking them each time, but PhonoLeaf only ever lists and downloads the ebooks in the one folder you connect.</li>
     </ul>
   </div>
   <div class="measure">
