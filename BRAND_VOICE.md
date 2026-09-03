@@ -26,7 +26,7 @@ Ask **who the joke is at**.
 | --- | --- | --- |
 | The **reader** | Fine | "You have simply run out of eyes", "Numbers to feel quietly smug about", "the one you abandoned in March", "the business book someone made you read" |
 | A **situation** | Fine | a phone buried in a coat, a tunnel, "the stretch of countryside where your map app quietly gives up", "regardless of what your hardware thinks of the idea" |
-| A **competitor** | Careful. Aim at an *industry practice*, never at their product's quality | Fine: "no newsletter", "with no retention email asking whether you are absolutely sure" (both aimed at a practice). Too far: "whatever you are currently arguing with" (aimed at their product being bad). See the competitor-pages section below. |
+| A **competitor** | Fine. A jab is allowed; **condescension is not** | Fine: "no newsletter", "no retention email asking whether you are absolutely sure", "whatever you are currently arguing with". Not fine: anything that talks down to them or to the people who chose them. See the competitor-pages section below. |
 | **Ourselves** | **Never** | see the table below, all of which had to be removed |
 
 ## Why this is a commercial rule, not a style preference
@@ -76,11 +76,16 @@ next page written after it.
 
 **The two halves, and they do not trade off:**
 
-- **Respect the competitor.** They are real products that real people are happy
-  with. No sneering, no implying their users are fools, no claims about them we
-  have not checked. Keep the trademark disclaimer and the dated pricing
-  footnote. State plainly that the figures are our reading of their published
-  information.
+- **Respect the competitor, which is not the same as going easy on them.**
+  Owner, 2026-09-02: *"I'm fine with a bit of sneering. I just don't want us to
+  be condescending towards our competitors."* So a jab lands fine. What is
+  banned is the register that talks DOWN: treating them as beneath comment,
+  implying the people who chose them were foolish, or dismissing a real product
+  as a joke. They are serious products with real users, and some of those users
+  are the readers we want. Insulting their judgement is a bad way to earn it.
+  No claims about them we have not checked. Keep the trademark disclaimer and
+  the dated pricing footnote, and state plainly that the figures are our
+  reading of their published information.
 - **Be confident about us, and prove it.** We are better at the job the page is
   about. Say so, then show the evidence: on-device so nothing uploads or
   queues, the position kept to the paragraph, the voice that does not change
@@ -111,6 +116,12 @@ This also restores the standing rule (owner, 2026-08-17 and 2026-08-31): do not
 sugar-coat competitors and do not concede ground to them.
 
 **Still banned, unchanged:** "choose them if" sections, decided twice.
+
+**The home pages are settled and are NOT to be re-edited for this** (owner,
+2026-09-02). `home-v3`'s "whatever you are currently arguing with" and
+"celle qui vous exaspère en ce moment" were reviewed against this rule and kept:
+they are jabs at a frustration, not condescension, and the owner approved them
+as they stand.
 
 ## Where humour does not go at all
 
