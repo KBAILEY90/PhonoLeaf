@@ -843,6 +843,36 @@ purchase itself happens in the app, through Google Play or the App Store.
 Design accordingly: the page sells the decision, the store takes the money.
 See `PAYMENTS_SPEC.md` §4.
 
+**TWO TONE VARIANTS EXIST, awaiting an owner pick (2026-09-02).** Both are
+complete EN+FR pairs, both `noindex` and out of `sitemap.xml`, neither linked:
+
+  * `home-v2.html` / `home-v2-fr.html` — the straight version.
+  * `home-v3.html` / `home-v3-fr.html` — the same page with a drier, funnier
+    voice. "v3" is an identifier, NOT a successor; it does not supersede v2.
+
+Built from v2 by substituting text only, so all four share every tag and style
+byte and cannot drift structurally (asserted on element counts). Three rules
+held to in the funny version, and worth keeping if it wins:
+  1. **The Google Drive disclosure section is byte-identical to v2.** It is an
+     OAuth verification commitment, not copy, and is not a place to be funny.
+  2. **Every factual claim is unchanged.** The jokes are about situations
+     (pockets, tunnels, the book abandoned in March), never about capabilities.
+     Specifically it does NOT reintroduce the "no spinner" overclaim that was
+     removed on 2026-09-02.
+  3. **Prices, plan names and the lifetime wording stay unambiguous.** The
+     lifetime card actually gets MORE honest, saying outright that "as long as
+     PhonoLeaf runs" is used instead of "forever" because forever is not ours
+     to promise. That directly addresses the Voice Dream failure mode.
+The French humour is written to work in French rather than translated from the
+English jokes, so several lines deliberately land somewhere different.
+
+**This is also the cheapest possible answer to the open brand-voice question**
+in the product-ideas section ("Should the app have a deliberate tone/voice"),
+which has sat undecided since 2026-08-24. Judging two real pages beats
+reasoning about it in the abstract. Note the decision is broader than the
+website: picking the funny voice implies the app's toasts, onboarding and empty
+states should agree with it, which is the harder half.
+
 **Sequencing.** Not blocking anything, and the trigger is the store release, so
 it can wait for incorporation to clear. Worth starting before then only because
 launch day is a bad time to be designing.
