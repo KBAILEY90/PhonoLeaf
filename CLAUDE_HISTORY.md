@@ -8287,3 +8287,47 @@ SHA-1 identical to the value already recorded in `TODO.md` — proving the
 rotation changed the password and nothing else, so the OAuth client fingerprint
 is unaffected. Only the password was ever exposed, never the `.jks`, which is
 why rotating beat regenerating: a new key would have invalidated that SHA-1.
+
+### What removing the file did NOT fix, and the checks that found it
+
+Closing the leak raised the obvious follow-up: is the secret now actually safe
+from the same accident? Answered by testing rather than asserting.
+
+**The demonstrated failure mode is gone.** The old file leaked with nobody
+acting: the harness watched it and echoed its contents on every change.
+Environment variables have no equivalent behaviour. Nothing pushes them
+anywhere on its own.
+
+**One path survives, and it is behavioural again.** `PHONOLEAF_STORE_PASSWORD`
+is a user-level variable, and a process inherits its environment from its
+PARENT, not from the registry. A Claude Code session started BEFORE the owner
+set the variables cannot see them — verified by presence check, without
+printing values — and this is exactly why the first result came back clean and
+could have been mistaken for proof. A session started AFTER them inherits the
+password, so any command printing the whole environment would put it into the
+transcript.
+
+That distinction is worth stating plainly: the first "not visible" result was
+an artifact of process start order, not a protection. Reporting it as a pass
+would have been wrong.
+
+**Verified rather than assumed**, all 2026-09-02, all passing: the suite at
+61/61; `keystore.properties` absent; no `.jks`, `.keystore`,
+`keystore.properties` or `.dev.vars` tracked by git; `git check-ignore`
+confirming all three patterns actually match; the unrotated duplicate key
+deleted and the canonical one present; **no script, Gradle task or workflow in
+the repo enumerating the environment or logging a signing value**; and
+`build.gradle` reading four NAMED variables rather than dumping.
+
+So the residual is not a project defect — it is the possibility of an ad-hoc
+command. Recorded in `CLAUDE.md` and in memory: never run `env`, `printenv`,
+`set`, `Get-ChildItem Env:`, `[Environment]::GetEnvironmentVariables()`, or
+`System.getenv()` with no argument; read named variables only; test presence
+with a null check rather than echoing.
+
+**A stronger option exists and was offered, not imposed:** having the build
+prompt for the password at release time, so nothing is stored on the machine
+at all and no process can inherit it. The cost is typing it during the handful
+of release builds a year. Left as the owner's call, since it adds a step to a
+workflow that had just been made to work. Revisit it if a third exposure ever
+happens — at that point the discipline argument is exhausted.
