@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<!-- DRAFT ONLY. This file is the launch-day redesign of home.html, developed
+     off-live per TODO.md's "WEBSITE REDESIGN, BUILT OFF-LIVE" section.
+     Before promoting it over home.html at launch, three things MUST change:
+       1. Delete the robots noindex line below.
+       2. Restore the French auto-redirect (commented out further down) and
+          point it at the promoted French twin.
+       3. Replace the two placeholder store hrefs (marked STORE-LINK-TODO)
+          with the real Play and App Store listing URLs, and swap the drawn
+          icons for each store's OFFICIAL badge artwork — both stores require
+          their own badge, not a redrawn one.
+     Keep it out of sitemap.xml until it is promoted. -->
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#EFE9DA" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0F1411" media="(prefers-color-scheme: dark)">
+<meta name="description" content="Keeps playing when your screen locks, remembers your exact place, and works with no signal. PhonoLeaf turns the ebooks you already own into audiobooks.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%232F6B4F'/%3E%3Cpath d='M50 24 C68 38 68 66 50 82 C32 66 32 38 50 24 Z' fill='%23EFE9DA'/%3E%3Cpath d='M50 82 L50 90' stroke='%23EFE9DA' stroke-width='3.2' stroke-linecap='round'/%3E%3Cpath d='M35 53 Q40 42 45 53 T55 53 T65 53' fill='none' stroke='%232F6B4F' stroke-width='3.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<title>PhonoLeaf: Turn any ebook into an audiobook</title>
+<meta property="og:type" content="website">
+<meta property="og:title" content="Turn any ebook into an audiobook · PhonoLeaf">
+<meta property="og:description" content="No loading, no lost place, no silence when the screen locks. The voice is generated on your device, so there is no server to wait for.">
+<meta property="og:url" content="https://phonoleaf.com/home.html">
+<meta name="twitter:card" content="summary_large_image">
+<meta property="og:image" content="https://phonoleaf.com/brand/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="PhonoLeaf: turn your ebooks into audiobooks">
+<meta name="twitter:image" content="https://phonoleaf.com/brand/og-image.png">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "PhonoLeaf",
+  "applicationCategory": "BookApplication",
+  "operatingSystem": "Android, iOS",
+  "description": "PhonoLeaf turns the ebooks in your Google Drive into audiobooks, read aloud in a natural on device voice. Private, offline, background playback.",
+  "url": "https://phonoleaf.com/",
+  "offers": { "@type": "Offer", "price": "5.99", "priceCurrency": "USD" }
+}
+</script>
+<script>
+/* The French auto-redirect from home.html is DELIBERATELY DISABLED in this
+   draft: it would bounce a reviewer straight to the OLD French page and make
+   this one impossible to look at. Restore it at promotion, pointing at the
+   promoted French twin.
+
+(function () {
+  try {
+    var saved = localStorage.getItem('pl_lang');
+    var prefersFr = (navigator.languages || [navigator.language || 'en'])
+      .some(function (l) { return /^fr/i.test(l); });
+    var wantFr = saved ? saved === 'fr' : prefersFr;
+    if (wantFr) { location.replace('home-fr.html'); }
+  } catch (e) {}
+})();
+*/
+
+/* Mirror the app's own Light/Dark/Auto choice — same localStorage key
+   (pl_theme) and pre-paint pattern as the app and its legal pages, so this
+   page never disagrees with a theme already chosen in PhonoLeaf. Absent or
+   'auto' leaves it to prefers-color-scheme. */
+(function () {
+  try {
+    var t = localStorage.getItem('pl_theme');
+    if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
+  } catch (e) {}
+})();
+</script>
+<style>
+  /* Token set matches the app's own (index.green.html) exactly — same names,
+     same values, same [data-theme] override pattern. This draft additionally
+     carries the app's Green Ink SYSTEM rather than just its palette: the 2px
+     corner (--radius) and the offset ink shadow, applied to every raised
+     surface, which is what makes the site read as the same product as the
+     app rather than merely the same colours. */
+  :root {
+    --bg:        #EFE9DA;
+    --surface:   #F3EEE1;
+    --accent:    #2F6B4F;
+    --accent2:   #8C3B2F;
+    --text:      #17150F;
+    --text-dim:  #6B6455;
+    --line:      #D6CFBC;
+    --font-ui:   'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-read: 'Literata', Georgia, serif;
+    --radius:    2px;
+    --shadow-ink: 4px 4px 0 rgba(23,21,15,0.14);
+    --ink-strong: 6px 6px 0 rgba(23,21,15,0.18);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg:#0F1411; --surface:#121711;
+      --accent:#6FBF95; --accent2:#D07A6B;
+      --text:#E4EBE6; --text-dim:#7E8A83; --line:#24302A;
+      --shadow-ink: 4px 4px 0 rgba(0,0,0,0.4);
+      --ink-strong: 6px 6px 0 rgba(0,0,0,0.5);
+    }
+  }
+  /* A forced Light/Dark choice in the app must win over the OS preference
+     here too — same source-order-wins pattern as the app's own pages. */
+  [data-theme="light"] {
+    --bg:#EFE9DA; --surface:#F3EEE1;
+    --accent:#2F6B4F; --accent2:#8C3B2F;
+    --text:#17150F; --text-dim:#6B6455; --line:#D6CFBC;
+    --shadow-ink: 4px 4px 0 rgba(23,21,15,0.14);
+    --ink-strong: 6px 6px 0 rgba(23,21,15,0.18);
+  }
+  [data-theme="dark"] {
+    --bg:#0F1411; --surface:#121711;
+    --accent:#6FBF95; --accent2:#D07A6B;
+    --text:#E4EBE6; --text-dim:#7E8A83; --line:#24302A;
+    --shadow-ink: 4px 4px 0 rgba(0,0,0,0.4);
+    --ink-strong: 6px 6px 0 rgba(0,0,0,0.5);
+  }
+  @font-face {
+    font-family:'Manrope'; font-style:normal; font-weight:100 900;
+    font-display:swap; src:url('fonts/manrope.woff2') format('woff2');
+  }
+  @font-face {
+    font-family:'Literata'; font-style:normal; font-weight:100 900;
+    font-display:swap; src:url('fonts/literata.woff2') format('woff2');
+  }
+  * { box-sizing: border-box; }
+  /* The app resets native chrome on every control; the same rule applies here
+     or Safari draws rounded buttons regardless of --radius. */
+  button, input, select, textarea { appearance: none; -webkit-appearance: none; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 400 1rem/1.65 var(--font-ui);
+    -webkit-font-smoothing: antialiased;
+  }
+  /* Prose stays at a readable measure; grids get room to breathe. */
+  .wrap { max-width: 960px; margin: 0 auto; padding: 2.5rem 1.5rem 5rem; }
+  .measure { max-width: 640px; }
+
+  .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 3.5rem; }
+  .brand { display: flex; align-items: center; gap: 0.6rem; text-decoration: none; color: var(--text); }
+  .brand svg { flex-shrink: 0; }
+  .brand span { font: 700 1.05rem var(--font-ui); letter-spacing: -0.01em; }
+  .langswitch { font: 0.8rem ui-monospace, Menlo, monospace; }
+  .langswitch a, .langswitch b { text-decoration: none; padding: 0.2rem 0.4rem; }
+  .langswitch a { color: var(--text-dim); }
+  .langswitch b { color: var(--accent); }
+
+  /* ---------- Hero ---------- */
+  .hero { text-align: center; margin-bottom: 4rem; }
+  .hero .mark { margin-bottom: 1.3rem; }
+  h1 { font: 400 2.7rem/1.15 var(--font-read); margin: 0 0 0.8rem; letter-spacing: -0.02em; }
+  .tagline { color: var(--accent2); font: 600 0.78rem var(--font-ui); letter-spacing: 0.11em; text-transform: uppercase; margin-bottom: 1.3rem; }
+  .lede { color: var(--text-dim); font-size: 1.08rem; max-width: 34rem; margin: 0 auto 1.4rem; }
+
+  /* ---------- Store buttons ---------- */
+  .stores { display: flex; gap: 0.8rem; justify-content: center; flex-wrap: wrap; margin: 2rem 0 0.9rem; }
+  .store {
+    display: inline-flex; align-items: center; gap: 0.7rem; text-decoration: none;
+    background: var(--accent); color: var(--bg);
+    border: 1px solid var(--accent);
+    border-radius: var(--radius); padding: 0.75rem 1.35rem;
+    box-shadow: var(--shadow-ink);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .store:hover { transform: translate(-2px, -2px); box-shadow: var(--ink-strong); }
+  .store svg { flex-shrink: 0; }
+  .store i { font-style: normal; display: block; font-size: 0.68rem; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.85; line-height: 1.3; }
+  .store b { display: block; font: 700 0.98rem var(--font-ui); line-height: 1.2; }
+  /* Dark mode's --accent is a bright green meant for TEXT on a near-black
+     page, not a fill — glaring as a large button. Same substitution the app's
+     legal pages already use: a deep-green fill with the light text token. */
+  @media (prefers-color-scheme: dark) {
+    .store { background: #1E4534; color: var(--text); border-color: #2A5A44; }
+  }
+  [data-theme="dark"] .store { background: #1E4534; color: var(--text); border-color: #2A5A44; }
+  [data-theme="light"] .store { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+  .cta-note { display: block; color: var(--text-dim); font-size: 0.84rem; margin-top: 0.9rem; }
+
+  /* ---------- Sections ---------- */
+  h2 {
+    font: 400 1.55rem var(--font-read); color: var(--accent);
+    margin: 3.4rem 0 0.5rem; letter-spacing: -0.01em;
+  }
+  .sub { color: var(--text-dim); margin: 0 0 1.4rem; font-size: 0.95rem; }
+  p { margin: 0 0 1rem; }
+  a { color: var(--accent); }
+
+  /* ---------- Why it is better ---------- */
+  .why { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; margin: 1.4rem 0 0; }
+  .why-item {
+    background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 1.15rem 1.25rem; box-shadow: var(--shadow-ink);
+  }
+  .why-item b { display: block; margin-bottom: 0.3rem; font-size: 0.97rem; }
+  .why-item span { color: var(--text-dim); font-size: 0.89rem; }
+  .why-item .tick { color: var(--accent); font-weight: 700; margin-right: 0.35rem; }
+
+  /* ---------- Steps ---------- */
+  .steps { list-style: none; padding: 0; margin: 1.2rem 0 0; counter-reset: s; }
+  .steps li { position: relative; padding-left: 2.7rem; margin-bottom: 1.15rem; counter-increment: s; }
+  .steps li::before {
+    content: counter(s); position: absolute; left: 0; top: 0.05rem;
+    width: 1.8rem; height: 1.8rem; border-radius: var(--radius);
+    background: var(--accent); color: var(--bg);
+    font: 700 0.85rem var(--font-ui);
+    display: flex; align-items: center; justify-content: center;
+  }
+  @media (prefers-color-scheme: dark) { .steps li::before { background: #1E4534; color: var(--text); } }
+  [data-theme="dark"] .steps li::before { background: #1E4534; color: var(--text); }
+  [data-theme="light"] .steps li::before { background: var(--accent); color: var(--bg); }
+  .steps b { display: block; }
+  .steps span { color: var(--text-dim); font-size: 0.93rem; }
+
+  /* ---------- Pricing ---------- */
+  .plans { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; margin: 1.4rem 0 1.1rem; }
+  .plan {
+    background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 1.4rem; box-shadow: var(--shadow-ink); position: relative;
+  }
+  .plan.best { border-color: var(--accent); box-shadow: var(--ink-strong); }
+  .plan .flag {
+    position: absolute; top: -0.7rem; left: 1.2rem;
+    background: var(--accent2); color: #F3EEE1;
+    font: 700 0.66rem var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase;
+    padding: 0.22rem 0.55rem; border-radius: var(--radius);
+  }
+  .plan .name { font: 600 0.8rem var(--font-ui); letter-spacing: 0.09em; text-transform: uppercase; color: var(--text-dim); margin-bottom: 0.5rem; }
+  .plan .price { font: 400 2.1rem var(--font-read); line-height: 1; }
+  .plan .price small { font: 400 0.95rem var(--font-ui); color: var(--text-dim); }
+  .plan .note { color: var(--text-dim); font-size: 0.87rem; margin-top: 0.5rem; }
+  .included { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 1.2rem 1.4rem; box-shadow: var(--shadow-ink); }
+  .included b { display: block; margin-bottom: 0.6rem; }
+  .included ul { margin: 0; padding-left: 1.2rem; column-gap: 2rem; }
+  .included li { margin-bottom: 0.4rem; font-size: 0.92rem; }
+
+  /* ---------- Comparison ---------- */
+  .compare { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.7rem; margin: 1.3rem 0 0; }
+  .compare a {
+    display: block; text-decoration: none; color: var(--text);
+    background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 0.85rem 1rem; box-shadow: var(--shadow-ink);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .compare a:hover { transform: translate(-2px, -2px); box-shadow: var(--ink-strong); }
+  .compare b { display: block; font-size: 0.94rem; }
+  .compare span { color: var(--text-dim); font-size: 0.82rem; }
+
+  /* ---------- Cards / prose ---------- */
+  .card {
+    background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 1.2rem 1.4rem; margin: 1.3rem 0; font-size: 0.92rem;
+    box-shadow: var(--shadow-ink);
+  }
+  .card b { display: block; margin-bottom: 0.35rem; }
+  ul { margin: 0 0 1rem; padding-left: 1.3rem; }
+  li { margin-bottom: 0.45rem; }
+  code {
+    background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 0.08rem 0.35rem; font-size: 0.88em;
+  }
+
+  /* ---------- Closing CTA ---------- */
+  .closing {
+    text-align: center; margin: 3.6rem 0 0;
+    border: 1px solid var(--line); border-radius: var(--radius);
+    background: var(--surface); box-shadow: var(--ink-strong);
+    padding: 2.4rem 1.5rem;
+  }
+  .closing h2 { margin-top: 0; }
+
+  .links { margin-top: 3rem; font-size: 0.93rem; }
+  .foot { margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid var(--line); color: var(--text-dim); font-size: 0.82rem; }
+
+  @media (max-width: 560px) {
+    h1 { font-size: 2.1rem; }
+    .store { flex: 1 1 100%; justify-content: center; }
+  }
+  /* The app clamps all motion under this preference; match it here so a
+     visitor who set it does not meet hover animations the app would not do. */
+  @media (prefers-reduced-motion: reduce) {
+    * { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+    .store:hover, .compare a:hover { transform: none; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <a class="brand" href="home-v2.html">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="28" height="28" aria-hidden="true"><rect width="100" height="100" fill="#2F6B4F"/><path d="M50 24 C68 38 68 66 50 82 C32 66 32 38 50 24 Z" fill="#EFE9DA"/><path d="M50 82 L50 90" stroke="#EFE9DA" stroke-width="3.2" stroke-linecap="round"/><path d="M35 53 Q40 42 45 53 T55 53 T65 53" fill="none" stroke="#2F6B4F" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span>PhonoLeaf</span>
+    </a>
+    <div class="langswitch">
+      <b>EN</b> ·
+      <a href="home-fr.html" onclick="try{localStorage.setItem('pl_lang','fr')}catch(e){}">FR</a>
+    </div>
+  </div>
+
+  <!-- ============ 1. WHAT IT DOES ============ -->
+  <div class="hero">
+    <div class="mark">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="76" height="76" aria-hidden="true"><rect width="100" height="100" fill="#2F6B4F"/><path d="M50 24 C68 38 68 66 50 82 C32 66 32 38 50 24 Z" fill="#EFE9DA"/><path d="M50 82 L50 90" stroke="#EFE9DA" stroke-width="3.2" stroke-linecap="round"/><path d="M35 53 Q40 42 45 53 T55 53 T65 53" fill="none" stroke="#2F6B4F" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+    <h1>Turn any ebook into an audiobook</h1>
+    <div class="tagline">A voice for every page</div>
+    <p class="lede">
+      PhonoLeaf reads the ebooks you already own out loud, and then gets out of
+      the way. It keeps playing when your screen locks. It remembers your exact
+      place, down to the paragraph. It never stalls on a loading screen, because
+      the voice is made on your phone instead of fetched from a server.
+    </p>
+
+    <div class="stores">
+      <!-- STORE-LINK-TODO: replace href with the real Play listing URL, and
+           replace this drawn icon with Google's official "Get it on Google
+           Play" badge artwork, which Play requires rather than a redrawn mark. -->
+      <a class="store" href="#">
+        <svg width="22" height="24" viewBox="0 0 22 24" aria-hidden="true"><path d="M1.6 1.1a1.7 1.7 0 0 0-.5 1.2v19.4c0 .5.2.9.5 1.2l11-10.9zM14 9.4 3.6.7l11.5 6.6zM3.6 23.3 14 14.6l1.1 2.1zM17.6 9.9l3.3 1.9c.9.5.9 1.9 0 2.4l-3.3 1.9-2.4-3.1z" fill="currentColor"/></svg>
+        <span><i>Get it on</i><b>Google Play</b></span>
+      </a>
+      <!-- STORE-LINK-TODO: replace href with the real App Store listing URL,
+           and use Apple's official "Download on the App Store" badge. -->
+      <a class="store" href="#">
+        <svg width="20" height="24" viewBox="0 0 20 24" aria-hidden="true"><path d="M16.4 12.7c0-2.8 2.3-4.1 2.4-4.2-1.3-1.9-3.3-2.2-4-2.2-1.7-.2-3.3 1-4.2 1-.8 0-2.2-1-3.6-1-1.9 0-3.6 1.1-4.5 2.8-1.9 3.3-.5 8.3 1.4 11 .9 1.3 2 2.8 3.4 2.7 1.4-.1 1.9-.9 3.5-.9s2.1.9 3.6.8c1.5 0 2.4-1.3 3.3-2.7 1-1.5 1.5-3 1.5-3.1-.1 0-2.8-1.1-2.8-4.2zM13.7 4.3c.8-.9 1.3-2.2 1.1-3.5-1.1.1-2.5.8-3.3 1.7-.7.8-1.3 2.1-1.2 3.4 1.2.1 2.5-.6 3.4-1.6z" fill="currentColor"/></svg>
+        <span><i>Download on the</i><b>App Store</b></span>
+      </a>
+    </div>
+    <span class="cta-note">Free 7-day trial · No card to start · Cancel anytime in your store account</span>
+  </div>
+
+  <!-- ============ 2. WHY IT IS BETTER ============ -->
+  <h2>Why it is different</h2>
+  <p class="sub measure">
+    Most apps in this category fail in the same four ways. These are the four
+    PhonoLeaf was built to get right.
+  </p>
+  <div class="why">
+    <div class="why-item">
+      <b><span class="tick">✓</span>Keeps reading with the screen off</b>
+      <span>Playback continues when your phone is locked or in your pocket, with play, pause, page and chapter controls on the lock screen. It does not quietly stop a minute after the screen goes dark.</span>
+    </div>
+    <div class="why-item">
+      <b><span class="tick">✓</span>Picks up exactly where you left off</b>
+      <span>Your position is saved per book, down to the paragraph, across pauses, chapters, restarts and days. Not near where you were. Where you were.</span>
+    </div>
+    <div class="why-item">
+      <b><span class="tick">✓</span>Nothing to wait for</b>
+      <span>No upload, no processing queue, no spinner between you and the next sentence. The voice is generated on your phone as it reads, so there is no server that can be slow or down.</span>
+    </div>
+    <div class="why-item">
+      <b><span class="tick">✓</span>The same voice on one bar or none</b>
+      <span>Save a book and it plays with no connection at all. The voice never downgrades to a robotic one because the network looked weak.</span>
+    </div>
+  </div>
+
+  <h2>And the rest of it</h2>
+  <div class="why">
+    <div class="why-item">
+      <b>Natural speech</b>
+      <span>A neural voice that runs entirely on your device, with a choice of accents and voices. Falls back to your system voice where that is not available.</span>
+    </div>
+    <div class="why-item">
+      <b>Your library, as a library</b>
+      <span>Real cover art pulled from each ebook, search, chapter jumping and adjustable reading speed from 0.5× to 2×.</span>
+    </div>
+    <div class="why-item">
+      <b>Listening stats</b>
+      <span>Hours listened, a day streak, and a breakdown by author, book, genre or book length.</span>
+    </div>
+    <div class="why-item">
+      <b>Light and dark</b>
+      <span>A warm paper theme by day, a dim forest one by night, or follow your system setting.</span>
+    </div>
+  </div>
+
+  <!-- ============ 3. HOW IT WORKS ============ -->
+  <h2>How it works</h2>
+  <ol class="steps measure">
+    <li>
+      <b>Sign in with Google</b>
+      <span>Used only to reach the ebook files in your own Drive. PhonoLeaf has no separate account to create.</span>
+    </li>
+    <li>
+      <b>Choose the folder your ebooks live in</b>
+      <span>Pick a folder in Google Drive or on your device. Add more ebooks to it later and they simply appear, with nothing to re-pick.</span>
+    </li>
+    <li>
+      <b>Press play</b>
+      <span>Pick a book and listen. PhonoLeaf remembers exactly where you stopped, in every book.</span>
+    </li>
+  </ol>
+
+  <!-- ============ 4. WHAT IT COSTS ============ -->
+  <h2>What it costs</h2>
+  <p class="sub measure">
+    One plan, everything included. Every book, every voice, no per-title charge
+    and no limit on how much you listen.
+  </p>
+  <div class="plans">
+    <div class="plan">
+      <div class="name">Monthly</div>
+      <div class="price">$5.99 <small>/ month</small></div>
+      <div class="note">Billed monthly. Cancel anytime.</div>
+    </div>
+    <div class="plan best">
+      <div class="flag">Save over 30%</div>
+      <div class="name">Annual</div>
+      <div class="price">$49.99 <small>/ year</small></div>
+      <div class="note">Works out to $4.17 a month.</div>
+    </div>
+  </div>
+  <div class="included">
+    <b>Both plans include</b>
+    <ul>
+      <li>A 7-day free trial, with no card needed to start</li>
+      <li>Unlimited books and unlimited listening</li>
+      <li>Background playback and lock-screen controls</li>
+      <li>Offline listening with no connection at all</li>
+      <li>The upgraded voice at no extra cost, on phones that can run it</li>
+      <li>English and French, on Android and iPhone</li>
+    </ul>
+  </div>
+  <p class="sub measure" style="margin-top:1rem">
+    Purchases are handled by Google Play or the App Store, in your own currency,
+    and you cancel from your store account rather than by contacting us.
+  </p>
+
+  <!-- ============ 5. HOW IT COMPARES ============ -->
+  <h2>Coming from another app?</h2>
+  <p class="sub measure">
+    An honest, feature-by-feature look at how PhonoLeaf differs from each of
+    the apps people usually switch from.
+  </p>
+  <div class="compare">
+    <a href="speechify-alternative.html"><b>vs Speechify</b><span>Pricing and offline listening</span></a>
+    <a href="voice-dream-alternative.html"><b>vs Voice Dream Reader</b><span>Voice quality and subscription</span></a>
+    <a href="elevenreader-alternative.html"><b>vs ElevenReader</b><span>Downloads and expiry</span></a>
+    <a href="naturalreader-alternative.html"><b>vs NaturalReader</b><span>On-device voices and limits</span></a>
+    <a href="play-books-alternative.html"><b>vs Google Play Books</b><span>Read Aloud and connection</span></a>
+    <a href="voice-aloud-alternative.html"><b>vs @Voice Aloud Reader</b><span>Setup and voice quality</span></a>
+  </div>
+
+  <!-- ============ 6. PRIVACY / DRIVE DISCLOSURE ============ -->
+  <!-- Required by Google's OAuth verification for the drive.readonly scope.
+       Do not remove or dilute this section: it is a verification commitment,
+       not marketing copy. -->
+  <h2>How PhonoLeaf uses your Google Drive data</h2>
+  <div class="measure">
+    <p>
+      PhonoLeaf asks for <strong>read-only</strong> access to Google Drive (the
+      <code>drive.readonly</code> scope). It uses that access for exactly one purpose:
+      to list the ebook files (EPUB) in the folder you choose and download them so
+      they can be rendered and read aloud.
+    </p>
+  </div>
+  <div class="card">
+    <b>What PhonoLeaf never does</b>
+    <ul>
+      <li>Never creates, edits, moves or deletes anything in your Drive: the access it holds is read-only.</li>
+      <li>Never sends your files or your Drive data to any server of ours. Your books travel from Google straight to your device.</li>
+      <li>Never uses your data for advertising, and never sells or transfers it.</li>
+      <li>Never reads anything outside the folder you connect, in normal use.</li>
+    </ul>
+  </div>
+  <div class="measure">
+    <p>
+      Your reading position, listening stats and settings are stored on your own
+      device, not in an account. Signing out revokes PhonoLeaf's access to your
+      Google account. Full detail is in the
+      <a href="privacy.html">Privacy Policy</a>.
+    </p>
+  </div>
+
+  <!-- ============ 7. INSTALL ============ -->
+  <div class="closing">
+    <h2>Start listening to the books you already own</h2>
+    <p class="sub" style="margin-left:auto;margin-right:auto;max-width:32rem">
+      Free for seven days. Nothing to upload, nothing to convert, and your
+      books never leave your device.
+    </p>
+    <div class="stores">
+      <!-- STORE-LINK-TODO: same two links as the hero. -->
+      <a class="store" href="#">
+        <svg width="22" height="24" viewBox="0 0 22 24" aria-hidden="true"><path d="M1.6 1.1a1.7 1.7 0 0 0-.5 1.2v19.4c0 .5.2.9.5 1.2l11-10.9zM14 9.4 3.6.7l11.5 6.6zM3.6 23.3 14 14.6l1.1 2.1zM17.6 9.9l3.3 1.9c.9.5.9 1.9 0 2.4l-3.3 1.9-2.4-3.1z" fill="currentColor"/></svg>
+        <span><i>Get it on</i><b>Google Play</b></span>
+      </a>
+      <a class="store" href="#">
+        <svg width="20" height="24" viewBox="0 0 20 24" aria-hidden="true"><path d="M16.4 12.7c0-2.8 2.3-4.1 2.4-4.2-1.3-1.9-3.3-2.2-4-2.2-1.7-.2-3.3 1-4.2 1-.8 0-2.2-1-3.6-1-1.9 0-3.6 1.1-4.5 2.8-1.9 3.3-.5 8.3 1.4 11 .9 1.3 2 2.8 3.4 2.7 1.4-.1 1.9-.9 3.5-.9s2.1.9 3.6.8c1.5 0 2.4-1.3 3.3-2.7 1-1.5 1.5-3 1.5-3.1-.1 0-2.8-1.1-2.8-4.2zM13.7 4.3c.8-.9 1.3-2.2 1.1-3.5-1.1.1-2.5.8-3.3 1.7-.7.8-1.3 2.1-1.2 3.4 1.2.1 2.5-.6 3.4-1.6z" fill="currentColor"/></svg>
+        <span><i>Download on the</i><b>App Store</b></span>
+      </a>
+    </div>
+  </div>
+
+  <!-- ============ SEO link clusters (unchanged from home.html) ============ -->
+  <div class="links measure">
+    <p>
+      Want to know more? Read about
+      <a href="read-ebooks-aloud.html">reading ebooks aloud</a>,
+      <a href="epub-to-audiobook.html">turning an EPUB into an audiobook</a>,
+      <a href="google-drive-audiobooks.html">listening to your Google Drive ebooks</a>,
+      <a href="offline-text-to-speech.html">offline text to speech</a>,
+      <a href="text-to-speech-dyslexia.html">text to speech for dyslexia</a>, or
+      <a href="audiobook-app-that-doesnt-stop.html">why audiobook apps stop when the screen turns off</a>.
+    </p>
+    <p>
+      From the <a href="blog/index.html">blog</a>:
+      <a href="blog/how-to-turn-ebook-into-audiobook.html">turning an ebook into an audiobook</a>,
+      <a href="blog/how-to-listen-google-drive-ebooks.html">listening to your Google Drive ebooks</a>,
+      <a href="blog/read-calibre-library-aloud.html">reading your Calibre library aloud</a>,
+      <a href="blog/on-device-text-to-speech-privacy.html">why on-device text to speech is more private</a>, and
+      <a href="blog/best-text-to-speech-apps-2026.html">the best text to speech apps for books you already own</a>.
+    </p>
+  </div>
+
+  <div class="foot">
+    <a href="privacy.html">Privacy Policy</a> ·
+    <a href="terms.html">Terms of Service</a><br><br>
+    Contact: <a href="mailto:support@phonoleaf.com">support@phonoleaf.com</a>
+  </div>
+
+</div>
+<!-- Cloudflare Web Analytics --><script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "cbc3149663944543a36ea8d6090ec58b"}'></script><!-- End Cloudflare Web Analytics -->
+</body>
+</html>
