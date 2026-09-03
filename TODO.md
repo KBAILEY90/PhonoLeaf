@@ -1363,18 +1363,48 @@ anywhere in `worker/`.
       deliberately (it preserves the archived fork). Small, but the last
       divergence incident came from exactly this kind of ambiguity about
       which branch is live.
-- [ ] **Device-tier testing on borderline hardware (Android + iOS).**
-      The Kokoro upgrade is gated by an on-device benchmark
-      (`_KOKORO_MIN_GFLOPS`, calibrated off exactly one data point — the
-      owner's Pixel 7). Needs testing on phones that sit NEAR that
-      threshold, not devices already known to clearly pass or fail, to
-      confirm: the gate lands on the right side for real mid-tier hardware,
-      the "screen first, download once" flow feels good on a device that
-      ends up on Piper, and Kokoro genuinely stays gapless on a device that
-      qualifies. Needs real devices, not something buildable from here —
-      but every real pass also produces a paired (GFLOPS, measured ratio)
-      data point that improves the threshold calibration itself, so it's
-      worth logging results back into `CLAUDE.md`'s Native Kokoro section.
+- [ ] **Prove the Upgraded (Kokoro) voice on a HIGH-END phone. Owner
+      priority, reframed 2026-09-02.**
+      **The question is not calibration, it is whether the feature has any
+      audience at all:** does any real phone pass the gate AND read a whole
+      chapter without stalling? Nobody has ever seen that happen.
+      **Why this replaces the old "borderline mid-tier" framing.** That
+      wording implied the Pixel 7 was an untested mid-range data point. It is
+      neither: it was Google's 2022 FLAGSHIP, and it has already been tested
+      and failed audibly (1-2 sentences, a ~10s stall, repeat). The gate wants
+      **5.0** and a Pixel 7 scores **2.47**, so the app is asking for roughly
+      **2x a Pixel 7**. Testing something weaker than a Pixel 7 answers
+      nothing. The open end of the range is the untested one.
+      **Both outcomes are worth the trip:**
+      - **It passes and reads a chapter cleanly.** The Upgraded voice is real,
+        the gate gets its second anchor, and the pricing question reopens on
+        new evidence (`BUSINESS.md` §1 rejected a paid Upgraded tier partly
+        because most phones cannot reach it).
+      - **Even a flagship stalls.** Then the Upgraded voice is unreachable for
+        everyone, and we are shipping, gating and maintaining a feature nobody
+        receives. That is a significant product finding and much cheaper to
+        learn before launch than after.
+      **Device:** a current flagship — Pixel 9/10 Pro, Galaxy S24/S25 or
+      equivalent. Not a mid-tier phone, and not another Pixel 7.
+      **How to run it, and the trap.** The screen is a HARD gate: a phone that
+      fails it is never offered Kokoro, so the real measurement only ever runs
+      on a device that already passed. On a phone that passes, the app runs
+      `_verifyKokoro` by itself and logs the calibration pair to `Diag` as
+      `{e:'kgate', r:<measured ratio>, g:<benchmark score>}` — readable from
+      `localStorage.pl_diag`. Capture that pair; it is the second point on a
+      curve currently known from ONE.
+      **But do not stop there, because that check is a single sentence.**
+      `_verifyKokoro` synthesizes one fixed sentence and compares against
+      `_KOKORO_KEEP_RATIO` (0.75). A one-shot pass is exactly the evidence
+      that already misled one session into calling the gate too strict, and the
+      Pixel 7 lesson is that only SUSTAINED reading counts: real playback
+      competes with rendering, prefetch and thermal throttling. **Read at
+      least a full chapter, screen on and then screen off, and listen for
+      stalls between sentences.** Report the pair AND what a chapter actually
+      sounded like.
+      Log results back into `CLAUDE.md`'s Voice engine section either way, and
+      **do not loosen the gate on a passing one-shot number alone** — that is
+      explicitly the mistake `CLAUDE.md` warns about.
 - [x] **Competitor SWOT + app store review research.** Already done
       (`COMPETITOR_SWOT.md`, commit `96c1b75`) — full SWOT against all 6
       vetted competitors. Its "Suggested follow-ups" are also done as of
