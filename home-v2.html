@@ -218,8 +218,12 @@
   .steps span { color: var(--text-dim); font-size: 0.93rem; }
 
   /* ---------- Pricing ---------- */
-  .plans { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin: 1.4rem 0 1.1rem; }
+  /* Three plans, so 3-up. Straight to one column below 620px with no 2-wide
+     step, because three items at 2-wide strand one on a row by itself. */
+  .plans { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin: 1.4rem 0 1.1rem; }
   @media (max-width: 620px) { .plans { grid-template-columns: 1fr; } }
+  .plan.limited { border-color: var(--accent2); }
+  .plan.limited .flag { background: var(--accent2); }
   .plan {
     background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
     padding: 1.4rem; box-shadow: var(--shadow-ink); position: relative;
@@ -409,8 +413,8 @@
   <!-- ============ 4. WHAT IT COSTS ============ -->
   <h2>What it costs</h2>
   <p class="sub measure">
-    One plan, everything included. Every book, every voice, no per-title charge
-    and no limit on how much you listen.
+    Everything is included whichever one you pick. Every book, every voice, no
+    per-title charge, and no limit on how much you listen.
   </p>
   <div class="plans">
     <div class="plan">
@@ -424,9 +428,15 @@
       <div class="price">$49.99 <small>/ year</small></div>
       <div class="note">Works out to $4.17 a month.</div>
     </div>
+    <div class="plan limited">
+      <div class="flag">First 500 only</div>
+      <div class="name">Founding Member</div>
+      <div class="price">$129 <small>once</small></div>
+      <div class="note">A single payment, for access lasting as long as PhonoLeaf runs. Limited to the first 500.</div>
+    </div>
   </div>
   <div class="included">
-    <b>Both plans include</b>
+    <b>Every plan includes</b>
     <ul>
       <li>A 7-day free trial, with no card needed to start</li>
       <li>Unlimited books and unlimited listening</li>

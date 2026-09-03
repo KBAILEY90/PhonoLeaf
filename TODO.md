@@ -25,7 +25,21 @@ an owner action.** In order of leverage:
    separate-process architecture we built make that mere aggregation, (c)
    does the French voice's CC BY-SA ShareAlike reach us, (d) the ToS/Privacy
    review.
-2. **CASA trigger date.** Five minutes. Deadline Jan 2, 2027.
+2. **BOTH STORES LAUNCH TOGETHER (owner, 2026-09-02), so the Android
+   release now waits on iOS.** This is a change of critical path, not a
+   preference about marketing. Android has a signed, working build today;
+   iOS has no Capacitor platform in the repo, no `@capacitor/ios`
+   dependency, no Apple Developer enrolment and no StoreKit work. So the
+   gap between "Android could ship" and "we ship" is now the whole iOS
+   project, and it sits behind incorporation like everything else.
+   Recorded rather than argued: the owner's reason is that the website
+   should never push an app half its visitors cannot get, which is the same
+   reasoning that already governs removing web playback.
+3. **CASA AL1 assessment.** Required, deadline **Jan 2, 2027**, parked by
+   design until payments exist so it is only done once. A status fact, not
+   an action: the "set a decision date" task was withdrawn 2026-09-02
+   because it rested on the refuted claim that the lawyer was unresponsive.
+   See the withdrawal entry under "Actionable now".
 
 **Settled 2026-09-01, stop raising it:** every store and console account
 (Google Play, Apple) gets registered **through the corporation**, once
@@ -943,12 +957,21 @@ Incorporation is in progress with the lawyer (email every 2-3 days as of
       a claim about a PERSON with the owner before building on it.
 - [~] **Lawyer review of ToS/Privacy** — same engagement, in progress
       alongside incorporation. `BUSINESS.md` §3.
-- [ ] **iOS engineering** — the M1 MacBook Air was acquired 2026-08-29 (the
-      earlier purchase that fell through 2026-08-10 was replaced). No
-      longer hardware-blocked: a walkthrough was given the same day, but no
-      iOS platform exists yet in this repo (`@capacitor/ios` isn't even a
-      dependency) — Apple Developer enrollment and `npx cap add ios` are
-      still the next actionable steps, just no longer waiting on hardware.
+- [ ] **iOS engineering — NOW ON THE CRITICAL PATH (owner, 2026-09-02).**
+      Both stores go live at the same moment, so there is no Android-first
+      release any more and every day of iOS work is a day the finished
+      Android build sits unshipped. That is a deliberate owner trade, made so
+      no visitor meets a site pushing an app they cannot install.
+      **Scale of what is missing, checked in the repo:** no `ios/` platform
+      exists, `@capacitor/ios` is not even a dependency, Apple Developer
+      enrolment has not happened (and now waits on the corporation like the
+      Play account), and StoreKit purchase work has not started. The M1
+      MacBook Air acquired 2026-08-29 removed the hardware blocker and
+      nothing else; `npx cap add ios` is the first actionable step.
+      **Worth flagging to the owner if the wait gets long**, without
+      re-litigating the decision: shipping Android first and adding an iOS
+      "notify me" is the standard alternative, and it trades the concern
+      above for months of earlier revenue and real-world feedback.
 - [ ] **CASA AL1 assessment** — parked by design until the payments
       backend is finished, so it's assessed once. Deadline **Jan 2, 2027**
       (extended from Nov 3, 2026). Package is with Eydle, paid, not yet

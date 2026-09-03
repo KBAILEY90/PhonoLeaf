@@ -619,11 +619,12 @@ Google login); verify by inspection + device testing.
   2026-08-28, live in production + staging — see `TODO.md`'s "D1
   migration"), but isn't called from the app yet (would paywall current
   users with no way to pay).
-- **iOS**: planning only, no engineering started. Hardware is no longer the
-  blocker — an M1 MacBook Air was acquired 2026-08-29 (the earlier purchase
-  that fell through 2026-08-10 was replaced). No `ios/` Capacitor platform
-  exists yet (`@capacitor/ios` isn't a dependency). Apple Developer
-  enrollment and `npx cap add ios` are the next actionable steps.
+- **iOS**: planning only, no engineering started, and **on the critical path
+  since 2026-09-02**: the owner decided both stores go live together, so the
+  signed Android build cannot ship until iOS is built. Hardware is not the
+  blocker (M1 MacBook Air, 2026-08-29). No `ios/` Capacitor platform exists
+  (`@capacitor/ios` isn't a dependency); `npx cap add ios` and Apple Developer
+  enrolment (through the corporation) are the next steps. See `TODO.md`.
 - **Legal**: ToS/Privacy drafted, pricing/lifetime clauses added, **lawyer
   review requested 2026-08-10, still awaiting response** — treat as not
   lawyer-reviewed until confirmed otherwise. Jurisdiction: Québec, Canada.

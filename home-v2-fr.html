@@ -218,8 +218,12 @@
   .steps span { color: var(--text-dim); font-size: 0.93rem; }
 
   /* ---------- Pricing ---------- */
-  .plans { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin: 1.4rem 0 1.1rem; }
+  /* Three plans, so 3-up. Straight to one column below 620px with no 2-wide
+     step, because three items at 2-wide strand one on a row by itself. */
+  .plans { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin: 1.4rem 0 1.1rem; }
   @media (max-width: 620px) { .plans { grid-template-columns: 1fr; } }
+  .plan.limited { border-color: var(--accent2); }
+  .plan.limited .flag { background: var(--accent2); }
   .plan {
     background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
     padding: 1.4rem; box-shadow: var(--shadow-ink); position: relative;
@@ -410,8 +414,9 @@
   <!-- ============ 4. WHAT IT COSTS ============ -->
   <h2>Ce que ça coûte</h2>
   <p class="sub measure">
-    Une seule formule, tout compris. Tous les livres, toutes les voix, aucun
-    frais par titre et aucune limite sur la durée d’écoute.
+    Tout est compris, quelle que soit la formule choisie. Tous les livres,
+    toutes les voix, aucun frais par titre et aucune limite sur la durée
+    d’écoute.
   </p>
   <div class="plans">
     <div class="plan">
@@ -425,9 +430,15 @@
       <div class="price">49,99 $ <small>/ an</small></div>
       <div class="note">Revient à 4,17 $ par mois.</div>
     </div>
+    <div class="plan limited">
+      <div class="flag">Les 500 premiers</div>
+      <div class="name">Membre fondateur</div>
+      <div class="price">129 $ <small>une fois</small></div>
+      <div class="note">Un paiement unique, pour un accès qui dure aussi longtemps que PhonoLeaf existe. Limité aux 500 premiers.</div>
+    </div>
   </div>
   <div class="included">
-    <b>Les deux formules comprennent</b>
+    <b>Toutes les formules comprennent</b>
     <ul>
       <li>Un essai gratuit de 7 jours, sans carte pour commencer</li>
       <li>Livres illimités et écoute illimitée</li>
