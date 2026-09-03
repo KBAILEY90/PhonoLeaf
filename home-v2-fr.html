@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -7,8 +7,8 @@
      off-live per TODO.md's "WEBSITE REDESIGN, BUILT OFF-LIVE" section.
      Before promoting it over home.html at launch, three things MUST change:
        1. Delete the robots noindex line below.
-       2. Restore the French auto-redirect (commented out further down) and
-          point it at the promoted French twin.
+       2. Restore the language auto-redirect (commented out further down) and
+          point it at the promoted English twin.
        3. Replace the two placeholder store hrefs (marked STORE-LINK-TODO)
           with the real Play and App Store listing URLs, and swap the drawn
           icons for each store's OFFICIAL badge artwork — both stores require
@@ -17,18 +17,18 @@
 <meta name="robots" content="noindex, nofollow">
 <meta name="theme-color" content="#EFE9DA" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0F1411" media="(prefers-color-scheme: dark)">
-<meta name="description" content="Keeps playing when your screen locks, remembers your exact place, and works with no signal. PhonoLeaf turns the ebooks you already own into audiobooks.">
+<meta name="description" content="La lecture continue quand l’écran se verrouille, votre page exacte est retenue et tout fonctionne sans connexion. Vos livres deviennent des livres audio.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%232F6B4F'/%3E%3Cpath d='M50 24 C68 38 68 66 50 82 C32 66 32 38 50 24 Z' fill='%23EFE9DA'/%3E%3Cpath d='M50 82 L50 90' stroke='%23EFE9DA' stroke-width='3.2' stroke-linecap='round'/%3E%3Cpath d='M35 53 Q40 42 45 53 T55 53 T65 53' fill='none' stroke='%232F6B4F' stroke-width='3.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
-<title>PhonoLeaf: Turn any ebook into an audiobook</title>
+<title>PhonoLeaf : transformez vos livres en livres audio</title>
 <meta property="og:type" content="website">
-<meta property="og:title" content="Turn any ebook into an audiobook · PhonoLeaf">
-<meta property="og:description" content="No loading, no lost place, no silence when the screen locks. The voice is generated on your device, so there is no server to wait for.">
-<meta property="og:url" content="https://phonoleaf.com/home.html">
+<meta property="og:title" content="Transformez vos livres en livres audio · PhonoLeaf">
+<meta property="og:description" content="Aucune attente, aucune page perdue, aucun silence quand l’écran se verrouille. La voix est générée sur votre appareil : aucun serveur à attendre.">
+<meta property="og:url" content="https://phonoleaf.com/home-fr.html">
 <meta name="twitter:card" content="summary_large_image">
 <meta property="og:image" content="https://phonoleaf.com/brand/og-image.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="PhonoLeaf: turn your ebooks into audiobooks">
+<meta property="og:image:alt" content="PhonoLeaf : transformez vos livres en livres audio">
 <meta name="twitter:image" content="https://phonoleaf.com/brand/og-image.png">
 <script type="application/ld+json">
 {
@@ -37,7 +37,7 @@
   "name": "PhonoLeaf",
   "applicationCategory": "BookApplication",
   "operatingSystem": "Android, iOS",
-  "description": "PhonoLeaf turns the ebooks in your Google Drive into audiobooks, read aloud in a natural on device voice. Private, offline, background playback.",
+  "description": "PhonoLeaf transforme les livres de votre Google Drive en livres audio, lus à voix haute par une voix naturelle sur l'appareil. Privé, hors ligne, en arrière-plan.",
   "url": "https://phonoleaf.com/",
   "offers": { "@type": "Offer", "price": "5.99", "priceCurrency": "USD" }
 }
@@ -54,7 +54,7 @@
     var prefersFr = (navigator.languages || [navigator.language || 'en'])
       .some(function (l) { return /^fr/i.test(l); });
     var wantFr = saved ? saved === 'fr' : prefersFr;
-    if (wantFr) { location.replace('home-fr.html'); }
+    if (!wantFr) { location.replace('home.html'); }
   } catch (e) {}
 })();
 */
@@ -298,7 +298,7 @@
 <div class="wrap">
 
   <div class="topbar">
-    <a class="brand" href="home-v2.html">
+    <a class="brand" href="home-v2-fr.html">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="28" height="28" aria-hidden="true"><rect width="100" height="100" fill="#2F6B4F"/><path d="M50 24 C68 38 68 66 50 82 C32 66 32 38 50 24 Z" fill="#EFE9DA"/><path d="M50 82 L50 90" stroke="#EFE9DA" stroke-width="3.2" stroke-linecap="round"/><path d="M35 53 Q40 42 45 53 T55 53 T65 53" fill="none" stroke="#2F6B4F" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
       <span>PhonoLeaf</span>
     </a>
@@ -307,8 +307,8 @@
            is a DRAFT: it would set the language preference the LIVE home.html
            reads, silently redirecting the reviewer's next visit to the live
            site. Restore it on BOTH twins at promotion. -->
-      <b>EN</b> ·
-      <a href="home-v2-fr.html">FR</a>
+      <a href="home-v2.html">EN</a> ·
+      <b>FR</b>
     </div>
   </div>
 
@@ -317,13 +317,14 @@
     <div class="mark">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="76" height="76" aria-hidden="true"><rect width="100" height="100" fill="#2F6B4F"/><path d="M50 24 C68 38 68 66 50 82 C32 66 32 38 50 24 Z" fill="#EFE9DA"/><path d="M50 82 L50 90" stroke="#EFE9DA" stroke-width="3.2" stroke-linecap="round"/><path d="M35 53 Q40 42 45 53 T55 53 T65 53" fill="none" stroke="#2F6B4F" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
     </div>
-    <h1>Turn any ebook into an audiobook</h1>
-    <div class="tagline">A voice for every page</div>
+    <h1>Transformez vos livres en livres audio</h1>
+    <div class="tagline">Une voix pour chaque page</div>
     <p class="lede">
-      PhonoLeaf reads the ebooks you already own out loud, and then gets out of
-      the way. It keeps playing when your screen locks. It remembers your exact
-      place, down to the paragraph. And it never makes you wait for a whole book
-      to convert, because the voice is made on your phone as it reads.
+      PhonoLeaf lit à voix haute les livres numériques que vous possédez déjà,
+      puis se fait oublier. La lecture continue quand votre écran se verrouille.
+      L’application retient votre page exacte, jusqu’au paragraphe. Et elle ne
+      vous fait jamais attendre la conversion d’un livre entier, parce que la
+      voix est générée sur votre téléphone à mesure qu’elle lit.
     </p>
 
     <div class="stores">
@@ -332,177 +333,178 @@
            Play" badge artwork, which Play requires rather than a redrawn mark. -->
       <a class="store" href="#">
         <svg width="22" height="24" viewBox="0 0 22 24" aria-hidden="true"><path d="M1.6 1.1a1.7 1.7 0 0 0-.5 1.2v19.4c0 .5.2.9.5 1.2l11-10.9zM14 9.4 3.6.7l11.5 6.6zM3.6 23.3 14 14.6l1.1 2.1zM17.6 9.9l3.3 1.9c.9.5.9 1.9 0 2.4l-3.3 1.9-2.4-3.1z" fill="currentColor"/></svg>
-        <span><i>Get it on</i><b>Google Play</b></span>
+        <span><i>Disponible sur</i><b>Google Play</b></span>
       </a>
       <!-- STORE-LINK-TODO: replace href with the real App Store listing URL,
            and use Apple's official "Download on the App Store" badge. -->
       <a class="store" href="#">
         <svg width="20" height="24" viewBox="0 0 20 24" aria-hidden="true"><path d="M16.4 12.7c0-2.8 2.3-4.1 2.4-4.2-1.3-1.9-3.3-2.2-4-2.2-1.7-.2-3.3 1-4.2 1-.8 0-2.2-1-3.6-1-1.9 0-3.6 1.1-4.5 2.8-1.9 3.3-.5 8.3 1.4 11 .9 1.3 2 2.8 3.4 2.7 1.4-.1 1.9-.9 3.5-.9s2.1.9 3.6.8c1.5 0 2.4-1.3 3.3-2.7 1-1.5 1.5-3 1.5-3.1-.1 0-2.8-1.1-2.8-4.2zM13.7 4.3c.8-.9 1.3-2.2 1.1-3.5-1.1.1-2.5.8-3.3 1.7-.7.8-1.3 2.1-1.2 3.4 1.2.1 2.5-.6 3.4-1.6z" fill="currentColor"/></svg>
-        <span><i>Download on the</i><b>App Store</b></span>
+        <span><i>Télécharger dans l’</i><b>App Store</b></span>
       </a>
     </div>
-    <span class="cta-note">Free 7-day trial · No card to start · Cancel anytime in your store account</span>
+    <span class="cta-note">Essai gratuit de 7 jours · Aucune carte requise · Annulez quand vous voulez depuis votre compte de boutique</span>
   </div>
 
   <!-- ============ 2. WHY IT IS BETTER ============ -->
-  <h2>Why it is different</h2>
+  <h2>Ce qui la distingue</h2>
   <p class="sub measure">
-    Most apps in this category fail in the same four ways. These are the four
-    PhonoLeaf was built to get right.
+    La plupart des applications de cette catégorie échouent des quatre mêmes
+    façons. Voici les quatre points que PhonoLeaf a été conçue pour bien faire.
   </p>
   <div class="why">
     <div class="why-item">
-      <b><span class="tick">✓</span>Keeps reading with the screen off</b>
-      <span>Playback continues when your phone is locked or in your pocket, with play, pause, page and chapter controls on the lock screen. It does not quietly stop a minute after the screen goes dark.</span>
+      <b><span class="tick">✓</span>Continue la lecture, écran éteint</b>
+      <span>La lecture se poursuit lorsque votre téléphone est verrouillé ou dans votre poche, avec les commandes lecture, pause, page et chapitre sur l’écran de verrouillage. Elle ne s’arrête pas discrètement une minute après l’extinction de l’écran.</span>
     </div>
     <div class="why-item">
-      <b><span class="tick">✓</span>Picks up exactly where you left off</b>
-      <span>Your position is saved per book, down to the paragraph, across pauses, chapters, restarts and days. Not near where you were. Where you were.</span>
+      <b><span class="tick">✓</span>Reprend exactement là où vous vous êtes arrêté</b>
+      <span>Votre position est enregistrée pour chaque livre, jusqu’au paragraphe, malgré les pauses, les chapitres, les redémarrages et les jours. Pas près de l’endroit où vous étiez. À l’endroit où vous étiez.</span>
     </div>
     <div class="why-item">
-      <b><span class="tick">✓</span>No book to convert first</b>
-      <span>Nothing is uploaded and nothing is queued for processing, so you never wait for a whole book before you can start listening. The voice is made on your phone as it reads, sentence by sentence, so there is no server that can be slow or down. Your voice downloads once when you choose it, and after that a new page starts in about a second.</span>
+      <b><span class="tick">✓</span>Aucun livre à convertir d’abord</b>
+      <span>Rien n’est téléversé et rien n’est mis en file de traitement : vous n’attendez jamais un livre entier avant de pouvoir écouter. La voix est générée sur votre téléphone à mesure qu’elle lit, phrase par phrase, donc aucun serveur ne peut être lent ou en panne. Votre voix se télécharge une seule fois, au moment où vous la choisissez, et ensuite une nouvelle page démarre en une seconde environ.</span>
     </div>
     <div class="why-item">
-      <b><span class="tick">✓</span>Works with no internet at all</b>
-      <span>Save a book and it plays in airplane mode, on the underground, or anywhere the signal drops out. The voice stays exactly the same. It never falls back to a robotic one because your connection looked weak.</span>
+      <b><span class="tick">✓</span>Fonctionne sans aucune connexion</b>
+      <span>Enregistrez un livre et il se lit en mode avion, dans le métro, ou partout où le signal disparaît. La voix reste exactement la même. Elle ne se dégrade jamais en voix robotique parce que votre connexion a semblé faible.</span>
     </div>
   </div>
 
-  <h2>And the rest of it</h2>
+  <h2>Et tout le reste</h2>
   <div class="why">
     <div class="why-item">
-      <b>Natural speech</b>
-      <span>A neural voice that runs entirely on your device, with a choice of accents and voices. Falls back to your system voice where that is not available.</span>
+      <b>Voix naturelle</b>
+      <span>Une voix neuronale qui fonctionne entièrement sur votre appareil, avec un choix d’accents et de voix. Se rabat sur la voix de votre système lorsque ce n’est pas disponible.</span>
     </div>
     <div class="why-item">
-      <b>Your library, as a library</b>
-      <span>Real cover art pulled from each ebook, search, chapter jumping and adjustable reading speed from 0.5× to 2×.</span>
+      <b>Votre bibliothèque, comme une bibliothèque</b>
+      <span>Les vraies couvertures tirées de chaque livre, la recherche, le saut de chapitre et une vitesse de lecture réglable de 0,5× à 2×.</span>
     </div>
     <div class="why-item">
-      <b>Listening stats</b>
-      <span>Hours listened, a day streak, and a breakdown by author, book, genre or book length.</span>
+      <b>Statistiques d’écoute</b>
+      <span>Heures écoutées, une série de jours consécutifs, et une répartition par auteur, livre, genre ou longueur de livre.</span>
     </div>
     <div class="why-item">
-      <b>Light and dark</b>
-      <span>A warm paper theme by day, a dim forest one by night, or follow your system setting.</span>
+      <b>Clair et sombre</b>
+      <span>Un thème papier chaud le jour, un thème forêt tamisé la nuit, ou suivez le réglage de votre système.</span>
     </div>
   </div>
 
   <!-- ============ 3. HOW IT WORKS ============ -->
-  <h2>How it works</h2>
+  <h2>Comment ça fonctionne</h2>
   <ol class="steps measure">
     <li>
-      <b>Sign in with Google</b>
-      <span>Used only to reach the ebook files in your own Drive. PhonoLeaf has no separate account to create.</span>
+      <b>Connectez-vous avec Google</b>
+      <span>Utilisé uniquement pour accéder aux fichiers de livres de votre propre Drive. PhonoLeaf n’a aucun compte distinct à créer.</span>
     </li>
     <li>
-      <b>Choose the folder your ebooks live in</b>
-      <span>Pick a folder in Google Drive or on your device. Add more ebooks to it later and they simply appear, with nothing to re-pick.</span>
+      <b>Choisissez le dossier où se trouvent vos livres</b>
+      <span>Choisissez un dossier dans Google Drive ou sur votre appareil. Ajoutez-y d’autres livres plus tard et ils apparaissent tout simplement, sans resélection.</span>
     </li>
     <li>
-      <b>Press play</b>
-      <span>Pick a book and listen. PhonoLeaf remembers exactly where you stopped, in every book.</span>
+      <b>Appuyez sur lecture</b>
+      <span>Choisissez un livre et écoutez. PhonoLeaf se souvient exactement de l’endroit où vous vous êtes arrêté, dans chaque livre.</span>
     </li>
   </ol>
 
   <!-- ============ 4. WHAT IT COSTS ============ -->
-  <h2>What it costs</h2>
+  <h2>Ce que ça coûte</h2>
   <p class="sub measure">
-    One plan, everything included. Every book, every voice, no per-title charge
-    and no limit on how much you listen.
+    Une seule formule, tout compris. Tous les livres, toutes les voix, aucun
+    frais par titre et aucune limite sur la durée d’écoute.
   </p>
   <div class="plans">
     <div class="plan">
-      <div class="name">Monthly</div>
-      <div class="price">$5.99 <small>/ month</small></div>
-      <div class="note">Billed monthly. Cancel anytime.</div>
+      <div class="name">Mensuel</div>
+      <div class="price">5,99 $ <small>/ mois</small></div>
+      <div class="note">Facturé chaque mois. Annulez quand vous voulez.</div>
     </div>
     <div class="plan best">
-      <div class="flag">Save over 30%</div>
-      <div class="name">Annual</div>
-      <div class="price">$49.99 <small>/ year</small></div>
-      <div class="note">Works out to $4.17 a month.</div>
+      <div class="flag">Économisez plus de 30 %</div>
+      <div class="name">Annuel</div>
+      <div class="price">49,99 $ <small>/ an</small></div>
+      <div class="note">Revient à 4,17 $ par mois.</div>
     </div>
   </div>
   <div class="included">
-    <b>Both plans include</b>
+    <b>Les deux formules comprennent</b>
     <ul>
-      <li>A 7-day free trial, with no card needed to start</li>
-      <li>Unlimited books and unlimited listening</li>
-      <li>Background playback and lock-screen controls</li>
-      <li>Offline listening with no connection at all</li>
-      <li>The upgraded voice at no extra cost, on phones that can run it</li>
-      <li>English and French, on Android and iPhone</li>
+      <li>Un essai gratuit de 7 jours, sans carte pour commencer</li>
+      <li>Livres illimités et écoute illimitée</li>
+      <li>Lecture en arrière-plan et commandes sur l’écran de verrouillage</li>
+      <li>Écoute hors ligne, sans aucune connexion</li>
+      <li>La voix supérieure sans frais supplémentaires, sur les téléphones qui peuvent l’exécuter</li>
+      <li>Français et anglais, sur Android et iPhone</li>
     </ul>
   </div>
   <p class="sub measure" style="margin-top:1rem">
-    Purchases are handled by Google Play or the App Store, in your own currency,
-    and you cancel from your store account rather than by contacting us.
+    Les achats sont traités par Google Play ou l’App Store, dans votre propre
+    devise, et vous annulez depuis votre compte de boutique plutôt qu’en nous
+    écrivant.
   </p>
 
   <!-- ============ 5. HOW IT COMPARES ============ -->
-  <h2>Coming from another app?</h2>
+  <h2>Vous venez d’une autre application ?</h2>
   <p class="sub measure">
-    An honest, feature-by-feature look at how PhonoLeaf differs from each of
-    the apps people usually switch from.
+    Un regard honnête, fonction par fonction, sur ce qui distingue PhonoLeaf de
+    chacune des applications que les gens quittent le plus souvent.
   </p>
   <div class="compare">
-    <a href="speechify-alternative.html"><b>vs Speechify</b><span>Pricing and offline listening</span></a>
-    <a href="voice-dream-alternative.html"><b>vs Voice Dream Reader</b><span>Voice quality and subscription</span></a>
-    <a href="elevenreader-alternative.html"><b>vs ElevenReader</b><span>Downloads and expiry</span></a>
-    <a href="naturalreader-alternative.html"><b>vs NaturalReader</b><span>On-device voices and limits</span></a>
-    <a href="play-books-alternative.html"><b>vs Google Play Books</b><span>Read Aloud and connection</span></a>
-    <a href="voice-aloud-alternative.html"><b>vs @Voice Aloud Reader</b><span>Setup and voice quality</span></a>
+    <a href="speechify-alternative-fr.html"><b>vs Speechify</b><span>Prix et écoute hors ligne</span></a>
+    <a href="voice-dream-alternative-fr.html"><b>vs Voice Dream Reader</b><span>Qualité de la voix et abonnement</span></a>
+    <a href="elevenreader-alternative-fr.html"><b>vs ElevenReader</b><span>Téléchargements et expiration</span></a>
+    <a href="naturalreader-alternative-fr.html"><b>vs NaturalReader</b><span>Voix sur l’appareil et limites</span></a>
+    <a href="play-books-alternative-fr.html"><b>vs Google Play Books</b><span>Lecture à voix haute et connexion</span></a>
+    <a href="voice-aloud-alternative-fr.html"><b>vs @Voice Aloud Reader</b><span>Configuration et qualité de la voix</span></a>
   </div>
 
   <!-- ============ 6. PRIVACY / DRIVE DISCLOSURE ============ -->
   <!-- Required by Google's OAuth verification for the drive.readonly scope.
        Do not remove or dilute this section: it is a verification commitment,
        not marketing copy. -->
-  <h2>How PhonoLeaf uses your Google Drive data</h2>
+  <h2>Comment PhonoLeaf utilise vos données Google Drive</h2>
   <div class="measure">
     <p>
-      PhonoLeaf asks for <strong>read-only</strong> access to Google Drive (the
-      <code>drive.readonly</code> scope). It uses that access for exactly one purpose:
-      to list the ebook files (EPUB) in the folder you choose and download them so
-      they can be rendered and read aloud.
+      PhonoLeaf demande un accès en <strong>lecture seule</strong> à Google Drive
+      (la portée <code>drive.readonly</code>). Elle utilise cet accès dans un seul
+      but : lister les fichiers de livres (EPUB) du dossier que vous choisissez et
+      les télécharger afin de pouvoir les afficher et les lire à voix haute.
     </p>
   </div>
   <div class="card">
-    <b>What PhonoLeaf never does</b>
+    <b>Ce que PhonoLeaf ne fait jamais</b>
     <ul>
-      <li>Never creates, edits, moves or deletes anything in your Drive: the access it holds is read-only.</li>
-      <li>Never sends your files or your Drive data to any server of ours. Your books travel from Google straight to your device.</li>
-      <li>Never uses your data for advertising, and never sells or transfers it.</li>
-      <li>Never opens anything outside the folder you pick. The permission Google grants is broader than that, because it is the only one that lets new books appear without you re-picking them each time, but PhonoLeaf only ever lists and downloads the ebooks in the one folder you connect.</li>
+      <li>Ne crée, ne modifie, ne déplace ni ne supprime jamais quoi que ce soit dans votre Drive : l’accès qu’elle détient est en lecture seule.</li>
+      <li>N’envoie jamais vos fichiers ni vos données Drive à un serveur qui nous appartient. Vos livres vont de Google directement à votre appareil.</li>
+      <li>N’utilise jamais vos données à des fins publicitaires, et ne les vend ni ne les transfère jamais.</li>
+      <li>N’ouvre jamais rien en dehors du dossier que vous choisissez. L’autorisation accordée par Google est plus large que cela, parce que c’est la seule qui permet aux nouveaux livres d’apparaître sans que vous ayez à les resélectionner chaque fois, mais PhonoLeaf ne fait jamais que lister et télécharger les livres du seul dossier que vous connectez.</li>
     </ul>
   </div>
   <div class="measure">
     <p>
-      Your reading position, listening stats and settings are stored on your own
-      device, not in an account. Signing out revokes PhonoLeaf's access to your
-      Google account. Full detail is in the
-      <a href="privacy.html">Privacy Policy</a>.
+      Votre position de lecture, vos statistiques d’écoute et vos réglages sont
+      stockés sur votre propre appareil, et non dans un compte. La déconnexion
+      révoque l’accès de PhonoLeaf à votre compte Google. Tous les détails se
+      trouvent dans la <a href="privacy-fr.html">Politique de confidentialité</a>.
     </p>
   </div>
 
   <!-- ============ 7. INSTALL ============ -->
   <div class="closing">
-    <h2>Start listening to the books you already own</h2>
+    <h2>Commencez à écouter les livres que vous possédez déjà</h2>
     <p class="sub" style="margin-left:auto;margin-right:auto;max-width:32rem">
-      Free for seven days. Nothing to upload, nothing to convert, and your
-      books never leave your device.
+      Gratuit pendant sept jours. Rien à téléverser, rien à convertir, et vos
+      livres ne quittent jamais votre appareil.
     </p>
     <div class="stores">
       <!-- STORE-LINK-TODO: same two links as the hero. -->
       <a class="store" href="#">
         <svg width="22" height="24" viewBox="0 0 22 24" aria-hidden="true"><path d="M1.6 1.1a1.7 1.7 0 0 0-.5 1.2v19.4c0 .5.2.9.5 1.2l11-10.9zM14 9.4 3.6.7l11.5 6.6zM3.6 23.3 14 14.6l1.1 2.1zM17.6 9.9l3.3 1.9c.9.5.9 1.9 0 2.4l-3.3 1.9-2.4-3.1z" fill="currentColor"/></svg>
-        <span><i>Get it on</i><b>Google Play</b></span>
+        <span><i>Disponible sur</i><b>Google Play</b></span>
       </a>
       <a class="store" href="#">
         <svg width="20" height="24" viewBox="0 0 20 24" aria-hidden="true"><path d="M16.4 12.7c0-2.8 2.3-4.1 2.4-4.2-1.3-1.9-3.3-2.2-4-2.2-1.7-.2-3.3 1-4.2 1-.8 0-2.2-1-3.6-1-1.9 0-3.6 1.1-4.5 2.8-1.9 3.3-.5 8.3 1.4 11 .9 1.3 2 2.8 3.4 2.7 1.4-.1 1.9-.9 3.5-.9s2.1.9 3.6.8c1.5 0 2.4-1.3 3.3-2.7 1-1.5 1.5-3 1.5-3.1-.1 0-2.8-1.1-2.8-4.2zM13.7 4.3c.8-.9 1.3-2.2 1.1-3.5-1.1.1-2.5.8-3.3 1.7-.7.8-1.3 2.1-1.2 3.4 1.2.1 2.5-.6 3.4-1.6z" fill="currentColor"/></svg>
-        <span><i>Download on the</i><b>App Store</b></span>
+        <span><i>Télécharger dans l’</i><b>App Store</b></span>
       </a>
     </div>
   </div>
@@ -510,28 +512,28 @@
   <!-- ============ SEO link clusters (unchanged from home.html) ============ -->
   <div class="links measure">
     <p>
-      Want to know more? Read about
-      <a href="read-ebooks-aloud.html">reading ebooks aloud</a>,
-      <a href="epub-to-audiobook.html">turning an EPUB into an audiobook</a>,
-      <a href="google-drive-audiobooks.html">listening to your Google Drive ebooks</a>,
-      <a href="offline-text-to-speech.html">offline text to speech</a>,
-      <a href="text-to-speech-dyslexia.html">text to speech for dyslexia</a>, or
-      <a href="audiobook-app-that-doesnt-stop.html">why audiobook apps stop when the screen turns off</a>.
+      Envie d’en savoir plus ? Lisez nos pages sur
+      <a href="read-ebooks-aloud-fr.html">la lecture de livres à voix haute</a>,
+      <a href="epub-to-audiobook-fr.html">la transformation d’un EPUB en livre audio</a>,
+      <a href="google-drive-audiobooks-fr.html">l’écoute de vos livres Google Drive</a>,
+      <a href="offline-text-to-speech-fr.html">la synthèse vocale hors ligne</a>,
+      <a href="text-to-speech-dyslexia-fr.html">la synthèse vocale et la dyslexie</a>, ou
+      <a href="audiobook-app-that-doesnt-stop-fr.html">pourquoi les applications de livres audio s’arrêtent quand l’écran s’éteint</a>.
     </p>
     <p>
-      From the <a href="blog/index.html">blog</a>:
-      <a href="blog/how-to-turn-ebook-into-audiobook.html">turning an ebook into an audiobook</a>,
-      <a href="blog/how-to-listen-google-drive-ebooks.html">listening to your Google Drive ebooks</a>,
-      <a href="blog/read-calibre-library-aloud.html">reading your Calibre library aloud</a>,
-      <a href="blog/on-device-text-to-speech-privacy.html">why on-device text to speech is more private</a>, and
-      <a href="blog/best-text-to-speech-apps-2026.html">the best text to speech apps for books you already own</a>.
+      Sur le <a href="blog/index-fr.html">blogue</a> :
+      <a href="blog/how-to-turn-ebook-into-audiobook-fr.html">transformer un livre en livre audio</a>,
+      <a href="blog/how-to-listen-google-drive-ebooks-fr.html">écouter vos livres Google Drive</a>,
+      <a href="blog/read-calibre-library-aloud-fr.html">lire votre bibliothèque Calibre à voix haute</a>,
+      <a href="blog/on-device-text-to-speech-privacy-fr.html">pourquoi la synthèse vocale sur l’appareil est plus privée</a>, et
+      <a href="blog/best-text-to-speech-apps-2026-fr.html">les meilleures applications de synthèse vocale pour les livres que vous possédez</a>.
     </p>
   </div>
 
   <div class="foot">
-    <a href="privacy.html">Privacy Policy</a> ·
-    <a href="terms.html">Terms of Service</a><br><br>
-    Contact: <a href="mailto:support@phonoleaf.com">support@phonoleaf.com</a>
+    <a href="privacy-fr.html">Politique de confidentialité</a> ·
+    <a href="terms-fr.html">Conditions d’utilisation</a><br><br>
+    Contact : <a href="mailto:support@phonoleaf.com">support@phonoleaf.com</a>
   </div>
 
 </div>
