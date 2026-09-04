@@ -898,6 +898,30 @@ reasoning about it in the abstract. Note the decision is broader than the
 website: picking the funny voice implies the app's toasts, onboarding and empty
 states should agree with it, which is the harder half.
 
+- [ ] **Add app screenshots to the website. DEFERRED 2026-09-04 by the owner,
+      who is not yet convinced of the app's design.** That is the right reason to
+      wait: screenshots freeze the current design across 24 pages plus both store
+      listings, so taking them before the design settles means taking them twice.
+      **Why it is worth doing once the design is settled:** every one of the 24
+      drafts currently asks a visitor to install something they have never seen.
+      That is the largest remaining weakness on those pages, larger than any
+      wording question, and no amount of copy fixes it.
+      **This is not extra work.** Google Play and the App Store both REQUIRE
+      screenshots for a listing, so they have to exist before launch regardless.
+      One capture session serves the stores and the whole website.
+      **Cannot be done by an agent.** Real screenshots need the app running on a
+      real phone with real books in it. Anything generated here would show an
+      empty library or invented covers, which looks worse than no screenshot.
+      **Suggested set, about five:** the shelf with real covers, the reader
+      mid-sentence with follow-along highlighting on, the lock screen showing
+      playback controls, the voice picker, and the stats screen.
+      **Where they go:** one wide shot in the home page hero, one or two on each
+      comparison page beside the table, and one per SEO page next to the feature
+      it demonstrates.
+      An agent CAN usefully do the layout work first, adding sized placeholders
+      so dropping the real images in later is a file copy rather than a redesign.
+      Ask before doing that, since it only pays off if the design is close.
+
 **Sequencing.** Not blocking anything, and the trigger is the store release, so
 it can wait for incorporation to clear. Worth starting before then only because
 launch day is a bad time to be designing.
