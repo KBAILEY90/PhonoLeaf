@@ -8455,3 +8455,90 @@ upstream of the pages: store listing URLs, official store badge artwork,
 screenshots (deferred by the owner pending the app design), and both stores
 being live. The procedure is in `TODO.md` and mirrored in each file's own header
 comment, so nothing has to be remembered from here.
+
+---
+
+## Why the app looks dry, and what was ruled out (2026-09-04)
+
+A scoping conversation rather than a build. Recorded because it eliminated
+several expensive options and produced the brief now sitting in `TODO.md` under
+the app visual redesign item.
+
+### The complaint, and the measurement
+
+The owner said the app looks "very basic", "doesn't look human-built", "looks
+like plain HTML", is "missing pictures, shapes" and is "too dry".
+
+Rather than agree or argue, the app was counted. In `index.green.html`: 42
+inline SVGs, but icons rather than illustration; 9 keyframe animations, five of
+them the forest-and-birds flourish; **3 gradients**; **3 images**; and
+`--radius: 2px` applied to everything.
+
+That turns a feeling into a diagnosis. Green Ink is a deliberate ink-on-paper
+austerity, and austerity is a real aesthetic. But austerity with no texture, no
+depth and no imagery stops reading as minimal and starts reading as unfinished.
+The forest critters are the one place someone clearly enjoyed themselves, and
+nothing else received that attention. The owner's read was correct.
+
+### What was ruled out, and why it matters
+
+The owner asked about Lovable, and whether the dryness was a limit of the stack.
+Two things had to be separated.
+
+**The technology imposes no visual limit at all.** Everything on the web is
+HTML, CSS and SVG. React, Lovable and similar tools organise code; they do not
+draw. Nothing visually richer becomes possible by adopting one. That needed
+saying plainly, because "we are stuck with plain HTML" would have been an
+expensive thing to believe.
+
+**But the stack does constrain what can be IMPORTED.** The app is one
+10,528-line file with zero build steps, wrapped in Capacitor and bridged to nine
+native Kotlin components. Tools like Lovable emit React with a build pipeline.
+That is not a merge, it is a rewrite in a different shape, and it would break
+the staging pipeline and every plugin bridge while buying nothing a user would
+notice.
+
+The resolution is the workflow this project has already used successfully:
+**design elsewhere, implement here by hand.** Green Ink itself arrived that way,
+from a Claude Design project, re-implemented into `index.green.html`. So the
+answer to "where does Lovable stop" is: it stops at the pictures, which is
+exactly where every previous design tool stopped here too.
+
+### The two constraints that are real
+
+Neither is about HTML.
+
+**Weight**, because the app works offline and every asset ships inside it. Drawn
+SVG is nearly free; photographs are not.
+
+**CPU during playback**, which is the one that genuinely bites. The app
+generates neural speech on the device while the user reads, and it is already
+demanding enough that the better voice is gated to strong phones. Continuous
+animation on the reader competes with that directly. The shape that works is
+rich and still on the reader, lively on the shelf, stats and empty states.
+
+### Cost, for the record
+
+The owner asked what an agency would charge in Quebec. Estimated, and flagged as
+estimates rather than quotes: a freelancer $5,000-15,000, a small studio
+$15,000-40,000, an established agency $40,000-100,000+.
+
+Two things were pointed out that lower any real quote: the app is only ten to
+twelve screens, and a documented design system already exists, so nobody is
+starting from a blank page. An agency pricing this as a ground-up brand and
+product build has either not looked or is pricing the wrong job.
+
+The advice given, and worth keeping if this comes back: a design **critique**
+($1,500-5,000) answers "is this actually bad" far more cheaply than a redesign
+answers it, and "I am not convinced" is often a confidence problem rather than a
+design problem. Also flagged: spending five figures on design before the company
+exists, before either store account is open and before a dollar of revenue is a
+large bet, and an imperfect design at launch is recoverable while running out of
+runway is not.
+
+### Where it went
+
+The owner chose to continue with AI-assisted design and installed a set of new
+design skills to try in a fresh session. The priced alternatives are recorded in
+`TODO.md` as the fallback if that disappoints, with a mobile UI kit ($30-80) as
+the cheapest way to find out whether the problem is the design system itself.

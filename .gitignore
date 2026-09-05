@@ -40,3 +40,13 @@ design_redesign.dc.html
 # directory, so verifying a bucket from inside worker/ silently dropped a 98 MB
 # archive into the tree, where `git add -A` swept it into a commit.
 *.tar.bz2
+
+# Installed agent skills and subagents (added 2026-09-04).
+# Same treatment as node_modules: skills-lock.json is the reproducible manifest
+# and is small enough to track if wanted; these directories are ~17 MB of
+# THIRD-PARTY content pulled from other people's GitHub repos. This repo is
+# PUBLIC, so committing them would republish someone else's work under it
+# without anyone having checked their licences.
+.claude/skills/
+.claude/agents/
+.agents/

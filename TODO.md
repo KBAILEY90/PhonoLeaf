@@ -843,6 +843,11 @@ purchase itself happens in the app, through Google Play or the App Store.
 Design accordingly: the page sells the decision, the store takes the money.
 See `PAYMENTS_SPEC.md` §4.
 
+**TONE DECIDED 2026-09-04: the humour voice (v3) wins.** Owner, after review:
+"let's do everything else like this". Every page in the draft set is now in that
+voice, and `home-v2` is kept only as the straight-tone fallback. The voice itself
+is documented in `BRAND_VOICE.md`, which is the authority. Original note below.
+
 **TWO TONE VARIANTS EXIST, awaiting an owner pick (2026-09-02).** Both are
 complete EN+FR pairs, both `noindex` and out of `sitemap.xml`, neither linked:
 
@@ -1642,9 +1647,80 @@ anywhere in `worker/`.
       ElevenReader/NaturalReader/etc. Its closing recommendations are now
       folded into this file as tasks, tagged **[SWOT]** so they can be
       traced back to the finding that produced them.
-- [ ] **App redesign exploration with the `design` skill.** Ready whenever
-      wanted — needs a scoping conversation first (which screens/flows,
-      what direction), not a blind "redesign everything" pass.
+- [ ] **APP VISUAL REDESIGN. Owner's active next task as of 2026-09-04, and
+      the scoping conversation this item used to ask for has now happened.**
+      Read this whole entry before starting; it exists so a fresh session does
+      not re-derive it.
+
+      **The complaint, in the owner's words:** the design is "very basic", it
+      "doesn't look human-built", it "looks like plain HTML", it is "missing
+      pictures, shapes", it is "too dry".
+
+      **This was measured, not taken on faith.** Counted in
+      `index.green.html` on 2026-09-04:
+      | | count |
+      | --- | --- |
+      | inline `<svg>` | 42, but they are ICONS, not illustration |
+      | `@keyframes` | 9, five of them the forest/bird flourish |
+      | CSS gradients | **3** |
+      | `<img>` | **3** |
+      | corner radius | `--radius: 2px`, applied everywhere |
+      So the diagnosis is specific: icon-based, flat, sharp-cornered, almost no
+      imagery and almost no depth. Green Ink is a deliberate ink-on-paper
+      austerity, but austerity without texture, depth or illustration stops
+      reading as minimal and starts reading as unfinished. The forest critters
+      are the one place someone clearly had fun, and nothing else got it.
+
+      **What is NOT the problem, so nobody wastes a session on it:** the
+      technology. Everything on the web is HTML, CSS and SVG. The app having no
+      build step imposes **zero** visual limits. React, Lovable and similar
+      tools add no drawing capability whatsoever; they organise code
+      differently. This was investigated with the owner on 2026-09-04 and ruled
+      out. **Do not propose introducing a framework or a build step to make the
+      app prettier: it would buy nothing visible and would break the single-file
+      staging pipeline and all nine native plugin bridges.**
+
+      **The two REAL constraints, and neither blocks rich design:**
+      1. **Weight.** The app works offline, so every asset ships inside it.
+         Drawn SVG illustration is nearly free; photographs are not.
+      2. **CPU during playback.** The app generates neural speech on the phone
+         while the user reads, which is already demanding enough that the better
+         voice is gated to strong devices. Continuous animation on the READER
+         screen competes with that. Rich and still on the reader, lively on the
+         shelf, stats and empty states. The existing blanket
+         `prefers-reduced-motion` override must survive any motion work.
+
+      **Where the design system lives:** the token block at the top of
+      `index.green.html` (`--bg`, `--surface`, `--accent`, `--accent2`, `--text`,
+      `--line`, `--radius`, the motion tokens). Any change there propagates to
+      the whole app AND must be mirrored into the 40 website drafts, which
+      deliberately share the same token set.
+
+      **Do NOT restyle:** the Google Drive disclosure section (an OAuth
+      verification commitment) or the legal pages. See `BRAND_VOICE.md`.
+
+      **Owner's chosen route, 2026-09-04:** continue with AI-assisted design
+      rather than hiring out, and they have installed a set of new design skills
+      to try in a fresh session. Options that were priced and are NOT being
+      taken right now, kept because they are the fallback if AI output
+      disappoints: a mobile UI kit ($30-80, the cheapest way to find out whether
+      the problem is the design system itself), a freelance designer doing two
+      or three key screens in Figma as a template, or a design critique only
+      ($1,500-5,000). A full agency redesign was estimated at $15,000-40,000 for
+      a studio and more for an agency, and was judged a large bet to place
+      before the app has earned anything.
+
+      **Two things this unblocks**, so it is worth doing before either:
+      the deferred store/website screenshots, and the app's own copy pass in the
+      brand voice.
+
+      **Whatever is produced elsewhere comes back as a REFERENCE, not as code.**
+      That is the proven path here: the current Green Ink design came from a
+      Claude Design project and was re-implemented by hand into
+      `index.green.html`. To rebuild accurately, what is needed is exact values
+      (hex codes, spacing numbers, font sizes and weights, radii) and the
+      illustrations as SVG. A described vibe is not enough, and building from
+      words is part of how the current dryness happened.
 - [x] **Port Phase 2/3 features from the archived hero branch into the
       now-canonical `index.green.html`.** Done 2026-08-29: the motion/
       gesture CSS token system, a localized accessibility pass, the storage
@@ -1756,7 +1832,27 @@ Logged as-is, no design work done yet.
 - [ ] **Gamification, Duolingo-style?** Open question, not a decision —
       streaks, XP, badges, that kind of thing. Needs to be weighed against
       the app's current tone/positioning before deciding whether it fits.
-- [ ] **Should the app have a deliberate tone/voice** (humorous, sassy,
+- [~] **Should the app have a deliberate tone/voice?** **DECIDED 2026-09-04
+      for the WEBSITE; the APP half is still open.** Open since 2026-08-24 and
+      settled by building it rather than by arguing about it: two complete tone
+      variants of the home page were written, the owner picked the funny one,
+      and it was then applied across all 40 website pages in both languages.
+      **`BRAND_VOICE.md` is now the authority** and carries the rule, the test
+      that makes it usable (who is the joke at: reader, situation or competitor
+      is fine, ourselves never), all eleven worked before/after corrections, the
+      rule that French humour is written IN French rather than translated, and
+      the places humour may not go at all.
+      **What remains, and it is the larger half:** the app's own copy. Roughly
+      928 string keys per language covering toasts, onboarding, empty states and
+      Settings. That work is deliberately NOT started, because it should follow
+      the app design decision below rather than precede it: rewriting every
+      string against a design that may change means doing it twice.
+      **Warning for whoever does it:** error and empty states are exactly where
+      self-deprecation creeps back in, and that was the single most repeated
+      mistake across five rounds of website review. Apply the test to every
+      string.
+      Original entry below.
+- [ ] ~~Should the app have a deliberate tone/voice~~ (humorous, sassy,
       etc.) rather than the current neutral/functional copy? Affects
       toasts, onboarding copy, empty states, and marketing copy throughout
       — a real brand-voice decision, not a code change, and probably worth
