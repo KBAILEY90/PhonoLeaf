@@ -407,6 +407,14 @@ Google login); verify by inspection + device testing.
 
 ## Conventions
 
+- **The public website has been fully rebuilt as an OFF-LIVE draft set (40
+  files, 2026-09-04).** `home-v3`, six comparison pairs, six SEO pairs and the
+  blog, EN+FR, all `noindex` and absent from `sitemap.xml`; the live site is
+  untouched. Promotion waits on store URLs, official store badges, screenshots
+  and both stores being live. Inventory, the step-by-step promotion procedure
+  and the defect list are in `TODO.md`'s website section; the narrative is in
+  `CLAUDE_HISTORY.md` (2026-09-02 to 09-04). Do NOT edit the live pages to match
+  the drafts, and do not promote them piecemeal.
 - **User-facing copy has a brand voice, and it is written down.** See
   `BRAND_VOICE.md`. One rule carries most of it: **be funny, never at our own
   expense.** A joke at the reader, a situation or a competitor is fine; a joke

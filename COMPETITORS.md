@@ -36,6 +36,44 @@ once.** That combination is the whole opportunity.
 | NaturalReader | B | Docs, pdf | Cloud | No | $79 to $159/yr |
 | Audible | C | Their audiobooks | Human narration | Downloaded | $14.95/mo |
 
+## 2b. Where to find them (added 2026-09-04)
+
+Owner asked for these to investigate first-hand, which complements the
+breadth-and-reviews research already in `COMPETITOR_SWOT.md`.
+
+**The six with comparison pages.** Every URL below is the one already cited in
+that page's own dated footnote, so these are sourced rather than remembered:
+
+| Competitor | Site | Cited on |
+| --- | --- | --- |
+| Speechify | https://speechify.com | `speechify-alternative.html` |
+| Voice Dream Reader | https://voicedream.com | `voice-dream-alternative.html` |
+| ElevenReader | https://elevenreader.io | `elevenreader-alternative.html` |
+| NaturalReader | https://naturalreaders.com | `naturalreader-alternative.html` |
+| @Voice Aloud Reader | https://hyperionics.com | `voice-aloud-alternative.html` |
+| Google Play Books | https://play.google.com/books | `play-books-alternative.html` |
+
+Two notes on that table, both from the 2026-08-30 accuracy pass:
+
+- **@Voice** is listed on Google Play as **"@Voice: Text to Speech Reader"**.
+  hyperionics.com is the developer's own site; the Play listing is where the
+  pricing and the ads are visible. The app is Android only, so it cannot be
+  looked at on an iPhone.
+- **Play Books** is best investigated inside the app rather than on the web,
+  since the behaviour that matters (whether Read Aloud appears at all) depends
+  on the individual title and on whether the natural voice is switched on.
+
+**Not cited anywhere in this repo**, so treat these as leads rather than facts,
+and confirm before quoting: Audible (audible.com), Moon+ Reader and Legado. The
+last two have no comparison page and were assessed only at snapshot level.
+
+**Worth doing while you are in there**, since it is the one thing agent research
+cannot produce: how each one *feels* on a real phone over a real chapter. The
+review mining in `COMPETITOR_SWOT.md` covers what people complain about; it
+cannot tell you whether the voice is pleasant at minute forty. Anything you find
+that contradicts a row in our comparison tables should be corrected on the page
+AND in its dated footnote.
+
 ## 3. Group A, the direct competitors
 
 ### @Voice Aloud Reader (the one to beat)

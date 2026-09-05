@@ -8331,3 +8331,127 @@ at all and no process can inherit it. The cost is typing it during the handful
 of release builds a year. Left as the owner's call, since it adds a step to a
 workflow that had just been made to work. Revisit it if a third exposure ever
 happens — at that point the discipline argument is exhausted.
+
+---
+
+## The website rebuilt off-live, and a brand voice found by getting it wrong (2026-09-02 to 09-04)
+
+The whole public site was rebuilt as a draft set: **40 files**, English and
+French, none of them live. `TODO.md`'s website section carries the inventory and
+the promotion procedure; `BRAND_VOICE.md` carries the voice. This entry is the
+reasoning, which belongs neither in a checklist nor in a style guide.
+
+### Why off-live at all
+
+A push to `main` deploys `index.html` in about two minutes and there is no
+staging branch, so a half-finished redesign committed to `main` is immediately
+public on the domain the whole SEO effort points at. The owner's instruction was
+to build it off-live and switch at launch.
+
+The mechanism chosen was the cheapest of the three options considered: a
+parallel `-v3` file per page, `noindex`, absent from `sitemap.xml`, linked from
+nowhere. It survives between sessions (a branch would not, safely), it is
+reviewable at a real URL, and its only exposure is a page search engines are
+told to ignore and nothing links to.
+
+### The voice, and why it took five rounds
+
+The owner asked for a humour variant, approved it, and then rejected it four
+more times. Every rejection was the same defect wearing different clothes: the
+joke was pointed at PhonoLeaf.
+
+"The less thrilling rest". "A voice you can tolerate for nine hours". A fallback
+that was "honest about being" a robot. "Three steps, then we go quiet". "Then,
+crucially, leaves you alone". "The part with the numbers". "Cancel whenever you
+like, we will manage".
+
+Read individually each is charming. Read together they are a product apologising
+for existing, on pages whose entire job is to convince a stranger to install it.
+The owner's framing is the one that finally made it stick: **we are not annoying
+the user, we are providing something beneficial.** Getting out of the way is a
+FEATURE and has to be sold as one.
+
+The generalisable part, now the test in `BRAND_VOICE.md`: **ask who the joke is
+at.** Reader, situation or competitor is fine. Ourselves is never fine.
+Self-deprecation reads as charm from a brand people trust and as doubt from one
+nobody has heard of, and PhonoLeaf is the second.
+
+Two corollaries were learned separately and cost a round each:
+
+- **"Humble" about competitors does not mean humble about us.** Asked to be
+  respectful of Speechify, the page shipped saying "PhonoLeaf does less than
+  that, deliberately", which is the same rule broken one commit after it was
+  written down. Respect them, then win on evidence.
+- **A jab is fine; condescension is not.** The owner's words: "I'm fine with a
+  bit of sneering." What is banned is talking down to them or to the people who
+  chose them, because some of those people are the readers we want.
+
+### French is written in French
+
+The first French twin was built by translating the English page, and it read as
+English wearing French words: "Survit à votre poche", "Vous manquez d'yeux",
+"Aucune salle d'attente". The owner caught it immediately.
+
+Rebuilt so the jokes are made in French, which means they are different jokes:
+"se péter les bretelles" for the smug stats, the "à vie" versus "une vie" play
+on the lifetime card, the emphatic "Elle, elle se souvient", "le rang" for a
+rural road. A generator comment now warns against lining the two languages up
+joke for joke, since that instinct is what produced the calque.
+
+A small vindication of the approach: when "over the washing up" turned out to be
+a Briticism nobody says in North America, the French "devant la vaisselle" was
+already idiomatic and needed no change. A translation would have carried the
+awkwardness across.
+
+### One deliberate register exception
+
+`text-to-speech-dyslexia` carries no jokes in either language. Most of this
+voice's humour is aimed at the reader, which works on a page about an unread
+pile and does not work on a page read by someone who finds reading hard. The
+page is warm and confident instead, and its feature list is the longest of the
+six. This was an agent judgement call, flagged to the owner rather than made
+quietly, and left open to overrule.
+
+### What the checks caught that eyes would not have
+
+This is the part worth carrying to any future bulk page work. Every one of these
+would have shipped silently, and several recurred across page groups:
+
+- A **latent redirect bug, twice**. The disabled language redirect kept pointing
+  at whichever page it was copied from, so uncommenting it at promotion would
+  have sent readers to an unrelated competitor's page.
+- A generator that **reused one page's head for five others**, baking that
+  page's slug into their `og:url`. Every social share of five French pages would
+  have pointed at the wrong article.
+- **Broken font paths on all six English blog posts**, which live in `blog/` and
+  needed `../fonts/`. Both webfonts would have failed silently on every one.
+- **FAQ structured data drifting from the visible FAQ** three separate ways: a
+  currency spelled out on one side, straight versus curly apostrophes in French,
+  and a multiplication sign versus a plain x. Google requires them to match word
+  for word.
+- **Ten meta descriptions past the ~155 character truncation point**, each
+  cutting off the sentence doing the selling.
+- **Duplicate jokes across pages**, caught by comparing every feature title
+  programmatically. Repeated copy across pages is an SEO negative.
+
+**None of these was found by looking at a page.** Each came from asserting a
+property in a script. The checks are listed in `TODO.md` so they can be re-run.
+
+### The layout bug, and why it looked fine to me
+
+The owner reported blog boxes sitting off-centre. Three widths were fighting: a
+860px wrapper, article blocks capped at 640px with no auto margins so they hugged
+the left, and FAQ boxes with no cap running the full width, under a centred hero.
+
+Worth recording *why* it was not caught: the blog shell was reused from the SEO
+pages, where a 640px article column sits under a full-width feature grid and
+reads as deliberate because the grid anchors the eye. Remove the grid and the
+same CSS just looks broken. Fixed to a single 720px reading column.
+
+### Where it stands
+
+All 40 files are finished and pushed. Promotion is blocked only on things
+upstream of the pages: store listing URLs, official store badge artwork,
+screenshots (deferred by the owner pending the app design), and both stores
+being live. The procedure is in `TODO.md` and mirrored in each file's own header
+comment, so nothing has to be remembered from here.

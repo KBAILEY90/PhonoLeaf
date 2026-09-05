@@ -926,6 +926,124 @@ states should agree with it, which is the harder half.
 it can wait for incorporation to clear. Worth starting before then only because
 launch day is a bad time to be designing.
 
+---
+
+### BUILT AND FINISHED 2026-09-04: all 40 draft files
+
+The whole public site now exists as an off-live draft set. **Nothing is live.
+Every file carries `robots: noindex, nofollow`, none is in `sitemap.xml`, and
+none is linked from any live page.** The live site is byte-for-byte what it was
+before this work started.
+
+**Every draft maps 1:1 onto an existing live file**, verified, so promotion is a
+rename rather than a merge.
+
+| Group | Files | Draft naming |
+| --- | --- | --- |
+| Home | 4 | `home-v2{,-fr}.html` (straight) and `home-v3{,-fr}.html` (humour) |
+| Comparison | 12 | `<competitor>-alternative-v3{,-fr}.html`, six competitors |
+| SEO cluster | 12 | six topic pages, `<topic>-v3{,-fr}.html` |
+| Blog | 12 | `blog/<post>-v3{,-fr}.html`, five posts plus the index |
+
+**TONE: v3 (humour) is the chosen direction** (owner, 2026-09-02, "let's do
+everything else like this"). `home-v2` is kept as the straight-tone fallback and
+is the ONLY page with a v2; everything else exists in the humour voice only. The
+voice itself is documented in `BRAND_VOICE.md`, which is the authority, not this
+section.
+
+### PROMOTION PROCEDURE, when the stores are live
+
+Do these in order. Steps 1-3 are per file and are marked in each file's own
+header comment, so nothing has to be remembered from here.
+
+1. **Replace the store links.** Every one of the 40 files contains two
+   `STORE-LINK-TODO` markers with `href="#"`. Swap in the real Play and App
+   Store listing URLs. `grep -rl STORE-LINK-TODO` finds them all.
+2. **Swap the store badges.** The buttons currently use icons drawn by hand.
+   **Both stores REQUIRE their own official badge artwork**; a redrawn mark is
+   a policy violation, not a style choice.
+3. **Delete the `noindex` line** and **restore the language auto-redirect**,
+   which is commented out in each file. The redirect targets are already
+   correct for post-promotion names, so restoring it is a pure uncomment with
+   no edit. (This was checked: an earlier version of these files pointed every
+   redirect at Speechify's French page.)
+4. **Promote the files.** `home-v3.html` becomes `home.html`, and so on for all
+   40. Decide first whether `home-v2` is being kept anywhere; if not, delete it.
+5. **Update `sitemap.xml`** so it lists the promoted names, and confirm no
+   `-v3` URL survives anywhere.
+6. **Re-check every dated competitor figure** before it goes public. Each
+   comparison page carries an August 2026 footnote naming the source; competitor
+   pricing moves, and a stale number on a comparison page invites complaints.
+
+### WHAT STILL BLOCKS PROMOTION
+
+Not the pages. All four blockers are upstream:
+
+- **Store listing URLs do not exist**, because the store accounts do not exist,
+  because they are registered through the corporation once incorporation
+  completes.
+- **Official store badge artwork** comes with those accounts.
+- **Screenshots** (deferred by the owner pending the app design; see the item
+  above). The pages work without them but ask visitors to install something
+  they have never seen.
+- **Both stores must be live**, since the pages carry two store buttons and no
+  web fallback, per the simultaneous-launch decision.
+
+### DECISIONS TAKEN, so they are not relitigated
+
+- **Design:** the app's Green Ink system carries to the web in full, not just
+  its palette. That means the 2px corner and the offset ink shadow on every
+  raised surface. All 40 files share one component set.
+- **Web playback is gone from the drafts.** The CTA is two store buttons. No
+  "Open PhonoLeaf" web-app link survives anywhere in the draft set.
+- **Platform claims updated.** The live pages say "any modern browser"; the
+  drafts say Android and iPhone, because web playback is removed once both
+  stores carry the app.
+- **Pricing shows all three plans**, including the $129 Founding Member tier,
+  which states plainly that access lasts as long as PhonoLeaf runs rather than
+  implying forever. That wording is aimed at the Voice Dream failure mode and
+  should not be softened.
+- **`text-to-speech-dyslexia` carries NO jokes, in either language.** A page
+  read by someone who finds reading hard is not a place for humour aimed at the
+  reader, which is where most of this voice's jokes live. Register matching, not
+  underselling: the page still claims plainly that PhonoLeaf is good at this,
+  and its feature list is the longest of the six. Marked in the generators.
+- **Competitor pages are respectful, not deferential.** A jab is fine;
+  condescension is not. See `BRAND_VOICE.md`, which carries the worked
+  before/after examples.
+- **The Google Drive disclosure block is byte-identical across every variant**,
+  and was asserted equal rather than eyeballed. It is an OAuth verification
+  commitment, not copy.
+
+### DEFECTS FOUND WHILE BUILDING, all fixed, none obvious by eye
+
+Recorded because each would have shipped silently and several recurred:
+
+- **A latent redirect bug, twice.** The disabled language redirect kept pointing
+  at the page it was copied from, so uncommenting it at promotion would have
+  sent readers to an unrelated competitor's page. Caught on the comparison pages
+  and again on the SEO pages.
+- **A generator reused one page's head for five others**, baking that page's
+  slug into their `og:url`. Every social share of five French SEO pages would
+  have pointed at the wrong article.
+- **All six English blog posts had broken font paths.** They live in `blog/`, so
+  `@font-face` needed `../fonts/`. Both webfonts would have silently failed on
+  every blog page.
+- **FAQ structured data drifting from the visible FAQ.** Google requires them to
+  match word for word. Broken three ways: a currency spelled out on one side,
+  straight versus curly apostrophes in French, and a multiplication sign versus
+  a plain x.
+- **Ten meta descriptions ran past the ~155 characters Google truncates at**,
+  cutting off the sentence doing the selling.
+- **Three widths fighting on the blog pages**, which is what made them look
+  off-centre: a 720px column now, with everything filling it.
+
+**The lesson worth keeping: every one of these was found by asserting a property
+in a script, not by looking at the page.** Any future bulk page work should
+re-run the same checks: FAQ schema matches visible text, redirects and og:urls
+point at their own page, language switches stay inside the set, no competitor
+name leaks across pages, descriptions under 155 chars, EN/FR structural parity.
+
 ## CLOUDFLARE SETUP AS IT STANDS (2026-09-02)
 
 Recorded so nobody re-derives it, and because one constraint has a trap in it.
